@@ -1,7 +1,6 @@
-import type { UseFetchOptions } from "#app";
 import { useSessionStorage, StorageSerializers } from "@vueuse/core";
 
-export const useFetchWithCache = async <T>(url: string, options: UseFetchOptions<T> = {}) => {
+export const useFetchWithCache = async <T>(url: string, options = {}) => {
   // use sessionStorage to cache data
   const cached = useSessionStorage<T>(url, null, { serializer: StorageSerializers.object });
 

@@ -1,0 +1,62 @@
+service: hdx-orr
+frameworkVersion: "3"
+
+custom:
+  hdxStack: hdx
+  lsaStack: hdx-lsa-${opt:stage, self:provider.stage}
+  serverless-layers:
+    dependenciesPath: ./package.json
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  profile: hdx
+  stage: dev
+  region: ${opt:region, 'us-east-1'}
+  stackName: ${self:service}-${opt:stage, self:provider.stage}
+  deploymentBucket:
+    name: ${cf:${self:custom.hdxStack}.DeploymentBucket}
+  deploymentMethod: direct
+  memorySize: 512
+  timeout: 29
+  logRetentionInDays: 30
+  versionFunctions: false
+  vpc:
+    securityGroupIds:
+      - ${cf:${self:custom.hdxStack}.LambdaSecurityGroup}
+    subnetIds:
+      - ${cf:${self:custom.hdxStack}.PrivateSubnet3}
+      - ${cf:${self:custom.hdxStack}.PrivateSubnet4}
+  # you can define service wide environment variables here
+  environment:
+    REGION: ${self:provider.region}
+    # uses the resouces created with 02_lsa.yml
+    LSA_WEBSITE: ${cf:${self:custom.lsaStack}.WebsiteUrl}
+    LSA_HOST: ${cf:${self:custom.lsaStack}.DBEndpoint}
+    LSA_DATABASE: ${cf:${self:custom.lsaStack}.DBDatabaseName}
+    LSA_USERNAME: ${cf:${self:custom.lsaStack}.DBLambdaUsername}
+    LSA_PASSWORD: ${cf:${self:custom.lsaStack}.DBLambdaPassword}
+    LSA_PORT: 3306
+  httpApi:
+    name: ${self:provider.stackName}
+    cors: true
+
+plugins:
+  - serverless-layers
+
+package:
+  individually: true
+  patterns:
+    - "!./**"
+
+functions:
+  getUserProfile:
+    handler: index.getUserProfile
+    package:
+      patterns:
+        - index.mjs
+        - utils.mjs
+    events:
+      - httpApi:
+          path: /user/profile
+          method: GET
