@@ -1,3 +1,8 @@
+<script lang="ts" setup>
+const userProfile = await useUserProfile();
+const showMenu = (slug: string) => userProfile.value.modules.includes(slug);
+</script>
+
 <template>
   <div>
     <div class="hud-header"></div>
@@ -9,11 +14,11 @@
       </div>
       <div class="flex-1 grid">
         <div class="hud-nav flex justify-self-end">
-          <a class="nav-item nav-link" :href="$config.public.hdxBase + '/home'">Home</a>
-          <a class="nav-item nav-link" :href="$config.public.hdxBase + '/sitestatus?module=lsa'">LSA</a>
-          <a class="nav-item nav-link" :href="$config.public.hicBase">HIC</a>
-          <a class="nav-item nav-link" :href="$config.public.pitBase">PIT</a>
-          <a class="nav-item nav-link" :href="$config.public.spmBase">SPM</a>
+          <a class="nav-item nav-link" :hidden="!showMenu('lsa')" :href="$config.public.hdxBase + '/home'">Home</a>
+          <a class="nav-item nav-link" :hidden="!showMenu('lsa')" :href="$config.public.hdxBase + '/sitestatus?module=lsa'">LSA</a>
+          <a class="nav-item nav-link" :hidden="!showMenu('hic')" :href="$config.public.hicBase">HIC</a>
+          <a class="nav-item nav-link" :hidden="!showMenu('pit')" :href="$config.public.pitBase">PIT</a>
+          <a class="nav-item nav-link" :hidden="!showMenu('spm')" :href="$config.public.spmBase">SPM</a>
           <a class="nav-item nav-link active" href="/">ORR<span class="sr-only">(current)</span></a>
           <a class="nav-item nav-link" :href="$config.public.stpBase">Stella P</a>
           <a class="nav-item nav-link" :href="$config.public.stmBase">Stella M</a>
