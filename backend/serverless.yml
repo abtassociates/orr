@@ -1,6 +1,20 @@
 service: hdx-orr
 frameworkVersion: "3"
 
+params:
+  prod:
+    domain: orr.hudhdx2.info
+    certificateArn: arn:aws:acm:us-east-1:180931611452:certificate/c5b669b7-1297-41e1-beb6-ed8461c93b55
+  sandbox:
+    domain: hdxsandbox-orr.abtsites.com
+    certificateArn: arn:aws:acm:us-east-1:180931611452:certificate/69e2b4d0-d2c9-4a4d-9241-8f4a778aed56
+  testing:
+    domain: hdxtesting-orr.abtsites.com
+    certificateArn: arn:aws:acm:us-east-1:180931611452:certificate/69e2b4d0-d2c9-4a4d-9241-8f4a778aed56
+  dev:
+    domain: hdxdev-orr.abtsites.com
+    certificateArn: arn:aws:acm:us-east-1:180931611452:certificate/69e2b4d0-d2c9-4a4d-9241-8f4a778aed56
+
 custom:
   hdxStack: hdx
   lsaStack: hdx-lsa-${opt:stage, self:provider.stage}
@@ -60,3 +74,94 @@ functions:
       - httpApi:
           path: /user/profile
           method: GET
+
+resources:
+  Resources:
+    # create S3 bucket for static website hosting
+    WebsiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${param:domain}
+        PublicAccessBlockConfiguration:
+            BlockPublicAcls: false
+        OwnershipControls:
+            Rules:
+              - ObjectOwnership: ObjectWriter
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: index.html
+    # create S3 bucket policy for static website hosting
+    WebsiteBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: WebsiteBucket
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action:
+                - s3:GetObject
+              Resource:
+                Fn::Join:
+                  - ""
+                  - - "arn:aws:s3:::"
+                    - Ref: WebsiteBucket
+                    - "/*"
+    # create CloudFront distribution for static website hosting
+    WebsiteCDN:
+      Type: AWS::CloudFront::Distribution
+      DependsOn:
+        - WebsiteBucket
+      Properties:
+        DistributionConfig:
+          Aliases:
+            - ${param:domain}
+          ViewerCertificate:
+            AcmCertificateArn: ${param:certificateArn}
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          Enabled: true
+          PriceClass: PriceClass_100
+          IPV6Enabled: true
+          HttpVersion: http2
+          Origins:
+            - DomainName: !Join [".", [!Ref WebsiteBucket, "s3.amazonaws.com"]]
+              Id: !Join ["-", ["S3", !Ref WebsiteBucket]]
+              CustomOriginConfig:
+                OriginProtocolPolicy: http-only
+          DefaultRootObject: index.html
+          DefaultCacheBehavior:
+            TargetOriginId: !Join ["-", ["S3", !Ref WebsiteBucket]]
+            ForwardedValues:
+              QueryString: true
+              Cookies:
+                Forward: all
+            ViewerProtocolPolicy: redirect-to-https
+          CustomErrorResponses:
+            - ErrorCachingMinTTL: 300
+              ErrorCode: 404
+              ResponseCode: 200
+              ResponsePagePath: "/index.html"
+
+  Outputs:
+    WebsiteUrl:
+      Value: https://${param:domain}
+      Export:
+        Name: !Join ["-", [!Ref "AWS::StackName", "WebsiteUrl"]]
+    WebsiteBucket:
+      Value: !Ref WebsiteBucket
+      Export:
+        Name: !Join ["-", [!Ref "AWS::StackName", "WebsiteBucket"]]
+    CDNId:
+      Value: !Ref WebsiteCDN
+      Export:
+        Name: !Join ["-", [!Ref "AWS::StackName", "CDNId"]]
+    CDNDomainName:
+      Value: !GetAtt WebsiteCDN.DomainName
+      Export:
+        Name: !Join ["-", [!Ref "AWS::StackName", "CDNDomainName"]]
+    S3WebsiteEndpoint:
+      Value: !Join ["", ["s3-website-", !Ref "AWS::Region", ".amazonaws.com"]]
+      Export:
+        Name: !Join ["-", [!Ref "AWS::StackName", "S3WebsiteEndpoint"]]
