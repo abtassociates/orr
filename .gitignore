@@ -5,3 +5,4 @@ logs
 # Local env files
 .Rhistory
 .Rproj.user
+.Renviron
