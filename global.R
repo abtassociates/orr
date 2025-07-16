@@ -3,7 +3,8 @@ library(bslib)
 library(DT)
 library(sortable)
 library(fontawesome)
-
+library(collapse)
+library(data.table)
 # Generate fake data
 set.seed(123)
 

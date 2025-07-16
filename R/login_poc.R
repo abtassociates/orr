@@ -18,7 +18,7 @@ DB_CONFIG <- list(
 # Database connection function
 get_db_connection <- function() {
   dbConnect(
-    RPostgreSQL::PostgreSQL(),
+    RPostgres::Postgres(),
     host = DB_CONFIG$host,
     port = DB_CONFIG$port,
     dbname = DB_CONFIG$dbname,

@@ -1,4 +1,4 @@
-mod_review_projects_ui <- function(id) {
+mod_ionventory_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
@@ -10,7 +10,7 @@ mod_review_projects_ui <- function(id) {
   )
 }
 
-mod_review_projects_server <- function(id, app_state) {
+mod_ionventory_server <- function(id, app_state) {
   moduleServer(id, function(input, output, session) {
     
     projects_data <- reactive({
