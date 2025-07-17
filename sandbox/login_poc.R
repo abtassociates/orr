@@ -33,7 +33,7 @@ initialize_db <- function() {
   con <- get_db_connection()
   
   # Create users table if it doesn't exist
-  query <- "
+  query <- str_glue("
   CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     user VARCHAR(50) UNIQUE NOT NULL,
@@ -43,7 +43,7 @@ initialize_db <- function() {
     expire DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )"
+  )")
   
   dbExecute(con, query)
   
