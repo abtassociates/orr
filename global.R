@@ -8,6 +8,7 @@ library(data.table)
 library(shinyjs)
 library(shinydisconnect)
 library(stringr)
+library(forcats)
 
 # Generate fake data
 set.seed(123)
