@@ -4,92 +4,43 @@ mod_inventory_ui <- function(id) {
   nav_panel(
     "Review Projects",
     value = id,
-    layout_sidebar(
-      sidebar = sidebar(
-        title = "Filters",
-        width = 300,
-        open = FALSE,
-        selectInput(ns("filter_funding_action"), "Funding Action",
-                    choices = c("All", "Renew", "New", "Expand", "Reallocate", "Ignore"),
-                    multiple = TRUE),
-        selectInput(ns("filter_dv_renewal"), "DV Renewal",
-                    choices = c("All", "Yes", "No"),
-                    multiple = TRUE),
-        selectInput(ns("filter_project_type"), "Project Type",
-                    choices = c("All", project_types),
-                    multiple = TRUE),
-        selectInput(ns("filter_target_pop"), "Target Population",
-                    choices = c("All", target_populations),
-                    multiple = TRUE),
-        selectInput(ns("filter_org"), "Organization",
-                    choices = c("All"),  # Will be updated in server
-                    multiple = TRUE)
-      ),
-      card(
-        card_header("Review Projects"),
-        DTOutput(ns("projects_table")),
-        actionButton(ns("add_project_btn"), "Add New Project")
-      )
+    card(
+      card_header("Review Projects"),
+      DTOutput(ns("projects_table")),
+      actionButton(ns("add_project_btn"), "Add New Project")
     )
   )
 }
 
 mod_inventory_server <- function(id, projects_data) {
   moduleServer(id, function(input, output, session) {
-    output$projects_table <- renderDT({
-      datatable(
-        projects_data(),
-        editable = TRUE,
-        options = list(
-          pageLength = 25,
-          scrollX = TRUE
-        )
-      )
-    })
+    user_columns <- c("DV_Renewal", "Grant_Number", "CoC_Funding_Requested", "Funding_Action")
     
     # Filtered projects data
     filtered_projects <- reactive({
-      req(projects_data())
       data <- projects_data()
+      req(nrow(data) > 0)
       
-      # First filter out "Ignore" projects unless specifically requested
-      if (!("Ignore" %in% input$filter_funding_action)) {
-        data <- data %>% fsubset(is.na(Funding_Action) | Funding_Action != "Ignore")
-      }
-      
-      # Apply filters
-      if (!("All" %in% input$filter_funding_action) && length(input$filter_funding_action) > 0) {
-        data <- data %>% fsubset(Funding_Action %in% input$filter_funding_action)
-      }
-      
-      if (!("All" %in% input$filter_dv_renewal) && length(input$filter_dv_renewal) > 0) {
-        data <- data %>% fsubset(DV_Renewal %in% input$filter_dv_renewal)
-      }
-      
-      if (!("All" %in% input$filter_project_type) && length(input$filter_project_type) > 0) {
-        data <- data %>% fsubset(Project_Type %in% input$filter_project_type)
-      }
-      
-      if (!("All" %in% input$filter_target_pop) && length(input$filter_target_pop) > 0) {
-        data <- data %>% fsubset(Target_Population %in% input$filter_target_pop)
-      }
-      
-      if (!("All" %in% input$filter_org) && length(input$filter_org) > 0) {
-        data <- data %>% fsubset(Organization_Name %in% input$filter_org)
-      }
+      # use factors to ensure dropdowns
+      data <- data %>%
+        fselect(-CoC_Code) %>%
+        ftransformv(c(user_columns, "Project_Type", "Target_Population", "McKinney_Vento"), forcats::as_factor)
       
       data
     })
     
     # Projects table
     output$projects_table <- renderDT({
-      req(filtered_projects())
-      data <- filtered_projects() %>%
-        fselect(-CoC_Code)  # Remove CoC Code column
-      
-      # Define which columns should be green (editable by user)
-      user_columns <- c("DV_Renewal", "Grant_Number", "CoC_Funding_Requested", "Funding_Action")
-      
+      data <- filtered_projects()
+
+      validate(
+        need(nrow(data) > 0, "No rows")
+      )
+
+      # filter out Ignores by default
+      initial_filter <- vector("list", ncol(data))
+      initial_filter[[which(names(data) == "Funding_Action") + 1]] <- list(search = "[\"Renew\"]")
+
       dt <- datatable(
         data,
         editable = "cell",
@@ -97,7 +48,9 @@ mod_inventory_server <- function(id, projects_data) {
         options = list(
           pageLength = 25,
           scrollX = TRUE,
-          orderClasses = TRUE,
+          scrollY = "400px",  # Limit table height
+          fixedHeader = TRUE,
+          searchCols = initial_filter,
           columnDefs = list(
             list(
               targets = which(names(data) %in% user_columns),
@@ -107,11 +60,8 @@ mod_inventory_server <- function(id, projects_data) {
               targets = which(names(data) == "Funding_Action") - 1,
               render = JS(
                 "function(data, type, row, meta) {
-                if (type === 'display') {
-                  return data === null ? '' : data;
-                }
-                return data;
-              }"
+                  return type === 'display' && data === null ? '' : data;
+                }"
               )
             )
           )
