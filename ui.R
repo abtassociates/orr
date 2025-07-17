@@ -1,15 +1,23 @@
 page_navbar(
-  # Custom CSS for green background
-tags$head(
-  tags$style("
-    .green-background {
-      background-color: #e6ffe6 !important;
-    }
-  ")
-), 
   title = "CoC Project Rating and Ranking Tool",
   id = "nav",
   
+  header = tagList(
+    ## css, idle management, and dimension management --------
+    tags$head(
+      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+    ),
+    ## Enable shinyjs -----
+    useShinyjs(),
+    disconnectMessage(
+      text = str_squish(
+        "HORRT has crashed. Please submit an issue on GitHub and note the
+          date and time (including timezone) in order to help the team diagnose the issue."
+      ),
+      overlayColour = '#F5F5F5',
+      refresh = ""
+    )
+  ),
   # CoC Selection Page
   nav_panel(
     "Select CoC",
