@@ -1,31 +1,37 @@
 mod_coc_selection_ui <- function(id) {
   ns <- NS(id)
   
-  tagList(
+  nav_panel(
+    "Select CoC",
+    value = id,
     card(
-      card_header("Select your CoC"),
-      selectInput(ns("coc_select"), "Choose your CoC:",
-                 choices = NULL),
-      actionButton(ns("confirm_coc"), "Continue")
+      card_header("Select your Continuum of Care"),
+      selectInput(ns("coc_select"), "CoC Code",
+                  choices = c("Please select" = "", sort(unique(hic_data$CoC_Code)))),
+      actionButton(ns("next_btn"), "Next", class = "btn-primary")
     )
   )
 }
 
-mod_coc_selection_server <- function(id, app_state) {
+mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc) {
   moduleServer(id, function(input, output, session) {
-    
-    observe({
-      updateSelectInput(session, "coc_select",
-                       choices = unique(test_hic$CoC_Code))
-    })
-    
-    observeEvent(input$confirm_coc, {
-      current_state <- app_state()
-      current_state$coc_selected <- TRUE
-      current_state$selected_coc <- input$coc_select
-      current_state$projects <- test_hic %>%
-        filter(CoC_Code == input$coc_select)
-      app_state(current_state)
+    observeEvent(input$next_btn, {
+      if (input$coc_select != "") {
+        selected_coc(input$coc_select)
+        nav_control("inventory")
+        
+        # Initialize projects data
+        filtered_data <- hic_data %>%
+          fsubset(CoC_Code == input$coc_select) %>%
+          fmutate(
+            DV_Renewal = NA_character_,
+            Grant_Number = NA_character_,
+            CoC_Funding_Requested = NA_real_,
+            Funding_Action = fifelse(McKinney_Vento == "No", "Ignore", "Renew")
+          )
+        
+        projects_data(filtered_data)
+      }
     })
   })
 }

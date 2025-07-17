@@ -1,7 +1,9 @@
 mod_ranking_ui <- function(id) {
   ns <- NS(id)
   
-  tagList(
+  nav_panel(
+    "Ranking",
+    value = "ranking",
     card(
       card_header("Funding Allocation Summary"),
       uiOutput(ns("funding_summary"))
