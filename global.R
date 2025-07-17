@@ -5,6 +5,10 @@ library(sortable)
 library(fontawesome)
 library(collapse)
 library(data.table)
+library(shinyjs)
+library(shinydisconnect)
+library(stringr)
+
 # Generate fake data
 set.seed(123)
 
