@@ -17,7 +17,7 @@ coc_codes <- paste0(rep(c("NY", "CA", "TX", "FL"), each = 25), "-", sprintf("%03
 project_types <- c("PSH", "RRH", "TH", "TH+RRH")
 target_populations <- c("General", "DV", "Veterans", "Youth")
 
-hic_data <- data.frame(
+hic_data <- data.table(
   CoC_Code = sample(coc_codes, 30000, replace = TRUE),
   Project_Name = paste("Project", 1:30000),
   Organization_Name = paste("Org", sample(1:1000, 30000, replace = TRUE)),
@@ -30,7 +30,7 @@ hic_data <- data.frame(
 )
 
 # Generate fake GIW data
-giw_data <- data.frame(
+giw_data <- data.table(
   CoC_Code = sample(coc_codes, 6500, replace = TRUE),
   Grant_Number = paste0("GN-", 1:6500),
   Project_Name = paste("Project", sample(1:30000, 6500)),
@@ -39,7 +39,7 @@ giw_data <- data.frame(
 )
 
 # Generate fake ARD data
-ard_data <- data.frame(
+ard_data <- data.table(
   CoC_Code = unique(coc_codes),
   Total_ARD = round(runif(length(unique(coc_codes)), 1000000, 10000000), 2),
   Tier_1 = NA,
