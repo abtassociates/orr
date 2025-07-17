@@ -26,13 +26,14 @@ function(input, output, session) {
       
       # Initialize projects data
       filtered_data <- hic_data %>%
-        filter(CoC_Code == input$coc_select) %>%
-        mutate(
+        fsubset(CoC_Code == input$coc_select) %>%
+        fmutate(
           DV_Renewal = NA_character_,
           Grant_Number = NA_character_,
           CoC_Funding_Requested = NA_real_,
-          Funding_Action = ifelse(McKinney_Vento == "No", "Ignore", NA_character_)
+          Funding_Action = fifelse(McKinney_Vento == "No", "Ignore", "Renew")
         )
+
       projects_data(filtered_data)
     }
   })
@@ -52,28 +53,28 @@ function(input, output, session) {
 
     # First filter out "Ignore" projects unless specifically requested
     if (!("Ignore" %in% input$filter_funding_action)) {
-      data <- data %>% filter(is.na(Funding_Action) | Funding_Action != "Ignore")
+      data <- data %>% fsubset(is.na(Funding_Action) | Funding_Action != "Ignore")
     }
     
     # Apply filters
     if (!("All" %in% input$filter_funding_action) && length(input$filter_funding_action) > 0) {
-      data <- data %>% filter(Funding_Action %in% input$filter_funding_action)
+      data <- data %>% fsubset(Funding_Action %in% input$filter_funding_action)
     }
     
     if (!("All" %in% input$filter_dv_renewal) && length(input$filter_dv_renewal) > 0) {
-      data <- data %>% filter(DV_Renewal %in% input$filter_dv_renewal)
+      data <- data %>% fsubset(DV_Renewal %in% input$filter_dv_renewal)
     }
     
     if (!("All" %in% input$filter_project_type) && length(input$filter_project_type) > 0) {
-      data <- data %>% filter(Project_Type %in% input$filter_project_type)
+      data <- data %>% fsubset(Project_Type %in% input$filter_project_type)
     }
     
     if (!("All" %in% input$filter_target_pop) && length(input$filter_target_pop) > 0) {
-      data <- data %>% filter(Target_Population %in% input$filter_target_pop)
+      data <- data %>% fsubset(Target_Population %in% input$filter_target_pop)
     }
     
     if (!("All" %in% input$filter_org) && length(input$filter_org) > 0) {
-      data <- data %>% filter(Organization_Name %in% input$filter_org)
+      data <- data %>% fsubset(Organization_Name %in% input$filter_org)
     }
     
     data
@@ -83,7 +84,7 @@ function(input, output, session) {
   output$projects_table <- renderDT({
     req(filtered_projects())
     data <- filtered_projects() %>%
-      select(-CoC_Code)  # Remove CoC Code column
+      fselect(-CoC_Code)  # Remove CoC Code column
 
     # Define which columns should be green (editable by user)
     user_columns <- c("DV_Renewal", "Grant_Number", "CoC_Funding_Requested", "Funding_Action")
@@ -354,27 +355,23 @@ function(input, output, session) {
     req(projects_data())
 
     # Get renewal/expansion projects
-    renewal_projects <- projects_data() %>%
-      filter(Funding_Action %in% c("Renew", "Expand")) %>%
-      pull(Project_Name)
+    renewal_projects <- projects_data()[Funding_Action %in% c("Renew", "Expand")]
     
     # Get new projects
-    new_projects <- projects_data() %>%
-      filter(Funding_Action == "New") %>%
-      pull(Project_Name)
-    
+    new_projects <- projects_data()[Funding_Action == "New"]
+
     updateSelectInput(session, "rate_project_select",
-                     choices = c("Select a project" = "", sort(renewal_projects)))
+                     choices = c("Select a project" = "", sort(renewal_projects$Project_Name)))
     
     updateSelectInput(session, "rate_new_project_select",
-                     choices = c("Select a project" = "", sort(new_projects)))
+                     choices = c("Select a project" = "", sort(new_projects$Project_Name)))
   }, priority = 1)
   
   # Project info sidebar
   output$project_info_sidebar <- renderUI({
     req(input$rate_project_select)
     project_data <- projects_data() %>%
-      filter(Project_Name == input$rate_project_select)
+      fsubset(Project_Name == input$rate_project_select)
     
     div(
       p(strong("Organization:"), project_data$Organization_Name),
@@ -390,7 +387,7 @@ function(input, output, session) {
   output$new_project_info_sidebar <- renderUI({
     req(input$rate_new_project_select)
     project_data <- projects_data() %>%
-      filter(Project_Name == input$rate_new_project_select)
+      fsubset(Project_Name == input$rate_new_project_select)
     
     div(
       p(strong("Organization:"), project_data$Organization_Name),
@@ -449,7 +446,7 @@ function(input, output, session) {
   output$project_rating_factors <- renderUI({
     req(input$rate_project_select)
     project_data <- projects_data() %>%
-      filter(Project_Name == input$rate_project_select)
+      fsubset(Project_Name == input$rate_project_select)
     
     # Get applicable rating factors based on project type and population
     # This should match the factors defined in the Customize Rating Criteria tab
@@ -513,14 +510,14 @@ function(input, output, session) {
     
     # Get only projects that can be rated (not "Ignore")
     ratable_projects <- projects_data() %>%
-      filter(!is.na(Funding_Action), Funding_Action != "Ignore") %>%
-      mutate(
+      fsubset(!is.na(Funding_Action), Funding_Action != "Ignore") %>%
+      fmutate(
         Project_ID = row_number(),  # Add Project ID
         HUD_Threshold = NA_character_,  # Add threshold columns
         CoC_Threshold = NA_character_,
         Rating_Score = NA_real_
       ) %>%
-      select(
+      fselect(
         Project_ID,
         Grant_Number,
         Funding_Action,
