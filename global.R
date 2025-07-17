@@ -14,7 +14,7 @@ set.seed(123)
 
 # Generate fake HIC data
 coc_codes <- paste0(rep(c("NY", "CA", "TX", "FL"), each = 25), "-", sprintf("%03d", 1:100))
-project_types <- c("PSH", "RRH", "TH", "TH+RRH")
+PROJECT_TYPES <- c("PSH", "RRH", "TH", "TH+RRH")
 target_populations <- c("General", "DV", "Veterans", "Youth")
 
 hic_data <- data.table(
