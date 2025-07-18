@@ -5,7 +5,8 @@ page_navbar(
   header = tagList(
     ## css, idle management, and dimension management --------
     tags$head(
-      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+      shinyjs::useShinyjs()
     ),
     ## Enable shinyjs -----
     useShinyjs(),
