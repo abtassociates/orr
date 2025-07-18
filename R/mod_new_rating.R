@@ -61,7 +61,7 @@ mod_new_rating_server <- function(id, projects_data) {
     # New project info sidebar
     output$new_project_info_sidebar <- renderUI({
       req(input$rate_new_project_select)
-      project_data <- projects_data() %>%
+      project_data <- projects_data() |>
         fsubset(Project_Name == input$rate_new_project_select)
       
       div(

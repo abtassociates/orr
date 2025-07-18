@@ -16,7 +16,7 @@ mod_final_review_server <- function(id, app_state) {
       req(app_state()$projects)
       
       datatable(
-        app_state()$projects %>%
+        app_state()$projects |>
           select(Project_Name, Organization_Name, Project_Type,
                  Target_Population, Funding_Action, Rating_Score),
         options = list(

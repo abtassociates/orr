@@ -54,28 +54,28 @@ mod_inventory_server <- function(id, projects_data) {
       
       # First filter out "Ignore" projects unless specifically requested
       if (!("Ignore" %in% input$filter_funding_action)) {
-        data <- data %>% fsubset(is.na(Funding_Action) | Funding_Action != "Ignore")
+        data <- data |> fsubset(is.na(Funding_Action) | Funding_Action != "Ignore")
       }
       
       # Apply filters
       if (!("All" %in% input$filter_funding_action) && length(input$filter_funding_action) > 0) {
-        data <- data %>% fsubset(Funding_Action %in% input$filter_funding_action)
+        data <- data |> fsubset(Funding_Action %in% input$filter_funding_action)
       }
       
       if (!("All" %in% input$filter_dv_renewal) && length(input$filter_dv_renewal) > 0) {
-        data <- data %>% fsubset(DV_Renewal %in% input$filter_dv_renewal)
+        data <- data |> fsubset(DV_Renewal %in% input$filter_dv_renewal)
       }
       
       if (!("All" %in% input$filter_project_type) && length(input$filter_project_type) > 0) {
-        data <- data %>% fsubset(Project_Type %in% input$filter_project_type)
+        data <- data |> fsubset(Project_Type %in% input$filter_project_type)
       }
       
       if (!("All" %in% input$filter_target_pop) && length(input$filter_target_pop) > 0) {
-        data <- data %>% fsubset(Target_Population %in% input$filter_target_pop)
+        data <- data |> fsubset(Target_Population %in% input$filter_target_pop)
       }
       
       if (!("All" %in% input$filter_org) && length(input$filter_org) > 0) {
-        data <- data %>% fsubset(Organization_Name %in% input$filter_org)
+        data <- data |> fsubset(Organization_Name %in% input$filter_org)
       }
       
       data
@@ -84,7 +84,7 @@ mod_inventory_server <- function(id, projects_data) {
     # Projects table
     output$projects_table <- renderDT({
       req(filtered_projects())
-      data <- filtered_projects() %>%
+      data <- filtered_projects() |>
         fselect(-CoC_Code)  # Remove CoC Code column
       
       # Define which columns should be green (editable by user)

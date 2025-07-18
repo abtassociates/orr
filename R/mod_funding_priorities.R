@@ -222,7 +222,7 @@ mod_funding_priorities_server <- function(id, projects_data) {
           pageLength = 10,
           dom = 't'
         )
-      ) %>%
+      ) |>
         formatStyle(
           'Population',
           target = 'row' #,
@@ -237,7 +237,7 @@ mod_funding_priorities_server <- function(id, projects_data) {
     
     # Handle population toggles
     observeEvent(input$population_toggles, {
-      dataTableProxy("priorities_table") %>% 
+      dataTableProxy("priorities_table") |> 
         replaceData(priorities_data())
     })
     
