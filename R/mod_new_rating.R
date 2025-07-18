@@ -60,12 +60,13 @@ mod_new_rating_server <- function(id, projects_data) {
   moduleServer(id, function(input, output, session) {
     # New project info sidebar
     output$new_project_info_sidebar <- renderUI({
+      req(projects_data())
       req(input$rate_new_project_select)
       project_data <- projects_data() %>%
-        fsubset(Project_Name == input$rate_new_project_select)
+        fsubset(project_name == input$rate_new_project_select)
       
       div(
-        p(strong("Organization:"), project_data$Organization_Name),
+        p(strong("Organization:"), project_data$organization_name),
         p(strong("Project Type:"), project_data$Project_Type),
         p(strong("Target Population:"), project_data$Target_Population),
         p(strong("Requested Amount:"), 
@@ -78,14 +79,15 @@ mod_new_rating_server <- function(id, projects_data) {
     # Update organization filter choices when CoC is selected
     observe({
       req(projects_data())
-      orgs <- unique(projects_data()$Organization_Name)
+
+      orgs <- unique(projects_data()$organization_name)
       updateSelectInput(session, "filter_org",
                         choices = c("All", sort(orgs)))
       
-      new_projects <- projects_data()[Funding_Action == "New"]
+      new_projects <- projects_data()[funding_action == "New"]
       
       updateSelectInput(session, "rate_new_project_select",
-                        choices = c("Select a project" = "", sort(new_projects$Project_Name)))
+                        choices = c("Select a project" = "", sort(new_projects$project_name)))
     })
   })
 }

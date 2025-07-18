@@ -40,12 +40,13 @@ mod_renewal_rating_server <- function(id, projects_data) {
     # Update project selection choices when CoC is selected
     observe({
       req(projects_data())
-      renewal_projects <- projects_data()[Funding_Action %in% c("Renew", "Expand")]
+
+      renewal_projects <- projects_data()[funding_action %in% c("Renew", "Expand")]
       
       updateSelectInput(session, "project_select",
-                       choices = renewal_projects$Project_Name)
+                       choices = renewal_projects$project_name)
       
-      orgs <- unique(projects_data()$Organization_Name)
+      orgs <- unique(projects_data()$organization_name)
       updateSelectInput(session, "filter_org",
                         choices = c("All", sort(orgs)))
     })
@@ -54,14 +55,14 @@ mod_renewal_rating_server <- function(id, projects_data) {
     output$project_info_sidebar <- renderUI({
       req(input$project_select)
       project_data <- projects_data() %>%
-        fsubset(Project_Name == input$project_select)
+        fsubset(project_name == input$project_select)
       
       div(
-        p(strong("Organization:"), project_data$Organization_Name),
-        p(strong("Project Type:"), project_data$Project_Type),
-        p(strong("Target Population:"), project_data$Target_Population),
+        p(strong("Organization:"), project_data$organization_name),
+        p(strong("Project Type:"), project_data$project_type),
+        p(strong("Target Population:"), project_data$target_population),
         p(strong("Grant Amount:"), 
-          formatC(project_data$CoC_Funding_Requested, format="f", 
+          formatC(project_data$coc_funding_requested, format="f", 
                   digits=2, big.mark=","))
       )
     })
@@ -72,7 +73,7 @@ mod_renewal_rating_server <- function(id, projects_data) {
     output$project_rating_factors <- renderUI({
       req(input$project_select)
       project_data <- projects_data() %>%
-        fsubset(Project_Name == input$project_select)
+        fsubset(project_name == input$project_select)
       
       # Get applicable rating factors based on project type and population
       # This should match the factors defined in the Customize Rating Criteria tab

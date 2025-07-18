@@ -20,8 +20,8 @@ target_populations <- c("General", "DV", "Veterans", "Youth")
 
 hic_data <- data.table(
   CoC_Code = sample(coc_codes, 30000, replace = TRUE),
-  Project_Name = paste("Project", 1:30000),
-  Organization_Name = paste("Org", sample(1:1000, 30000, replace = TRUE)),
+  project_name = paste("Project", 1:30000),
+  organization_name = paste("Org", sample(1:1000, 30000, replace = TRUE)),
   Project_Type = sample(project_types, 30000, replace = TRUE),
   Target_Population = sample(target_populations, 30000, replace = TRUE),
   McKinney_Vento = sample(c("Yes", "No"), 30000, replace = TRUE),
@@ -34,7 +34,7 @@ hic_data <- data.table(
 giw_data <- data.table(
   CoC_Code = sample(coc_codes, 6500, replace = TRUE),
   Grant_Number = paste0("GN-", 1:6500),
-  Project_Name = paste("Project", sample(1:30000, 6500)),
+  project_name = paste("Project", sample(1:30000, 6500)),
   Amount = round(runif(6500, 50000, 500000), 2),
   stringsAsFactors = FALSE
 )

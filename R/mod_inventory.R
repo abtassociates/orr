@@ -39,7 +39,7 @@ mod_inventory_server <- function(id, projects_data) {
 
       # filter out Ignores by default
       initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "Funding_Action") + 1]] <- list(search = "[\"Renew\"]")
+      initial_filter[[which(names(data) == "funding_action") + 1]] <- list(search = "[\"Renew\"]")
 
       dt <- datatable(
         data,
@@ -57,7 +57,7 @@ mod_inventory_server <- function(id, projects_data) {
               className = 'green-background'
             ),
             list(
-              targets = which(names(data) == "Funding_Action") - 1,
+              targets = which(names(data) == "funding_action") - 1,
               render = JS(
                 "function(data, type, row, meta) {
                   return type === 'display' && data === null ? '' : data;
@@ -84,7 +84,7 @@ mod_inventory_server <- function(id, projects_data) {
       row_idx <- info$row
       
       # Get the actual row index in the full dataset
-      actual_row <- which(data$Project_Name == filtered_projects()$Project_Name[row_idx])
+      actual_row <- which(data$project_name == projects_data()$project_name[row_idx])
       
       # Adjust column index since we removed CoC_Code
       col_name <- names(filtered_projects())[info$col + 1]
