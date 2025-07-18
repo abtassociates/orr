@@ -27,5 +27,6 @@ page_navbar(
   mod_new_rating_ui("new_rating"),
   mod_alternative_rating_ui("bulk_rating"),
   mod_funding_priorities_ui("funding_priorities"),
-  mod_ranking_ui("ranking")
+  mod_ranking_ui("ranking"),
+  mod_account_ui("account")
 )
