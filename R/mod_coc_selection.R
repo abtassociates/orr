@@ -15,7 +15,7 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc) {
+mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc, con) {
   moduleServer(id, function(input, output, session) {
     
     ## add placeholder reactive DF until coc_instances table is filled in
