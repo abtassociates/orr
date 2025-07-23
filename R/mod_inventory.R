@@ -7,6 +7,7 @@ mod_inventory_ui <- function(id) {
     card(
       card_header("Review Projects"),
       DTOutput(ns("projects_table")),
+      br(),
       actionButton(ns("add_project_btn"), "Add New Project")
     )
   )
@@ -14,24 +15,13 @@ mod_inventory_ui <- function(id) {
 
 mod_inventory_server <- function(id, projects_data) {
   moduleServer(id, function(input, output, session) {
-    user_columns <- c("DV_Renewal", "Grant_Number", "CoC_Funding_Requested", "Funding_Action")
-    
-    # Filtered projects data
-    filtered_projects <- reactive({
-      data <- projects_data()
-      req(nrow(data) > 0)
-      
-      # use factors to ensure dropdowns
-      data <- data %>%
-        fselect(-CoC_Code) %>%
-        ftransformv(c(user_columns, "Project_Type", "Target_Population", "McKinney_Vento"), forcats::as_factor)
-      
-      data
-    })
+    user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
     # Projects table
     output$projects_table <- renderDT({
-      data <- filtered_projects()
+      req(projects_data())
+
+      data <- projects_data()
 
       validate(
         need(nrow(data) > 0, "No rows")
@@ -45,6 +35,7 @@ mod_inventory_server <- function(id, projects_data) {
         data,
         editable = "cell",
         filter = "top",
+        rownames = FALSE,
         options = list(
           pageLength = 25,
           scrollX = TRUE,
@@ -78,7 +69,7 @@ mod_inventory_server <- function(id, projects_data) {
       str(info)
       
       # Get the current data
-      data <- projects_data()
+      data <- data.table::copy(projects_data())
       
       # Get the row index in the filtered view
       row_idx <- info$row
@@ -87,7 +78,7 @@ mod_inventory_server <- function(id, projects_data) {
       actual_row <- which(data$project_name == projects_data()$project_name[row_idx])
       
       # Adjust column index since we removed CoC_Code
-      col_name <- names(filtered_projects())[info$col + 1]
+      col_name <- names(projects_data())[info$col + 1]
       data[actual_row, col_name] <- info$value
       
       projects_data(data)
