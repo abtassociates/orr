@@ -98,7 +98,7 @@ mod_funding_priorities_ui <- function(id) {
   )
 }
 
-mod_funding_priorities_server <- function(id, projects_data) {
+mod_funding_priorities_server <- function(id, selected_coc) {
   moduleServer(id, function(input, output, session) {
     
     # Funding ceiling calculations and displays
