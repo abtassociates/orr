@@ -23,13 +23,14 @@ function(input, output, session) {
     }
   })
   
-  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc)
+  mod_coc_selection_server("coc_selection", nav_control, selected_coc, projects_data)
   mod_inventory_server("inventory", projects_data)
   mod_rating_criteria_server("rating_criteria")
   mod_renewal_rating_server("renewal_rating", projects_data)
   mod_new_rating_server("new_rating", projects_data)
   mod_alternative_rating_server("bulk_rating", projects_data)
-  mod_funding_priorities_server("funding_priorities")
+  mod_funding_priorities_server("funding_priorities", selected_coc)
+  mod_final_review_server("final_review", selected_coc)
   mod_ranking_server("ranking")
   
   # Observer to update nav panel when reactive value changes
