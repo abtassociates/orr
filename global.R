@@ -9,6 +9,9 @@ library(shinyjs)
 library(shinydisconnect)
 library(stringr)
 library(forcats)
+source(here("R/utils/get_db_data.R"))
+source(here("R/utils/get_lookups.R"))
+source(here("R/utils/utils.R"))
 
 # Generate fake data
 set.seed(123)

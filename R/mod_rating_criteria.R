@@ -85,7 +85,7 @@ mod_renewal_factors_ui <- function(id) {
       fluidRow(
         column(4,
           selectInput(ns("project_type_filter"), "Filter by Project Type:",
-                     choices = c("All", PROJECT_TYPES),
+                     choices = c("All", lookups$project_types$project_type),
                      multiple = TRUE)
         ),
         column(4,
@@ -117,13 +117,13 @@ mod_renewal_factors_server <- function(id) {
       
       # Filter by project type and population
       selected_project_types <- if ("All" %in% input$rating_project_type_filter) {
-        project_types
+        lookups$project_types$project_type
       } else {
         input$rating_project_type_filter
       }
       
       selected_populations <- if ("All" %in% input$rating_population_filter) {
-        target_populations
+        lookups$target_populations$target_population
       } else {
         input$rating_population_filter
       }
@@ -205,7 +205,7 @@ mod_new_factors_ui <- function(id) {
     card(
       card_header("New Project Rating Factors"),
       selectInput("new_rating_population_filter", "Filter by Special Population",
-                  choices = c("All", target_populations),
+                  choices = c("All", lookups$target_populations$target_population),
                   multiple = TRUE,
                   selected = "All"),
       uiOutput("new_project_rating_factors_ui")
@@ -230,7 +230,7 @@ mod_new_factors_server <- function(id, app_state) {
       )
       
       selected_populations <- if ("All" %in% input$new_rating_population_filter) {
-        target_populations
+        lookups$target_populations$target_population
       } else {
         input$new_rating_population_filter
       }
