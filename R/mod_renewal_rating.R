@@ -54,7 +54,7 @@ mod_renewal_rating_server <- function(id, projects_data) {
     # Project info sidebar
     output$project_info_sidebar <- renderUI({
       req(input$project_select)
-      project_data <- projects_data() %>%
+      project_data <- projects_data() |>
         fsubset(project_name == input$project_select)
       
       div(
@@ -72,7 +72,7 @@ mod_renewal_rating_server <- function(id, projects_data) {
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
       req(input$project_select)
-      project_data <- projects_data() %>%
+      project_data <- projects_data() |>
         fsubset(project_name == input$project_select)
       
       # Get applicable rating factors based on project type and population

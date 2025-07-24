@@ -26,7 +26,7 @@ mod_final_review_server <- function(id, selected_coc) {
       data <- get_db_query(sql_query, params = list(input$coc_select))
       
       datatable(
-        data %>%
+        data |>
           fselect(project_name, organization_name, Project_Type,
                  target_population, funding_action, rating_score),
         options = list(

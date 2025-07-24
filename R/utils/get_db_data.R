@@ -25,5 +25,5 @@ get_db_query <- function(sql, params = NULL) {
     DB_CON,
     sql,
     params = params
-  ) %>% qDT()
+  ) |> qDT()
 }

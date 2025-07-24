@@ -29,9 +29,9 @@ mod_coc_selection_server <- function(id, nav_control, selected_coc, projects_dat
         
         # use factors to ensure dropdowns
         user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
-        data <- data %>%
           fselect(-coc_instance_id) %>%
           ftransformv(c(user_columns, "project_type", "target_population", "mckinneyvento"), forcats::as_factor)
+        data <- data |>
         
         selected_coc(input$coc_select)
         projects_data(data)

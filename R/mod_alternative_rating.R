@@ -19,14 +19,14 @@ mod_alternative_rating_server <- function(id, projects_data) {
       req(projects_data())
       
       # Get only projects that can be rated (not "Ignore")
-      ratable_projects <- projects_data() %>%
-        fsubset(!is.na(funding_action), funding_action != "Ignore") %>%
+      ratable_projects <- projects_data() |>
+        fsubset(!is.na(funding_action), funding_action != "Ignore") |>
         fmutate(
           Project_ID = row_number(),  # Add Project ID
           HUD_Threshold = NA_character_,  # Add threshold columns
           CoC_Threshold = NA_character_,
           Rating_Score = NA_real_
-        ) %>%
+        ) |>
         fselect(
           Project_ID,
           Grant_Number,
