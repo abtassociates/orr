@@ -42,7 +42,7 @@ function(input, output, session) {
   mod_alternative_rating_server("bulk_rating", projects_data)
   mod_funding_priorities_server("funding_priorities")
   mod_ranking_server("ranking")
-  
+  mod_requests_server(id="requests", coc_iu = coc_iu_val)
   # Observer to update nav panel when reactive value changes
   observeEvent(nav_control(), {
     nav_select("nav", selected = nav_control())

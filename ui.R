@@ -19,7 +19,8 @@ page_navbar(
       refresh = ""
     )
   ),
-  
+
+  mod_requests_ui("requests"),
   mod_coc_selection_ui("coc_selection"),
   mod_inventory_ui("inventory"),
   mod_rating_criteria_ui("rating_criteria"),
