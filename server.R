@@ -22,13 +22,7 @@ function(input, output, session) {
       nav_show("nav", "funding_priorities")
     }
   })
-  DB_CONFIG <- list(
-    host = Sys.getenv("AWS_RDS_HOST"),
-    port = as.integer(Sys.getenv("AWS_RDS_PORT", "3306")),
-    dbname = Sys.getenv("AWS_RDS_DBNAME"),
-    username = Sys.getenv("AWS_RDS_USERNAME"),
-    password = Sys.getenv("AWS_RDS_PASSWORD")
-  )
+ 
   
   con <-  dbConnect(
     RPostgres::Postgres(),
@@ -36,8 +30,8 @@ function(input, output, session) {
     port = DB_CONFIG$port,
     dbname = DB_CONFIG$dbname,
     user = DB_CONFIG$username,
-    password = DB_CONFIG$password#,
-    #sslmode = "require"
+    password = DB_CONFIG$password,
+    sslmode = "require"
   )
   
   mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc, con)
