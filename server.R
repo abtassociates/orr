@@ -34,7 +34,7 @@ function(input, output, session) {
     sslmode = "require"
   )
   
-  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc, con)
+  coc_iu_val <- mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc, con)
   mod_inventory_server("inventory", projects_data)
   mod_rating_criteria_server("rating_criteria")
   mod_renewal_rating_server("renewal_rating", projects_data)

@@ -84,8 +84,8 @@ mod_inventory_server <- function(id, projects_data) {
     # Projects table
     output$projects_table <- renderDT({
       req(filtered_projects())
-      data <- filtered_projects() |>
-        fselect(-CoC_Code)  # Remove CoC Code column
+      data <- filtered_projects() #|>
+        #fselect(-CoC_Code)  # Remove CoC Code column
       
       # Define which columns should be green (editable by user)
       user_columns <- c("DV_Renewal", "Grant_Number", "CoC_Funding_Requested", "Funding_Action")

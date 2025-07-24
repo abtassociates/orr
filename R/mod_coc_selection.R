@@ -10,6 +10,7 @@ mod_coc_selection_ui <- function(id) {
         fillable = FALSE,
         # a "Create" button or link above the table will display so they can create a new CoC Instance
         actionButton(ns('create_new_instance'), "Create a New CoC Instance"),
+        selectInput(ns('choose_user'), "Select a User Profile",  choices=users$username),
         DTOutput(ns('coc_instances_dt')),
         actionButton(ns('edit_coc_instance'),"Edit selected CoC", icon = icon('edit'))
       )
@@ -20,13 +21,10 @@ mod_coc_selection_ui <- function(id) {
 mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc, con) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
-    ## add placeholder reactive DF until coc_instances table is filled in
-    coc_instances <- reactive({
-      data.frame(coc_instance_id = rep(1,3), 
-                 coc = c('TX-600','TX-500','TX-700'), 
-                 coc_status = c('Not Started','Not Started','In Progress'),
-                 date_updated = c("2025-07-16 13:53:11 EDT","2025-07-16 13:43:11 EDT","2025-07-16 13:33:11 EDT"), 
-                 updated_by = c('user1','user1','user1'))
+    ## subset coc_instance_users to specific user
+    coc_iu <- reactive({
+      coc_instance_users |>
+        fsubset(username == input$choose_user)
     })
     
     
@@ -41,7 +39,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     
     output$coc_instances_dt <- renderDT({
       
-      datatable(coc_instances(), 
+      datatable(coc_iu(), 
                 options = list(dom = 'tpi'),
                 editable = FALSE,
                 style = 'default',
@@ -51,16 +49,18 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     })
     
     observeEvent(input$edit_coc_instance, {
-      #if (input$coc_select != "") {
-        selected_coc(input$coc_select)
-        selected_coc(coc_instances()[input$coc_instances_dt_rows_selected,'coc'])
+    
+        tmp <- coc_iu() |>
+          join(coc_instances, on = 'coc_instance_id', how = 'left')
+      
+        selected_coc(as.vector(tmp[input$coc_instances_dt_rows_selected ,'coc_instance_id']))
         print(selected_coc())
         
         nav_control("inventory")
         
         # Initialize projects data
-        filtered_data <- hic_data |>
-          fsubset(CoC_Code == selected_coc()) |>
+        filtered_data <- fake_projects |>
+          fsubset(coc_instance_id == selected_coc()) |>
           fmutate(
             DV_Renewal = NA_character_,
             Grant_Number = NA_character_,
@@ -69,7 +69,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
           )
         
         projects_data(filtered_data)
-      #}
     })
     output$new_instance_ui <- renderUI({
       # If they select a CoC that has existing CoC Instances
@@ -80,7 +79,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
         # If they select a CoC that SOMEONE ELSE is associated with (by looking up CoC Instances joined with CoC Instance Users where the user is NOT this user and user role = "Admin"), let them know as much and provide them the option to "Request Access" or "Create ORR anyway"
           # If they "Request Access": 
             # send email to user associated with that other CoC Instance
-              # If the user accepts, create a new CoC Instance User with role = "regular"
+              # If the user accepts, create a new CoC Instance User with role ( "Editor" or "Viewer")
             # provide feedback that email was sent and that they will be alerted via email if/when their request was accepted or rejected. close the modal
           # If they "Create ORR anyway": go to next step
       # If they select a CoC that has no other CoC Instances: go to next step
@@ -94,7 +93,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
           title = 'Create ORR',
           selectInput(ns('coc_dropdown'),
                       label = "Please choose a CoC:",
-                      choices = unique(hic_data$CoC_Code)
+                      choices = setNames(cocs$coc_name,nm = cocs$coc_code)
                       ),
           footer = tagList(
             actionButton(ns('choose_coc'), label="Next"),
@@ -138,6 +137,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
       )
     })
     
-   
+    return(coc_iu)
+  
   })
 }
