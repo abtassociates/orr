@@ -22,7 +22,7 @@ get_db_connection <- function() {
 
 get_db_query <- function(sql, params = NULL) {
   RPostgres::dbGetQuery(
-    get_db_connection(),
+    DB_CON,
     sql,
     params = params
   ) %>% qDT()

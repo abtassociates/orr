@@ -15,6 +15,8 @@ library(digest)
 library(here)
 
 source(here("R/utils/get_db_data.R"))
+DB_CON <- get_db_connection()
+
 source(here("R/utils/get_lookups.R"))
 source(here("R/utils/utils.R"))
 
