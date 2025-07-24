@@ -16,14 +16,16 @@ mod_final_review_server <- function(id, selected_coc) {
     
     output$final_review_table <- renderDT({
       req(selected_coc())
-      sql_query <- "
-        SELECT p.*, r.rating_score, t.met_threshold 
+
+      data <- get_db_query(
+        "SELECT p.*, r.rating_score, t.met_threshold 
         FROM projects p 
         LEFT JOIN coc_instances c ON p.coc_instance_id = c.coc_instance_id
         LEFT JOIN rating_scores r ON p.project_id = r.project_id
         LEFT JOIN threshold_entries r ON p.project_id = t.project_id
-        WHERE c.coc = $1"
-      data <- get_db_query(sql_query, params = list(input$coc_select))
+        WHERE c.coc = $1", 
+        params = list(input$coc_select)
+      )
       
       datatable(
         data |>
