@@ -27,3 +27,12 @@ get_db_query <- function(sql, params = NULL) {
     params = params
   ) |> qDT()
 }
+
+get_db_tbl <- function(tbl_name) {
+  get_db_query(
+    glue::glue_sql(
+      "SELECT * FROM {`tbl_name`}",
+      .con = DB_CON
+    )
+  )
+}
