@@ -77,5 +77,11 @@ mod_inventory_server <- function(id, projects_data) {
       projects_data(data)
     }, ignoreInit = TRUE)
     
+    # Add additonal project handling ----
+    observeEvent(input$add_project_btn, {
+      showModal(mod_inventory_add_project_ui("add_project"))
+    })
+    mod_inventory_add_project_server("add_project", projects_data)
+    
   })
 }
