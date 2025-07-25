@@ -270,5 +270,36 @@ mod_inventory_add_project_server <- function(id, projects_data) {
       
       removeModal()
     })
+    
+    # When Funding Action changes.
+    observeEvent(input$funding_action_new, {
+      if (input$funding_action_new != "New (no historical performance)") {
+        iv$add_rule("grant_number_new", sv_required())
+      }
+      
+      if (input$funding_action_new == "Replace") {
+        updateSelectInput(session, "funding_source_new", selected = "YHDP")
+        updateSelectInput(session, "target_population_new", selected = "Youth")
+        shinyjs::disable("funding_source_new")
+        shinyjs::disable("target_population_new")
+      } else {
+        shinyjs::enable("funding_source_new")
+        shinyjs::enable("target_population_new")
+      }
+      # For "New (no historical performance)", the Grant Number field is hidden via the UI.
+    }, ignoreInit = TRUE)
+    
+    # When Funding Source changes.
+    observeEvent(input$funding_source_new, {
+      if (input$funding_source_new == "YHDP") {
+        updateSelectInput(session, "target_population_new", selected = "Youth")
+        shinyjs::disable("target_population_new")
+      } else if (input$funding_source_new == "DV") {
+        updateSelectInput(session, "target_population_new", selected = "DV")
+        shinyjs::disable("target_population_new")
+      } else {
+        shinyjs::enable("target_population_new")
+      }
+    }, ignoreInit = TRUE)
   })
 }
