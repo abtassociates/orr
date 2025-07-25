@@ -25,15 +25,17 @@ get_db_connection <- function() {
 }
 
 get_db_query <- function(sql, params = NULL) {
-  DBI::dbGetQuery(
+  dt <- DBI::dbGetQuery(
     DB_CON,
     sql,
     params = params
-  ) |> qDT()
-  DBI::dbReadTable()
+  ) |> qDT() %>%
+    ftransformv(c("date_created","date_updated"), as.POSIXct)
 }
 
 
 get_db_tbl <- function(tbl_name) {
-  dbReadTable(DB_CON, tbl_name) %>% qDT()
+  dbReadTable(DB_CON, tbl_name) %>% 
+    qDT() %>%
+    ftransformv(c("date_created","date_updated"), as.POSIXct)
 }
