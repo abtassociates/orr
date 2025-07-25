@@ -23,7 +23,7 @@ function(input, output, session) {
     }
   })
   
-  mod_coc_selection_server("coc_selection", nav_control, selected_coc, projects_data)
+  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc)
   mod_inventory_server("inventory", projects_data)
   mod_rating_criteria_server("rating_criteria")
   mod_renewal_rating_server("renewal_rating", projects_data)
