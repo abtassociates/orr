@@ -18,13 +18,14 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc, con) {
+mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
     ## subset coc_instance_users to specific user
     coc_iu <- reactive({
       coc_instance_users |>
-        fsubset(username == input$choose_user)
+        fsubset(username == input$choose_user) |>
+        join(coc_instances, on = 'coc_instance_id', how = 'left')
     })
     
     
@@ -49,24 +50,13 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     })
     
     observeEvent(input$edit_coc_instance, {
-      
-      tmp <- coc_iu() |>
-        join(coc_instances, on = 'coc_instance_id', how = 'left')
-      
-      selected_coc(as.vector(tmp[input$coc_instances_dt_rows_selected ,'coc_instance_id']))
+      selected_coc(coc_iu()$coc)
       print(selected_coc())
       
       nav_control("inventory")
       
       # Initialize projects data
-      filtered_data <- fake_projects |>
-        fsubset(coc_instance_id == selected_coc()) |>
-        fmutate(
-          DV_Renewal = NA_character_,
-          Grant_Number = NA_character_,
-          CoC_Funding_Requested = NA_real_,
-          Funding_Action = fifelse(McKinney_Vento == "No", "Ignore", "Renew")
-        )
+      filtered_data <- get_hic_data()
       
       projects_data(filtered_data)
     })
@@ -139,4 +129,45 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     return(coc_iu)
     
   })
+}
+
+get_hic_data <- function() {
+  user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
+  bed_field_mapping <- c(
+    all_fam_beds = "beds_hh_w_children", 
+    ch_fam_beds = "ch_beds_hh_w_children",
+    vet_fam_beds = "veteran_beds_hh_w_children", 
+    par_youth_beds = "youth_beds_hh_w_children",
+    vet_ind_beds = "veteran_beds_hh_wo_children",
+    single_youth_beds = "youth_beds_hh_wo_children"
+  )
+  filtered_data <- get_db_tbl("all_hic_data") |>
+    fsubset(hudnum == selected_coc()) %>%
+    fmutate(
+      project_id = seq_row(.),
+      mckinneyvento = factor(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
+      sapply(user_columns, function(x) x=NULL),
+      funding_action = fifelse(
+        mckinneyvento == TRUE, 
+        lookups$funding_actions[funding_action == "Renew", funding_action_id], 
+        lookups$funding_actions[funding_action == "Ignore", funding_action_id]
+      ),
+      coc_instance_id = coc_iu()$coc_instance_id,
+      # additional cols user will fill out
+      is_dedicated_ch_fam = NA,
+      is_dedicated_ch_ind = NA,
+      is_dedicated_dv = NA, 
+      amount_other_public_funding = NA,
+      amount_private_funding = NA
+    ) %>%
+    frename(bed_field_mapping) %>%
+    fmutate(
+      all_ind_beds = beds_hh_wo_children + beds_hh_w_only_children,
+      total_ch_ind_beds = ch_beds_hh_wo_children + ch_beds_hh_w_only_children,
+      dv_fam_beds = fifelse(target_population == "DV", all_fam_beds, 0),
+      dv_ind_beds = fifelse(target_population == "DV", all_ind_beds, 0)
+    ) %>%
+    ftransformv(c("funding_action", "project_type", "target_population"), forcats::as_factor) %>%
+    get_vars(dbListFields(DB_CON, "projects"))
+  return(filtered_data)
 }
