@@ -26,40 +26,8 @@ mod_inventory_server <- function(id, projects_data) {
       validate(
         need(nrow(data) > 0, "No rows")
       )
-
-      # filter out Ignores by default
-      initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "funding_action")]] <- list(search = "[\"Renew\"]")
-
-      dt <- datatable(
-        data,
-        editable = "cell",
-        filter = "top",
-        rownames = FALSE,
-        options = list(
-          pageLength = 25,
-          scrollX = TRUE,
-          scrollY = "400px",  # Limit table height
-          fixedHeader = TRUE,
-          searchCols = initial_filter,
-          columnDefs = list(
-            list(
-              targets = which(names(data) %in% user_columns),
-              className = 'green-background'
-            ),
-            list(
-              targets = which(names(data) == "funding_action") - 1,
-              render = JS(
-                "function(data, type, row, meta) {
-                  return type === 'display' && data === null ? '' : data;
-                }"
-              )
-            )
-          )
-        )
-      )
       
-      dt
+      initialize_table_ui(data)
     })
     
     # inline edit handling ------
@@ -83,5 +51,31 @@ mod_inventory_server <- function(id, projects_data) {
     })
     mod_inventory_add_project_server("add_project", projects_data)
     
+    initialize_table_ui <- function(data) {
+      # filter out Ignores by default
+      initial_filter <- vector("list", ncol(data))
+      initial_filter[[which(names(data) == "funding_action")]] <- list(search = "[\"Renew\"]")
+      dt <- datatable(
+        data,
+        editable = "row",
+        filter = "top",
+        rownames = FALSE,
+        options = list(
+          pageLength = 25,
+          scrollX = TRUE,
+          scrollY = "400px",  # Limit table height
+          fixedHeader = TRUE,
+          searchCols = initial_filter,
+          columnDefs = list(
+            list(
+              targets = which(names(data) %in% user_columns),
+              className = 'green-background'
+            )
+          )
+        )
+      )
+      return(dt)
+    }
   })
 }
+
