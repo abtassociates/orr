@@ -35,10 +35,5 @@ get_db_query <- function(sql, params = NULL) {
 
 
 get_db_tbl <- function(tbl_name) {
-  get_db_query(
-    glue::glue_sql(
-      "SELECT * FROM {`tbl_name`}",
-      .con = DB_CON
-    )
-  )
+  dbReadTable(DB_CON, tbl_name)
 }

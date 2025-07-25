@@ -14,8 +14,6 @@ lookup_tables <- c(
 )
 
 lookups <- setNames(
-  lapply(lookup_tables, function(t) {
-    get_db_query(glue::glue("SELECT * FROM {t}"))
-  }),
+  lapply(lookup_tables, get_db_tbl),
   lookup_tables
 )
