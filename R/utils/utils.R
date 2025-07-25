@@ -35,3 +35,19 @@ determine_tier <- function(score, funding_requested, tier1_amount) {
     return("Tier 2")
   }
 }
+
+pluralize <- function(s) {
+  ends <- "(sh?|x|z|ch)$"
+  pluralify <- ifelse(grepl(ends, s, perl = TRUE), "es", "s")
+  out <- gsub("ys$", "ies", paste0(s, pluralify))
+  return(out)
+}
+
+
+factor_yesno <- function(v) {
+  factor(
+    v,
+    levels = c(1,0),
+    labels = c("Yes", "No")
+  )
+}

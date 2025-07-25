@@ -137,24 +137,31 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
         single_youth_beds = "youth_beds_hh_wo_children"
       )
 
-      filtered_data <- get_db_tbl("all_hic_data") |>
-        fsubset(hudnum == selected_coc()) %>%
+      coc_data <- get_db_tbl("all_hic_data") |>
+        fsubset(hudnum == selected_coc()) 
+
+      project_data <- coc_data %>%
         fmutate(
           project_id = seq_row(.),
-          mckinneyvento = factor(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
-          sapply(user_columns, function(x) x=NULL),
+          mckinneyvento = factor_yesno(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
+          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          dv_renewal = factor_yesno(NA),
+          grant_number = as.character(NA), 
+          coc_amount_awarded_last_year = as.numeric(NA),
+          coc_amount_expended_last_year = as.numeric(NA),
+          coc_funding_requested = as.numeric(NA),
           funding_action = fifelse(
-            mckinneyvento == TRUE, 
+            mckinneyvento == "Yes", 
             lookups$funding_actions[funding_action == "Renew", funding_action_id], 
             lookups$funding_actions[funding_action == "Ignore", funding_action_id]
           ),
           coc_instance_id = coc_iu()$coc_instance_id,
           # additional cols user will fill out
-          is_dedicated_ch_fam = NA,
-          is_dedicated_ch_ind = NA,
-          is_dedicated_dv = NA, 
-          amount_other_public_funding = NA,
-          amount_private_funding = NA
+          is_dedicated_ch_fam = factor_yesno(NA),
+          is_dedicated_ch_ind = factor_yesno(NA),
+          is_dedicated_dv = factor_yesno(NA),
+          amount_other_public_funding = as.numeric(NA),
+          amount_private_funding = as.numeric(NA)
         ) %>%
         frename(bed_field_mapping) %>%
         fmutate(
@@ -163,9 +170,23 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
           dv_fam_beds = fifelse(target_population == "DV", all_fam_beds, 0),
           dv_ind_beds = fifelse(target_population == "DV", all_ind_beds, 0)
         ) %>%
-        ftransformv(c("funding_action", "project_type", "target_population"), forcats::as_factor) %>%
+        fmutate(
+          funding_action = convert_to_factor(., "funding_action"),
+          project_type = convert_to_factor(., "project_type"),
+          target_population = convert_to_factor(., "target_population"),
+          dv_renewal = factor_yesno(dv_renewal)
+        ) %>%
         get_vars(dbListFields(DB_CON, "projects"))
-      return(filtered_data)
+      
+      return(project_data)
+    }
+    
+    convert_to_factor <- function(data, v, yesno = FALSE) {
+      factor(
+        data[[v]],
+        levels = lookups[[pluralize(v)]][[glue::glue("{v}_id")]],
+        labels = lookups[[pluralize(v)]][[v]]
+      )
     }
   })
 }
