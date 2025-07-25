@@ -24,5 +24,4 @@ users <- get_db_tbl("users")
 cocs <- get_db_tbl("cocs")
 coc_instance_users <- get_db_tbl("coc_instance_users")
 
-# Generate fake data
 set.seed(123)

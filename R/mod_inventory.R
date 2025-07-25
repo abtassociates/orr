@@ -29,7 +29,7 @@ mod_inventory_server <- function(id, projects_data) {
 
       # filter out Ignores by default
       initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "funding_action") + 1]] <- list(search = "[\"Renew\"]")
+      initial_filter[[which(names(data) == "funding_action")]] <- list(search = "[\"Renew\"]")
 
       dt <- datatable(
         data,
