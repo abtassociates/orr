@@ -127,7 +127,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     })
     
     get_hic_data <- function() {
-      user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
       bed_field_mapping <- c(
         all_fam_beds = "beds_hh_w_children", 
         ch_fam_beds = "ch_beds_hh_w_children",
@@ -172,8 +171,8 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
         ) %>%
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
-          project_type = convert_to_factor(., "project_type"),
-          target_population = convert_to_factor(., "target_population"),
+          project_type = convert_to_factor(., "project_type", textToNum = TRUE),
+          target_population = convert_to_factor(., "target_population", textToNum = TRUE),
           dv_renewal = factor_yesno(dv_renewal)
         ) %>%
         get_vars(dbListFields(DB_CON, "projects"))
@@ -181,11 +180,14 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
       return(project_data)
     }
     
-    convert_to_factor <- function(data, v, yesno = FALSE) {
+    convert_to_factor <- function(data, v, textToNum = FALSE) {
+      lookup_info <- lookups[[pluralize(v)]]
+      id_col <- glue::glue("{v}_id")
+
       factor(
-        data[[v]],
-        levels = lookups[[pluralize(v)]][[glue::glue("{v}_id")]],
-        labels = lookups[[pluralize(v)]][[v]]
+        if(!textToNum) data[[v]] else lookup_info[[id_col]][match(data[[v]], lookup_info[[v]])],
+        levels = lookup_info[[id_col]],
+        labels = lookup_info[[v]]
       )
     }
   })
