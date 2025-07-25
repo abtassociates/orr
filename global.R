@@ -14,7 +14,7 @@ library(RPostgres)
 library(digest)
 library(here)
 library(rhandsontable)
-
+library(shinyvalidate)
 source(here("R/utils/utils.R"))
 
 in_dev_mode <- grepl("ad.abt.local", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
