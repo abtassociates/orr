@@ -5,3 +5,13 @@
 #inventory-projects_table table tbody > td:first-child {
   display: none;
 }
+
+#shiny-modal {
+  overflow: hidden;
+}
+
+.modal-dialog {
+  margin-top: 1em;
+  height: 95%;
+  overflow: auto;
+}
