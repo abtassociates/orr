@@ -5,10 +5,13 @@ mod_inventory_ui <- function(id) {
     "Review Projects",
     value = id,
     card(
-      card_header("Review Projects"),
-      DTOutput(ns("projects_table")),
-      br(),
-      actionButton(ns("add_project_btn"), "Add New Project")
+      card_body(
+        fillable = FALSE,
+        DTOutput(ns("projects_table"))
+      ),
+      card_footer(
+        actionButton(ns("add_project_btn"), "Add New Project")
+      )
     )
   )
 }
@@ -21,7 +24,8 @@ mod_inventory_server <- function(id, projects_data) {
     output$projects_table <- renderDT({
       req(projects_data())
 
-      data <- projects_data()
+      data <- projects_data() %>% 
+        fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by)
 
       validate(
         need(nrow(data) > 0, "No rows")
@@ -47,7 +51,9 @@ mod_inventory_server <- function(id, projects_data) {
     
     # Add additonal project handling ----
     observeEvent(input$add_project_btn, {
-      showModal(mod_inventory_add_project_ui("add_project"))
+      showModal(
+        mod_inventory_add_project_ui(session$ns("add_project"))
+      )
     })
     mod_inventory_add_project_server("add_project", projects_data)
     
@@ -60,8 +66,8 @@ mod_inventory_server <- function(id, projects_data) {
         editable = "row",
         filter = "top",
         rownames = FALSE,
+        fillContainer = TRUE,
         options = list(
-          pageLength = 25,
           scrollX = TRUE,
           scrollY = "400px",  # Limit table height
           fixedHeader = TRUE,
