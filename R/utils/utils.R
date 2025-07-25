@@ -51,3 +51,8 @@ factor_yesno <- function(v) {
     labels = c("Yes", "No")
   )
 }
+
+get_labelled_lookups <- function(l) {
+  lookup_info <- lookups[[pluralize(l)]]
+  setNames(lookup_info[[glue::glue("{l}_id")]], lookup_info[[l]])
+}
