@@ -29,8 +29,15 @@ get_db_query <- function(sql, params = NULL) {
     DB_CON,
     sql,
     params = params
-  ) |> qDT() %>%
-    ftransformv(c("date_created","date_updated"), as.POSIXct)
+  ) |> qDT() 
+  
+  if("date_created" %in% names(dt)) 
+    dt[, date_created := as.POSIXct(date_created)]
+  
+  if("date_updated" %in% names(dt)) 
+    dt[, date_updated := as.POSIXct(date_updated)]
+  
+  dt
 }
 
 
