@@ -10,13 +10,14 @@ mod_inventory_ui <- function(id) {
         DTOutput(ns("projects_table"))
       ),
       card_footer(
-        actionButton(ns("add_project_btn"), "Add New Project")
+        actionButton(ns("add_project_btn"), "Add New Project"),
+        actionButton(ns("view_giw_btn"), "View GIW Data")
       )
     )
   )
 }
 
-mod_inventory_server <- function(id, projects_data) {
+mod_inventory_server <- function(id, projects_data, selected_coc) {
   moduleServer(id, function(input, output, session) {
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
@@ -33,6 +34,39 @@ mod_inventory_server <- function(id, projects_data) {
       
       initialize_table_ui(data)
     })
+    
+    initialize_table_ui <- function(data) {
+      # filter out Ignores by default
+      initial_filter <- vector("list", ncol(data))
+      initial_filter[[which(names(data) == "funding_action")]] <- list(search = "[\"Renew\"]")
+      dt <- datatable(
+        data,
+        editable = "row",
+        filter = "top",
+        rownames = FALSE,
+        fillContainer = TRUE,
+        options = list(
+          scrollX = TRUE,
+          scrollY = "100%",  # Limit table height
+          fixedHeader = TRUE,
+          searchCols = initial_filter,
+          columnDefs = list(
+            list(
+              targets = which(names(data) %in% user_columns),
+              className = 'green-background'
+            )
+          )
+        )
+      ) %>%
+        formatStyle(
+          columns = c(2,3), 
+          `white-space` = "nowrap",
+          `overflow` = "hidden",
+          `max-width` = "400px"
+        )
+
+      return(dt)
+    }
     
     # inline edit handling ------
     observeEvent(input$projects_table_cell_edit, {
@@ -57,31 +91,29 @@ mod_inventory_server <- function(id, projects_data) {
     })
     mod_inventory_add_project_server("add_project", projects_data)
     
-    initialize_table_ui <- function(data) {
-      # filter out Ignores by default
-      initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "funding_action")]] <- list(search = "[\"Renew\"]")
-      dt <- datatable(
-        data,
-        editable = "row",
-        filter = "top",
-        rownames = FALSE,
-        fillContainer = TRUE,
-        options = list(
-          scrollX = TRUE,
-          scrollY = "400px",  # Limit table height
-          fixedHeader = TRUE,
-          searchCols = initial_filter,
-          columnDefs = list(
-            list(
-              targets = which(names(data) %in% user_columns),
-              className = 'green-background'
+    # View GIW Data -------
+    giw_data <- reactive({
+      get_db_tbl("giw")[coc == selected_coc()]
+    })
+    
+    observeEvent(input$view_giw_btn, {
+      showModal(
+        modalDialog(
+          title = "GIW",
+          DT::renderDT(
+            giw_data(),
+            fillContainer = TRUE,
+            options = list(
+              pageLength = 200,
+              scrollY = "400px"
             )
-          )
+          ),
+          size="xl",
+          easyClose = TRUE
         )
       )
-      return(dt)
-    }
-  })
+    })
+    
+  }) # end moduleServer
 }
 
