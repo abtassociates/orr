@@ -23,9 +23,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     ns <- NS(id)
     ## subset coc_instance_users to specific user
     coc_iu <- reactive({
-      coc_instance_users |>
-        fsubset(username == input$choose_user) |>
-        join(coc_instances, on = 'coc_instance_id', how = 'left')
+      coc_instance_users[username == input$choose_user]
     })
     
     
