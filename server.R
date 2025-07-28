@@ -2,6 +2,7 @@ function(input, output, session) {
   projects_data <- reactiveVal(NULL)
   selected_coc <- reactiveVal(NULL)
   nav_control <- reactiveVal("coc_selection")
+  username <- reactiveVal("alex.silverman@abtglobal.com")
   coc_instance_id <- reactiveVal(NULL)
   
   # Hide all panels except CoC selection initially
