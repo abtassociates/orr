@@ -27,6 +27,11 @@ DB_CON <- get_db_connection()
 source(here("R/utils/get_lookups.R"))
 users <- get_db_tbl("users")
 cocs <- get_db_tbl("cocs")
-coc_instance_users <- get_db_tbl("coc_instance_users")
+coc_instance_users <- get_db_query(
+  "SELECT u.*, i.coc 
+  FROM coc_instance_users u 
+  LEFT JOIN coc_instances i 
+  ON u.coc_instance_id = i.coc_instance_id"
+)
 
 set.seed(123)
