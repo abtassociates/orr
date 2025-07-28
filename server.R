@@ -2,6 +2,7 @@ function(input, output, session) {
   projects_data <- reactiveVal(NULL)
   selected_coc <- reactiveVal(NULL)
   nav_control <- reactiveVal("coc_selection")
+  coc_instance_id <- reactiveVal(NULL)
   
   # Hide all panels except CoC selection initially
   observe({
@@ -23,7 +24,7 @@ function(input, output, session) {
     }
   })
   
-  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc)
+  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc, coc_instance_id)
   mod_inventory_server("inventory", projects_data, selected_coc)
   mod_rating_criteria_server("rating_criteria", coc_instance_id)
   mod_renewal_rating_server("renewal_rating", projects_data)

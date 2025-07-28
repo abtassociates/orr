@@ -18,7 +18,7 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc) {
+mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc, coc_instance_id) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
     ## subset coc_instance_users to specific user
@@ -48,8 +48,12 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     })
     
     observeEvent(input$edit_coc_instance, {
-      selected_coc(coc_iu()$coc)
+      selected_coc(coc_iu()$coc[[1]])
       print(selected_coc())
+      
+      coc_instance_id(
+        coc_iu()[input$coc_instances_dt_rows_selected, .(coc_instance_id)][[1]]
+      )
       
       nav_control("inventory")
       
