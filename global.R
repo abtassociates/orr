@@ -34,5 +34,6 @@ coc_instance_users <- get_db_query(
   LEFT JOIN coc_instances i 
   ON u.coc_instance_id = i.coc_instance_id"
 )
+main_project_types <- c("PSH", "RRH", "TH", "TH+RRH")
 
 set.seed(123)

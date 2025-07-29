@@ -35,9 +35,9 @@ mod_rating_criteria_ui <- function(id) {
                      selectInput(
                        inputId = ns("project_type"),
                        label = "Select project type",
-                       choices = get_labelled_lookups("project_type")[c("PSH", "RRH", "TH","TH+RRH")],
+                       choices = get_labelled_lookups("project_type")[main_project_types],
                        multiple = TRUE,
-                       selected = c("PSH", "RRH", "TH","TH+RRH") # Pre-select all for initial state
+                       selected = main_project_types # Pre-select all for initial state
                      ),
                      selectInput(
                        inputId = ns("target_population"),
