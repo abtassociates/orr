@@ -222,15 +222,15 @@ fetch_and_structure_rating_factors <- function(funding_action_type, coc_instance
   # Update rating_factor_text to include project_type and target_population
   all_factors <- all_factors %>%
     join(
-      lookups$project_types[, .(project_type, project_type_id)], 
-      on = c("project_type" = "project_type_id")
+      lookups[reference_type == "project_type", .("project_type_value" = value, reference_id)], 
+      on = c("project_type" = "reference_id")
     ) %>%
     join(
-      lookups$target_populations[, .(target_population, target_population_id)], 
-      on = c("target_population" = "target_population_id")
+      lookups[reference_type == "target_population", .("target_population_value" = value, reference_id)], 
+      on = c("target_population" = "reference_id")
     ) %>%
     fmutate(
-      rating_factor_text = glue::glue("{project_type_y} ({target_population_y}) - {rating_factor_text}")
+      rating_factor_text = glue::glue("{project_type_value} ({target_population_value}) - {rating_factor_text}")
     )
   
   selected_factors_q <- "
