@@ -25,8 +25,7 @@ in_dev_mode <- grepl("ad.abt.local", Sys.info()[["nodename"]]) & !isTRUE(getOpti
 source(here("R/utils/get_db_data.R"))
 DB_CON <- get_db_connection()
 
-
-source(here("R/utils/get_lookups.R"))
+lookups <- get_db_tbl("lookups")
 users <- get_db_tbl("users")
 cocs <- get_db_tbl("cocs")
 coc_instance_users <- get_db_query(
