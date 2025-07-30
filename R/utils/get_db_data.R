@@ -10,7 +10,7 @@ DB_CONFIG <- list(
 # Database connection function
 get_db_connection <- function() {
   if(in_dev_mode) {
-    dbConnect(RSQLite::SQLite(), "dev_db.sqlite")
+    dbConnect(RSQLite::SQLite(), here("sandbox/dev_db.sqlite"))
   } else {
     dbConnect(
       RPostgres::Postgres(),
