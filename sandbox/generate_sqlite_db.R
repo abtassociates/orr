@@ -22,20 +22,29 @@ pg_conn <- dbConnect(
 )
 
 # Connect to the SQLite database
-sqlite_conn <- dbConnect(RSQLite::SQLite(), "dev_db.sqlite")
+sqlite_conn <- dbConnect(RSQLite::SQLite(), here("sandbox/dev_db.sqlite"))
 
-# List all tables in the PostgreSQL database
-tables <- dbListTables(pg_conn)
+create_entire_db <- function () {
+  # List all tables in the PostgreSQL database
+  tables <- dbListTables(pg_conn)
+  
+  # Copy each table from PostgreSQL to SQLite
+  for (table in tables) {
+    # Read data from PostgreSQL
+    data <- dbReadTable(pg_conn, table)
+    
+    # Write data to SQLite
+    dbWriteTable(sqlite_conn, table, data, overwrite = TRUE)
+  }
+}
 
-# Copy each table from PostgreSQL to SQLite
-for (table in tables) {
-  # Read data from PostgreSQL
+create_single_table <- function(table) {
   data <- dbReadTable(pg_conn, table)
   
   # Write data to SQLite
   dbWriteTable(sqlite_conn, table, data, overwrite = TRUE)
 }
-
+create_single_table("coc_funding_priorities")
 # Disconnect from both databases
 dbDisconnect(pg_conn)
 dbDisconnect(sqlite_conn)
