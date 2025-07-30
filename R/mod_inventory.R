@@ -4,157 +4,116 @@ mod_inventory_ui <- function(id) {
   nav_panel(
     "Review Projects",
     value = id,
-    layout_sidebar(
-      sidebar = sidebar(
-        title = "Filters",
-        width = 300,
-        open = FALSE,
-        selectInput(ns("filter_funding_action"), "Funding Action",
-                    choices = c("All", "Renew", "New", "Expand", "Reallocate", "Ignore"),
-                    multiple = TRUE),
-        selectInput(ns("filter_dv_renewal"), "DV Renewal",
-                    choices = c("All", "Yes", "No"),
-                    multiple = TRUE),
-        selectInput(ns("filter_project_type"), "Project Type",
-                    choices = c("All", project_types),
-                    multiple = TRUE),
-        selectInput(ns("filter_target_pop"), "Target Population",
-                    choices = c("All", target_populations),
-                    multiple = TRUE),
-        selectInput(ns("filter_org"), "Organization",
-                    choices = c("All"),  # Will be updated in server
-                    multiple = TRUE)
+    card(
+      card_body(
+        fillable = FALSE,
+        DTOutput(ns("projects_table"))
       ),
-      card(
-        card_header("Review Projects"),
-        DTOutput(ns("projects_table")),
-        actionButton(ns("add_project_btn"), "Add New Project")
+      card_footer(
+        actionButton(ns("add_project_btn"), "Add New Project"),
+        actionButton(ns("view_giw_btn"), "View GIW Data")
       )
     )
   )
 }
 
-mod_inventory_server <- function(id, projects_data) {
+mod_inventory_server <- function(id, projects_data, selected_coc) {
   moduleServer(id, function(input, output, session) {
-    output$projects_table <- renderDT({
-      datatable(
-        projects_data(),
-        editable = TRUE,
-        options = list(
-          pageLength = 25,
-          scrollX = TRUE
-        )
-      )
-    })
+    user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
-    # Filtered projects data
-    filtered_projects <- reactive({
+    # Projects table -----
+    output$projects_table <- renderDT({
       req(projects_data())
-      data <- projects_data()
+
+      data <- projects_data() %>% 
+        fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by)
+
+      validate(
+        need(nrow(data) > 0, "No rows")
+      )
       
-      # First filter out "Ignore" projects unless specifically requested
-      if (!("Ignore" %in% input$filter_funding_action)) {
-        data <- data %>% fsubset(is.na(Funding_Action) | Funding_Action != "Ignore")
-      }
-      
-      # Apply filters
-      if (!("All" %in% input$filter_funding_action) && length(input$filter_funding_action) > 0) {
-        data <- data %>% fsubset(Funding_Action %in% input$filter_funding_action)
-      }
-      
-      if (!("All" %in% input$filter_dv_renewal) && length(input$filter_dv_renewal) > 0) {
-        data <- data %>% fsubset(DV_Renewal %in% input$filter_dv_renewal)
-      }
-      
-      if (!("All" %in% input$filter_project_type) && length(input$filter_project_type) > 0) {
-        data <- data %>% fsubset(Project_Type %in% input$filter_project_type)
-      }
-      
-      if (!("All" %in% input$filter_target_pop) && length(input$filter_target_pop) > 0) {
-        data <- data %>% fsubset(Target_Population %in% input$filter_target_pop)
-      }
-      
-      if (!("All" %in% input$filter_org) && length(input$filter_org) > 0) {
-        data <- data %>% fsubset(Organization_Name %in% input$filter_org)
-      }
-      
-      data
+      initialize_table_ui(data)
     })
     
-    # Projects table
-    output$projects_table <- renderDT({
-      req(filtered_projects())
-      data <- filtered_projects() %>%
-        fselect(-CoC_Code)  # Remove CoC Code column
-      
-      # Define which columns should be green (editable by user)
-      user_columns <- c("DV_Renewal", "Grant_Number", "CoC_Funding_Requested", "Funding_Action")
-      
+    initialize_table_ui <- function(data) {
+      # filter out Ignores by default
+      initial_filter <- vector("list", ncol(data))
+      initial_filter[[which(names(data) == "funding_action")]] <- list(search = "[\"Renew\"]")
       dt <- datatable(
         data,
-        editable = "cell",
+        editable = "row",
         filter = "top",
+        rownames = FALSE,
+        fillContainer = TRUE,
         options = list(
-          pageLength = 25,
           scrollX = TRUE,
-          orderClasses = TRUE,
+          scrollY = "100%",  # Limit table height
+          fixedHeader = TRUE,
+          searchCols = initial_filter,
           columnDefs = list(
             list(
               targets = which(names(data) %in% user_columns),
               className = 'green-background'
-            ),
-            list(
-              targets = which(names(data) == "Funding_Action") - 1,
-              render = JS(
-                "function(data, type, row, meta) {
-                if (type === 'display') {
-                  return data === null ? '' : data;
-                }
-                return data;
-              }"
-              )
             )
           )
         )
-      )
-      
-      dt
-    })
+      ) %>%
+        formatStyle(
+          columns = c(2,3), 
+          `white-space` = "nowrap",
+          `overflow` = "hidden",
+          `max-width` = "400px"
+        )
+
+      return(dt)
+    }
     
-    # Update projects data when cell is edited
+    # inline edit handling ------
     observeEvent(input$projects_table_cell_edit, {
       req(projects_data())
       info <- input$projects_table_cell_edit
-      str(info)
       
       # Get the current data
-      data <- projects_data()
-      
-      # Get the row index in the filtered view
+      data <- data.table::copy(projects_data())
       row_idx <- info$row
-      
-      # Get the actual row index in the full dataset
-      actual_row <- which(data$Project_Name == filtered_projects()$Project_Name[row_idx])
-      
-      # Adjust column index since we removed CoC_Code
-      col_name <- names(filtered_projects())[info$col + 1]
+      actual_row <- which(data$project_name == projects_data()$project_name[row_idx])
+      col_name <- names(projects_data())[info$col + 1]
       data[actual_row, col_name] <- info$value
       
       projects_data(data)
     }, ignoreInit = TRUE)
     
-    # Update projects data when cell is edited
-    observeEvent(input$cell_edit, {
-      req(projects_data())
-      print("cell was edited")
-      data <- projects_data()
-      # Adjust column index since we removed CoC_Code
-      actual_col <- input$cell_edit$col + 1
-      if (actual_col >= which(names(data) == "CoC_Code")) {
-        actual_col <- actual_col + 1
-      }
-      data[input$cell_edit$row + 1, actual_col] <- input$cell_edit$value
-      projects_data(data)
-    }, ignoreInit = TRUE)
-  })
+    # Add additonal project handling ----
+    observeEvent(input$add_project_btn, {
+      showModal(
+        mod_inventory_add_project_ui(session$ns("add_project"))
+      )
+    })
+    mod_inventory_add_project_server("add_project", projects_data)
+    
+    # View GIW Data -------
+    giw_data <- reactive({
+      get_db_tbl("giw")[coc == selected_coc$coc]
+    })
+    
+    observeEvent(input$view_giw_btn, {
+      showModal(
+        modalDialog(
+          title = "GIW",
+          DT::renderDT(
+            giw_data(),
+            fillContainer = TRUE,
+            options = list(
+              pageLength = 200,
+              scrollY = "400px"
+            )
+          ),
+          size="xl",
+          easyClose = TRUE
+        )
+      )
+    })
+    
+  }) # end moduleServer
 }
+

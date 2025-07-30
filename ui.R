@@ -8,7 +8,7 @@ page_navbar(
       tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
     ),
     ## Enable shinyjs -----
-    useShinyjs(),
+    shinyjs::useShinyjs(),
     disconnectMessage(
       text = str_squish(
         "HORRT has crashed. Please submit an issue on GitHub and note the
@@ -26,5 +26,6 @@ page_navbar(
   mod_new_rating_ui("new_rating"),
   mod_alternative_rating_ui("bulk_rating"),
   mod_funding_priorities_ui("funding_priorities"),
+  mod_final_review_ui("final_review"),
   mod_ranking_ui("ranking")
 )

@@ -35,3 +35,28 @@ determine_tier <- function(score, funding_requested, tier1_amount) {
     return("Tier 2")
   }
 }
+
+pluralize <- function(s) {
+  ends <- "(sh?|x|z|ch)$"
+  pluralify <- ifelse(grepl(ends, s, perl = TRUE), "es", "s")
+  out <- gsub("ys$", "ies", paste0(s, pluralify))
+  return(out)
+}
+
+
+factor_yesno <- function(v) {
+  factor(
+    v,
+    levels = c(1,0),
+    labels = c("Yes", "No")
+  )
+}
+
+get_labelled_lookups <- function(l, lookup_col = "value") {
+  lookup_info <- lookups[reference_type == l]
+  setNames(lookup_info$reference_id, lookup_info[[lookup_col]])
+}
+get_lookup_label <- function(v, ref_type, lookup_col = "value") {
+  filtered_lookups <- lookups[reference_type == ref_type]
+  filtered_lookups[.(v), get(lookup_col), on = "reference_id"]
+}

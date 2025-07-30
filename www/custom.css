@@ -1,3 +1,32 @@
 .green-background {
   background-color: #e6ffe6 !important;
 }
+
+#inventory-projects_table table tbody > td:first-child {
+  display: none;
+}
+
+#shiny-modal {
+  overflow: hidden;
+}
+
+.modal-dialog {
+  margin-top: 1em;
+  height: 95%;
+  overflow: auto;
+}
+
+/*CUSTOMIZE RATING CRITERIA*/
+[id*="_main_accordion"] .accordion-button {
+  font-size: 1em;
+}
+[id*="_sub_accordion"] .accordion-button {
+  font-size: 0.8em;
+}
+
+
+/*FUNDING PRIORITIES*/
+#funding_priorities-priorities_table table.dataTable th, 
+#funding_priorities-priorities_table table.dataTable td {
+  text-align:center;
+}
