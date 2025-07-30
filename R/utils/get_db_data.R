@@ -46,3 +46,5 @@ get_db_tbl <- function(tbl_name) {
     qDT() %>%
     ftransformv(c("date_created","date_updated"), as.POSIXct)
 }
+
+DB_CON <- get_db_connection()

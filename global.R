@@ -17,24 +17,15 @@ library(rhandsontable)
 library(shinyvalidate)
 library(purrr)
 library(shinycssloaders)
-source(here("R/utils/utils.R"))
+
+
+# Load all utils functions
+files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
 
 in_dev_mode <- grepl("ad.abt.local", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
 
-
-source(here("R/utils/get_db_data.R"))
-DB_CON <- get_db_connection()
-
-lookups <- get_db_tbl("lookups")
-users <- get_db_tbl("users")
-cocs <- get_db_tbl("cocs")
-coc_instance_users <- get_db_query(
-  "SELECT u.*, i.coc 
-  FROM coc_instance_users u 
-  LEFT JOIN coc_instances i 
-  ON u.coc_instance_id = i.coc_instance_id"
-)
-hud_ard_report <- get_db_tbl("hud_ard_report")
-main_project_types <- c("PSH", "RRH", "TH", "TH+RRH")
+# Pull global datasets from db
+source(here("R/global_data_prep.R"))
 
 set.seed(123)
