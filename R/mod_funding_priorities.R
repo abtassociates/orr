@@ -3,21 +3,33 @@ pop_grp_toggles <- expand.grid(
   grp = get_labelled_lookups("population_group", lookup_col = "value_long")
 ) %>%
   qDT() %>%
-  fsubset(pop != "Not Applicable") %>%
-  roworder(-grp, pop) %>%
-  as_character_factor() %>%
   fmutate(
-    pop = fifelse(pop == "Domestic Violence", "DV", pop),
+    pop_txt = ifelse(names(pop) == "Domestic Violence", "DV", names(pop)),
+    grp_txt = names(grp)
+  ) %>%
+  fsubset(pop_txt != "Not Applicable") %>%
+  setorder(-grp, pop) %>%
+  fmutate(
     full_text = fcase(
-      pop == "Youth" & grp == "Families", "Parenting Youth",
-      pop == "Youth" & grp == "Individuals", "Single Youth",
-      default = paste(pop, grp)
+      pop_txt == "Youth" & grp_txt == "Families", "Parenting Youth",
+      pop_txt == "Youth" & grp_txt == "Individuals", "Single Youth",
+      default = paste(pop_txt, grp_txt)
     )
   )
 
 mod_funding_priorities_ui <- function(id) {
   ns <- NS(id)
 
+  coc_bonus_opportunities <- coc_nofo_opportunities[
+    bonus_type == "CoC Bonus", 
+    setNames(coc_nofo_opportunity_id, full_text)
+  ]
+  
+  dv_bonus_opportunities <- coc_nofo_opportunities[
+    bonus_type == "DV Bonus", 
+    setNames(coc_nofo_opportunity_id, full_text)
+  ]
+  
   # Funding Ceilings + Priorities
   nav_panel(
     "Funding Ceilings + Priorities",
@@ -25,53 +37,45 @@ mod_funding_priorities_ui <- function(id) {
     card(
       min_height=300,
       card_header("General Funding Information"),
-      div(
-        style = "padding: 15px;",
-        layout_columns(
-          col_widths = c(3, 3, 3, 3),
-          numericInput(ns("total_ard"), "Annual Renewal Demand (ARD)", value = "0"),
-          numericInput(ns("coc_bonus"), "CoC Bonus", value = "0"),
-          numericInput(ns("tier_1"), "Tier 1", value = "0"),
-          numericInput(ns("adjusted_ard"), "Adjusted ARD", value = "0"),
-          numericInput(ns("yhdp_ard"), "YHDP ARD", value = "0"),
-          numericInput(ns("tier_2"), "Tier 2", value = "0"),
-          numericInput(ns("dv_bonus"), "DV Bonus", value = "0"),
-          numericInput(ns("dv_ard"), "DV ARD", value = "0")
-        )
+      layout_columns(
+        col_widths = c(3, 3, 3, 3),
+        numericInput(ns("total_ard"), "Annual Renewal Demand (ARD)", value = "0"),
+        numericInput(ns("coc_bonus"), "CoC Bonus", value = "0"),
+        numericInput(ns("tier_1"), "Tier 1", value = "0"),
+        numericInput(ns("adjusted_ard"), "Adjusted ARD", value = "0"),
+        numericInput(ns("yhdp_ard"), "YHDP ARD", value = "0"),
+        numericInput(ns("tier_2"), "Tier 2", value = "0"),
+        numericInput(ns("dv_bonus"), "DV Bonus", value = "0"),
+        numericInput(ns("dv_ard"), "DV ARD", value = "0")
       )
     ),
     card(
       min_height=300,
       card_header("FY2024 HUD CoC Program NOFO Opportunities"),
-      div(
-        style = "padding: 15px;",
-        layout_columns(
-          col_widths = c(6, 6),
-          div(
-            h4("Project Types to Consider for CoC Bonus"),
+      layout_columns(
+        col_widths = c(8, 4),
+        card(
+          card_header("Project Types to Consider for CoC Bonus"),
+          layout_columns(
+            col_widths = c(6, 6),
             checkboxGroupInput(
               ns("coc_bonus_types"),
               NULL,
-              choices = c(
-                "RRH for individuals" = "rrh_ind",
-                "RRH for families" = "rrh_fam",
-                "TH+RRH for individuals" = "th_rrh_ind",
-                "TH+RRH for families" = "th_rrh_fam"
-              )
-            )
-          ),
-          div(
-            h4("Project Types to Consider for DV Bonus"),
+              choices = coc_bonus_opportunities %>% head(length(.)/2)
+            ),
             checkboxGroupInput(
-              ns("dv_bonus_types"),
+              ns("coc_bonus_types"),
               NULL,
-              choices = c(
-                "RRH for individuals" = "rrh_ind",
-                "RRH for families" = "rrh_fam",
-                "TH+RRH for individuals" = "th_rrh_ind",
-                "TH+RRH for families" = "th_rrh_fam"
-              )
+              choices = coc_bonus_opportunities %>% tail(length(.)/2)
             )
+          )
+        ),
+        card(
+          card_header("Project Types to Consider for DV Bonus"),
+          checkboxGroupInput(
+            ns("dv_bonus_types"),
+            NULL,
+            choices = dv_bonus_opportunities
           )
         )
       )
@@ -82,12 +86,11 @@ mod_funding_priorities_ui <- function(id) {
       layout_sidebar(
         fillable = TRUE,
         sidebar = sidebar(
-          width = "15%",
+          width = "20%",
           checkboxGroupInput(
             ns("population_toggles"),
             label = "Enable/Disable Populations",
-            choices = pop_grp_toggles$full_text,
-            selected = c("All Families","All Individuals", "Single Youth")
+            choices = pop_grp_toggles$full_text
           )
         ),
         DTOutput(ns("priorities_table"))
@@ -98,7 +101,11 @@ mod_funding_priorities_ui <- function(id) {
 
 mod_funding_priorities_server <- function(id, selected_coc) {
   moduleServer(id, function(input, output, session) {
-  
+    
+    data_has_changed <- reactiveVal(FALSE)
+    auto_save_timer <- reactiveTimer(5000)
+
+    # HUD ARD Data------------------
     ard_field_names <- c(
       "total_ard",
       "tier_1",
@@ -132,17 +139,50 @@ mod_funding_priorities_server <- function(id, selected_coc) {
         if(id != "dv_ard") shinyjs::disable(id)
       })
     })
-    # Loop through and create outputs
     
-    
-    # Priorities table
-    priorities_data <- reactiveVal(
-      data.table(
-        Population = pop_grp_toggles,
-        Enabled = TRUE,  # New column to track enabled/disabled state
-        stringsAsFactors = FALSE
+    # Priorities table -----------------
+    get_coc_funding_priorities <- reactive({
+      # set the target population + population group checkbox selections
+      # for the priorities table. If they have any data so far, check the corresponding box
+      coc_funding_priorities <- get_db_query(
+        "SELECT * 
+        FROM coc_funding_priorities 
+        WHERE coc_instance_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
+        params = list(selected_coc$coc_instance_id)
       )
-    )
+      
+      # default if no priorities entered
+      if(nrow(coc_funding_priorities) == 0) 
+        return(c("All Families", "All Individuals", "Single Youth"))
+      
+      coc_funding_priorities <- coc_funding_priorities %>%
+        join(
+          pop_grp_toggles,
+          on = c("target_population" = "pop", "population_group" = "grp")
+        ) %>%
+        fmutate(
+          pop = fifelse(pop == "Domestic Violence", "DV", pop),
+          full_text = fcase(
+            pop == "Youth" & grp == "Families", "Parenting Youth",
+            pop == "Youth" & grp == "Individuals", "Single Youth",
+            default = paste(pop, grp)
+          )
+        )
+    
+      # select the checkboxes for which there is any entry
+      lapply(coc_funding_priorities, function(p) {
+        if(!is.null(p$beds) || !is.null(p$priority) || !is.null(p$funding)) p$full_text
+      })
+    })
+    
+    # Update target pop + pop group priority toggle checkboxes
+    observe({
+      updateCheckboxGroupInput(
+        session,
+        "population_toggles",
+        selected = get_coc_funding_priorities()
+      )
+    })
     
     output$priorities_table <- renderDT({
       data <- data.table(
@@ -156,14 +196,6 @@ mod_funding_priorities_server <- function(id, selected_coc) {
       }
       
       # Create the header structure
-      header <- list(
-        Population = 'Population',
-        PSH = c('Project Type', 'PSH'),
-        RRH = c('Project Type', 'RRH'),
-        TH = c('Project Type', 'TH'),
-        'TH+RRH' = c('Project Type', 'TH+RRH')
-      )
-      
       datatable(
         data,
         selection = 'none',
@@ -173,26 +205,43 @@ mod_funding_priorities_server <- function(id, selected_coc) {
             tags$tr(
               tags$th(rowspan = 2, 'Population'),
               lapply(main_project_types, function(pt) {
-                tags$th(colspan = 3, pt)
+                tags$th(colspan = 3, pt, style = "border-right: 1px solid black")
               })
             ),
             tags$tr(
               lapply(rep(c("Beds", "Funding", "Priority"), length(main_project_types)), function(col) {
-                tags$th(col)
+                tags$th(col, style=ifelse(col == "Priority", "border-right: 1px solid black", ""))
               })
             )
           )
         ),
-        autoHideNavigation = TRUE,
         editable = list(
-          target = 'row',
+          target = 'cell',
           disable = list(columns = c(0))
         ),
-        options = list(dom = 't', pageLength = 14)
+        options = list(
+          dom = 't', 
+          pageLength = nrow(data),
+          ordering = FALSE,
+          searching = FALSE,
+          info = FALSE
+        )
+      ) %>% formatStyle(
+        columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
+        `border-right` = "1px solid black"
       )
     })
     
-    # Handle population toggles
+    # Toggle which target population + population group is to be prioritized
+    # default is All Families, All Individuals, and Single Youth
+    priorities_data <- reactiveVal(
+      data.table(
+        Population = pop_grp_toggles,
+        Enabled = TRUE,  # New column to track enabled/disabled state
+        stringsAsFactors = FALSE
+      )
+    )
+    
     observeEvent(input$population_toggles, {
       dataTableProxy("priorities_table") |> 
         replaceData(priorities_data())
@@ -207,6 +256,57 @@ mod_funding_priorities_server <- function(id, selected_coc) {
       data[info$row + 1, info$col + 1] <- info$value
       
       priorities_data(data)
+      data_has_changed(TRUE) 
+    })
+    
+    observe({
+      # This code runs every 5 seconds (because it depends on the timer)
+      auto_save_timer() 
+
+      # Only proceed if data has actually changed
+      if (data_has_changed()) {
+        browser()
+        # Isolate the data to prevent reactive loops
+        data_to_save <- isolate(priorities_data())
+        browser()
+        # The "UPSERT" query
+        sql_query <- "
+          INSERT INTO coc_funding_priorities (coc_instance_id, project_type, target_population, beds, funding, priority, created_by)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (coc_instance_id, project_type, target_population)
+          DO UPDATE SET 
+            beds = $4, 
+            funding = $5, 
+            priority = $6, 
+            updated_by = $7;
+        "
+        tryCatch({
+          # Execute the query for each row of the long data frame
+          # Using a prepared statement with `dbExecute` and `params` is safe from SQL injection
+          apply(long_data, 1, function(row) {
+            dbExecute(
+              DB_CON,
+              sql_query,
+              params = list(
+                selected_coc$coc_instance_id,
+                row[["population_group"]],
+                row[["project_type"]],
+                row[["metric"]],
+                as.character(row[["value"]]) # Ensure value is character/text
+              )
+            )
+          })
+          
+          # If successful, reset the flag and notify the user
+          data_has_changed(FALSE)
+          showNotification("Changes saved successfully!", type = "message", duration = 3)
+        }, error = function(e) {
+          # If an error occurs, do NOT reset the flag, so it will try again.
+          # Notify the user of the failure.
+          showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
+          cat("Database save error:", e$message, "\n")
+        })
+      }
     })
   })
 }
