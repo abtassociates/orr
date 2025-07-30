@@ -1,6 +1,6 @@
 pop_grp_toggles <- expand.grid(
-  pop = c("All", lookups[reference_type == "target_population"]$value),
-  grp = lookups[reference_type == "population_group"]$value_long
+  pop = c("All" = 0, get_labelled_lookups("target_population")),
+  grp = get_labelled_lookups("population_group", lookup_col = "value_long")
 ) %>%
   qDT() %>%
   fsubset(pop != "Not Applicable") %>%

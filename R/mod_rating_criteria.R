@@ -42,7 +42,7 @@ mod_rating_criteria_ui <- function(id) {
                      selectInput(
                        inputId = ns("target_population"),
                        label = "Select special populations",
-                       choices = get_labelled_lookups("target_populations")[c("DV", "General")],
+                       choices = get_labelled_lookups("target_population")[c("DV", "General")],
                        multiple = TRUE,
                        selected = c("DV", "General") # Pre-select all for initial state
                      )

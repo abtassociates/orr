@@ -52,7 +52,11 @@ factor_yesno <- function(v) {
   )
 }
 
-get_labelled_lookups <- function(l) {
-  lookup_info <- lookups[[pluralize(l)]]
-  setNames(lookup_info[[glue::glue("{l}_id")]], lookup_info[[l]])
+get_labelled_lookups <- function(l, lookup_col = "value") {
+  lookup_info <- lookups[reference_type == l]
+  setNames(lookup_info$reference_id, lookup_info[[lookup_col]])
+}
+get_lookup_label <- function(v, ref_type, lookup_col = "value") {
+  filtered_lookups <- lookups[reference_type == ref_type]
+  filtered_lookups[.(v), get(lookup_col), on = "reference_id"]
 }
