@@ -93,7 +93,7 @@ mod_inventory_server <- function(id, projects_data, selected_coc) {
     
     # View GIW Data -------
     giw_data <- reactive({
-      get_db_tbl("giw")[coc == selected_coc()]
+      get_db_tbl("giw")[coc == selected_coc$coc]
     })
     
     observeEvent(input$view_giw_btn, {

@@ -1,9 +1,11 @@
 function(input, output, session) {
   projects_data <- reactiveVal(NULL)
-  selected_coc <- reactiveVal(NULL)
+  selected_coc <- reactiveValues(
+    coc = NULL,
+    coc_instance_id = NULL
+  )
   nav_control <- reactiveVal("coc_selection")
   username <- reactiveVal("alex.silverman@abtglobal.com")
-  coc_instance_id <- reactiveVal(NULL)
   
   # Hide all panels except CoC selection initially
   observe({
@@ -15,7 +17,7 @@ function(input, output, session) {
     nav_hide("nav", "funding_priorities")
     nav_hide("nav", "ranking")
 
-    if (!is.null(selected_coc()) && selected_coc() != "") {
+    if (!is.null(selected_coc$coc) && selected_coc$coc != "") {
       nav_show("nav", "inventory")
       nav_show("nav", "rating_criteria")
       nav_show("nav", "renewal_rating")
@@ -25,9 +27,9 @@ function(input, output, session) {
     }
   })
   
-  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc, coc_instance_id)
+  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc)
   mod_inventory_server("inventory", projects_data, selected_coc)
-  mod_rating_criteria_server("rating_criteria", coc_instance_id)
+  mod_rating_criteria_server("rating_criteria", selected_coc)
   mod_renewal_rating_server("renewal_rating", projects_data)
   mod_new_rating_server("new_rating", projects_data)
   mod_alternative_rating_server("bulk_rating", projects_data)

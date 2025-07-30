@@ -110,7 +110,7 @@ mod_funding_priorities_server <- function(id, selected_coc) {
       "dv_bonus"
     )
     hud_ard_coc_data <- reactive({
-      hud_ard_report[coc == selected_coc()] %>%
+      hud_ard_report[coc == selected_coc$coc] %>%
         fmutate(
           tier_2 = estimated * 0.1 + coc_bonus + dv_bonus,
           adjusted_ard = round(tier_1/0.9, 0),
@@ -121,8 +121,8 @@ mod_funding_priorities_server <- function(id, selected_coc) {
     })
     
     observe({
-      req(selected_coc())
-
+      req(selected_coc$coc)
+      
       lapply(ard_field_names, function(id) {
         updateNumericInput(
           session, 
