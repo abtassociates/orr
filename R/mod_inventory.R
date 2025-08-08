@@ -25,8 +25,17 @@ mod_inventory_server <- function(id, projects_data, selected_coc) {
     output$projects_table <- renderDT({
       req(projects_data())
 
-      data <- projects_data() %>% 
-        fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by)
+      data <- get_db_query(
+        "SELECT * FROM projects WHERE coc_instance_id = $1", 
+        params = selected_coc$coc_instance_id
+      ) %>% 
+        fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by) %>%
+        fmutate(
+          funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
+          project_type = convert_to_factor(., "project_type", textToNum = TRUE),
+          target_population = convert_to_factor(., "target_population", textToNum = TRUE, label_col = "value_abbrev"),
+          dv_renewal = factor_yesno(dv_renewal)
+        )
 
       validate(
         need(nrow(data) > 0, "No rows")

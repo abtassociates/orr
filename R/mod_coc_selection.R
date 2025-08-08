@@ -173,23 +173,13 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
         ) %>%
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
-          project_type = convert_to_factor(., "project_type", textToNum = TRUE, label_col = "value_abbrev"),
+          project_type = convert_to_factor(., "project_type", textToNum = TRUE),
           target_population = convert_to_factor(., "target_population", textToNum = TRUE, label_col = "value_abbrev"),
           dv_renewal = factor_yesno(dv_renewal)
         ) %>%
         get_vars(dbListFields(DB_CON, "projects"))
-      
-      return(project_data)
-    }
-    
-    convert_to_factor <- function(data, v, textToNum = FALSE, label_col = "value") {
-      lookup_info <- lookups[reference_type == v, .(reference_id, value, value_abbrev, value_long)]
 
-      factor(
-        if(!textToNum) data[[v]] else lookup_info$reference_id[match(data[[v]], lookup_info[[label_col]])],
-        levels = lookup_info$reference_id,
-        labels = lookup_info[[label_col]]
-      )
+      return(project_data)
     }
   })
 }
