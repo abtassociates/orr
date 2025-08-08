@@ -81,12 +81,25 @@ mod_inventory_server <- function(id, projects_data, selected_coc) {
     observeEvent(input$projects_table_cell_edit, {
       req(projects_data())
       info <- input$projects_table_cell_edit
+      col_name <- names(projects_data())[info$col + 1]
+      
+      if(col_name == "Funding Action") {
+        if(info$value == "Reallocate") {
+          showModal(
+            mod_inventory_add_project_ui(session$ns("add_project"), is_rellocate = T, projects_data = projects_data)
+          )
+        } else if(info$value == "Replace") {
+          showModal(
+            mod_inventory_add_project_ui(session$ns("add_project"), is_replacement = T, projects_data = projects_data)
+          )
+        }
+      }
+      
       
       # Get the current data
       data <- data.table::copy(projects_data())
       row_idx <- info$row
       actual_row <- which(data$project_name == projects_data()$project_name[row_idx])
-      col_name <- names(projects_data())[info$col + 1]
       data[actual_row, col_name] <- info$value
       
       projects_data(data)

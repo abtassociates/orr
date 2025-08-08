@@ -1,4 +1,4 @@
-mod_inventory_add_project_ui <- function(id) {
+mod_inventory_add_project_ui <- function(id, is_reallocate = F, is_replacement = F, projects_data = NULL) {
   ns <- NS(id)
   
   fundingAction <- ns("funding_action_new")
@@ -68,7 +68,11 @@ mod_inventory_add_project_ui <- function(id) {
       ),
       
       # Funding Source
-      selectInput(fundingSource, "Funding Source*", choices = c("CoC", "YHDP", "DV")),
+      selectInput(
+        fundingSource, "Funding Source*", 
+        choices = c("CoC", "YHDP", "DV"),
+        selected = fifelse(is_reallocate & projects_data()$mckinneyventoyhdp, "YHDP", NULL)
+      ),
       
       # Project Type
       selectInput(projectType, "Project Type*^", choices = get_labelled_lookups("project_types")),
