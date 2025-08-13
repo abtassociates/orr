@@ -85,7 +85,14 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
 # ===================================================================
 # Server Function (Refactored for clarity and consolidation)
 # ===================================================================
-mod_inventory_add_project_server <- function(id, form_type = "New", funding_source = NULL, project_to_replace = NULL, coc_instance_id = NULL) {
+mod_inventory_add_project_server <- function(
+    id, 
+    form_type = "New", 
+    funding_source = NULL, 
+    project_to_replace = NULL, 
+    user_coc = NULL,
+    refresh_trigger = NULL
+) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     rv <- reactiveValues(submitted_projects = list())
@@ -346,6 +353,7 @@ mod_inventory_add_project_server <- function(id, form_type = "New", funding_sour
         )
         
         DBI::dbAppendTable(DB_CON, "projects", new_project_data)
+        refresh_trigger(refresh_trigger() + 1)
         # rv$submitted_projects <- append(rv$submitted_projects, list(new_project_data))
         showNotification("Project submitted successfully.", type = "message")
         removeModal()

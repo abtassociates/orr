@@ -21,8 +21,12 @@ mod_inventory_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
+    refresh_trigger <- reactiveVal(0)
+    
     project_data <- reactive({
       req(user_coc$coc_instance_id)
+      refresh_trigger()
+      
       data <- get_db_query(
         "SELECT * FROM projects WHERE coc_instance_id = $1", 
         params = user_coc$coc_instance_id
@@ -94,6 +98,7 @@ mod_inventory_server <- function(id, user_coc) {
             form_type = paste0(fundingSource, " Reallocation"),
             funding_source = fundingSource,
             user_coc = user_coc,
+            refresh_trigger = refresh_trigger
           )
           return(TRUE)
         } else if(val == "Replace") {
