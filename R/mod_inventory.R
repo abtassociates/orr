@@ -30,78 +30,144 @@ mod_inventory_server <- function(id, selected_coc) {
       ) %>% 
         fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by) %>%
         fmutate(
-          funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
-          project_type = convert_to_factor(., "project_type", textToNum = TRUE),
-          target_population = convert_to_factor(., "target_population", textToNum = TRUE, label_col = "value_abbrev"),
-          dv_renewal = factor_yesno(dv_renewal)
+          funding_action = convert_to_factor(., "funding_action"),
+          project_type = convert_to_factor(., "project_type"),
+          target_population = convert_to_factor(., "target_population"),
+          dv_renewal = factor_yesno(dv_renewal),
+          mckinneyvento = factor_yesno(mckinneyvento),
+          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
+          is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
+          is_dedicated_dv = factor_yesno(is_dedicated_dv)
         )
-
-      validate(
-        need(nrow(data) > 0, "No rows")
-      )
-      
-      initialize_table_ui(data)
     })
     
-    initialize_table_ui <- function(data) {
+    # Projects table -----
+    output$projects_table <- renderDT({
+      req(project_data())
+      data <- project_data()
+      
+      validate(need(
+        nrow(data) > 0, 
+        "No rows"
+      ))
+      
       # filter out Ignores by default
       initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "funding_action")]] <- list(search = "[\"Renew\"]")
-      dt <- datatable(
-        data,
-        editable = "row",
-        filter = "top",
-        rownames = FALSE,
-        fillContainer = TRUE,
-        options = list(
-          scrollX = TRUE,
-          scrollY = "100%",  # Limit table height
-          fixedHeader = TRUE,
-          searchCols = initial_filter,
-          columnDefs = list(
-            list(
-              targets = which(names(data) %in% user_columns),
-              className = 'green-background'
-            )
-          )
-        )
-      ) %>%
-        formatStyle(
-          columns = c(2,3), 
-          `white-space` = "nowrap",
-          `overflow` = "hidden",
-          `max-width` = "400px"
-        )
-
-      return(dt)
-    }
+      initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
+      
+      initialize_table_ui(data, user_columns, session$ns("projects_table"), initial_filter)
+    })
+    
+    
     
     # inline edit handling ------
-    observeEvent(input$projects_table_cell_edit, {
-      req(projects_data())
-      info <- input$projects_table_cell_edit
-      col_name <- names(projects_data())[info$col + 1]
-      
-      if(col_name == "Funding Action") {
-        if(info$value == "Reallocate") {
-          showModal(
-            mod_inventory_add_project_ui(session$ns("add_project"), is_rellocate = T, projects_data = projects_data)
+    handle_reallocate_and_replace <- function(row_index, col_name, val) {
+      if(col_name == "funding_action") {
+        project_data <- project_data()[row_index + 1]
+        if(val == "Reallocate") {
+          fundingSource <- ifelse(
+            project_data$mckinneyventoyhdp == "Yes",
+            "YHDP",
+            ifelse(
+              isTruthy(project_data$dv_renewal == "Yes" || project_data$target_population == "DV"),
+              "DV",
+              "CoC"
+            )
           )
-        } else if(info$value == "Replace") {
+          
+          if(fundingSource == "DV" && project_data$project_type == "SSO - CE") {
+            showNotification(
+              "According to the FY2024 NOFO, you cannot reallocate a DV SSO-CE 
+              Renewal project. Please select a different Funding Action."
+            )
+            return(FALSE)
+          }
+          
           showModal(
-            mod_inventory_add_project_ui(session$ns("add_project"), is_replacement = T, projects_data = projects_data)
+            mod_inventory_add_project_ui(
+              session$ns("add_project"), 
+              form_type = paste0(fundingSource, " Reallocation")
+            )
           )
+          mod_inventory_add_project_server(
+            "add_project", 
+            form_type = paste0(fundingSource, " Reallocation"),
+            funding_source = fundingSource,
+            coc_instance_id = selected_coc$coc_instance_id
+          )
+          return(TRUE)
+        } else if(val == "Replace") {
+          if(project_data$mckinneyventoyhdp != "Yes") {
+            showNotification(
+              "It looks like you are trying to replace a non-YHDP project. Only 
+              YHDP projects can be replaced. If this is not a YHDP project, 
+              please mark the McKinney- Vento: YHDP field as 'No'"
+            )
+            return(FALSE)
+          }
+          
+          showModal(
+            mod_inventory_add_project_ui(
+              session$ns("add_project"), 
+              form_type = "YHDP Replacement", 
+              project_to_replace = project_data
+            )
+          )
+          mod_inventory_add_project_server(
+            "add_project", 
+            form_type = "YHDP Replacement", 
+            funding_source = "YHDP",
+            coc_instance_id = selected_coc$coc_instance_id
+          )
+          return(TRUE)
         }
       }
+    }
+    observeEvent(input$projects_table_cell_edit, {
+      req(project_data())
+      info <- input$projects_table_cell_edit
+      row_index <- info$row
+      col_index <- info$col
+      col_name <- colnames(project_data())[col_index + 1]
       
+      new_value <- ifelse(
+        is.factor(project_data()[[col_name]]),
+        ifelse(
+          identical(levels(project_data()[[col_name]]), c("Yes","No")),
+          ifelse(info$value == "Yes", 1, 0),
+          lookups[reference_type == col_name & value == info$value]$reference_id
+        ),
+        info$value
+      )
       
-      # Get the current data
-      data <- data.table::copy(projects_data())
-      row_idx <- info$row
-      actual_row <- which(data$project_name == projects_data()$project_name[row_idx])
-      data[actual_row, col_name] <- info$value
+      is_valid <- handle_reallocate_and_replace(row_index, col_name, info$value)
+      req(is_valid)
       
-      projects_data(data)
+      # Update database
+      project_id <- ifelse(
+        is.na(info$project_id),
+        as.character(project_data()[row_index, "project_id"]),
+        info$project_id
+      )
+
+      DBI::dbExecute(
+        DB_CON,
+        sprintf(
+          "UPDATE projects SET %s = $1 WHERE project_id = $2",
+          DBI::dbQuoteIdentifier(DB_CON, col_name)
+        ), 
+        params = list(as.character(new_value), project_id)
+      )
+      
+      # update table
+      shinyjs::runjs(glue::glue("
+      document.querySelector('#inventory-projects_table tbody tr:nth-child({row_index}) td:nth-child({col_index})').innerText = {info$oldValue}
+      "))
+      
+      message(sprintf("Updated row id=%s, column=%s to '%s'",
+                      project_id, col_name, new_value))
+      
     }, ignoreInit = TRUE)
     
     # Add additonal project handling ----
@@ -109,8 +175,8 @@ mod_inventory_server <- function(id, selected_coc) {
       showModal(
         mod_inventory_add_project_ui(session$ns("add_project"))
       )
+      mod_inventory_add_project_server("add_project", coc_instance_id = selected_coc$coc_instance_id)
     })
-    mod_inventory_add_project_server("add_project", projects_data)
     
     # View GIW Data -------
     giw_data <- reactive({
