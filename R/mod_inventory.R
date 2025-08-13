@@ -17,13 +17,12 @@ mod_inventory_ui <- function(id) {
   )
 }
 
-mod_inventory_server <- function(id, projects_data, selected_coc) {
+mod_inventory_server <- function(id, selected_coc) {
   moduleServer(id, function(input, output, session) {
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
-    # Projects table -----
-    output$projects_table <- renderDT({
-      req(projects_data())
+    project_data <- reactive({
+      req(selected_coc$coc_instance_id)
 
       data <- get_db_query(
         "SELECT * FROM projects WHERE coc_instance_id = $1", 
