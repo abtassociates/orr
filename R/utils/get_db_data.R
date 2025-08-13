@@ -43,8 +43,7 @@ get_db_query <- function(sql, params = NULL) {
 
 get_db_tbl <- function(tbl_name) {
   dbReadTable(DB_CON, tbl_name) %>% 
-    qDT() %>%
-    ftransformv(c("date_created","date_updated"), as.POSIXct)
+    qDT()
 }
 
 DB_CON <- get_db_connection()
