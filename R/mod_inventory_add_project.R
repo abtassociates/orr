@@ -1,6 +1,6 @@
 LOOKUP_CHOICES <- list(
   funding_action = get_labelled_lookups("funding_action"),
-  reallocation_funding_actions = c("New", "Expand", "Renew", "Reallocate"),
+  reallocation_funding_actions = c("New", "Expand"),
   project_types = get_labelled_lookups("project_type"),
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
   coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
@@ -139,11 +139,12 @@ mod_inventory_add_project_server <- function(
     # Set initial values for reallocation or replacement
     if (grepl("Reallocation", form_type) && !is.null(funding_source)) {
       updateSelectInput(session, "funding_source", selected = funding_source)
-      updateSelectInput(session, "funding_action", choices = c("New", "Expand"))
+      updateSelectInput(session, "funding_action", choices = c("", LOOKUP_CHOICES$reallocation_funding_actions))
       if (funding_source == "YHDP") {
         updateSelectInput(session, "funding_action", selected = "New")
       }
       updateActionLink(session, "add_another_link", label = "Submit and add another reallocation project?")
+      shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
     } else if (form_type == "YHDP Replacement" && !is.null(project_to_replace)) {
       updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
       updateTextInput(session, "organization_name", value = project_to_replace$`Organization Name`)
@@ -185,7 +186,7 @@ mod_inventory_add_project_server <- function(
       
       # --- Update Visibility ---
       is_new_or_expand <- fa %in% c("New", "Expand")
-      shinyjs::toggle("grant_number", condition = !is_new_or_expand)
+      shinyjs::toggle("grant_number", condition = !is_new_or_expand & !grepl("Reallocation", form_type))
       
       show_dv_check <- is_new_or_expand && (
         (isTruthy(pt) && pt == "SSO - CE") || 
@@ -331,16 +332,19 @@ mod_inventory_add_project_server <- function(
           total_fam <- get_val("youth_beds", "fam")
           total_ind <- get_val("youth_beds", "ind")
         }
-        browser()
+
         # Collect data into a clean list
+        get_ref_id <- function(x) {
+          get_lookup_refid(x, str_remove(deparse(substitute(x)), "input\\$"))
+        }
         new_project_data <- data.table(
-          coc_instance_id = coc_instance_id,
+          coc_instance_id = user_coc$coc_instance_id,
           project_name = input$project_name,
           organization_name = input$organization_name,
-          funding_action = input$funding_action,
-          grant_number = if (!input$funding_action %in% c("New", "Expand")) input$grant_number else NA,
-          project_type = input$project_type,
-          target_population = input$target_population,
+          funding_action = get_ref_id(input$funding_action),
+          grant_number = input$grant_number,
+          project_type = get_ref_id(input$project_type),
+          target_population = get_ref_id(input$target_population),
           is_dedicated_dv = input$all_dv_checkbox,
           all_fam_beds = total_fam, all_ind_beds = total_ind,
           ch_fam_beds = get_val("ch_beds", "fam"), total_ch_ind_beds = get_val("ch_beds", "ind"),
@@ -349,7 +353,8 @@ mod_inventory_add_project_server <- function(
           dv_fam_beds = if(input$target_population == "DV") total_fam,
           dv_ind_beds = if(input$target_population == "DV") total_ind,
           is_dedicated_ch_fam = funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_fam,
-          is_dedicated_ch_ind = funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind
+          is_dedicated_ch_ind = funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind,
+          created_by = user_coc$username
         )
         
         DBI::dbAppendTable(DB_CON, "projects", new_project_data)
