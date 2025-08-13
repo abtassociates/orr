@@ -1,9 +1,11 @@
 function(input, output, session) {
   projects_data <- reactiveVal(NULL)
-  selected_coc <- reactiveValues(
+  user_coc <- reactiveValues(
     coc = NULL,
-    coc_instance_id = NULL
+    coc_instance_id = NULL,
+    username = NULL
   )
+  
   nav_control <- reactiveVal("coc_selection")
   username <- reactiveVal("alex.silverman@abtglobal.com")
   
@@ -17,7 +19,7 @@ function(input, output, session) {
     nav_hide("nav", "funding_priorities")
     nav_hide("nav", "ranking")
 
-    if (!is.null(selected_coc$coc) && selected_coc$coc != "") {
+    if (!is.null(user_coc$coc) && user_coc$coc != "") {
       nav_show("nav", "inventory")
       nav_show("nav", "rating_criteria")
       nav_show("nav", "renewal_rating")
@@ -27,14 +29,14 @@ function(input, output, session) {
     }
   })
   
-  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc)
-  mod_inventory_server("inventory", selected_coc)
-  mod_rating_criteria_server("rating_criteria", selected_coc)
+  mod_coc_selection_server("coc_selection", nav_control, projects_data, user_coc)
+  mod_inventory_server("inventory", user_coc)
+  mod_rating_criteria_server("rating_criteria", user_coc)
   mod_renewal_rating_server("renewal_rating", projects_data)
   mod_new_rating_server("new_rating", projects_data)
   mod_alternative_rating_server("bulk_rating", projects_data)
-  mod_funding_priorities_server("funding_priorities", selected_coc)
-  mod_final_review_server("final_review", selected_coc)
+  mod_funding_priorities_server("funding_priorities", user_coc)
+  mod_final_review_server("final_review", user_coc)
   mod_ranking_server("ranking")
   
   # Observer to update nav panel when reactive value changes

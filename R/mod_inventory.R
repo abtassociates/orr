@@ -17,16 +17,15 @@ mod_inventory_ui <- function(id) {
   )
 }
 
-mod_inventory_server <- function(id, selected_coc) {
+mod_inventory_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
     project_data <- reactive({
-      req(selected_coc$coc_instance_id)
-
+      req(user_coc$coc_instance_id)
       data <- get_db_query(
         "SELECT * FROM projects WHERE coc_instance_id = $1", 
-        params = selected_coc$coc_instance_id
+        params = user_coc$coc_instance_id
       ) %>% 
         fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by) %>%
         fmutate(
@@ -94,7 +93,7 @@ mod_inventory_server <- function(id, selected_coc) {
             "add_project", 
             form_type = paste0(fundingSource, " Reallocation"),
             funding_source = fundingSource,
-            coc_instance_id = selected_coc$coc_instance_id
+            user_coc = user_coc,
           )
           return(TRUE)
         } else if(val == "Replace") {
@@ -118,7 +117,7 @@ mod_inventory_server <- function(id, selected_coc) {
             "add_project", 
             form_type = "YHDP Replacement", 
             funding_source = "YHDP",
-            coc_instance_id = selected_coc$coc_instance_id
+            user_coc = user_coc
           )
           return(TRUE)
         }
@@ -175,12 +174,12 @@ mod_inventory_server <- function(id, selected_coc) {
       showModal(
         mod_inventory_add_project_ui(session$ns("add_project"))
       )
-      mod_inventory_add_project_server("add_project", coc_instance_id = selected_coc$coc_instance_id)
+      mod_inventory_add_project_server("add_project", user_coc = user_coc)
     })
     
     # View GIW Data -------
     giw_data <- reactive({
-      get_db_tbl("giw")[coc == selected_coc$coc]
+      get_db_tbl("giw")[coc == user_coc$coc]
     })
     
     observeEvent(input$view_giw_btn, {

@@ -18,7 +18,7 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc) {
+mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
     ## subset coc_instance_users to specific user
@@ -26,6 +26,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
       coc_instance_users[username == input$choose_user]
     })
     
+    # Set session-wide user
+    observe({
+      user_coc$username <- input$choose_user
+    })
     
     ## disable Edit button unless row is selected
     observe({
@@ -48,10 +52,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     })
     
     observeEvent(input$edit_coc_instance, {
-      selected_coc$coc <- coc_iu()$coc[[1]]
-      print(selected_coc$coc)
+      user_coc$coc <- coc_iu()$coc[[1]]
+      print(user_coc$coc)
       
-      selected_coc$coc_instance_id <- coc_iu()[
+      user_coc$coc_instance_id <- coc_iu()[
         input$coc_instances_dt_rows_selected, .(coc_instance_id)
       ][[1]]
       
@@ -139,7 +143,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
       )
 
       coc_data <- get_db_tbl("all_hic_data") |>
-        fsubset(hudnum == selected_coc$coc) 
+        fsubset(hudnum == user_coc$coc) 
 
       project_data <- coc_data %>%
         fmutate(
@@ -156,7 +160,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
             lookups[reference_type == "funding_action" & value == "Renew", reference_id], 
             lookups[reference_type == "funding_action" & value == "Ignore", reference_id]
           ),
-          coc_instance_id = selected_coc$coc_instance_id,
+          coc_instance_id = user_coc$coc_instance_id,
           # additional cols user will fill out
           is_dedicated_ch_fam = factor_yesno(NA),
           is_dedicated_ch_ind = factor_yesno(NA),

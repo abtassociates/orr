@@ -99,7 +99,7 @@ mod_funding_priorities_ui <- function(id) {
   )
 }
 
-mod_funding_priorities_server <- function(id, selected_coc) {
+mod_funding_priorities_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     
     data_has_changed <- reactiveVal(FALSE)
@@ -117,7 +117,7 @@ mod_funding_priorities_server <- function(id, selected_coc) {
       "dv_bonus"
     )
     hud_ard_coc_data <- reactive({
-      hud_ard_report[coc == selected_coc$coc] %>%
+      hud_ard_report[coc == user_coc$coc] %>%
         fmutate(
           tier_2 = estimated * 0.1 + coc_bonus + dv_bonus,
           adjusted_ard = round(tier_1/0.9, 0),
@@ -128,7 +128,7 @@ mod_funding_priorities_server <- function(id, selected_coc) {
     })
     
     observe({
-      req(selected_coc$coc)
+      req(user_coc$coc)
       
       lapply(ard_field_names, function(id) {
         updateNumericInput(
@@ -148,7 +148,7 @@ mod_funding_priorities_server <- function(id, selected_coc) {
         "SELECT * 
         FROM coc_funding_priorities 
         WHERE coc_instance_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
-        params = list(selected_coc$coc_instance_id)
+        params = list(user_coc$coc_instance_id)
       )
       
       # default if no priorities entered
@@ -288,7 +288,7 @@ mod_funding_priorities_server <- function(id, selected_coc) {
               DB_CON,
               sql_query,
               params = list(
-                selected_coc$coc_instance_id,
+                user_coc$coc_instance_id,
                 row[["population_group"]],
                 row[["project_type"]],
                 row[["metric"]],
