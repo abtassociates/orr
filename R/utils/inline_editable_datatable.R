@@ -38,7 +38,13 @@ initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
     function(settings, json) {
       var table = this.api();
       var factorInfo = %s;
-  
+      
+      // Function to revert cell to its original state
+      function revertCell(cell, originalData) {
+        var $td = $(cell.node());
+        $td.empty().text(originalData); // Remove dropdown, restore text
+      }
+      
       table.on('dblclick', 'td.factor-edit-cell', function(e) {
         var cell = table.cell(this);
         var colIndex = cell.index().column;
@@ -49,7 +55,7 @@ initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
         if (factorInfo[colIndex]) {
           var choices = factorInfo[colIndex];
           var currentVal = cell.data();
-debugger;
+
           // Build the dropdown
           var $select = $('<select></select>').css('width', '100%%');
           $.each(choices, function(i, value) {
@@ -64,7 +70,7 @@ debugger;
           
           // If user makes a change, trigger a cell_edit event
           $select.on('change', function() {
-            //cell.data(this.selectedOptions[0].label);
+            revertCell(cell, currentVal);
             Shiny.setInputValue('%s_cell_edit', {
               row: cell.index().row,
               col: cell.index().column,
@@ -72,6 +78,11 @@ debugger;
               oldValue: currentVal,
               project_id: table.cells(cell.index().row, 0).data()[0],
             }, {priority: 'event'});
+          });
+          
+          // Also handle losing focus (user clicks away)
+          $select.on('blur', function() {
+              revertCell(cell, currentVal);
           });
         }
       });

@@ -165,11 +165,15 @@ mod_inventory_server <- function(id, user_coc) {
         ), 
         params = list(as.character(new_value), project_id)
       )
-      
-      # update table
-      shinyjs::runjs(glue::glue("
-      document.querySelector('#inventory-projects_table tbody tr:nth-child({row_index}) td:nth-child({col_index})').innerText = {info$oldValue}
-      "))
+
+      # Update cell
+      # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
+      shinyjs::runjs(sprintf("
+          var table = $('#%s table').DataTable();
+          table.cell(%s, %s).data('%s');
+        ", 
+        session$ns("projects_table"), info$row, info$col, info$value
+      ))
       
       message(sprintf("Updated row id=%s, column=%s to '%s'",
                       project_id, col_name, new_value))
