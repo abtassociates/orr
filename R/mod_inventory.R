@@ -152,7 +152,7 @@ mod_inventory_server <- function(id, user_coc) {
       
       # Update database
       project_id <- ifelse(
-        is.na(info$project_id),
+        is.na(info$project_id) || is.null(info$project_id),
         as.character(project_data()[row_index, "project_id"]),
         info$project_id
       )
