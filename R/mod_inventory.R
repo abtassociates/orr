@@ -65,69 +65,68 @@ mod_inventory_server <- function(id, user_coc) {
     
     
     # inline edit handling ------
-    handle_reallocate_and_replace <- function(row_index, col_name, val) {
-      if(col_name == "funding_action") {
-        project_data <- project_data()[row_index + 1]
-        if(val == "Reallocate") {
-          fundingSource <- ifelse(
-            project_data$mckinneyventoyhdp == "Yes",
-            "YHDP",
-            ifelse(
-              isTruthy(project_data$dv_renewal == "Yes" || project_data$target_population == "DV"),
-              "DV",
-              "CoC"
-            )
+    handle_reallocate_and_replace <- function(row_index, val) {
+      project_data <- project_data()[row_index + 1]
+      if(val == "Reallocate") {
+        fundingSource <- ifelse(
+          project_data$mckinneyventoyhdp == "Yes",
+          "YHDP",
+          ifelse(
+            isTruthy(project_data$dv_renewal == "Yes" || project_data$target_population == "DV"),
+            "DV",
+            "CoC"
           )
-          
-          if(fundingSource == "DV" && project_data$project_type == "SSO - CE") {
-            showNotification(
-              "According to the FY2024 NOFO, you cannot reallocate a DV SSO-CE 
-              Renewal project. Please select a different Funding Action."
-            )
-            return(FALSE)
-          }
-          
-          showModal(
-            mod_inventory_add_project_ui(
-              session$ns("add_project"), 
-              form_type = paste0(fundingSource, " Reallocation")
-            )
+        )
+        
+        if(fundingSource == "DV" && project_data$project_type == "SSO - CE") {
+          showNotification(
+            "According to the FY2024 NOFO, you cannot reallocate a DV SSO-CE 
+            Renewal project. Please select a different Funding Action."
           )
-          mod_inventory_add_project_server(
-            "add_project", 
-            form_type = paste0(fundingSource, " Reallocation"),
-            funding_source = fundingSource,
-            user_coc = user_coc,
-            refresh_trigger = refresh_trigger
-          )
-          return(TRUE)
-        } else if(val == "Replace") {
-          if(project_data$mckinneyventoyhdp != "Yes") {
-            showNotification(
-              "It looks like you are trying to replace a non-YHDP project. Only 
-              YHDP projects can be replaced. If this is not a YHDP project, 
-              please mark the McKinney- Vento: YHDP field as 'No'"
-            )
-            return(FALSE)
-          }
-          
-          showModal(
-            mod_inventory_add_project_ui(
-              session$ns("add_project"), 
-              form_type = "YHDP Replacement", 
-              project_to_replace = project_data
-            )
-          )
-          mod_inventory_add_project_server(
-            "add_project", 
-            form_type = "YHDP Replacement", 
-            funding_source = "YHDP",
-            user_coc = user_coc
-          )
-          return(TRUE)
+          return(FALSE)
         }
+        
+        showModal(
+          mod_inventory_add_project_ui(
+            session$ns("add_project"), 
+            form_type = paste0(fundingSource, " Reallocation")
+          )
+        )
+        mod_inventory_add_project_server(
+          "add_project", 
+          form_type = paste0(fundingSource, " Reallocation"),
+          funding_source = fundingSource,
+          user_coc = user_coc,
+          refresh_trigger = refresh_trigger
+        )
+        return(TRUE)
+      } else if(val == "Replace") {
+        if(project_data$mckinneyventoyhdp != "Yes") {
+          showNotification(
+            "It looks like you are trying to replace a non-YHDP project. Only 
+            YHDP projects can be replaced. If this is not a YHDP project, 
+            please mark the McKinney- Vento: YHDP field as 'No'"
+          )
+          return(FALSE)
+        }
+        
+        showModal(
+          mod_inventory_add_project_ui(
+            session$ns("add_project"), 
+            form_type = "YHDP Replacement", 
+            project_to_replace = project_data
+          )
+        )
+        mod_inventory_add_project_server(
+          "add_project", 
+          form_type = "YHDP Replacement", 
+          funding_source = "YHDP",
+          user_coc = user_coc
+        )
+        return(TRUE)
       }
     }
+
     observeEvent(input$projects_table_cell_edit, {
       req(project_data())
       info <- input$projects_table_cell_edit
@@ -145,7 +144,10 @@ mod_inventory_server <- function(id, user_coc) {
         info$value
       )
       
-      is_valid <- handle_reallocate_and_replace(row_index, col_name, info$value)
+      is_valid <- TRUE
+      if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
+        is_valid <- handle_reallocate_and_replace(row_index, info$value)
+      }
       req(is_valid)
       
       # Update database
