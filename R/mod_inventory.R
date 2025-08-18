@@ -87,12 +87,8 @@ mod_inventory_server <- function(id, user_coc) {
 
     update_db_and_cell <- function(info, col_name, project_row_data, new_value) {
       # Update database
-      project_id <- ifelse(
-        is.na(info$project_id) || is.null(info$project_id),
-        as.character(project_row_data$project_id),
-        info$project_id
-      )
-
+      project_id <- as.character(project_row_data$project_id)
+      
       DBI::dbExecute(
         DB_CON,
         sprintf(
@@ -131,10 +127,8 @@ mod_inventory_server <- function(id, user_coc) {
       req(project_data())
       
       info <- input$projects_table_cell_edit
-
       col_name <- colnames(project_data())[info$col + 1]
-
-      project_row_data <- project_data()[info$row]
+      project_row_data <- project_data()[project_id == info$project_id]
       
       fundingSource <- ifelse(
         project_row_data$mckinneyventoyhdp == "Yes",
@@ -164,12 +158,6 @@ mod_inventory_server <- function(id, user_coc) {
       req(is_valid && !identical(info$value, info$oldValue))
 
       # Handle Reallocation and Replace
-      modal_submission <- reactiveVal(NULL)
-      observeEvent(modal_submission(), {
-        req(modal_submission())
-        update_db_and_cell(info, col_name, project_row_data, new_value)
-      }, ignoreNULL = TRUE, once=TRUE)
-
       if(info$value %in% c("Reallocate", "Replace")) {
         form_type = ifelse(
           info$value == "Replace", 
@@ -191,6 +179,11 @@ mod_inventory_server <- function(id, user_coc) {
           user_coc = user_coc,
           parent_session = session
         )
+        
+        observeEvent(modal_submission(), {
+          req(modal_submission())
+          update_db_and_cell(info, col_name, project_row_data, new_value)
+        }, ignoreNULL = TRUE, once=TRUE)
       } 
       # Handle others
       else {
