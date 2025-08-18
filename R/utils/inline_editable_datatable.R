@@ -38,6 +38,7 @@ initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
     function(settings, json) {
       var table = this.api();
       var factorInfo = %s;
+      var tableID = '%s';
       
       // Function to revert cell to its original state
       function revertCell(cell, originalData) {
@@ -51,11 +52,11 @@ initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
         var $td = $(this);
   
         if ($td.find('select').length) return; // already editing
-  
+
         if (factorInfo[colIndex]) {
           var choices = factorInfo[colIndex];
           var currentVal = cell.data();
-
+debugger;
           // Build the dropdown
           var $select = $('<select></select>').css('width', '100%%');
           $.each(choices, function(i, value) {
@@ -69,10 +70,10 @@ initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
           $select.focus();
           
           // If user makes a change, trigger a cell_edit event
-          $select.on('change', function() {
+          $select.on('change blur', function(e) {
             revertCell(cell, currentVal);
-            Shiny.setInputValue('%s_cell_edit', {
-              row: cell.index().row,
+            Shiny.setInputValue('#' + tableID + '_cell_edit', {
+              row: cell.index().row + 1,
               col: cell.index().column,
               value: this.value,
               oldValue: currentVal,
@@ -80,10 +81,32 @@ initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
             }, {priority: 'event'});
           });
           
-          // Also handle losing focus (user clicks away)
-          $select.on('blur', function() {
-              revertCell(cell, currentVal);
+          $('input').on('keydown', function(e) {
+            if (e.key === 'Enter' && !e.altKey && !e.shiftKey && !e.ctrlKey) {
+              e.preventDefault(); // stop form submission if needed
+              $(this).blur();     // trigger blur
+            }
           });
+        }
+      });
+      
+      // =========================================================
+      // SECTION 2: NEW logic to preserve scroll position
+      // =========================================================
+      var scrollBody = $('#' + tableID + '_wrapper .dataTables_scrollBody');
+      
+      // Before the table is redrawn (e.g., by replaceData), save scroll position
+      table.on('preDraw.dt', function() {
+        if (scrollBody.length > 0) {
+          $(this).data('scrollPos', scrollBody.scrollTop());
+        }
+      });
+      
+      // After the table is redrawn, restore the scroll position
+      table.on('draw.dt', function() {
+        var scrollPos = $(this).data('scrollPos');
+        if (scrollPos && scrollBody.length > 0) {
+          scrollBody.scrollTop(scrollPos);
         }
       });
     }", 

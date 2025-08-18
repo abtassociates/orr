@@ -1,7 +1,6 @@
 LOOKUP_CHOICES <- list(
   funding_action = get_labelled_lookups("funding_action"),
   reallocation_funding_actions = c("New", "Expand"),
-  project_types = get_labelled_lookups("project_type"),
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
   coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
   yhdp_project_types = c("PSH", "RRH", "TH", "TH+RRH", "SSO - CE"), # what about SSO-Host Homes?
@@ -9,7 +8,7 @@ LOOKUP_CHOICES <- list(
   dv_reallocation_project_types = c("RRH", "TH+RRH", "SSO - CE"),
   funding_source = c("CoC","YHDP","DV"),
   no_yhdp_funding_source = c("CoC", "DV"),
-  target_populations = get_labelled_lookups("target_population")
+  target_populations = names(get_labelled_lookups("target_population"))
 )
 
 # ===================================================================
@@ -91,11 +90,13 @@ mod_inventory_add_project_server <- function(
     funding_source = NULL, 
     project_to_replace = NULL, 
     user_coc = NULL,
-    refresh_trigger = NULL
+    parent_session = NULL
 ) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     rv <- reactiveValues(submitted_projects = list())
+    modal_submission_outcome <- reactiveVal(NULL)
+    
     
     # =================================================================
     # 1. Centralized State Logic (Reactive Expressions)
@@ -107,7 +108,7 @@ mod_inventory_add_project_server <- function(
       if (funding_source == "YHDP") "Yth" 
       else if (funding_source == "DV") "DV" 
       else if(is.null(input$target_population) || input$target_population == "") ""
-      else get_lookup_label(input$target_population, "target_population")
+      else input$target_population
     })
     
     # Determine which bed groups should be visible. This is the core of the display logic.
@@ -181,7 +182,6 @@ mod_inventory_add_project_server <- function(
       # --- Update Control States (Enabled/Disabled) ---
       shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
       shinyjs::toggleState("funding_action", condition = fa != "Replace" && !(funding_source == "YHDP" && grepl("Reallocation", form_type)))
-      shinyjs::toggleState("target_population", condition = funding_source == "CoC")
       shinyjs::toggleState("organization_name", condition = form_type != "YHDP Replacement")
       
       # --- Update Visibility ---
@@ -207,8 +207,9 @@ mod_inventory_add_project_server <- function(
       updateTextInput(session, "grant_number", label = if (fa == "Replace") "Grant Number*" else "Grant Number")
       
       # --- Update Target Population Selection ---
+      shinyjs::toggleState("target_population", condition = TRUE)
       if (funding_source != "CoC") updateSelectInput(session, "target_population", selected = tp)
-      
+      shinyjs::toggleState("target_population", condition = funding_source == "CoC")
     })
     
     # --- PSH Checkbox Logic ---
@@ -313,6 +314,7 @@ mod_inventory_add_project_server <- function(
         iv$add_validator(v)
       })
     }
+
     iv$enable()
 
     # --- Submission Event ---
@@ -358,17 +360,16 @@ mod_inventory_add_project_server <- function(
         )
         
         DBI::dbAppendTable(DB_CON, "projects", new_project_data)
-        refresh_trigger(refresh_trigger() + 1)
         # rv$submitted_projects <- append(rv$submitted_projects, list(new_project_data))
         showNotification("Project submitted successfully.", type = "message")
         removeModal()
+        modal_submission_outcome("success")
       } else {
-        iv$enable() # Show validation messages
         showNotification("Please correct the errors before submitting.", type = "error")
       }
-    })
+    }, once=TRUE)
     
-    # Return submitted data to the parent module
-    # return(reactive(rv$submitted_projects))
+    # Return the reactiveVal to the parent module
+    return(modal_submission_outcome)
   })
 }

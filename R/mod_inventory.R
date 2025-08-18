@@ -62,22 +62,9 @@ mod_inventory_server <- function(id, user_coc) {
       initialize_table_ui(data, user_columns, session$ns("projects_table"), initial_filter)
     })
     
-    
-    
     # inline edit handling ------
-    handle_reallocate_and_replace <- function(row_index, val) {
-      project_data <- project_data()[row_index + 1]
+    validity_pre_checks <- function(project_data, fundingSource, val) {
       if(val == "Reallocate") {
-        fundingSource <- ifelse(
-          project_data$mckinneyventoyhdp == "Yes",
-          "YHDP",
-          ifelse(
-            isTruthy(project_data$dv_renewal == "Yes" || project_data$target_population == "DV"),
-            "DV",
-            "CoC"
-          )
-        )
-        
         if(fundingSource == "DV" && project_data$project_type == "SSO - CE") {
           showNotification(
             "According to the FY2024 NOFO, you cannot reallocate a DV SSO-CE 
@@ -85,21 +72,6 @@ mod_inventory_server <- function(id, user_coc) {
           )
           return(FALSE)
         }
-        
-        showModal(
-          mod_inventory_add_project_ui(
-            session$ns("add_project"), 
-            form_type = paste0(fundingSource, " Reallocation")
-          )
-        )
-        mod_inventory_add_project_server(
-          "add_project", 
-          form_type = paste0(fundingSource, " Reallocation"),
-          funding_source = fundingSource,
-          user_coc = user_coc,
-          refresh_trigger = refresh_trigger
-        )
-        return(TRUE)
       } else if(val == "Replace") {
         if(project_data$mckinneyventoyhdp != "Yes") {
           showNotification(
@@ -109,51 +81,15 @@ mod_inventory_server <- function(id, user_coc) {
           )
           return(FALSE)
         }
-        
-        showModal(
-          mod_inventory_add_project_ui(
-            session$ns("add_project"), 
-            form_type = "YHDP Replacement", 
-            project_to_replace = project_data
-          )
-        )
-        mod_inventory_add_project_server(
-          "add_project", 
-          form_type = "YHDP Replacement", 
-          funding_source = "YHDP",
-          user_coc = user_coc
-        )
-        return(TRUE)
       }
+      return(TRUE)
     }
 
-    observeEvent(input$projects_table_cell_edit, {
-      req(project_data())
-      info <- input$projects_table_cell_edit
-      row_index <- info$row
-      col_index <- info$col
-      col_name <- colnames(project_data())[col_index + 1]
-      
-      new_value <- ifelse(
-        is.factor(project_data()[[col_name]]),
-        ifelse(
-          identical(levels(project_data()[[col_name]]), c("Yes","No")),
-          ifelse(info$value == "Yes", 1, 0),
-          lookups[reference_type == col_name & value == info$value]$reference_id
-        ),
-        info$value
-      )
-      
-      is_valid <- TRUE
-      if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
-        is_valid <- handle_reallocate_and_replace(row_index, info$value)
-      }
-      req(is_valid)
-      
+    update_db_and_cell <- function(info, col_name, project_row_data, new_value) {
       # Update database
       project_id <- ifelse(
         is.na(info$project_id) || is.null(info$project_id),
-        as.character(project_data()[row_index, "project_id"]),
+        as.character(project_row_data$project_id),
         info$project_id
       )
 
@@ -168,16 +104,98 @@ mod_inventory_server <- function(id, user_coc) {
 
       # Update cell
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
-      shinyjs::runjs(sprintf("
-          var table = $('#%s table').DataTable();
-          table.cell(%s, %s).data('%s');
+      shinyjs::runjs(
+        sprintf("
+          var table_id = '%s';
+          var row = %s;
+          var col = %s;
+          var data = '%s';
+          
+          var table = $('#' + table_id + ' table').DataTable();
+          debugger;
+          table.cell(row - 1, col).data(data).draw();
         ", 
-        session$ns("projects_table"), info$row, info$col, info$value
-      ))
+                session$ns("projects_table"), 
+                info$row, 
+                info$col, 
+                info$value
+        ))
       
-      message(sprintf("Updated row id=%s, column=%s to '%s'",
+      
+      message(sprintf("Updated project_id=%s, column=%s to '%s'",
                       project_id, col_name, new_value))
       
+    }
+    
+    observeEvent(input$projects_table_cell_edit, {
+      req(project_data())
+      
+      info <- input$projects_table_cell_edit
+
+      col_name <- colnames(project_data())[info$col + 1]
+
+      project_row_data <- project_data()[info$row]
+      
+      fundingSource <- ifelse(
+        project_row_data$mckinneyventoyhdp == "Yes",
+        "YHDP",
+        ifelse(
+          isTruthy(project_row_data$dv_renewal == "Yes" || project_row_data$target_population == "DV"),
+          "DV",
+          "CoC"
+        )
+      )
+      
+      new_value <- ifelse(
+        is.factor(project_data()[[col_name]]),
+        ifelse(
+          identical(levels(project_data()[[col_name]]), c("Yes","No")),
+          ifelse(info$value == "Yes", 1, 0),
+          lookups[reference_type == col_name & value == info$value]$reference_id
+        ),
+        info$value
+      )
+      
+      is_valid <- TRUE
+      if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
+        is_valid <- validity_pre_checks(project_row_data, fundingSource, info$value)
+      }
+
+      req(is_valid && !identical(info$value, info$oldValue))
+
+      # Handle Reallocation and Replace
+      modal_submission <- reactiveVal(NULL)
+      observeEvent(modal_submission(), {
+        req(modal_submission())
+        update_db_and_cell(info, col_name, project_row_data, new_value)
+      }, ignoreNULL = TRUE, once=TRUE)
+
+      if(info$value %in% c("Reallocate", "Replace")) {
+        form_type = ifelse(
+          info$value == "Replace", 
+          "YHDP Replacement", 
+          paste0(fundingSource, " Reallocation")
+        )
+        
+        showModal(
+          mod_inventory_add_project_ui(
+            session$ns("add_project"), 
+            form_type = form_type,
+            project_to_replace = ifelse(info$value == "Replace",project_data, NULL)
+          )
+        )
+        modal_submission <- mod_inventory_add_project_server(
+          "add_project", 
+          form_type = form_type,
+          funding_source = fundingSource,
+          user_coc = user_coc,
+          parent_session = session
+        )
+      } 
+      # Handle others
+      else {
+        update_db_and_cell(info, col_name, project_row_data, new_value)
+      }
     }, ignoreInit = TRUE)
     
     # Add additonal project handling ----
