@@ -157,6 +157,15 @@ mod_inventory_server <- function(id, user_coc) {
           ]
         )
         
+        # Update cell
+        # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
+        shinyjs::runjs(sprintf("
+          var table = $('#%s table').DataTable();
+          table.cell(%s, %s).data('%s');
+        ", 
+                               session$ns("projects_table"), info$row - 1, info$col, info$value
+        ))
+        
         message(sprintf("Updated project_id=%s, column=%s to '%s'",
                         proj_id, col_name, new_value))
         
