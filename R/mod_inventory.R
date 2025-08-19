@@ -21,12 +21,11 @@ mod_inventory_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
-    refresh_trigger <- reactiveVal(0)
+    project_data <- reactiveVal(NULL)
     
-    project_data <- reactive({
+    observe({
       req(user_coc$coc_instance_id)
-      refresh_trigger()
-      
+
       data <- get_db_query(
         "SELECT * FROM projects WHERE coc_instance_id = $1", 
         params = user_coc$coc_instance_id
@@ -43,12 +42,13 @@ mod_inventory_server <- function(id, user_coc) {
           is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
           is_dedicated_dv = factor_yesno(is_dedicated_dv)
         )
+      
+      project_data(data)
     })
     
     # Projects table -----
     output$projects_table <- renderDT({
-      req(project_data())
-      data <- project_data()
+      data <- isolate(project_data())
       
       validate(need(
         nrow(data) > 0, 
@@ -58,8 +58,18 @@ mod_inventory_server <- function(id, user_coc) {
       # filter out Ignores by default
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
-      
+
       initialize_table_ui(data, user_columns, session$ns("projects_table"), initial_filter)
+    })
+    
+
+    projects_table_proxy <- dataTableProxy(session$ns("projects_table"))
+
+    observe({
+      req(project_data())
+      
+      # replaceData is the proxy equivalent of re-rendering. It's much faster.
+      replaceData(projects_table_proxy, project_data(), resetPaging = FALSE, rownames = FALSE)
     })
     
     # inline edit handling ------
@@ -85,49 +95,18 @@ mod_inventory_server <- function(id, user_coc) {
       return(TRUE)
     }
 
-    update_db_and_cell <- function(info, col_name, project_row_data, new_value) {
-      # Update database
-      project_id <- as.character(project_row_data$project_id)
-      
-      DBI::dbExecute(
-        DB_CON,
-        sprintf(
-          "UPDATE projects SET %s = $1 WHERE project_id = $2",
-          DBI::dbQuoteIdentifier(DB_CON, col_name)
-        ), 
-        params = list(as.character(new_value), project_id)
-      )
-
-      # Update cell
-      # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
-      shinyjs::runjs(
-        sprintf("
-          var table_id = '%s';
-          var row = %s;
-          var col = %s;
-          var data = '%s';
-          
-          var table = $('#' + table_id + ' table').DataTable();
-          debugger;
-          table.cell(row - 1, col).data(data).draw();
-        ", 
-                session$ns("projects_table"), 
-                info$row, 
-                info$col, 
-                info$value
-        ))
-      
-      
-      message(sprintf("Updated project_id=%s, column=%s to '%s'",
-                      project_id, col_name, new_value))
-      
-    }
-    
     observeEvent(input$projects_table_cell_edit, {
       req(project_data())
       
       info <- input$projects_table_cell_edit
       col_name <- colnames(project_data())[info$col + 1]
+      
+      info$project_id <- ifelse(
+        is.na(info$project_id) || is.null(info$project_id),
+        as.character(project_data()[info$row, "project_id"]),
+        info$project_id
+      )
+      
       project_row_data <- project_data()[project_id == info$project_id]
       
       fundingSource <- ifelse(
@@ -157,6 +136,32 @@ mod_inventory_server <- function(id, user_coc) {
 
       req(is_valid && !identical(info$value, info$oldValue))
 
+      update_db_and_cell <- function() {
+        # Update database
+        proj_id <- as.character(project_row_data$project_id)
+        
+        DBI::dbExecute(
+          DB_CON,
+          sprintf(
+            "UPDATE projects SET %s = $1 WHERE project_id = $2",
+            DBI::dbQuoteIdentifier(DB_CON, col_name)
+          ), 
+          params = list(as.character(new_value), proj_id)
+        )
+        
+        # update the reactiveVal that updates the proxy
+        project_data(
+          copy(project_data())[
+            project_id == proj_id, 
+            (col_name) := info$value
+          ]
+        )
+        
+        message(sprintf("Updated project_id=%s, column=%s to '%s'",
+                        proj_id, col_name, new_value))
+        
+      }
+      
       # Handle Reallocation and Replace
       if(info$value %in% c("Reallocate", "Replace")) {
         form_type = ifelse(
@@ -182,12 +187,12 @@ mod_inventory_server <- function(id, user_coc) {
         
         observeEvent(modal_submission(), {
           req(modal_submission())
-          update_db_and_cell(info, col_name, project_row_data, new_value)
+          update_db_and_cell()
         }, ignoreNULL = TRUE, once=TRUE)
       } 
       # Handle others
       else {
-        update_db_and_cell(info, col_name, project_row_data, new_value)
+        update_db_and_cell()
       }
     }, ignoreInit = TRUE)
     

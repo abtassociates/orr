@@ -72,7 +72,7 @@ debugger;
           // If user makes a change, trigger a cell_edit event
           $select.on('change blur', function(e) {
             revertCell(cell, currentVal);
-            Shiny.setInputValue('#' + tableID + '_cell_edit', {
+            Shiny.setInputValue(tableID + '_cell_edit', {
               row: cell.index().row + 1,
               col: cell.index().column,
               value: this.value,
@@ -87,26 +87,6 @@ debugger;
               $(this).blur();     // trigger blur
             }
           });
-        }
-      });
-      
-      // =========================================================
-      // SECTION 2: NEW logic to preserve scroll position
-      // =========================================================
-      var scrollBody = $('#' + tableID + '_wrapper .dataTables_scrollBody');
-      
-      // Before the table is redrawn (e.g., by replaceData), save scroll position
-      table.on('preDraw.dt', function() {
-        if (scrollBody.length > 0) {
-          $(this).data('scrollPos', scrollBody.scrollTop());
-        }
-      });
-      
-      // After the table is redrawn, restore the scroll position
-      table.on('draw.dt', function() {
-        var scrollPos = $(this).data('scrollPos');
-        if (scrollPos && scrollBody.length > 0) {
-          scrollBody.scrollTop(scrollPos);
         }
       });
     }", 
