@@ -86,8 +86,8 @@ mod_inventory_server <- function(id, user_coc) {
         if(project_data$mckinneyventoyhdp != "Yes") {
           showNotification(
             "It looks like you are trying to replace a non-YHDP project. Only 
-            YHDP projects can be replaced. If this is not a YHDP project, 
-            please mark the McKinney- Vento: YHDP field as 'No'"
+            YHDP projects can be replaced. If this is a YHDP project, 
+            please mark the McKinney- Vento: YHDP field as 'Yes'"
           )
           return(FALSE)
         }
