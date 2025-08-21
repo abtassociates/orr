@@ -59,12 +59,12 @@ mod_funding_priorities_ui <- function(id) {
           layout_columns(
             col_widths = c(6, 6),
             checkboxGroupInput(
-              ns("coc_bonus_types"),
+              ns("coc_bonus_types_1"),
               NULL,
               choices = coc_bonus_opportunities %>% head(length(.)/2)
             ),
             checkboxGroupInput(
-              ns("coc_bonus_types"),
+              ns("coc_bonus_types_2"),
               NULL,
               choices = coc_bonus_opportunities %>% tail(length(.)/2)
             )
@@ -243,7 +243,7 @@ mod_funding_priorities_server <- function(id, user_coc) {
     )
     
     observeEvent(input$population_toggles, {
-      dataTableProxy("priorities_table") |> 
+      dataTableProxy(session$ns("priorities_table")) |> 
         replaceData(priorities_data())
     })
     
@@ -265,10 +265,9 @@ mod_funding_priorities_server <- function(id, user_coc) {
 
       # Only proceed if data has actually changed
       if (data_has_changed()) {
-        browser()
         # Isolate the data to prevent reactive loops
         data_to_save <- isolate(priorities_data())
-        browser()
+
         # The "UPSERT" query
         sql_query <- "
           INSERT INTO coc_funding_priorities (coc_instance_id, project_type, target_population, beds, funding, priority, created_by)
