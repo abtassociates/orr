@@ -87,16 +87,15 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
 mod_inventory_add_project_server <- function(
     id, 
     form_type = "New", 
-    funding_source = NULL, 
+    funding_source = "", 
     project_to_replace = NULL, 
     user_coc = NULL,
     parent_session = NULL
 ) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    rv <- reactiveValues(submitted_projects = list())
     modal_submission_outcome <- reactiveVal(NULL)
-    
+    add_another_flag <- reactiveVal(FALSE)
     
     # =================================================================
     # 1. Centralized State Logic (Reactive Expressions)
@@ -105,8 +104,8 @@ mod_inventory_add_project_server <- function(
 
     # Determine the definitive target population.
     current_target_pop <- reactive({
-      if (funding_source == "YHDP") "Yth" 
-      else if (funding_source == "DV") "DV" 
+      if (current_funding_source() == "YHDP") "Yth" 
+      else if (current_funding_source() == "DV") "DV" 
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
     })
@@ -123,8 +122,8 @@ mod_inventory_add_project_server <- function(
 
       # Determine visibility based on funding and population
       groups <- c()
-      if (funding_source == "YHDP") groups <- c("youth_beds")
-      else if (funding_source == "DV") groups <- c("total_beds") # Will be relabeled to "DV Beds"
+      if (current_funding_source() == "YHDP") groups <- c("youth_beds")
+      else if (current_funding_source() == "DV") groups <- c("total_beds") # Will be relabeled to "DV Beds"
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
         if (tp == "Yth" || tp == "") groups <- c(groups, "youth_beds")
@@ -138,7 +137,7 @@ mod_inventory_add_project_server <- function(
     # =================================================================
     
     # Set initial values for reallocation or replacement
-    if (grepl("Reallocation", form_type) && !is.null(funding_source)) {
+    if (grepl("Reallocation", form_type) && funding_source != "") {
       updateSelectInput(session, "funding_source", selected = funding_source)
       updateSelectInput(session, "funding_action", choices = c("", LOOKUP_CHOICES$reallocation_funding_actions))
       if (funding_source == "YHDP") {
@@ -155,62 +154,86 @@ mod_inventory_add_project_server <- function(
       updateActionLink(session, "add_another_link", label = "Submit and add another replacement project?")
     }
     
+    current_funding_source <- reactive({
+      ifelse(funding_source != "", funding_source,
+             ifelse(!is.null(input$funding_source), input$funding_source, ""))
+      
+    })
     # =================================================================
     # 3. Dynamic UI Updater (Single Observer)
     # This observer updates the entire UI based on the state reactives.
     # =================================================================
+    # Update project type choices when funding source or action changes
+    observeEvent(c(input$funding_action, input$funding_source), {
+      fa <- if(is.null(input$funding_action)) "" else input$funding_action
+
+      proj_type_choices <- 
+        if (current_funding_source() == "CoC" && fa %in% c("Renew", "Reallocate")) LOOKUP_CHOICES$coc_renewal_reallocate_types
+        else if (current_funding_source() == "CoC") LOOKUP_CHOICES$coc_new_expansion_types
+        else if (current_funding_source() == "YHDP") LOOKUP_CHOICES$yhdp_project_types
+        else if (current_funding_source() == "DV" && fa == "Reallocate") LOOKUP_CHOICES$dv_reallocation_project_types
+        else if (current_funding_source() == "DV") LOOKUP_CHOICES$dv_project_types
+        else c()
+      
+      updateSelectInput(session, "project_type", choices = c("", proj_type_choices))
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
-    observe({
-      # --- Get current state ---
+    # Update visibility based on funding action
+    observeEvent(input$funding_action, {
+      fa <- input$funding_action
+      is_new_or_expand <- fa %in% c("New", "Expand")
+      
+      shinyjs::toggle("grant_number", condition = !is_new_or_expand & !grepl("Reallocation", form_type))
+      if(current_funding_source() == "") shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
+      shinyjs::toggleState("funding_action", condition = fa != "Replace" && !(current_funding_source() == "YHDP" && grepl("Reallocation", form_type)))
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
+    
+    # Update bed group visibility
+    observeEvent(c(input$project_type, current_target_pop()), {
+      vis_beds <- visible_bed_groups()
+      all_bed_groups <- c("total_beds", "ch_beds", "vet_beds", "youth_beds")
+      lapply(all_bed_groups, function(group) shinyjs::toggle(group, condition = group %in% vis_beds))
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    
+    # Update DV checkbox and related elements
+    observeEvent(c(input$funding_action, input$project_type, current_target_pop()), {
       fa <- if(is.null(input$funding_action)) "" else input$funding_action
       pt <- if(is.null(input$project_type)) "" else input$project_type
       tp <- current_target_pop()
-      vis_beds <- visible_bed_groups()
       
-      # --- Update Dropdown Choices ---
-      proj_type_choices <- 
-        if (funding_source == "CoC" && fa %in% c("Renew", "Reallocate")) LOOKUP_CHOICES$coc_renewal_reallocate_types
-        else if (funding_source == "CoC") LOOKUP_CHOICES$coc_new_expansion_types
-        else if (funding_source == "YHDP") LOOKUP_CHOICES$yhdp_project_types
-        else if (funding_source == "DV" && fa == "Reallocate") LOOKUP_CHOICES$dv_reallocation_project_types
-        else if (funding_source == "DV") LOOKUP_CHOICES$dv_project_types
-        else c()
-      
-      updateSelectInput(session, "project_type", choices = c("", proj_type_choices),
-                        selected = if(pt %in% proj_type_choices) pt else "")
-      
-      # --- Update Control States (Enabled/Disabled) ---
-      shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
-      shinyjs::toggleState("funding_action", condition = fa != "Replace" && !(funding_source == "YHDP" && grepl("Reallocation", form_type)))
-      shinyjs::toggleState("organization_name", condition = form_type != "YHDP Replacement")
-      
-      # --- Update Visibility ---
       is_new_or_expand <- fa %in% c("New", "Expand")
-      shinyjs::toggle("grant_number", condition = !is_new_or_expand & !grepl("Reallocation", form_type))
-      
       show_dv_check <- is_new_or_expand && (
         (isTruthy(pt) && pt == "SSO - CE") || 
-        (tp == "DV" && isTruthy(pt) && pt %in% c("RRH", "TH+RRH"))
+          (tp == "DV" && isTruthy(pt) && pt %in% c("RRH", "TH+RRH"))
       )
+      
       shinyjs::toggle("all_dv_checkbox", condition = show_dv_check)
-      shinyjs::toggle("target_population_inst", condition = funding_source == "CoC" && !show_dv_check)
+      if(current_funding_source() == "DV") updateCheckboxInput(session, "all_dv_checkbox", value = TRUE)
+      shinyjs::toggle("target_population_inst", condition = current_funding_source() == "CoC" && !show_dv_check)
+      shinyjs::toggle("ch_checkbox_div", condition = current_funding_source() == "CoC" && isTruthy(pt) && pt == "PSH")
+      shinyjs::toggleState("all_dv_checkbox", condition = show_dv_check && current_funding_source() != "DV")
       
-      shinyjs::toggle("ch_checkbox_div", condition = funding_source == "CoC" && isTruthy(pt) && pt == "PSH")
-      
-      # Toggle bed groups based on the `visible_bed_groups` reactive
-      all_bed_groups <- c("total_beds", "ch_beds", "vet_beds", "youth_beds")
-      lapply(all_bed_groups, function(group) shinyjs::toggle(group, condition = group %in% vis_beds))
-      
-      # --- Update Labels ---
-      updateNumericInput(session, "total_beds_fam", label = if (funding_source == "DV") "DV Family Beds*" else "Total Family Beds*")
-      updateNumericInput(session, "total_beds_ind", label = if (funding_source == "DV") "DV Individual Beds*" else "Total Individual Beds*")
+      # Missing organization_name state control
+      shinyjs::toggleState("organization_name", condition = form_type != "YHDP Replacement")
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    
+    # Update labels based on funding source and action
+    observeEvent(c(input$funding_action), {
+      fa <- if(is.null(input$funding_action)) "" else input$funding_action
+
+      updateNumericInput(session, "total_beds_fam", label = if (current_funding_source() == "DV") "DV Family Beds*" else "Total Family Beds*")
+      updateNumericInput(session, "total_beds_ind", label = if (current_funding_source() == "DV") "DV Individual Beds*" else "Total Individual Beds*")
       updateTextInput(session, "grant_number", label = if (fa == "Replace") "Grant Number*" else "Grant Number")
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    
+    # Update Target Population Selection
+    observeEvent(current_target_pop(), {
+      tp <- current_target_pop()
       
-      # --- Update Target Population Selection ---
       shinyjs::toggleState("target_population", condition = TRUE)
-      if (funding_source != "CoC") updateSelectInput(session, "target_population", selected = tp)
-      shinyjs::toggleState("target_population", condition = funding_source == "CoC")
-    })
+      if (current_funding_source() != "CoC") updateSelectInput(session, "target_population", selected = tp)
+      shinyjs::toggleState("target_population", condition = current_funding_source() == "CoC")
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
     # --- PSH Checkbox Logic ---
     observeEvent(input$targeted_ch_fam, 
@@ -242,12 +265,7 @@ mod_inventory_add_project_server <- function(
     iv$add_rule("funding_action", sv_required())
     iv$add_rule("project_type", sv_required())
     iv$add_rule("funding_source", sv_required())
-    
-    # Target Population
-    target_pop_validator <- shinyvalidate::InputValidator$new()
-    target_pop_validator$add_rule("target_population", sv_required())
-    target_pop_validator$condition( ~ funding_source == "CoC")
-    iv$add_validator(target_pop_validator)
+    iv$add_rule("funding_source", sv_required())
     
     # Grant number is only required if not New or Expand
     grant_iv <- shinyvalidate::InputValidator$new()
@@ -330,7 +348,7 @@ mod_inventory_add_project_server <- function(
         # Handle YHDP Reallocation special case for total beds
         total_fam <- get_val("total_beds", "fam")
         total_ind <- get_val("total_beds", "ind")
-        if (funding_source == "YHDP" && grepl("Reallocation", form_type)) {
+        if (input$funding_source == "YHDP" && grepl("Reallocation", form_type)) {
           total_fam <- get_val("youth_beds", "fam")
           total_ind <- get_val("youth_beds", "ind")
         }
@@ -354,20 +372,33 @@ mod_inventory_add_project_server <- function(
           par_youth_beds = get_val("youth_beds", "fam"), single_youth_beds = get_val("youth_beds", "ind"),
           dv_fam_beds = if(input$target_population == "DV") total_fam,
           dv_ind_beds = if(input$target_population == "DV") total_ind,
-          is_dedicated_ch_fam = funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_fam,
-          is_dedicated_ch_ind = funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind,
+          is_dedicated_ch_fam = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_fam,
+          is_dedicated_ch_ind = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind,
           created_by = user_coc$username
         )
         
         DBI::dbAppendTable(DB_CON, "projects", new_project_data)
-        # rv$submitted_projects <- append(rv$submitted_projects, list(new_project_data))
         showNotification("Project submitted successfully.", type = "message")
+
+        if(add_another_flag()) {
+          modal_submission_outcome("add another")
+        } else {
+          modal_submission_outcome("success")
+        }
         removeModal()
-        modal_submission_outcome("success")
       } else {
+        add_another_flag(FALSE)
         showNotification("Please correct the errors before submitting.", type = "error")
       }
-    }, once=TRUE)
+    }, ignoreInit = TRUE, once=TRUE)
+    
+    observeEvent(input$add_another_link, {
+      # This action sets a flag and then programmatically clicks the main submit button.
+      # This allows us to reuse the validation and submission logic from the submit button observer.
+      add_another_flag(TRUE)
+      browser()
+      shinyjs::click("submit")
+    }, ignoreInit = TRUE, once=TRUE)
     
     # Return the reactiveVal to the parent module
     return(modal_submission_outcome)
