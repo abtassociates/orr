@@ -95,6 +95,45 @@ mod_inventory_server <- function(id, user_coc) {
       return(TRUE)
     }
 
+    update_db_and_cell <- function(info, new_value) {
+      project_row_data <- project_data()[project_id == info$project_id]
+      # Update database
+      proj_id <- as.character(project_row_data$project_id)
+      
+      col_name <- colnames(project_data())[info$col + 1]
+      
+      DBI::dbExecute(
+        DB_CON,
+        sprintf(
+          "UPDATE projects SET %s = $1 WHERE project_id = $2",
+          DBI::dbQuoteIdentifier(DB_CON, col_name)
+        ), 
+        params = list(as.character(new_value), proj_id)
+      )
+      
+      # update the reactiveVal that updates the proxy
+      project_data(
+        copy(project_data())[
+          project_id == proj_id, 
+          (col_name) := info$value
+        ]
+      )
+      
+      # Update cell
+      # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
+      shinyjs::runjs(sprintf(
+        "
+          var table = $('#%s table').DataTable();
+          table.cell(%s, %s).data('%s');
+        ", 
+        session$ns("projects_table"), info$row - 1, info$col, info$value
+      ))
+      
+      message(sprintf("Updated project_id=%s, column=%s to '%s'",
+                      proj_id, col_name, new_value))
+      
+    }
+    
     observeEvent(input$projects_table_cell_edit, {
       req(project_data())
       
@@ -135,82 +174,58 @@ mod_inventory_server <- function(id, user_coc) {
       }
 
       req(is_valid && !identical(info$value, info$oldValue))
-
-      update_db_and_cell <- function() {
-        # Update database
-        proj_id <- as.character(project_row_data$project_id)
-        
-        DBI::dbExecute(
-          DB_CON,
-          sprintf(
-            "UPDATE projects SET %s = $1 WHERE project_id = $2",
-            DBI::dbQuoteIdentifier(DB_CON, col_name)
-          ), 
-          params = list(as.character(new_value), proj_id)
-        )
-        
-        # update the reactiveVal that updates the proxy
-        project_data(
-          copy(project_data())[
-            project_id == proj_id, 
-            (col_name) := info$value
-          ]
-        )
-        
-        # Update cell
-        # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
-        shinyjs::runjs(sprintf("
-          var table = $('#%s table').DataTable();
-          table.cell(%s, %s).data('%s');
-        ", 
-                               session$ns("projects_table"), info$row - 1, info$col, info$value
-        ))
-        
-        message(sprintf("Updated project_id=%s, column=%s to '%s'",
-                        proj_id, col_name, new_value))
-        
-      }
       
       # Handle Reallocation and Replace
       if(info$value %in% c("Reallocate", "Replace")) {
-        form_type = ifelse(
+        form_type <- ifelse(
           info$value == "Replace", 
           "YHDP Replacement", 
           paste0(fundingSource, " Reallocation")
         )
-        
-        showModal(
-          mod_inventory_add_project_ui(
-            session$ns("add_project"), 
-            form_type = form_type,
-            project_to_replace = ifelse(info$value == "Replace",project_data, NULL)
-          )
-        )
-        modal_submission <- mod_inventory_add_project_server(
-          "add_project", 
-          form_type = form_type,
-          funding_source = fundingSource,
-          user_coc = user_coc,
-          parent_session = session
-        )
-        
-        observeEvent(modal_submission(), {
-          req(modal_submission())
-          update_db_and_cell()
-        }, ignoreNULL = TRUE, once=TRUE)
+        project_to_replace <- if(info$value == "Replace") project_data else NULL
+        show_project_modal(form_type, fundingSource, info, new_value, project_to_replace)
       } 
       # Handle others
       else {
-        update_db_and_cell()
+        update_db_and_cell(info, new_value)
       }
     }, ignoreInit = TRUE)
     
+    # A function to show the modal and set up the server logic
+    show_project_modal <- function(form_type = "New", fundingSource = "", info = NULL, new_value = NULL, project_to_replace = NULL) {
+      showModal(
+        mod_inventory_add_project_ui(
+          session$ns("add_project"), 
+          form_type = form_type,
+          project_to_replace = project_to_replace
+        )
+      )
+      modal_submission <- mod_inventory_add_project_server(
+        "add_project", 
+        form_type = form_type,
+        funding_source = fundingSource,
+        user_coc = user_coc,
+        parent_session = session
+      )
+      
+      observeEvent(modal_submission(), {
+        req(modal_submission())
+        
+        if(form_type == "New") {
+          dbAppendTable(DB_CON, "projects", modal_submission()$project_data)
+        } else {
+          update_db_and_cell(info, new_value)
+        }
+
+        if(modal_submission() == "add another") {
+          show_project_modal(form_type, fundingSource, info, new_value, project_to_replace)
+        }
+      }, ignoreNULL = TRUE, once=TRUE)
+    }
+    
     # Add additonal project handling ----
     observeEvent(input$add_project_btn, {
-      showModal(
-        mod_inventory_add_project_ui(session$ns("add_project"))
-      )
-      mod_inventory_add_project_server("add_project", user_coc = user_coc)
+      show_project_modal()
     })
     
     # View GIW Data -------
