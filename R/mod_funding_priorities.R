@@ -1,5 +1,5 @@
 pop_grp_toggles <- expand.grid(
-  pop = c("All" = 0, get_labelled_lookups("target_population")),
+  pop = c("All" = 0, get_labelled_lookups("target_population", lookup_col = "value_long")),
   grp = get_labelled_lookups("population_group", lookup_col = "value_long")
 ) %>%
   qDT() %>%
@@ -7,7 +7,7 @@ pop_grp_toggles <- expand.grid(
     pop_txt = ifelse(names(pop) == "Domestic Violence", "DV", names(pop)),
     grp_txt = names(grp)
   ) %>%
-  fsubset(pop_txt != "Not Applicable") %>%
+  fsubset(!pop_txt %in% c("Not Applicable", "Housing Inventory Count", "General")) %>%
   setorder(-grp, pop) %>%
   fmutate(
     full_text = fcase(
