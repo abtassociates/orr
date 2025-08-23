@@ -33,7 +33,7 @@ mod_funding_priorities_ui <- function(id) {
   # Funding Ceilings + Priorities
   nav_panel(
     "Funding Ceilings + Priorities",
-    value = "funding_priorities",
+    value = id,
     card(
       min_height=300,
       card_header("General Funding Information"),
@@ -101,7 +101,7 @@ mod_funding_priorities_ui <- function(id) {
 
 mod_funding_priorities_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
-    
+    ns <- NS(id)
     data_has_changed <- reactiveVal(FALSE)
     auto_save_timer <- reactiveTimer(5000)
 
