@@ -129,14 +129,13 @@ mod_funding_priorities_server <- function(id, user_coc) {
     
     observe({
       req(user_coc$coc)
-      
-      lapply(ard_field_names, function(id) {
+      lapply(ard_field_names, function(i) {
         updateNumericInput(
           session, 
-          id, 
-          value = hud_ard_coc_data()[[id]]
+          i, 
+          value = hud_ard_coc_data()[[i]]
         )
-        if(id != "dv_ard") shinyjs::disable(id)
+        if(i != "dv_ard") shinyjs::disable(i)
       })
     })
     
