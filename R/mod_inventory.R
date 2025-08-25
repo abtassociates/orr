@@ -102,6 +102,7 @@ mod_inventory_server <- function(id, user_coc) {
       return(TRUE)
     }
 
+    # Update projects -----
     update_db <- function(new_value, col_name, proj_id) {
       DBI::dbExecute(
         DB_CON,
@@ -136,8 +137,26 @@ mod_inventory_server <- function(id, user_coc) {
       update_db(new_value, col_name, proj_id)
     }
     
-    inventory_append <- function(project_data) {
-      # update the reactiveVal that updates the proxy
+    # Add/append new projects -----
+    append_to_datatable <- function(new_project_data) {
+      dt_data <- new_project_data  %>% 
+        fmutate(
+          project_id = "temp",
+          mckinneyvento = factor_yesno(mckinneyvento),
+          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          dv_renewal = factor_yesno(dv_renewal),
+          coc_amount_awarded_last_year = NA,
+          coc_amount_expended_last_year = NA,
+          coc_funding_requested = NA,
+          geocode = "",                      
+          amount_other_public_funding = NA,
+          amount_private_funding = NA,
+          is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
+          is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
+          is_dedicated_dv = factor_yesno(is_dedicated_dv)
+        ) 
+      
+      # When a new row is added, the inventory_add_project module handles the DB updatewe update the projects_data
       new_row <- project_data %>% 
         fselect(names(projects_data())) %>% 
         fmutate(project_id = as.integer(fmax(projects_data()$project_id) + 1))
@@ -146,6 +165,27 @@ mod_inventory_server <- function(id, user_coc) {
       
       projects_data(updated_data)
       new_project(TRUE)
+    }
+    
+    append_to_db <- function(new_project_data) {
+      db_data <- new_project_data %>%
+        fmutate(
+          coc_instance_id = user_coc$coc_instance_id,
+          funding_action = get_ref_id(funding_action),
+          project_type = get_ref_id(project_type),
+          target_population = get_ref_id(target_population),
+          created_by = user_coc$username,
+          date_created = format(lubridate::now(), "%Y-%m-%d %H:%M:%S")
+        )
+      
+      DBI::dbAppendTable(DB_CON, "projects", db_data)
+    }
+    
+    inventory_append <- function(new_project_data) {
+      append_to_datatable(new_project_data)
+      append_to_db(new_project_data)
+
+      showNotification("Project submitted successfully.", type = "message")
     }
     
     observeEvent(input$projects_table_cell_edit, {
@@ -228,9 +268,13 @@ mod_inventory_server <- function(id, user_coc) {
       observeEvent(modal_submission$status, {
         req(modal_submission$status)
 
+        # if they simply add a new project, append it
         if(form_type == "New") {
           inventory_append(modal_submission$project_data)
-        } else {
+        } 
+        # If they reallocated or replaced, we need to both update the reallocated/replaced row
+        # AND add the new project
+        else {
           inventory_update(info, new_value)
           inventory_append(modal_submission$project_data)
         }

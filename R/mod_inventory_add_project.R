@@ -38,7 +38,6 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
   modalDialog(
     title = title,
     size = "m",
-    shinyjs::useShinyjs(),
     fluidPage(
       # -- Core Project Info --
       textInput(ns("project_name"), "Project Name*"),
@@ -381,37 +380,7 @@ mod_inventory_add_project_server <- function(
           dv_renewal = ifelse(input$funding_source == "DV" && input$funding_action == "Renew", 1, 0)
         )
         
-        db_data <- new_project_data %>%
-          fmutate(
-            coc_instance_id = user_coc$coc_instance_id,
-            funding_action = get_ref_id(funding_action),
-            project_type = get_ref_id(project_type),
-            target_population = get_ref_id(target_population),
-            created_by = user_coc$username,
-            date_created = format(lubridate::now(), "%Y-%m-%d %H:%M:%S")
-          )
-        
-        DBI::dbAppendTable(DB_CON, "projects", db_data)
-        
-        showNotification("Project submitted successfully.", type = "message")
-        
-        dt_data <- new_project_data  %>% 
-          fmutate(
-            project_id = "temp",
-            mckinneyvento = factor_yesno(mckinneyvento),
-            mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
-            dv_renewal = factor_yesno(dv_renewal),
-            coc_amount_awarded_last_year = NA,
-            coc_amount_expended_last_year = NA,
-            coc_funding_requested = NA,
-            geocode = "",                      
-            amount_other_public_funding = NA,
-            amount_private_funding = NA,
-            is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
-            is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
-            is_dedicated_dv = factor_yesno(is_dedicated_dv)
-          ) 
-        modal_submission_outcome$project_data <- dt_data
+        modal_submission_outcome$project_data <- new_project_data
         modal_submission_outcome$status <- ifelse(add_another_flag(), "add another", "success")
         removeModal()
       } else {
