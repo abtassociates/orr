@@ -251,10 +251,13 @@ mod_inventory_server <- function(id, user_coc) {
     # A function to show the modal and set up the server logic
     show_project_modal <- function(form_type = "New", fundingSource = "", info = NULL, new_value = NULL, project_to_replace = NULL) {
       showModal(
-        mod_inventory_add_project_ui(
-          ns("add_project"), 
-          form_type = form_type,
-          project_to_replace = project_to_replace
+        div(
+          id ="add-project-modal",
+          mod_inventory_add_project_ui(
+            ns("add_project"), 
+            form_type = form_type,
+            project_to_replace = project_to_replace
+          )
         )
       )
       modal_submission <- mod_inventory_add_project_server(

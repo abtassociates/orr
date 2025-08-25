@@ -10,7 +10,8 @@
   overflow: hidden;
 }
 
-.modal-dialog {
+/*Need to raise Add Project modal; otherwise, it starts in the center and looks weird*/
+#add-project-modal .modal-dialog {
   margin-top: 1em;
   height: 95%;
   overflow: auto;
@@ -26,7 +27,8 @@
 
 
 /*FUNDING PRIORITIES*/
+/*
 #funding_priorities-priorities_table table.dataTable th, 
 #funding_priorities-priorities_table table.dataTable td {
   text-align:center;
-}
+}*/
