@@ -358,33 +358,58 @@ mod_inventory_add_project_server <- function(
           get_lookup_refid(x, str_remove(deparse(substitute(x)), "input\\$"))
         }
         new_project_data <- data.table(
-          coc_instance_id = user_coc$coc_instance_id,
           project_name = input$project_name,
           organization_name = input$organization_name,
-          funding_action = get_ref_id(input$funding_action),
-          grant_number = input$grant_number,
-          project_type = get_ref_id(input$project_type),
-          target_population = get_ref_id(input$target_population),
+          funding_action = input$funding_action,
+          grant_number = ifelse(input$grant_number == "", NA, input$grant_number),
+          project_type = input$project_type,
+          target_population = input$target_population,
           is_dedicated_dv = input$all_dv_checkbox,
-          all_fam_beds = total_fam, all_ind_beds = total_ind,
-          ch_fam_beds = get_val("ch_beds", "fam"), total_ch_ind_beds = get_val("ch_beds", "ind"),
-          vet_fam_beds = get_val("vet_beds", "fam"), vet_ind_beds = get_val("vet_beds", "ind"),
-          par_youth_beds = get_val("youth_beds", "fam"), single_youth_beds = get_val("youth_beds", "ind"),
-          dv_fam_beds = if(input$target_population == "DV") total_fam,
-          dv_ind_beds = if(input$target_population == "DV") total_ind,
+          all_fam_beds = input$total_beds_fam, all_ind_beds = input$total_beds_ind,
+          ch_fam_beds = input$ch_beds_fam, total_ch_ind_beds = input$ch_beds_ind,
+          vet_fam_beds = input$vet_beds_fam, vet_ind_beds = input$vet_beds_ind,
+          par_youth_beds = input$youth_beds_fam, single_youth_beds = input$youth_beds_ind,
+          dv_fam_beds = if(input$target_population == "DV") input$total_beds_fam,
+          dv_ind_beds = if(input$target_population == "DV") input$total_beds_ind,
           is_dedicated_ch_fam = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_fam,
           is_dedicated_ch_ind = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind,
-          created_by = user_coc$username
+          mckinneyvento = 1,
+          mckinneyventoyhdp = ifelse(input$funding_source == "YHDP", 1, 0),
+          dv_renewal = ifelse(input$funding_source == "DV" && input$funding_action == "Renew", 1, 0)
         )
         
-        DBI::dbAppendTable(DB_CON, "projects", new_project_data)
+        db_data <- new_project_data %>%
+          fmutate(
+            coc_instance_id = user_coc$coc_instance_id,
+            funding_action = get_ref_id(funding_action),
+            project_type = get_ref_id(project_type),
+            target_population = get_ref_id(target_population),
+            created_by = user_coc$username,
+            date_created = format(lubridate::now(), "%Y-%m-%d %H:%M:%S")
+          )
+        
+        DBI::dbAppendTable(DB_CON, "projects", db_data)
+        
         showNotification("Project submitted successfully.", type = "message")
-
-        if(add_another_flag()) {
-          modal_submission_outcome("add another")
-        } else {
-          modal_submission_outcome("success")
-        }
+        
+        dt_data <- new_project_data  %>% 
+          fmutate(
+            project_id = "temp",
+            mckinneyvento = factor_yesno(mckinneyvento),
+            mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+            dv_renewal = factor_yesno(dv_renewal),
+            coc_amount_awarded_last_year = NA,
+            coc_amount_expended_last_year = NA,
+            coc_funding_requested = NA,
+            geocode = "",                      
+            amount_other_public_funding = NA,
+            amount_private_funding = NA,
+            is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
+            is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
+            is_dedicated_dv = factor_yesno(is_dedicated_dv)
+          ) 
+        modal_submission_outcome$project_data <- dt_data
+        modal_submission_outcome$status <- ifelse(add_another_flag(), "add another", "success")
         removeModal()
       } else {
         add_another_flag(FALSE)
