@@ -23,6 +23,7 @@ mod_inventory_server <- function(id, user_coc) {
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
     projects_data <- reactiveVal(NULL)
+    new_project <- reactiveVal(FALSE)
     
     observe({
       req(user_coc$coc_instance_id)
@@ -49,7 +50,12 @@ mod_inventory_server <- function(id, user_coc) {
     
     # Projects table -----
     output$projects_table <- renderDT({
-      data <- projects_data()
+      if(new_project()) {
+        data <- projects_data()
+        new_project(FALSE)
+      } else {
+        data <- isolate(projects_data())
+      }
 
       validate(need(
         nrow(data) > 0, 
@@ -111,23 +117,14 @@ mod_inventory_server <- function(id, user_coc) {
     }
     update_datatable <- function(proj_id, col_name, info) {
       # update the reactiveVal that updates the proxy
+      # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
       updated_data <- copy(projects_data())[
         project_id == proj_id, 
         (col_name) := info$value
       ]
       projects_data(updated_data)
       
-      # Update cell
-      # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
-      # replaceData(projects_table_proxy, updated_data, resetPaging = FALSE)
-      
-      # shinyjs::runjs(sprintf(
-      #   "
-      #     var table = $('#%s table').DataTable();
-      #     table.cell(%s, %s).data('%s');
-      #   ",
-      #   ns("projects_table"), info$row - 1, info$col, info$value
-      # ))
+      replaceData(projects_table_proxy, updated_data, resetPaging = FALSE)
     }
     
     inventory_update <- function(info, new_value) {
@@ -148,19 +145,7 @@ mod_inventory_server <- function(id, user_coc) {
       updated_data <- rbind(new_row, copy(projects_data()))
       
       projects_data(updated_data)
-      # replaceData(projects_table_proxy, updated_data, resetPaging = FALSE)
-      
-      # insert row
-      # shinyjs::runjs(sprintf(
-      #   "
-      #     var table = $('#%s table').DataTable();
-      #     var newRowData = %s[0]; // Get the first (and likely only) row
-      #     table.row.add(newRowData);
-      #   ", 
-      #   ns("projects_table"), # Convert the new row data to JSON format
-      #   jsonlite::toJSON(projects_data()[1], dataframe="values")
-      # ))
-      # browser()
+      new_project(TRUE)
     }
     
     observeEvent(input$projects_table_cell_edit, {
@@ -247,6 +232,7 @@ mod_inventory_server <- function(id, user_coc) {
           inventory_append(modal_submission$project_data)
         } else {
           inventory_update(info, new_value)
+          inventory_append(modal_submission$project_data)
         }
 
         if(modal_submission$status == "add another") {
