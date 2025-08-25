@@ -1,5 +1,5 @@
 LOOKUP_CHOICES <- list(
-  funding_action = get_labelled_lookups("funding_action"),
+  funding_action = names(get_labelled_lookups("funding_action")),
   reallocation_funding_actions = c("New", "Expand"),
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
   coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
@@ -94,7 +94,10 @@ mod_inventory_add_project_server <- function(
 ) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    modal_submission_outcome <- reactiveVal(NULL)
+    modal_submission_outcome <- reactiveValues(
+      status = NULL,
+      project_data = NULL
+    )
     add_another_flag <- reactiveVal(FALSE)
     
     # =================================================================
@@ -237,12 +240,12 @@ mod_inventory_add_project_server <- function(
     
     # --- PSH Checkbox Logic ---
     observeEvent(input$targeted_ch_fam, 
-      if(isTRUE(input$targeted_ch_fam)) 
-        updateNumericInput(session, "ch_beds_fam", value = input$total_beds_fam)
+                 if(isTRUE(input$targeted_ch_fam)) 
+                   updateNumericInput(session, "ch_beds_fam", value = input$total_beds_fam)
     )
     observeEvent(input$targeted_ch_ind, 
-      if(isTRUE(input$targeted_ch_ind)) 
-        updateNumericInput(session, "ch_beds_ind", value = input$total_beds_ind)
+                 if(isTRUE(input$targeted_ch_ind)) 
+                   updateNumericInput(session, "ch_beds_ind", value = input$total_beds_ind)
     )
     
     observeEvent(c(input$total_beds_fam, input$ch_beds_fam), {
@@ -265,7 +268,7 @@ mod_inventory_add_project_server <- function(
     iv$add_rule("funding_action", sv_required())
     iv$add_rule("project_type", sv_required())
     iv$add_rule("funding_source", sv_required())
-    iv$add_rule("funding_source", sv_required())
+    iv$add_rule("target_population", sv_required())
     
     # Grant number is only required if not New or Expand
     grant_iv <- shinyvalidate::InputValidator$new()

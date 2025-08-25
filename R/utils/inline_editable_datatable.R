@@ -41,9 +41,9 @@ initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
       var tableID = '%s';
       
       // Function to revert cell to its original state
-      function revertCell(cell, originalData) {
+      function setCellData(cell, val) {
         var $td = $(cell.node());
-        $td.empty().text(originalData); // Remove dropdown, restore text
+        $td.empty().text(val); // Remove dropdown, restore text
       }
       
       table.on('dblclick', 'td.factor-edit-cell', function(e) {
@@ -71,7 +71,7 @@ debugger;
           
           // If user makes a change, trigger a cell_edit event
           $select.on('change blur', function(e) {
-            revertCell(cell, currentVal);
+            setCellData(cell, this.value);
             Shiny.setInputValue(tableID + '_cell_edit', {
               row: cell.index().row + 1,
               col: cell.index().column,
@@ -82,9 +82,10 @@ debugger;
           });
           
           $('input').on('keydown', function(e) {
-            if (e.key === 'Enter' && !e.altKey && !e.shiftKey && !e.ctrlKey) {
-              e.preventDefault(); // stop form submission if needed
-              $(this).blur();     // trigger blur
+            if (e.key === 'Escape') {
+              setCellData(cell, currentVal); // On escape, revert to old value
+            } else if (e.key === 'Enter') {
+              $(this).blur(); // Trigger the change/blur event
             }
           });
         }
