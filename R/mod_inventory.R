@@ -116,25 +116,23 @@ mod_inventory_server <- function(id, user_coc) {
                       proj_id, col_name, new_value))
       
     }
-    update_datatable <- function(proj_id, col_name, info) {
+    update_datatable <- function(proj_id, col_name, value) {
       # update the reactiveVal that updates the proxy
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
       updated_data <- copy(projects_data())[
         project_id == proj_id, 
-        (col_name) := info$value
+        (col_name) := value
       ]
       projects_data(updated_data)
-      
-      replaceData(projects_table_proxy, updated_data, resetPaging = FALSE)
     }
     
-    inventory_update <- function(info, new_value) {
+    inventory_update <- function(info, value) {
       project_data <- projects_data()[project_id == info$project_id]
       proj_id <- as.character(project_data$project_id)
       col_name <- colnames(projects_data())[info$col + 1]
-      
-      update_datatable(proj_id, col_name, info)
-      update_db(new_value, col_name, proj_id)
+
+      update_datatable(proj_id, col_name, value)
+      update_db(value, col_name, proj_id)
     }
     
     # Add/append new projects -----
@@ -214,8 +212,9 @@ mod_inventory_server <- function(id, user_coc) {
         )
       )
       
+      is_factor_col <- is.factor(projects_data()[[col_name]])
       new_value <- ifelse(
-        is.factor(projects_data()[[col_name]]),
+        is_factor_col,
         ifelse(
           identical(levels(projects_data()[[col_name]]), c("Yes","No")),
           ifelse(info$value == "Yes", 1, 0),
@@ -227,9 +226,19 @@ mod_inventory_server <- function(id, user_coc) {
       is_valid <- TRUE
       if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
         is_valid <- validity_pre_checks(project_data, fundingSource, info$value)
+        
+        # If they can't Reallocate or Replace, bring back old value in table cell
+        # we're basically just reversing the `setCellData` function triggered in `inline_editable_datatable.R`
+        if(!is_valid) {
+          shinyjs::runjs(sprintf(
+            "
+              var table = $('#%s table').DataTable();
+              table.cell(%s, %s).data('%s');
+            ", 
+            ns("projects_table"), info$row - 1, info$col, info$oldValue
+          ))
+        }
       }
-
-      if(!is_valid) inventory_update(info, info$oldValue)
       req(is_valid)
       
       # Handle Reallocation and Replace
