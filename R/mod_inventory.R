@@ -106,20 +106,14 @@ mod_inventory_server <- function(id, user_coc) {
           function(x) formatStyle(
             x,
             columns = user_columns,
-            backgroundColor = "#e6ffe6"
+            backgroundColor = user_entered_color
           ),
           # Replacement projects should fill out these fields, and thus color them green.
           function(x) formatStyle(
             x,
             columns = c("project_name","project_type","par_youth_beds","single_youth_beds"),            # what to style
-            valueColumns = c("funding_action"),           # what to base styling on
-            backgroundColor = styleEqual("Replace", "#e6ffe6")
-          ),
-          function(x) formatStyle(x,
-            columns = c("all_fam_beds","all_ind_beds"),            # what to style
-            valueColumns = c("funding_action"),           # what to base styling on
-            backgroundColor = styleEqual(c("Renew","Expand","Reallocate","Replace"), "lightgray"),
-            pointerEvents = "none"
+            valueColumns = c("funding_action"),
+            backgroundColor = styleEqual("Replace", user_entered_color)
           ),
           function(x) formatCurrency(
             x, 

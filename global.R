@@ -28,3 +28,5 @@ lapply(files, source)
 source(here("R/global_data_prep.R"))
 
 set.seed(123)
+
+user_entered_color <- "#e6ffe6"
