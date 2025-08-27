@@ -17,8 +17,11 @@ library(rhandsontable)
 library(shinyvalidate)
 library(purrr)
 library(shinycssloaders)
+library(httr)
+library(httr2)
+library(jsonlite)
 
-in_dev_mode <- grepl("ad.abt.local", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
+in_dev_mode <- F#grepl("ad.abt.local", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
 
 # Load all utils functions
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
