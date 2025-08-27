@@ -193,6 +193,13 @@ mod_inventory_server <- function(id, user_coc) {
 
       update_datatable(proj_id, col_name, value)
       update_db(value, col_name, proj_id)
+    # Append project -----
+    ## consolidated append
+    inventory_append <- function(new_project_data) {
+      append_to_datatable(new_project_data)
+      append_to_db(new_project_data)
+      
+      showNotification("Project submitted successfully.", type = "message")
     }
     
     # Add/append new projects -----
