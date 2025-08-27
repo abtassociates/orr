@@ -10,7 +10,7 @@ mod_coc_selection_ui <- function(id) {
         fillable = FALSE,
         # a "Create" button or link above the table will display so they can create a new CoC Instance
         actionButton(ns('create_new_instance'), "Create a New CoC Instance"),
-        selectInput(ns('choose_user'), "Select a User Profile",  choices=users$username),
+        #selectInput(ns('choose_user'), "Select a User Profile",  choices=users$username),
         DTOutput(ns('coc_instances_dt')),
         actionButton(ns('edit_coc_instance'),"Edit selected CoC", icon = icon('edit'))
       )
@@ -22,14 +22,15 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
     ## subset coc_instance_users to specific user
+    
     coc_iu <- reactive({
-      coc_instance_users[username == input$choose_user]
+      coc_instance_users[username == user_coc$email]
     })
     
-    # Set session-wide user
-    observe({
-      user_coc$username <- input$choose_user
-    })
+    # # Set session-wide user
+    # observe({
+    #   user_coc$username <- input$choose_user
+    # })
     
     ## disable Edit button unless row is selected
     observe({

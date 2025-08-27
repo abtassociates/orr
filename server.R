@@ -3,7 +3,10 @@ function(input, output, session) {
   user_coc <- reactiveValues(
     coc = NULL,
     coc_instance_id = NULL,
-    username = NULL
+    username = NULL,
+    auth = FALSE, # is the user authenticated or not
+    given_name = NULL, # user's given_name as stored and returned by cognito
+    email = NULL  # user's email as stored and returned by cognito
   )
   nav_control <- reactiveVal("account")
 
@@ -39,9 +42,9 @@ function(input, output, session) {
   mod_final_review_server("final_review", user_coc)
   mod_ranking_server("ranking")
   
-  user <- reactiveValues(auth = FALSE, # is the user authenticated or not
-                         given_name = NULL, # user's given_name as stored and returned by cognito
-                         email = NULL)  # user's email as stored and returned by cognito
+  # user <- reactiveValues(auth = FALSE, # is the user authenticated or not
+  #                        given_name = NULL, # user's given_name as stored and returned by cognito
+  #                        email = NULL)  # user's email as stored and returned by cognito
   
   # get the url variables ----
   observe({
@@ -59,7 +62,7 @@ function(input, output, session) {
         print('user is NULL')
         hideElement("login")
         showElement("login_error_aws_flow")
-        user$auth <- FALSE
+        user_coc$auth <- FALSE
       } else {
         print('user found!')
         # check if user is in allowed user list
@@ -70,9 +73,10 @@ function(input, output, session) {
           showElement("login_confirmed")
           showElement("enter_app")
 
-          user$auth <- TRUE
-          user$email <- current_user$email
-          user$given_name <- current_user$given_name
+          user_coc$auth <- TRUE
+          user_coc$email <- current_user$email
+          user_coc$username <- current_user$email
+          user_coc$given_name <- current_user$given_name
           
           nav_show("nav", "coc_selection")
           nav_show("nav", "inventory")
@@ -102,9 +106,9 @@ function(input, output, session) {
   output$confirmed_login_name <-
     renderText({
      
-      ifelse(!is.null(user$given_name),
-             paste0("Welcome, ",user$given_name),
-             paste0("Welcome, ",user$email)
+      ifelse(!is.null(user_coc$given_name),
+             paste0("Welcome, ",user_coc$given_name),
+             paste0("Welcome, ",user_coc$email)
          )
       
     })
