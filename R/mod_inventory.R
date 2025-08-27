@@ -27,6 +27,14 @@ mod_inventory_server <- function(id, user_coc) {
     # binary indicator for whether a new row/project has been added
     is_new_project <- reactiveVal(FALSE)
     
+    # yhdp info for passing around
+    yhdp_replacement_info <- reactiveValues(
+      info = NULL,
+      new_value = NULL,
+      project_to_replace = NULL,
+      funding_source = NULL
+    )
+    
     # Add fields only displayed in Inventory
     add_calculated_fields <- function(project_data, is_new = FALSE) {
       project_data <- project_data %>%
@@ -279,40 +287,98 @@ mod_inventory_server <- function(id, user_coc) {
         info$value
       )
       
-      is_valid <- TRUE
-      if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
-        is_valid <- validity_pre_checks(project_data, fundingSource, info$value)
-        
-        # If they can't Reallocate or Replace, bring back old value in table cell
-        # we're basically just reversing the `setCellData` function triggered in `inline_editable_datatable.R`
-        if(!is_valid) {
-          shinyjs::runjs(sprintf(
-            "
+      ## Handle reallocation and replace -----
+      
+      ### Revert cell to original value
+      revert_cell <- function(info) {
+        shinyjs::runjs(sprintf(
+          "
               var table = $('#%s table').DataTable();
               table.cell(%s, %s).data('%s');
             ", 
-            ns("projects_table"), info$row - 1, info$col, info$oldValue
-          ))
+          ns("projects_table"), info$row - 1, info$col, info$oldValue
+        ))
+      }
+      
+      if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
+        # Validity check ----
+        is_valid <- validity_pre_checks(project_data, funding_source, info$value)
+        
+        # If they can't Reallocate or Replace, bring back old value in table cell
+        if(!is_valid) revert_cell(info)
+        req(is_valid)
+        
+        ## YHDP Replacement -----
+        if(info$value == "Replace") {
+          # Update reactiveValues so it's visible to observeEvents of the confirmation pop-up
+          yhdp_replacement_info$funding_source <- funding_source
+          yhdp_replacement_info$info <- info
+          yhdp_replacement_info$new_value <- new_value
+          yhdp_replacement_info$project_to_replace <- project_data
+          
+          showModal(
+            modalDialog(
+              title = "YHDP Replacement Confirmation",
+              HTML("
+                  Are you replacing this project with multiple projects? <br><br>
+                  If not, then click 'No'. Then update the newly highlighted fields 
+                  for the project. Note that because this is a YHDP Replacement 
+                  project, you can only edit the Project Name, Project Type, and Youth 
+                  bed fields. <br><br> If you are Replacing this project with 
+                  multiple projects, click 'Yes', then you will need to create new 
+                  projects as well as editing this row of the List of Project tab. 
+                  First enter the additional project's information in the pop-up after 
+                  you click 'Yes'. If you are creating more than two projects to 
+                  Replace the current project, then click on the 'additional 
+                  replacement project?' link at the bottom right corner of the pop-up. 
+                  When you are finished adding additional projects, which will appear 
+                  in the list on this tab, then return to the row of the of the current 
+                  project that is being Replaced and update the highlighted fields.
+                "),
+              footer = tagList(
+                actionButton(ns('replace_multiple'), label="Yes"),
+                actionButton(ns('replace_one'), label="No"),
+                actionButton(ns('replace_cancel'), label="Cancel"),
+              )
+            )
+          ) # end showModal
+        } 
+        ## Reallocation -----
+        else {
+          form_type <- paste0(funding_source, " Reallocation")
+          show_project_modal(form_type, funding_source, info, new_value)
         }
       }
-      req(is_valid)
-      
-      # Handle Reallocation and Replace
-      if(info$value %in% c("Reallocate", "Replace")) {
-        form_type <- ifelse(
-          info$value == "Replace", 
-          "YHDP Replacement", 
-          paste0(fundingSource, " Reallocation")
-        )
-        project_to_replace <- if(info$value == "Replace") project_data else NULL
-        show_project_modal(form_type, fundingSource, info, new_value, project_to_replace)
-      } 
-      # Handle others
+      # Update after non-reallocation and non-replace ------
       else {
         inventory_update(info, new_value)
       }
     }, ignoreInit = TRUE)
     
+    # Handle replacement modal ------
+    ## User wants to replace with multiple projects ----
+    observeEvent(input$replace_multiple, {
+      show_project_modal(
+        "YHDP Replacement", 
+        yhdp_replacement_info$funding_source, 
+        yhdp_replacement_info$info, 
+        yhdp_replacement_info$new_value,
+        yhdp_replacement_info$project_to_replace
+      )
+    })
+    
+    ## User wants to replace with one project ----
+    observeEvent(input$replace_one, {
+      removeModal()
+      inventory_update(yhdp_replacement_info$info, yhdp_replacement_info$new_value)
+    })
+    
+    ## User cancelled replacement ----
+    observeEvent(input$replace_cancel, {
+      revert_cell(yhdp_replacement_info$info)
+      removeModal()
+      # no need to do inventory_update because we haven't modified the db or datatable yet
+    })
     # A function to show the modal and set up the server logic
     show_project_modal <- function(form_type = "New", fundingSource = "", info = NULL, new_value = NULL, project_to_replace = NULL) {
       showModal(
