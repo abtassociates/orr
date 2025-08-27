@@ -1,17 +1,14 @@
-
-#inventory-projects_table table tbody > td:first-child {
-  display: none;
-}
-
-#shiny-modal {
+/*make sure modals are centered*/
+.modal {
+  display: flex !important;
+  align-items: center;
   overflow: hidden;
 }
 
-/*Need to raise Add Project modal; otherwise, it starts in the center and looks weird*/
-#add-project-modal .modal-dialog {
-  margin-top: 1em;
-  height: 95%;
-  overflow: auto;
+/*Disallow clicking on disabled/calculated cells*/
+td.disabled {
+  pointer-events: none;
+  background-color: lightgray;
 }
 
 /*CUSTOMIZE RATING CRITERIA*/
