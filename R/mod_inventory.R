@@ -21,6 +21,10 @@ mod_inventory_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
+    # Keep track of active observers for Add Project modals
+    # Need them in a reactivevalues list so we can destroy them and avoid duplicate ones uncessarilly
+    # however, we need to be able to have multiple in case they Add Another project
+    modal_observers <- reactiveValues() 
     
     projects_data <- reactiveVal(NULL)
     
@@ -398,8 +402,9 @@ mod_inventory_server <- function(id, user_coc) {
         user_coc = user_coc,
         parent_session = session
       )
-      
-      observeEvent(modal_submission$status, {
+
+      # Create the observer and store it
+      modal_observers[[observer_id]] <- observeEvent(modal_submission$status, {
         req(modal_submission$status)
 
         # if they simply add a new project, append it
@@ -414,9 +419,15 @@ mod_inventory_server <- function(id, user_coc) {
         }
 
         if(modal_submission$status == "add another") {
-          show_project_modal(form_type, fundingSource, info, new_value, project_to_replace)
+          show_project_modal(form_type, funding_source, info, new_value, project_to_replace)
+        } else {
+          # If not adding another, the modal chain is done, destroy this observer
+          if (!is.null(modal_observers[[observer_id]])) {
+            modal_observers[[observer_id]]$destroy()
+            modal_observers[[observer_id]] <- NULL # Remove from reactiveValues
+          }
         }
-      }, ignoreNULL = TRUE)
+      }, ignoreNULL = TRUE, once = FALSE) # keep once=FALSE because it might trigger multiple times for "add another"
     }
     
     # Add additonal project handling ----
