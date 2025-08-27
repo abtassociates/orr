@@ -80,3 +80,42 @@ factor_vars_db_prep <- function(data) {
   # Apply mutations
   return(do.call(fmutate, c(list(data), mutate_expressions)))
 }
+
+project_variable_labels <- c(
+  "project_id" = "Project ID",
+  "organization_name" = "Organization Name",
+  "project_name" = "Project Name",
+  "project_type" = "Project Type",
+  "target_population" = "Target Population",
+  "mckinneyvento" = "McKinney-Vento",
+  "mckinneyventoyhdp" = "McKinney-Vento: YHDP",
+  "dv_renewal" = "DV Renewal",
+  "grant_number" = "Grant Number",
+  "coc_amount_awarded_last_year" = "CoC Amount Awarded Last Operating Year",
+  "coc_amount_expended_last_year" = "CoC Amount Expended Last Operating Year",
+  "coc_funding_requested" = "CoC Funding Requested",
+  "funding_action" = "Funding Action",
+  "geocode" = "Geo Code",
+  "all_fam_beds" = "All Fam Beds",
+  "dv_fam_beds" = "DV Fam Beds",
+  "ch_fam_beds" = "CH Fam Beds",
+  "vet_fam_beds" = "Vet Fam Beds",
+  "par_youth_beds" = "Par Youth Beds",
+  "beds_hh_wo_children" = "Beds HH w/o Children",
+  "beds_hh_w_only_children" = "Beds HH w/ only Children",
+  "all_ind_beds" = "All Ind Beds",
+  "dv_ind_beds" = "DV Ind Beds",
+  "ch_beds_hh_wo_children" = "CH Beds HH w/o Children",
+  "ch_beds_hh_w_only_children" = "CH Beds HH w/ only Children",
+  "total_ch_ind_beds" = "Total CH Ind Beds",
+  "vet_ind_beds" = "Vet Ind Beds",
+  "single_youth_beds" = "Single Youth Beds",
+  "is_dedicated_ch_fam" = "Is 100% Dedicated + or CH Fam (Yes/No)",
+  "is_dedicated_ch_ind" = "Is 100% Dedicated + or CH Ind (Yes/No)",
+  "is_dedicated_dv" = "Is 100% DV (Yes/No)",
+  "amount_other_public_funding" = "Amount of other public funding (federal, state, county, city)",
+  "amount_private_funding" = "Amount of private funding",
+  "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
+  "vet_bed_inventory" = "Veteran Bed Inventory",
+  "youth_bed_inventory" = "Youth Bed Inventory"
+)
