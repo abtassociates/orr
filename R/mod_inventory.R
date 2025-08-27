@@ -20,12 +20,17 @@ mod_inventory_ui <- function(id) {
 mod_inventory_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
+    
+    # Hardcodes and reactiveValues --------------
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
+    funding_columns <- c("coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested")
+    
     # Keep track of active observers for Add Project modals
     # Need them in a reactivevalues list so we can destroy them and avoid duplicate ones uncessarilly
     # however, we need to be able to have multiple in case they Add Another project
     modal_observers <- reactiveValues() 
     
+    # all CoC instance project data
     projects_data <- reactiveVal(NULL)
     
     # binary indicator for whether a new row/project has been added
@@ -67,7 +72,7 @@ mod_inventory_server <- function(id, user_coc) {
         "SELECT * FROM projects WHERE coc_instance_id = $1", 
         params = user_coc$coc_instance_id
       ) %>% 
-        fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by) %>%
+        fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by, -amount_other_public_funding, -amount_private_funding) %>%
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
           project_type = convert_to_factor(., "project_type"),
@@ -84,7 +89,7 @@ mod_inventory_server <- function(id, user_coc) {
       projects_data(data)
     })
     
-    # Projects table -----
+    # Projects datatable -----
     output$projects_table <- renderDT({
       if(is_new_project()) {
         data <- projects_data()
@@ -98,7 +103,7 @@ mod_inventory_server <- function(id, user_coc) {
         "No rows"
       ))
       
-      # filter out Ignores by default
+      ## filter out Ignores by default-----
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
@@ -139,20 +144,20 @@ mod_inventory_server <- function(id, user_coc) {
       )
     })
     
-
+    ## datatable proxy-----
+    # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
+    # However it doesn't work when adding new rows
     projects_table_proxy <- dataTableProxy(ns("projects_table"))
-
+    
     observe({
       req(projects_data())
-
-      # replaceData is the proxy equivalent of re-rendering. It's much faster.
       replaceData(projects_table_proxy, projects_data())
     })
     
-    # inline edit handling ------
-    validity_pre_checks <- function(project_data, fundingSource, val) {
+    # Checks whether value is valid
+    validity_pre_checks <- function(project_data, funding_source, val) {
       if(val == "Reallocate") {
-        if(fundingSource == "DV" && project_data$project_type == "SSO - CE") {
+        if(funding_source == "DV" && project_data$project_type == "SSO - CE") {
           showNotification(
             "According to the FY2024 NOFO, you cannot reallocate a DV SSO-CE 
             Renewal project. Please select a different Funding Action."
@@ -173,6 +178,17 @@ mod_inventory_server <- function(id, user_coc) {
     }
 
     # Update projects -----
+    ## consolidated update function
+    inventory_update <- function(info, value) {
+      project_data <- projects_data()[project_id == info$project_id]
+      proj_id <- as.character(project_data$project_id)
+      col_name <- colnames(projects_data())[info$col + 1]
+      
+      # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
+      update_datatable(proj_id, col_name, info$value)
+      update_db(value, col_name, proj_id)
+    }
+    
     update_db <- function(new_value, col_name, proj_id) {
       DBI::dbExecute(
         DB_CON,
@@ -198,13 +214,6 @@ mod_inventory_server <- function(id, user_coc) {
       projects_data(updated_data)
     }
     
-    inventory_update <- function(info, value) {
-      project_data <- projects_data()[project_id == info$project_id]
-      proj_id <- as.character(project_data$project_id)
-      col_name <- colnames(projects_data())[info$col + 1]
-
-      update_datatable(proj_id, col_name, value)
-      update_db(value, col_name, proj_id)
     # Append project -----
     ## consolidated append
     inventory_append <- function(new_project_data) {
@@ -214,11 +223,10 @@ mod_inventory_server <- function(id, user_coc) {
       showNotification("Project submitted successfully.", type = "message")
     }
     
-    # Add/append new projects -----
     append_to_datatable <- function(new_project_data) {
-      dt_data <- new_project_data  %>% 
+      new_row <- new_project_data %>% 
         fmutate(
-          project_id = "temp",
+          project_id = as.integer(fmax(projects_data()$project_id) + 1),
           mckinneyvento = factor_yesno(mckinneyvento),
           mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           dv_renewal = factor_yesno(dv_renewal),
@@ -234,9 +242,10 @@ mod_inventory_server <- function(id, user_coc) {
         ) %>%
         add_calculated_fields(TRUE)
       
-      updated_data <- rbind(new_row, copy(projects_data()))
+      projects_data(
+        rbind(new_row, copy(projects_data()), fill=TRUE)
+      )
       
-      projects_data(updated_data)
       is_new_project(TRUE)
     }
     
@@ -254,6 +263,7 @@ mod_inventory_server <- function(id, user_coc) {
       DBI::dbAppendTable(DB_CON, "projects", db_data)
     }
     
+    # Main inline-cell edit event -----
     observeEvent(input$projects_table_cell_edit, {
       req(projects_data())
       
@@ -270,7 +280,7 @@ mod_inventory_server <- function(id, user_coc) {
       
       project_data <- projects_data()[project_id == info$project_id]
       
-      fundingSource <- ifelse(
+      funding_source <- ifelse(
         project_data$mckinneyventoyhdp == "Yes",
         "YHDP",
         ifelse(
@@ -383,8 +393,15 @@ mod_inventory_server <- function(id, user_coc) {
       removeModal()
       # no need to do inventory_update because we haven't modified the db or datatable yet
     })
+    
+    # Project modal control -------------
     # A function to show the modal and set up the server logic
-    show_project_modal <- function(form_type = "New", fundingSource = "", info = NULL, new_value = NULL, project_to_replace = NULL) {
+    show_project_modal <- function(form_type = "New", funding_source = "", info = NULL, new_value = NULL, project_to_replace = NULL, observer_id = NULL) {
+      if (is.null(observer_id)) {
+        # Generate a unique ID for this observer instance
+        observer_id <- paste0("modal_obs_", digest::digest(runif(1)))
+      }
+      
       showModal(
         div(
           id ="add-project-modal",
@@ -398,7 +415,7 @@ mod_inventory_server <- function(id, user_coc) {
       modal_submission <- mod_inventory_add_project_server(
         "add_project", 
         form_type = form_type,
-        funding_source = fundingSource,
+        funding_source = funding_source,
         user_coc = user_coc,
         parent_session = session
       )
@@ -430,7 +447,7 @@ mod_inventory_server <- function(id, user_coc) {
       }, ignoreNULL = TRUE, once = FALSE) # keep once=FALSE because it might trigger multiple times for "add another"
     }
     
-    # Add additonal project handling ----
+    # Add additional project handling ----
     observeEvent(input$add_project_btn, {
       show_project_modal()
     })
