@@ -302,18 +302,6 @@ mod_inventory_server <- function(id, user_coc) {
       )
       
       ## Handle reallocation and replace -----
-      
-      ### Revert cell to original value
-      revert_cell <- function(info) {
-        shinyjs::runjs(sprintf(
-          "
-              var table = $('#%s table').DataTable();
-              table.cell(%s, %s).data('%s');
-            ", 
-          ns("projects_table"), info$row - 1, info$col, info$oldValue
-        ))
-      }
-      
       if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
         # Validity check ----
         is_valid <- validity_pre_checks(project_data, funding_source, info$value)
@@ -370,6 +358,17 @@ mod_inventory_server <- function(id, user_coc) {
     }, ignoreInit = TRUE)
     
     # Handle replacement modal ------
+    ## Revert cell to original value -----
+    revert_cell <- function(info) {
+      shinyjs::runjs(sprintf(
+        "
+              var table = $('#%s table').DataTable();
+              table.cell(%s, %s).data('%s');
+            ", 
+        ns("projects_table"), info$row - 1, info$col, info$oldValue
+      ))
+    }
+    
     ## User wants to replace with multiple projects ----
     observeEvent(input$replace_multiple, {
       show_project_modal(
