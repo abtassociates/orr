@@ -232,21 +232,14 @@ mod_inventory_server <- function(id, user_coc) {
       db_data <- new_project_data %>%
         fmutate(
           coc_instance_id = user_coc$coc_instance_id,
-          funding_action = get_ref_id(funding_action),
-          project_type = get_ref_id(project_type),
-          target_population = get_ref_id(target_population),
+          funding_action = get_lookup_refid(funding_action, "funding_action"),
+          project_type = get_lookup_refid(project_type, "project_type"),
+          target_population = get_lookup_refid(target_population, "target_population"),
           created_by = user_coc$username,
           date_created = format(lubridate::now(), "%Y-%m-%d %H:%M:%S")
         )
       
       DBI::dbAppendTable(DB_CON, "projects", db_data)
-    }
-    
-    inventory_append <- function(new_project_data) {
-      append_to_datatable(new_project_data)
-      append_to_db(new_project_data)
-
-      showNotification("Project submitted successfully.", type = "message")
     }
     
     observeEvent(input$projects_table_cell_edit, {
