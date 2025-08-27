@@ -6,8 +6,11 @@
   display: none;
 }
 
-#shiny-modal {
-  overflow: hidden;
+#submit_sign_out {
+  font-weight: bold;
+  /*background-color: red;
+  color:white;
+  */
 }
 
 /*Need to raise Add Project modal; otherwise, it starts in the center and looks weird*/
@@ -15,6 +18,9 @@
   margin-top: 1em;
   height: 95%;
   overflow: auto;
+
+#shiny-modal > div #cognito_modal .modal-dialog {
+  margin-top: 50%;
 }
 
 /*CUSTOMIZE RATING CRITERIA*/
@@ -32,3 +38,4 @@
 #funding_priorities-priorities_table table.dataTable td {
   text-align:center;
 }*/
+

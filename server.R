@@ -29,9 +29,9 @@ function(input, output, session) {
     nav_hide("nav", "final_review")
 
   })
-  mod_coc_selection_server("coc_selection", nav_control, projects_data, selected_coc)
-  mod_inventory_server("inventory", projects_data, selected_coc)
-  mod_rating_criteria_server("rating_criteria", selected_coc)
+  mod_coc_selection_server("coc_selection", nav_control, projects_data, user_coc)
+  mod_inventory_server("inventory", user_coc)
+  mod_rating_criteria_server("rating_criteria", user_coc)
   mod_renewal_rating_server("renewal_rating", projects_data)
   mod_new_rating_server("new_rating", projects_data)
   mod_alternative_rating_server("bulk_rating", projects_data)
