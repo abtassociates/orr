@@ -10,8 +10,8 @@ pluralize <- function(s) {
 factor_yesno <- function(v) {
   factor(
     v,
-    levels = c(1,0),
-    labels = c("Yes", "No")
+    levels = c(TRUE, FALSE, 1, 0), 
+    labels = c("Yes", "No", "Yes", "No")
   )
 }
 
@@ -30,23 +30,27 @@ get_lookup_label <- function(v, ref_type, lookup_col = "value") {
 
 get_lookup_refid <- function(v, ref_type, lookup_col = "value") {
   filtered_lookups <- lookups[reference_type == ref_type]
-  if(is.character(v)) {
-    r <- filtered_lookups[get(lookup_col) == v, "reference_id"]
-  } else {
-    r <- filtered_lookups[.(v), get(lookup_col), on = "reference_id"]
-  } 
-  as.integer(r)
+  return(
+    filtered_lookups[match(v, get(lookup_col))]$reference_id
+  )
 }
 
 convert_to_factor <- function(data, v, textToNum = FALSE, label_col = "value") {
   lookup_info <- lookups[reference_type == v, .(reference_id, value, value_abbrev, value_long)]
+
+  col_data <- if(!textToNum) {
+    data[[v]] 
+  } else {
+    lookup_info$reference_id[match(data[[v]], lookup_info[[label_col]])]
+  }
   
   factor(
-    if(!textToNum) data[[v]] else lookup_info$reference_id[match(data[[v]], lookup_info[[label_col]])],
+    col_data,
     levels = lookup_info$reference_id,
     labels = lookup_info[[label_col]]
   )
 }
+
 #' @title Prepare Factor Variables for Database Insertion
 #' @description Converts factor variables in a data frame to their boolean or numeric equivalents.
 #'              "Yes"/"No" factors are converted to boolean (TRUE/FALSE). Other factors are
