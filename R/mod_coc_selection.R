@@ -18,7 +18,7 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, projects_data, selected_coc) {
+mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
     ## subset coc_instance_users to specific user
@@ -26,6 +26,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
       coc_instance_users[username == input$choose_user]
     })
     
+    # Set session-wide user
+    observe({
+      user_coc$username <- input$choose_user
+    })
     
     ## disable Edit button unless row is selected
     observe({
@@ -48,10 +52,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
     })
     
     observeEvent(input$edit_coc_instance, {
-      selected_coc$coc <- coc_iu()$coc[[1]]
-      print(selected_coc$coc)
+      user_coc$coc <- coc_iu()$coc[[1]]
+      print(user_coc$coc)
       
-      selected_coc$coc_instance_id <- coc_iu()[
+      user_coc$coc_instance_id <- coc_iu()[
         input$coc_instances_dt_rows_selected, .(coc_instance_id)
       ][[1]]
       
@@ -139,7 +143,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
       )
 
       coc_data <- get_db_tbl("all_hic_data") |>
-        fsubset(hudnum == selected_coc$coc) 
+        fsubset(hudnum == user_coc$coc) 
 
       project_data <- coc_data %>%
         fmutate(
@@ -156,7 +160,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
             lookups[reference_type == "funding_action" & value == "Renew", reference_id], 
             lookups[reference_type == "funding_action" & value == "Ignore", reference_id]
           ),
-          coc_instance_id = selected_coc$coc_instance_id,
+          coc_instance_id = user_coc$coc_instance_id,
           # additional cols user will fill out
           is_dedicated_ch_fam = factor_yesno(NA),
           is_dedicated_ch_ind = factor_yesno(NA),
@@ -173,23 +177,13 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, selected_co
         ) %>%
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
-          project_type = convert_to_factor(., "project_type", textToNum = TRUE, label_col = "value_abbrev"),
+          project_type = convert_to_factor(., "project_type", textToNum = TRUE),
           target_population = convert_to_factor(., "target_population", textToNum = TRUE, label_col = "value_abbrev"),
           dv_renewal = factor_yesno(dv_renewal)
         ) %>%
         get_vars(dbListFields(DB_CON, "projects"))
-      
-      return(project_data)
-    }
-    
-    convert_to_factor <- function(data, v, textToNum = FALSE, label_col = "value") {
-      lookup_info <- lookups[reference_type == v, .(reference_id, value, value_abbrev, value_long)]
 
-      factor(
-        if(!textToNum) data[[v]] else lookup_info$reference_id[match(data[[v]], lookup_info[[label_col]])],
-        levels = lookup_info$reference_id,
-        labels = lookup_info[[label_col]]
-      )
+      return(project_data)
     }
   })
 }

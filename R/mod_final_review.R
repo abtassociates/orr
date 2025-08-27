@@ -11,11 +11,11 @@ mod_final_review_ui <- function(id) {
   )
 }
 
-mod_final_review_server <- function(id, selected_coc) {
+mod_final_review_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     
     output$final_review_table <- renderDT({
-      req(selected_coc$coc)
+      req(user_coc$coc)
 
       data <- get_db_query(
         "SELECT p.*, r.rating_score, t.met_threshold 

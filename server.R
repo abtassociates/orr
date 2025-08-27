@@ -1,10 +1,12 @@
 function(input, output, session) {
   projects_data <- reactiveVal(NULL)
-  selected_coc <- reactiveValues(
+  user_coc <- reactiveValues(
     coc = NULL,
-    coc_instance_id = NULL
+    coc_instance_id = NULL,
+    username = NULL
   )
   nav_control <- reactiveVal("account")
+
   username <- reactiveVal("alex.silverman@abtglobal.com")
   
   # Hide all panels except "account" initially, show login modal
@@ -33,8 +35,8 @@ function(input, output, session) {
   mod_renewal_rating_server("renewal_rating", projects_data)
   mod_new_rating_server("new_rating", projects_data)
   mod_alternative_rating_server("bulk_rating", projects_data)
-  mod_funding_priorities_server("funding_priorities", selected_coc)
-  mod_final_review_server("final_review", selected_coc)
+  mod_funding_priorities_server("funding_priorities", user_coc)
+  mod_final_review_server("final_review", user_coc)
   mod_ranking_server("ranking")
   
   user <- reactiveValues(auth = FALSE, # is the user authenticated or not
@@ -111,6 +113,5 @@ function(input, output, session) {
   observeEvent(nav_control(), {
     nav_select("nav", selected = nav_control())
   })
-  
- 
+
 }

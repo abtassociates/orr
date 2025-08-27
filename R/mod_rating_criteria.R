@@ -65,25 +65,25 @@ mod_rating_criteria_ui <- function(id) {
 #'
 #' @description Server logic for the main rating criteria page.
 #' @param id The module's unique ID.
-#' @param selected_coc contains coc_instance_id to capture user-selected version of the ORR
+#' @param user_coc contains coc_instance_id to capture user-selected version of the ORR
 #' @noRd
-mod_rating_criteria_server <- function(id, selected_coc) {
+mod_rating_criteria_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     # Call sub-modules for each tab
-    mod_coc_thresholds_server("coc_thresholds", selected_coc$coc_instance_id)
+    mod_coc_thresholds_server("coc_thresholds", user_coc$coc_instance_id)
     
     mod_renewal_factors_server(
       "renewal_factors", 
-      selected_coc$coc_instance_id, 
+      user_coc$coc_instance_id, 
       reactive(input$project_type), 
       reactive(input$target_population)
     )
     
     mod_new_factors_server(
       "new_factors", 
-      selected_coc$coc_instance_id, 
+      user_coc$coc_instance_id, 
       reactive(input$target_population)
     )
   })
@@ -113,7 +113,7 @@ mod_coc_thresholds_ui <- function(id) {
 
 #' @title mod_coc_thresholds_server
 #' @noRd
-mod_coc_thresholds_server <- function(id, selected_coc, all_thresholds) {
+mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -134,10 +134,10 @@ mod_coc_thresholds_server <- function(id, selected_coc, all_thresholds) {
     
     # Fetch currently selected thresholds for the active profile
     observe({
-      req(selected_coc$coc_instance_id)
+      req(user_coc$coc_instance_id)
       
       selected_q <- "SELECT threshold_id FROM selected_thresholds WHERE coc_instance_id = $1"
-      selected_data <- get_db_query(selected_q, params = list(selected_coc$coc_instance_id))
+      selected_data <- get_db_query(selected_q, params = list(user_coc$coc_instance_id))
       
       rv$selected_thresholds <- selected_data$threshold_id
     })
@@ -157,7 +157,7 @@ mod_coc_thresholds_server <- function(id, selected_coc, all_thresholds) {
     
     # Save logic for threshold selections
     observeEvent(input$save_thresholds, {
-      req(selected_coc$coc_instance_id, username())
+      req(user_coc$coc_instance_id, username())
       
       current_selection <- as.integer(input$threshold_selection)
       previous_selection <- rv$selected_thresholds
@@ -170,7 +170,7 @@ mod_coc_thresholds_server <- function(id, selected_coc, all_thresholds) {
         if (length(to_add) > 0) {
           add_df <- data.frame(
             threshold_id = to_add,
-            coc_instance_id = selected_coc$coc_instance_id,
+            coc_instance_id = user_coc$coc_instance_id,
             created_by = username()
           )
           DBI::dbAppendTable(DB_CON, "selected_thresholds", add_df)
@@ -179,7 +179,7 @@ mod_coc_thresholds_server <- function(id, selected_coc, all_thresholds) {
         # Remove deselected items
         if (length(to_remove) > 0) {
           remove_q <- "DELETE FROM selected_thresholds WHERE coc_instance_id = $1 AND threshold_id = ANY($2)"
-          dbExecute(DB_CON, remove_q, params = list(selected_coc$coc_instance_id, to_remove))
+          dbExecute(DB_CON, remove_q, params = list(user_coc$coc_instance_id, to_remove))
         }
         
         # Update reactive value to reflect saved state
@@ -359,10 +359,10 @@ mod_renewal_factors_server <- function(id, coc_instance_id, selected_project_typ
     ns <- session$ns
     
     renewal_expand_factors_data <- reactive({
-      req(selected_coc$coc_instance_id)
+      req(user_coc$coc_instance_id)
       fetch_and_structure_rating_factors(
         "Renew", 
-        selected_coc$coc_instance_id, 
+        user_coc$coc_instance_id, 
         selected_project_types(), 
         selected_target_populations()
       )
@@ -437,10 +437,10 @@ mod_new_factors_server <- function(id, coc_instance_id, selected_target_populati
     ns <- session$ns
     
     new_factors_data <- reactive({
-      req(selected_coc$coc_instance_id)
+      req(user_coc$coc_instance_id)
       fetch_and_structure_rating_factors(
         "New", 
-        selected_coc$coc_instance_id, 
+        user_coc$coc_instance_id, 
         selected_target_populations = selected_target_populations()
       )
     })
