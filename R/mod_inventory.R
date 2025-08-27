@@ -23,8 +23,31 @@ mod_inventory_server <- function(id, user_coc) {
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     
     projects_data <- reactiveVal(NULL)
-    new_project <- reactiveVal(FALSE)
     
+    # binary indicator for whether a new row/project has been added
+    is_new_project <- reactiveVal(FALSE)
+    
+    # Add fields only displayed in Inventory
+    add_calculated_fields <- function(project_data, is_new = FALSE) {
+      project_data <- project_data %>%
+        fmutate(
+          ch_bed_inventory = ch_fam_beds + total_ch_ind_beds,
+          vet_bed_inventory = vet_fam_beds + vet_ind_beds,
+          youth_bed_inventory = par_youth_beds + single_youth_beds
+        )
+
+      # New/Additional projects have some fields set, not calculated
+      if(!is_new) {
+        project_data <- project_data %>% 
+          fmutate(
+            all_ind_beds = beds_hh_wo_children + beds_hh_w_only_children,
+            total_ch_ind_beds = ch_beds_hh_wo_children + ch_beds_hh_w_only_children
+          )
+      }
+      return(project_data)
+    }
+    
+    # Initialize projects_data ------
     observe({
       req(user_coc$coc_instance_id)
 
@@ -43,16 +66,17 @@ mod_inventory_server <- function(id, user_coc) {
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
           is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
           is_dedicated_dv = factor_yesno(is_dedicated_dv)
-        )
-      
+        ) %>%
+        add_calculated_fields()
+
       projects_data(data)
     })
     
     # Projects table -----
     output$projects_table <- renderDT({
-      if(new_project()) {
+      if(is_new_project()) {
         data <- projects_data()
-        new_project(FALSE)
+        is_new_project(FALSE)
       } else {
         data <- isolate(projects_data())
       }
@@ -79,11 +103,14 @@ mod_inventory_server <- function(id, user_coc) {
             `overflow` = "hidden",
             `max-width` = "400px"
           ),
-          function(x) formatStyle(x,
+          function(x) formatStyle(
+            x,
             columns = user_columns,
             backgroundColor = "#e6ffe6"
           ),
-          function(x) formatStyle(x,
+          # Replacement projects should fill out these fields, and thus color them green.
+          function(x) formatStyle(
+            x,
             columns = c("project_name","project_type","par_youth_beds","single_youth_beds"),            # what to style
             valueColumns = c("funding_action"),           # what to base styling on
             backgroundColor = styleEqual("Replace", "#e6ffe6")
@@ -94,7 +121,8 @@ mod_inventory_server <- function(id, user_coc) {
             backgroundColor = styleEqual(c("Renew","Expand","Reallocate","Replace"), "lightgray"),
             pointerEvents = "none"
           ),
-          function(x) formatCurrency(x, 
+          function(x) formatCurrency(
+            x, 
             columns = funding_columns, 
             currency = "$", 
             digits = 0
@@ -102,7 +130,6 @@ mod_inventory_server <- function(id, user_coc) {
         ),
         colnames = unname(project_variable_labels[names(data)]),
         cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds")
-        # colnames = names(data)
       )
     })
     
@@ -153,13 +180,15 @@ mod_inventory_server <- function(id, user_coc) {
                       proj_id, col_name, new_value))
       
     }
+    
     update_datatable <- function(proj_id, col_name, value) {
       # update the reactiveVal that updates the proxy
-      # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
       updated_data <- copy(projects_data())[
         project_id == proj_id, 
         (col_name) := value
-      ]
+      ] %>%
+        add_calculated_fields()
+      
       projects_data(updated_data)
     }
     
@@ -189,17 +218,13 @@ mod_inventory_server <- function(id, user_coc) {
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
           is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
           is_dedicated_dv = factor_yesno(is_dedicated_dv)
-        ) 
-      
-      # When a new row is added, the inventory_add_project module handles the DB updatewe update the projects_data
-      new_row <- project_data %>% 
-        fselect(names(projects_data())) %>% 
-        fmutate(project_id = as.integer(fmax(projects_data()$project_id) + 1))
+        ) %>%
+        add_calculated_fields(TRUE)
       
       updated_data <- rbind(new_row, copy(projects_data()))
       
       projects_data(updated_data)
-      new_project(TRUE)
+      is_new_project(TRUE)
     }
     
     append_to_db <- function(new_project_data) {
