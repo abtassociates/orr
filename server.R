@@ -55,30 +55,37 @@ function(input, output, session) {
     if (!("code" %in% names(query))){
       # no code in the url variables means the user hasn't logged in yet
       print('not logged in yet')
-      showElement("login")
+      showElement("login_welcome_text")
     } else {
       current_user <- retrieve_user_data(query$code)
       
       # if an error occurred during login
       if (is.null(current_user)){
         print('user is NULL')
-        hideElement("login")
-        showElement("login_error_aws_flow")
+        hideElement("login_welcome_text")
         user_coc$auth <- FALSE
       } else {
         print('user found!')
         # check if user is in allowed user list
-        if (str_to_lower(current_user$email) %in% str_to_lower(allowed_users$user_email)){
+        if (!(str_to_lower(current_user$email) %in% users$username)){
+            print("new user added to allowed list")
+            # user not allowed, so shows a login error message
+            #showElement("login_error_user")
+            
+        } else {
           print("user in allowed list")
           
-          hideElement("login")
+        }
+        
+          hideElement("login_welcome_text")
           showElement("login_confirmed")
           showElement("enter_app")
-
           user_coc$auth <- TRUE
           user_coc$email <- current_user$email
           user_coc$username <- current_user$email
           user_coc$given_name <- current_user$given_name
+          
+          
           
           nav_show("nav", "coc_selection")
           nav_show("nav", "inventory")
@@ -89,13 +96,6 @@ function(input, output, session) {
           nav_show("nav", "funding_priorities")
           nav_show("nav", "final_review")
           
-        } else {
-          print("user not allowed")
-          # user not allowed, so shows a login error message
-          hideElement("login")
-          showElement("login_error_user")
-
-        }
       }
     }
     
