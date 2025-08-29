@@ -1,37 +1,25 @@
-initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
+initialize_inline_edit_table_ui <- function(data, column_defs = list(), tableID, initial_filter, formatting = list(), colnames=NULL, cols_to_disable = NULL) {
   # Determine factor/dropdown columns and user-editable columns
   factor_cols <- sapply(data, is.factor)
   
   # --- STEP 1: Prepare information for JavaScript ---
-  # Create a list that maps 0-based column indices to their choices.
-  # This will be converted to a JSON object and passed to the datatable callback.
-  factor_info <- list()
-  
-  column_defs <- list(list(
-    targets = which(names(data) %in% user_columns),
-    className = 'green-background'
-  ))
-  
-  for (col_name in names(factor_cols)[factor_cols]) {
-    col_index <- which(names(data) == col_name) - 1
-    choices <- levels(data[[col_name]])
-    factor_info[[as.character(col_index)]] <- choices
+  # factor_info is a named list of each factor variable and its levels/choices
+  # and will be converted to a JSON object and passed to the datatable callback.
+  factor_names <- names(factor_cols)[factor_cols]
+  factor_info <- lapply(data[, ..factor_names], levels)
+  if(!is.null(colnames)) 
+    names(factor_info) <- project_variable_labels[match(names(factor_info), names(project_variable_labels))]
 
-    column_defs[[length(column_defs) + 1]] <- list(
-      targets = col_index,
-      className = 'factor-edit-cell',
-      render = DT::JS(sprintf("
-        function(data, type, row, meta) {
-          if (type === 'display') {
-            var map = %s;
-            return map[data] || data;
-          }
-          return data;
-        }",
-        jsonlite::toJSON(choices)
-      ))
-    )
-  }
+  # column_defs adds classname for easier management
+  column_defs[[length(column_defs) + 1]] <- list(
+    targets = match(factor_names, names(data)) - 1,  # Vector of all indices
+    className = 'factor-edit-cell'
+  )
+  
+  column_defs[[length(column_defs) + 1]] <- list(
+    targets = match(cols_to_disable, names(data)) - 1,  # Vector of all indices
+    className = 'disabled dt-right'
+  )
   
   # --- STEP 2: initComplete JS ---
   init_js <- sprintf("
@@ -40,23 +28,24 @@ initialize_table_ui <- function(data, user_columns, tableID, initial_filter) {
       var factorInfo = %s;
       var tableID = '%s';
       
-      // Function to revert cell to its original state
-      function setCellData(cell, val) {
+      // Function to set cell value
+      function setCellText(cell, val) {
         var $td = $(cell.node());
         $td.empty().text(val); // Remove dropdown, restore text
       }
       
       table.on('dblclick', 'td.factor-edit-cell', function(e) {
-        var cell = table.cell(this);
-        var colIndex = cell.index().column;
         var $td = $(this);
-  
         if ($td.find('select').length) return; // already editing
 
-        if (factorInfo[colIndex]) {
-          var choices = factorInfo[colIndex];
+        var cell = table.cell(this);
+        var colIndex = cell.index().column;
+        var colName = table.column(colIndex).header().innerText;
+        
+        if (factorInfo[colName]) {
+          var choices = factorInfo[colName];
           var currentVal = cell.data();
-debugger;
+
           // Build the dropdown
           var $select = $('<select></select>').css('width', '100%%');
           $.each(choices, function(i, value) {
@@ -69,10 +58,16 @@ debugger;
           $td.empty().append($select);
           $select.focus();
           
-          // If user makes a change, trigger a cell_edit event
+          // If user makes a change, we update the cell in several ways:
+          // 1. set the text of the cell to whatever dropdown value they select
+          // 2. set the cell data to the same value. This is so if they double-click the cell again, the new value will appear as the default selection
+          // 3. trigger a cell_edit event on the server, which will:
+              // 1. update the underlying datatable data (so that the new value will be preserved in sorting and filtering)
+              // 2. update the database
           $select.on('change blur', function(e) {
-            setCellData(cell, this.value);
-            Shiny.setInputValue(tableID + '_cell_edit', {
+            setCellText(cell, this.value); // Update cell text
+            cell.data(this.value); // Update cell data
+            Shiny.setInputValue(tableID + '_cell_edit', { // Trigger cell_edit server event
               row: cell.index().row + 1,
               col: cell.index().column,
               value: this.value,
@@ -82,8 +77,9 @@ debugger;
           });
           
           $('input').on('keydown', function(e) {
+          debugger;
             if (e.key === 'Escape') {
-              setCellData(cell, currentVal); // On escape, revert to old value
+              setCellText(cell, currentVal); // On escape, revert to old value
             } else if (e.key === 'Enter') {
               $(this).blur(); // Trigger the change/blur event
             }
@@ -98,7 +94,16 @@ debugger;
   # --- STEP 3: datatable creation ---
   dt <- datatable(
     data,
-    editable = "cell",
+    colnames = colnames,
+    editable = list(
+      target = "cell",
+      disable = list(
+        columns = match(
+          cols_to_disable, 
+          names(data)
+        ) - 1
+      )
+    ),
     filter = "top",
     escape = FALSE,
     selection = "none",
@@ -110,13 +115,11 @@ debugger;
       columnDefs = column_defs,
       initComplete = DT::JS(init_js)
     )
-  ) %>%
-    formatStyle(
-      columns = c(2,3), 
-      `white-space` = "nowrap",
-      `overflow` = "hidden",
-      `max-width` = "400px"
-    )
+  ) 
   
+  # Add any passed in formatting
+  for (f in formatting) {
+    dt <- dt %>% f
+  }
   return(dt)
 }

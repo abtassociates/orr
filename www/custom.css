@@ -1,10 +1,3 @@
-.green-background {
-  background-color: #e6ffe6 !important;
-}
-
-#inventory-projects_table table tbody > td:first-child {
-  display: none;
-}
 
 #submit_sign_out {
   font-weight: bold;
@@ -13,11 +6,18 @@
   */
 }
 
-/*Need to raise Add Project modal; otherwise, it starts in the center and looks weird*/
 
+/*make sure modals are centered*/
 .modal {
   display: flex !important;
   align-items: center;
+  overflow: hidden;
+}
+
+/*Disallow clicking on disabled/calculated cells*/
+td.disabled {
+  pointer-events: none;
+  background-color: lightgray;
 }
 
 /*CUSTOMIZE RATING CRITERIA*/

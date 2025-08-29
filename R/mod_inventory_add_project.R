@@ -8,7 +8,7 @@ LOOKUP_CHOICES <- list(
   dv_reallocation_project_types = c("RRH", "TH+RRH", "SSO - CE"),
   funding_source = c("CoC","YHDP","DV"),
   no_yhdp_funding_source = c("CoC", "DV"),
-  target_populations = names(get_labelled_lookups("target_population"))
+  target_populations = c("DV","HIV","Youth", "General") # AS 8/26: What are the right populations here?
 )
 
 # ===================================================================
@@ -106,7 +106,7 @@ mod_inventory_add_project_server <- function(
 
     # Determine the definitive target population.
     current_target_pop <- reactive({
-      if (current_funding_source() == "YHDP") "Yth" 
+      if (current_funding_source() == "YHDP") "Youth" 
       else if (current_funding_source() == "DV") "DV" 
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
@@ -128,7 +128,7 @@ mod_inventory_add_project_server <- function(
       else if (current_funding_source() == "DV") groups <- c("total_beds") # Will be relabeled to "DV Beds"
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
-        if (tp == "Yth" || tp == "") groups <- c(groups, "youth_beds")
+        if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
         if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
       }
       return(groups)
@@ -147,6 +147,7 @@ mod_inventory_add_project_server <- function(
       }
       updateActionLink(session, "add_another_link", label = "Submit and add another reallocation project?")
       shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
+      shinyjs::disable("funding_source")
     } else if (form_type == "YHDP Replacement" && !is.null(project_to_replace)) {
       updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
       updateTextInput(session, "organization_name", value = project_to_replace$`Organization Name`)
@@ -154,6 +155,7 @@ mod_inventory_add_project_server <- function(
       updateNumericInput(session, "youth_beds_fam", value = project_to_replace$`Par Youth Beds`)
       updateNumericInput(session, "youth_beds_ind", value = project_to_replace$`Single Youth Beds`)
       updateActionLink(session, "add_another_link", label = "Submit and add another replacement project?")
+      shinyjs::disable("funding_source")
     }
     
     current_funding_source <- reactive({
@@ -186,7 +188,7 @@ mod_inventory_add_project_server <- function(
       is_new_or_expand <- fa %in% c("New", "Expand")
       
       shinyjs::toggle("grant_number", condition = !is_new_or_expand & !grepl("Reallocation", form_type))
-      if(current_funding_source() == "") shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
+      shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
       shinyjs::toggleState("funding_action", condition = fa != "Replace" && !(current_funding_source() == "YHDP" && grepl("Reallocation", form_type)))
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
@@ -356,9 +358,6 @@ mod_inventory_add_project_server <- function(
         }
 
         # Collect data into a clean list
-        get_ref_id <- function(x) {
-          get_lookup_refid(x, str_remove(deparse(substitute(x)), "input\\$"))
-        }
         new_project_data <- data.table(
           project_name = input$project_name,
           organization_name = input$organization_name,
@@ -367,17 +366,21 @@ mod_inventory_add_project_server <- function(
           project_type = input$project_type,
           target_population = input$target_population,
           is_dedicated_dv = input$all_dv_checkbox,
-          all_fam_beds = input$total_beds_fam, all_ind_beds = input$total_beds_ind,
-          ch_fam_beds = input$ch_beds_fam, total_ch_ind_beds = input$ch_beds_ind,
-          vet_fam_beds = input$vet_beds_fam, vet_ind_beds = input$vet_beds_ind,
-          par_youth_beds = input$youth_beds_fam, single_youth_beds = input$youth_beds_ind,
           dv_fam_beds = if(input$target_population == "DV") input$total_beds_fam,
           dv_ind_beds = if(input$target_population == "DV") input$total_beds_ind,
+          all_fam_beds = input$total_beds_fam, 
+          all_ind_beds = input$total_beds_ind,
+          ch_fam_beds = input$ch_beds_fam, 
+          total_ch_ind_beds = input$ch_beds_ind,
+          vet_fam_beds = input$vet_beds_fam, 
+          vet_ind_beds = input$vet_beds_ind,
+          par_youth_beds = input$youth_beds_fam, 
+          single_youth_beds = input$youth_beds_ind,
           is_dedicated_ch_fam = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_fam,
           is_dedicated_ch_ind = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind,
-          mckinneyvento = 1,
-          mckinneyventoyhdp = ifelse(input$funding_source == "YHDP", 1, 0),
-          dv_renewal = ifelse(input$funding_source == "DV" && input$funding_action == "Renew", 1, 0)
+          mckinneyvento = TRUE,
+          mckinneyventoyhdp = input$funding_source == "YHDP",
+          dv_renewal = input$funding_source == "DV" && input$funding_action == "Renew"
         )
         
         modal_submission_outcome$project_data <- new_project_data

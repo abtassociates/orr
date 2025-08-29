@@ -64,9 +64,18 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       nav_control("inventory")
       
       # Initialize projects data
-      filtered_data <- get_hic_data()
-      
-      projects_data(filtered_data)
+      # If there are already Project records for this CoC Instance, store those. 
+      # Otherwise, store the HIC data
+      filtered_data <- get_db_tbl("projects")
+
+      if(nrow(filtered_data) > 0) projects_data(filtered_data)
+      else {
+        filtered_data <- get_hic_data()
+        projects_data(filtered_data)
+        
+        filtered_data_db <- factor_vars_db_prep(filtered_data)
+        DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
+      }
     })
     output$new_instance_ui <- renderUI({
       # If they select a CoC that has existing CoC Instances
@@ -157,32 +166,25 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           coc_amount_awarded_last_year = as.numeric(NA),
           coc_amount_expended_last_year = as.numeric(NA),
           coc_funding_requested = as.numeric(NA),
-          funding_action = fifelse(
-            mckinneyvento == "Yes", 
-            lookups[reference_type == "funding_action" & value == "Renew", reference_id], 
-            lookups[reference_type == "funding_action" & value == "Ignore", reference_id]
-          ),
+          funding_action = fifelse(mckinneyvento == "Yes", "Renew", "Ignore"),
           coc_instance_id = user_coc$coc_instance_id,
           # additional cols user will fill out
           is_dedicated_ch_fam = factor_yesno(NA),
           is_dedicated_ch_ind = factor_yesno(NA),
           is_dedicated_dv = factor_yesno(NA),
           amount_other_public_funding = as.numeric(NA),
-          amount_private_funding = as.numeric(NA)
-        ) %>%
-        frename(bed_field_mapping) %>%
-        fmutate(
+          amount_private_funding = as.numeric(NA),
           all_ind_beds = beds_hh_wo_children + beds_hh_w_only_children,
           total_ch_ind_beds = ch_beds_hh_wo_children + ch_beds_hh_w_only_children,
-          dv_fam_beds = fifelse(target_population == "DV", all_fam_beds, as.integer(0)),
+          dv_fam_beds = fifelse(target_population == "DV", beds_hh_w_children, as.integer(0)),
           dv_ind_beds = fifelse(target_population == "DV", all_ind_beds, as.integer(0))
         ) %>%
         fmutate(
-          funding_action = convert_to_factor(., "funding_action"),
+          funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
           project_type = convert_to_factor(., "project_type", textToNum = TRUE),
-          target_population = convert_to_factor(., "target_population", textToNum = TRUE, label_col = "value_abbrev"),
-          dv_renewal = factor_yesno(dv_renewal)
+          target_population = convert_to_factor(., "target_population", textToNum = TRUE)
         ) %>%
+        frename(bed_field_mapping) %>%
         get_vars(dbListFields(DB_CON, "projects"))
 
       return(project_data)
