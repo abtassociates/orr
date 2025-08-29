@@ -5,7 +5,8 @@ page_navbar(
   header = tagList(
     ## css, idle management, and dimension management --------
     tags$head(
-      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+      shinyjs::useShinyjs()
     ),
     ## Enable shinyjs -----
     shinyjs::useShinyjs(),
@@ -18,8 +19,9 @@ page_navbar(
       refresh = ""
     )
   ),
-  
+
   mod_account_ui("account"),
+  mod_requests_ui("requests"),
   mod_coc_selection_ui("coc_selection"),
   mod_inventory_ui("inventory"),
   mod_rating_criteria_ui("rating_criteria"),
@@ -29,4 +31,5 @@ page_navbar(
   mod_funding_priorities_ui("funding_priorities"),
   mod_final_review_ui("final_review"),
   mod_ranking_ui("ranking")
+
 )

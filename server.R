@@ -32,6 +32,7 @@ function(input, output, session) {
     nav_hide("nav", "final_review")
 
   })
+
   mod_coc_selection_server("coc_selection", nav_control, projects_data, user_coc)
   mod_inventory_server("inventory", user_coc)
   mod_rating_criteria_server("rating_criteria", user_coc)
@@ -41,6 +42,7 @@ function(input, output, session) {
   mod_funding_priorities_server("funding_priorities", user_coc)
   mod_final_review_server("final_review", user_coc)
   mod_ranking_server("ranking")
+  mod_requests_server(id="requests", user_coc)
   
   # user <- reactiveValues(auth = FALSE, # is the user authenticated or not
   #                        given_name = NULL, # user's given_name as stored and returned by cognito
@@ -112,6 +114,7 @@ function(input, output, session) {
          )
       
     })
+  
   
   # Observer to update nav panel when reactive value changes
   observeEvent(nav_control(), {

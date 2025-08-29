@@ -22,9 +22,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
     ## subset coc_instance_users to specific user
-    
     coc_iu <- reactive({
-      coc_instance_users[username == user_coc$email]
+      req(user_coc$auth)
+      coc_instance_users |> 
+        fsubset(username == user_coc$email)
     })
     
     # # Set session-wide user
@@ -91,7 +92,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           selectInput(ns('coc_dropdown'),
                       label = "Please choose a CoC:",
                       choices = setNames(cocs$coc_name,nm = cocs$coc_code)
-          ),
+                      ),
           footer = tagList(
             actionButton(ns('choose_coc'), label="Next"),
             modalButton(label="Cancel")
@@ -186,5 +187,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
 
       return(project_data)
     }
+
   })
 }

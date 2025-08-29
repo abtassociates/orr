@@ -28,6 +28,6 @@ files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
 
 # Pull global datasets from db
-source(here("R/global_data_prep.R"))
+#source(here("R/global_data_prep.R"))
 
 set.seed(123)

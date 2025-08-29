@@ -1,6 +1,7 @@
 lookups <- get_db_tbl("lookups")
 users <- get_db_tbl("users")
 cocs <- get_db_tbl("cocs")
+requests <- get_db_tbl('coc_instance_requests')
 coc_instance_users <- get_db_query(
   "SELECT u.*, i.coc 
   FROM coc_instance_users u 
