@@ -14,13 +14,10 @@
 }
 
 /*Need to raise Add Project modal; otherwise, it starts in the center and looks weird*/
-#add-project-modal .modal-dialog {
-  margin-top: 1em;
-  height: 95%;
-  overflow: auto;
 
-#shiny-modal > div #cognito_modal .modal-dialog {
-  margin-top: 50%;
+.modal {
+  display: flex !important;
+  align-items: center;
 }
 
 /*CUSTOMIZE RATING CRITERIA*/
@@ -30,7 +27,6 @@
 [id*="_sub_accordion"] .accordion-button {
   font-size: 0.8em;
 }
-
 
 /*FUNDING PRIORITIES*/
 /*
