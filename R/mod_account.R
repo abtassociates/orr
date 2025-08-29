@@ -7,7 +7,8 @@ mod_account_ui <- function(id){
     icon = icon('user'),
     value = id,
     nav_panel( 
-      title = 'Request Access'
+      title = 'Request Access',
+      mod_requests_ui('requests')
     ),
     nav_panel(
       title = 'View Instances'
