@@ -8,10 +8,11 @@ mod_requests_ui <- function(id) {
         card_header(h4('Requests')),
         card_body(
           fillable = FALSE,
-          actionButton(ns('approve_request'), label='Approve'),
-          actionButton(ns('reject_request'), label='Reject'),
           helpText("Please select a row from the table below to make or update a request."),
           DTOutput(ns('requests_dt'))|> shinycssloaders::withSpinner(),
+          actionButton(ns('approve_request'), label='Approve', class='btn-success'),
+          actionButton(ns('reject_request'), label='Reject', class = 'btn-danger'),
+          actionButton(ns('send_request'), label = 'Send', class = 'btn-primary'),
           uiOutput(ns('request_update_controls'))
         )
       )
@@ -44,14 +45,18 @@ mod_requests_server <- function(id, user_coc) {
       
       observe({
         if(length(input$requests_dt_rows_selected)==0){
-          shinyjs::disable(id = 'update_request')
+          shinyjs::disable(id = 'approve_request')
+          shinyjs::disable(id = 'reject_request')
+          shinyjs::disable(id = 'send_request')
         } else {
-          shinyjs::enable(id = 'update_request')
+          shinyjs::enable(id = 'approve_request')
+          shinyjs::enable(id = 'reject_request')
+          shinyjs::enable(id = 'send_request')
         }
       })
       
       output$request_update_controls <- renderUI({
-        req(length(input$requests_dt_rows_selected)==0)
+        req(length(input$requests_dt_rows_selected) != 0)
         radioButtons('request_role', label='Role', choices = c('Viewer','Editor'))
       })
     }

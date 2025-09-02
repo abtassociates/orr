@@ -9,10 +9,11 @@ mod_coc_selection_ui <- function(id) {
       card_body(
         fillable = FALSE,
         # a "Create" button or link above the table will display so they can create a new CoC Instance
-        actionButton(ns('create_new_instance'), "Create a New CoC Instance"),
         #selectInput(ns('choose_user'), "Select a User Profile",  choices=users$username),
-        actionButton(ns('edit_coc_instance'),"Edit selected CoC", icon = icon('edit'))
         DTOutput(ns('coc_instances_dt')) |> shinycssloaders::withSpinner(),
+        actionButton(ns('edit_coc_instance'),"Edit Selected Instance", icon = icon('edit'), class='btn-primary'),
+        actionButton(ns('create_new_instance'), "Create New Instance", icon = icon('circle-plus'), class='btn-secondary'),
+        
       )
     )
   #)
