@@ -157,7 +157,7 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
     
     # Save logic for threshold selections
     observeEvent(input$save_thresholds, {
-      req(user_coc$coc_instance_id, username())
+      req(user_coc$coc_instance_id, user_coc$username)
       
       current_selection <- as.integer(input$threshold_selection)
       previous_selection <- rv$selected_thresholds
@@ -171,7 +171,7 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
           add_df <- data.frame(
             threshold_id = to_add,
             coc_instance_id = user_coc$coc_instance_id,
-            created_by = username()
+            created_by = user_coc$username
           )
           DBI::dbAppendTable(DB_CON, "selected_thresholds", add_df)
         }

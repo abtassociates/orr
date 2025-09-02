@@ -10,8 +10,6 @@ function(input, output, session) {
   )
   nav_control <- reactiveVal("dashboard")
 
-  username <- reactiveVal("alex.silverman@abtglobal.com")
-  
   # Hide all panels except "account" initially, show login modal
   observe({
     showModal(
