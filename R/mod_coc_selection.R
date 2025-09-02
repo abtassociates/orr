@@ -11,8 +11,8 @@ mod_coc_selection_ui <- function(id) {
         # a "Create" button or link above the table will display so they can create a new CoC Instance
         actionButton(ns('create_new_instance'), "Create a New CoC Instance"),
         #selectInput(ns('choose_user'), "Select a User Profile",  choices=users$username),
-        DTOutput(ns('coc_instances_dt')),
         actionButton(ns('edit_coc_instance'),"Edit selected CoC", icon = icon('edit'))
+        DTOutput(ns('coc_instances_dt')) |> shinycssloaders::withSpinner(),
       )
     )
   #)
@@ -45,7 +45,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     output$coc_instances_dt <- renderDT({
       
       datatable(coc_iu(), 
-                options = list(dom = 'tpi'),
+                colnames = str_to_title(
+                  str_replace_all(names(coc_iu()),'_',' ')
+                ),
+                options = list(dom = 'tip'),
                 editable = FALSE,
                 style = 'default',
                 filter = list(position = 'top', plain = TRUE),

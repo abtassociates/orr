@@ -8,9 +8,10 @@ mod_requests_ui <- function(id) {
         card_header(h4('Requests')),
         card_body(
           fillable = FALSE,
-          DTOutput(ns('requests_dt')),
           actionButton(ns('approve_request'), label='Approve'),
           actionButton(ns('reject_request'), label='Reject'),
+          helpText("Please select a row from the table below to make or update a request."),
+          DTOutput(ns('requests_dt'))|> shinycssloaders::withSpinner(),
           uiOutput(ns('request_update_controls'))
         )
       )
@@ -37,7 +38,8 @@ mod_requests_server <- function(id, user_coc) {
           )
         })
         
-        datatable(cbind(actions,cur_requests), extensions = "Buttons", escape=-1)
+        datatable(cbind(actions,cur_requests), extensions = "Buttons", escape=-1,
+                  options = list(dom = 'tip'))
       })
       
       observe({
