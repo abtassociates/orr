@@ -11,6 +11,10 @@ td.disabled {
   background-color: lightgray;
 }
 
+.hidden {
+  display: none;
+}
+
 /*CUSTOMIZE RATING CRITERIA*/
 [id*="_main_accordion"] .accordion-button {
   font-size: 1em;

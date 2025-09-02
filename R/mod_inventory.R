@@ -72,7 +72,7 @@ mod_inventory_server <- function(id, user_coc) {
         "SELECT * FROM projects WHERE coc_instance_id = $1", 
         params = user_coc$coc_instance_id
       ) %>% 
-        fselect(-coc_instance_id, -date_created, -date_updated, -created_by, -updated_by, -amount_other_public_funding, -amount_private_funding) %>%
+        fselect(-coc_instance_id, -date_created, -date_updated, -updated_by, -amount_other_public_funding, -amount_private_funding) %>%
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
           project_type = convert_to_factor(., "project_type"),
@@ -112,6 +112,9 @@ mod_inventory_server <- function(id, user_coc) {
         data,
         tableID = ns("projects_table"), 
         initial_filter = initial_filter,
+        column_defs = list(
+          list(targets=which(names(data) == "created_by") - 1, className = "hidden")
+        ),
         formatting = list(
           function(x) formatStyle(
             x,
@@ -123,7 +126,7 @@ mod_inventory_server <- function(id, user_coc) {
           function(x) formatStyle(
             x,
             columns = user_columns,
-            backgroundColor = user_entered_color
+            backgroundColor = USER_ENTRY_BG_COLOR
           ),
           # Replacement projects should fill out these fields, and thus color them green.
           function(x) formatStyle(
@@ -256,7 +259,6 @@ mod_inventory_server <- function(id, user_coc) {
           funding_action = get_lookup_refid(funding_action, "funding_action"),
           project_type = get_lookup_refid(project_type, "project_type"),
           target_population = get_lookup_refid(target_population, "target_population"),
-          created_by = user_coc$username,
           date_created = format(lubridate::now(), "%Y-%m-%d %H:%M:%S")
         )
       

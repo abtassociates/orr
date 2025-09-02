@@ -121,5 +121,7 @@ project_variable_labels <- c(
   "amount_private_funding" = "Amount of private funding",
   "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
   "vet_bed_inventory" = "Veteran Bed Inventory",
-  "youth_bed_inventory" = "Youth Bed Inventory"
+  "youth_bed_inventory" = "Youth Bed Inventory",
+  "created_by" = "Created By",
+  "date_created" = "Date Created"
 )
