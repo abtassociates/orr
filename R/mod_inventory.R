@@ -133,7 +133,14 @@ mod_inventory_server <- function(id, user_coc) {
             x,
             columns = c("project_name","project_type","par_youth_beds","single_youth_beds"),            # what to style
             valueColumns = c("funding_action"),
-            backgroundColor = styleEqual("Replace", user_entered_color)
+            backgroundColor = styleEqual("Replace", USER_ENTRY_BG_COLOR)
+          ),
+          function(x) formatStyle(
+            x,
+            columns = c("all_ind_beds"),            # what to style
+            valueColumns = c("created_by"),
+            backgroundColor = styleEqual(SERVICE_ACCOUNT, 'var(--bs-body-bg)', default = 'lightgray'),
+            pointerEvents = styleEqual(SERVICE_ACCOUNT, 'auto', default = 'none')
           ),
           function(x) formatCurrency(
             x, 
