@@ -20,6 +20,8 @@ library(shinycssloaders)
 
 in_dev_mode <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
 
+options("shiny.autoload.r" = TRUE)
+
 set.seed(123)
 
 user_entered_color <- "#e6ffe6"
