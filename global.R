@@ -18,9 +18,7 @@ library(shinyvalidate)
 library(purrr)
 library(shinycssloaders)
 
-in_dev_mode <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
-
-options("shiny.autoload.r" = TRUE)
+IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
 
 set.seed(123)
 
@@ -28,3 +26,4 @@ set.seed(123)
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
 
+USER_ENTRY_BG_COLOR <- "#e6ffe6"

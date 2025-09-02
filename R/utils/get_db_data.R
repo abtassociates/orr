@@ -9,7 +9,7 @@ DB_CONFIG <- list(
 
 # Database connection function
 get_db_connection <- function() {
-  if(in_dev_mode) {
+  if(IN_DEV_MODE) {
     dbConnect(RSQLite::SQLite(), here("sandbox/dev_db.sqlite"))
   } else {
     dbConnect(
