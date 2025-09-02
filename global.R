@@ -24,4 +24,7 @@ options("shiny.autoload.r" = TRUE)
 
 set.seed(123)
 
-user_entered_color <- "#e6ffe6"
+# Load all utils functions
+files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
+
