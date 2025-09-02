@@ -8,7 +8,7 @@ function(input, output, session) {
     given_name = NULL, # user's given_name as stored and returned by cognito
     email = NULL  # user's email as stored and returned by cognito
   )
-  nav_control <- reactiveVal("account")
+  nav_control <- reactiveVal("dashboard")
 
   username <- reactiveVal("alex.silverman@abtglobal.com")
   
@@ -21,8 +21,9 @@ function(input, output, session) {
            tags$script("$('.modal-backdrop').css('background-color', '#777777')")
            ),
               session = session)
-    nav_hide("nav", "coc_selection")
+    #nav_hide("nav", "coc_selection")
     nav_hide("nav", "inventory")
+    nav_hide('nav', 'dashboard')
     nav_hide("nav", "rating_criteria")
     nav_hide("nav", "renewal_rating")
     nav_hide("nav", "new_rating")
@@ -84,9 +85,8 @@ function(input, output, session) {
           user_coc$email <- current_user$email
           user_coc$username <- current_user$email
           user_coc$given_name <- current_user$given_name
-          
-          
-          
+         
+          nav_show("nav", "dashboard")
           nav_show("nav", "coc_selection")
           nav_show("nav", "inventory")
           nav_show("nav", "rating_criteria")

@@ -1,11 +1,11 @@
 mod_coc_selection_ui <- function(id) {
   ns <- NS(id)
   
-  nav_panel(
-    "Select CoC",
-    value = id,
-    card(
-      card_header("Select a CoC Instance to Edit"),
+  #nav_panel(
+  #  "My Dash",
+  #  value = id,
+    card(id = id,
+      card_header(h4("Instances")),
       card_body(
         fillable = FALSE,
         # a "Create" button or link above the table will display so they can create a new CoC Instance
@@ -15,7 +15,7 @@ mod_coc_selection_ui <- function(id) {
         actionButton(ns('edit_coc_instance'),"Edit selected CoC", icon = icon('edit'))
       )
     )
-  )
+  #)
 }
 
 mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {

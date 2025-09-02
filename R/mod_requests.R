@@ -5,6 +5,7 @@ mod_requests_ui <- function(id) {
     #nav_panel(
     #  "Requests",
       card(
+        card_header(h4('Requests')),
         card_body(
           fillable = FALSE,
           DTOutput(ns('requests_dt')),

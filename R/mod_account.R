@@ -6,13 +6,13 @@ mod_account_ui <- function(id){
     title = "Manage Account",
     icon = icon('user'),
     value = id,
-    nav_panel( 
-      title = 'Request Access',
-      mod_requests_ui('requests')
-    ),
-    nav_panel(
-      title = 'View Instances'
-    ),
+    # nav_panel( 
+    #   title = 'Request Access',
+    #   mod_requests_ui('requests')
+    # ),
+    # nav_panel(
+    #   title = 'View Instances'
+    # ),
     ## link to log out of application
     nav_item(
       value = "sign_out",
