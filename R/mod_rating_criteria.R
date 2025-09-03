@@ -76,7 +76,7 @@ mod_rating_criteria_server <- function(id, user_coc) {
     
     mod_renewal_factors_server(
       "renewal_factors", 
-      user_coc$coc_instance_id, 
+      user_coc, 
       reactive(input$project_type), 
       reactive(input$target_population)
     )
@@ -351,7 +351,7 @@ mod_renewal_factors_ui <- function(id) {
 
 #' @title mod_renewal_factors_server
 #' @noRd
-mod_renewal_factors_server <- function(id, coc_instance_id, selected_project_types, selected_target_populations) {
+mod_renewal_factors_server <- function(id, user_coc, selected_project_types, selected_target_populations) {
   # This server function would be nearly identical to the new_factors_server,
   # but with a different filter on `funding_action`. A helper function could be
   # created to avoid code duplication. For clarity here, it is written out.
