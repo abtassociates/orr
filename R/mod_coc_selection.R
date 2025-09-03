@@ -101,21 +101,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
     })
     
-    output$new_instance_ui <- renderUI({
-      # If they select a CoC that has existing CoC Instances
-      if(1 == 1){}
-      # If there’s an instance THEY are already associated with (by looking up CoC Instances joined with CoC Instance Users where the user is this user), warn them that they already have an ORR for this CoC and that if they wish to modify settings, they can do so within existing ORRs. Show options "Continue" or "Cancel"
-      # If they continue: go to next step
-      # If they cancel: close pop-up
-      # If they select a CoC that SOMEONE ELSE is associated with (by looking up CoC Instances joined with CoC Instance Users where the user is NOT this user and user role = "Admin"), let them know as much and provide them the option to "Request Access" or "Create ORR anyway"
-      # If they "Request Access": 
-      # send email to user associated with that other CoC Instance
-      # If the user accepts, create a new CoC Instance User with role ( "Editor" or "Viewer")
-      # provide feedback that email was sent and that they will be alerted via email if/when their request was accepted or rejected. close the modal
-      # If they "Create ORR anyway": go to next step
-      # If they select a CoC that has no other CoC Instances: go to next step
-      
-    })
     
     #  When they hit Create: display pop-up form titled "Create ORR" with a simple dropdown to select a CoC.
     observeEvent(input$create_new_instance, {
@@ -124,7 +109,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           title = 'Create ORR',
           selectInput(ns('coc_dropdown'),
                       label = "Please choose a CoC:",
-                      choices = setNames(cocs$coc_name,nm = cocs$coc_code)
+                      choices = cocs$coc_code,
                       ),
           footer = tagList(
             actionButton(ns('choose_coc'), label="Next"),
@@ -216,6 +201,34 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       }
    
     })
+    
+    
+    observeEvent(input$continue_new_instance,{
+        
+      removeModal()
+        showModal(
+          modalDialog(
+            title = 'New Instance Dataset',
+            radioButtons(ns('hic_import_select'),
+                         label = 'Which version of the HIC data would you like to use?',
+                         choices = list(
+                           'Import the HIC data as of X/X/XX' = "import",
+                           'Upload my own version of the HIC data' = "upload"
+                         )
+            ),
+            uiOutput(ns('hic_cond_select')),
+            footer = tagList(
+              actionButton(inputId=ns('new_hic_instance'),label='Create New Instance'),
+              modalButton(label='Cancel')
+            )
+          ),
+          session = session
+        )
+                  
+    })
+    
+    observeEvent(input$continue_new_instance2,{
+      removeModal()
       showModal(
         modalDialog(
           radioButtons(ns('hic_import_select'),
@@ -232,6 +245,50 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
     })
     
+    observeEvent(input$continue_new_instance3,{
+      removeModal()
+      showModal(
+        modalDialog(
+          title = 'New Instance Dataset',
+          radioButtons(ns('hic_import_select'),
+                       label = 'Which version of the HIC data would you like to use?',
+                       choices = list(
+                         'Import the HIC data as of X/X/XX' = "import",
+                         'Upload my own version of the HIC data' = "upload"
+                       )
+          ),
+          uiOutput(ns('hic_cond_select')),
+          footer = tagList(
+            actionButton(inputId=ns('new_hic_instance'),label='Create New Instance'),
+            modalButton(label='Cancel')
+          )
+        ),
+        session = session
+      )
+    })
+    
+    # If they "Request Access": 
+    # send email to user associated with that other CoC Instance
+    observeEvent(input$request_access, {
+      req(!is.null(admin_email()))
+      
+      ## TODO: send email to admin of instance that is requested
+      
+      
+      showModal(
+        modalDialog(
+          title = 'Request Sent',
+          helpText('Thank you. A request has been sent to the Admin for this instance.'),
+          HTML(paste0('<p>Request Details</p>
+               <ul>
+               <li>Requested CoC: ', input$coc_dropdown,'</li>',
+               '<li>Requested instance: ','</li>',    
+               '<li>Requested at: ',Sys.time(),'</li>',
+               '</ul>
+               '))
+        )
+      )
+    })
     get_hic_data <- function() {
       bed_field_mapping <- c(
         all_fam_beds = "beds_hh_w_children", 
