@@ -12,6 +12,7 @@ mod_coc_selection_ui <- function(id) {
         #selectInput(ns('choose_user'), "Select a User Profile",  choices=users$username),
         DTOutput(ns('coc_instances_dt'),fill = F) |> shinycssloaders::withSpinner(),
         actionButton(ns('edit_coc_instance'),"Edit Selected Instance", icon = icon('edit'), class='btn-primary'),
+        actionButton(ns('delete_coc_instance'), "Delete Selected Instance", icon = icon('trash'), class='btn-danger'),
         actionButton(ns('create_new_instance'), "Create New Instance", icon = icon('circle-plus'), class='btn-secondary'),
         
       )
@@ -41,8 +42,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     observe({
       if(length(input$coc_instances_dt_rows_selected)==0){
         shinyjs::disable(id = 'edit_coc_instance')
+        shinyjs::disable(id = 'delete_coc_instance')
       } else {
         shinyjs::enable(id = 'edit_coc_instance')
+        shinyjs::enable(id = 'delete_coc_instance')
       }
     })
     
@@ -85,6 +88,20 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
       }
     })
+    
+    observeEvent(input$delete_coc_instance, {
+      showModal(
+        modalDialog(
+          title = 'Confirm Deletion',
+          helpText("Are you sure you want to delete this CoC instance? This action cannot be undone."),
+          footer = tagList(
+            actionButton(ns('confirm_deletion'), label='Confirm'),
+            modalButton(label='Cancel')
+          )
+        )
+      )
+    })
+    
     output$new_instance_ui <- renderUI({
       # If they select a CoC that has existing CoC Instances
       if(1 == 1){}
