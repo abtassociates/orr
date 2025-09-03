@@ -20,8 +20,8 @@ function(input, output, session) {
            ),
               session = session)
     #nav_hide("nav", "coc_selection")
-    nav_hide("nav", "inventory")
-    nav_hide('nav', 'dashboard')
+    #nav_hide("nav", "inventory")
+    #nav_hide('nav', 'dashboard')
     nav_hide("nav", "rating_criteria")
     nav_hide("nav", "renewal_rating")
     nav_hide("nav", "new_rating")
@@ -51,6 +51,8 @@ function(input, output, session) {
       # no code in the url variables means the user hasn't logged in yet
       print('not logged in yet')
       showElement("login_welcome_text")
+      showElement("login_link")
+      showElement("signup_link")
     } else {
       current_user <- retrieve_user_data(query$code)
       
@@ -73,6 +75,8 @@ function(input, output, session) {
         }
         
           hideElement("login_welcome_text")
+          hideElement("login_link")
+          hideElement("signup_link")
           showElement("login_confirmed")
           showElement("enter_app")
           user_coc$auth <- TRUE
@@ -80,9 +84,9 @@ function(input, output, session) {
           user_coc$username <- current_user$email
           user_coc$given_name <- current_user$given_name
          
-          nav_show("nav", "dashboard")
-          nav_show("nav", "coc_selection")
-          nav_show("nav", "inventory")
+          #nav_show("nav", "dashboard")
+          #nav_show("nav", "coc_selection")
+          #nav_show("nav", "inventory")
           nav_show("nav", "rating_criteria")
           nav_show("nav", "renewal_rating")
           nav_show("nav", "new_rating")

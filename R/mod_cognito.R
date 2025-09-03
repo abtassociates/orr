@@ -17,15 +17,21 @@ mod_cognito_ui <- function(id){
       hidden(
         div(
           id = "login_confirmed",
-          h3("User confirmed"),
+          #h3("User confirmed"),
             ## display logged in user's given_name
             textOutput("confirmed_login_name"),
-            p("Use the menu bar to navigate."),
-            p("Don't forget to logout when you want to close the system.")   
+            p("Use the top menu bar to navigate between pages. Please logout when you want to close the application")
         )
       ),
     
-    ## continue button to enter app after logging in
+    easyClose = FALSE,
+    
+    footer = tagList(
+      ## log in button
+      tags$a(id = "login_link", "Log in", class = 'btn btn-primary', href = aws_auth_redirect),
+      ## create account button
+      tags$a(id = "signup_link", "Create Account", class = "btn btn-primary", href = aws_auth_signup),
+      ## continue button to enter app after logging in
       hidden(
         div(
           id = "enter_app",
@@ -34,14 +40,7 @@ mod_cognito_ui <- function(id){
                        class = "btn btn-primary"
           )
         )
-      ),
-    easyClose = FALSE,
-    
-    footer = tagList(
-      ## log in button
-      tags$a(id = "login_link", "Log in", class = 'btn btn-primary', href = aws_auth_redirect),
-      ## create account button
-      tags$a(id = "signup_link", "Create Account", class = "btn btn-primary", href = aws_auth_signup)
+      )
     )
     
   )

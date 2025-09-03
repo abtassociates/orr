@@ -8,7 +8,7 @@ mod_requests_ui <- function(id) {
         card_header(h4('Requests')),
         card_body(
           fillable = FALSE,
-          helpText("Please select a row from the table below to make or update a request."),
+          helpText("Please select a row from the table below update a request."),
           DTOutput(ns('requests_dt'))|> shinycssloaders::withSpinner(),
           actionButton(ns('approve_request'), label='Approve', class='btn-success'),
           actionButton(ns('reject_request'), label='Reject', class = 'btn-danger'),
