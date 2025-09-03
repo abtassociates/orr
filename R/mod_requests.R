@@ -24,23 +24,31 @@ mod_requests_server <- function(id, user_coc) {
   moduleServer(
     id,
     function(input, output, session) {
+      
       output$requests_dt <- renderDT({
         req(user_coc$auth)
-        cur_requests <- requests |>
+        cur_requests <- get_db_tbl('coc_instance_requests') |>
+          frename(requested_at = date_created) |>
           fsubset(coc_instance_id %in% user_coc$coc_instance_id) |># & request_status != "approved") |>
-          join(cocs, how='left') |>
-          fselect(coc_request_id, coc_name, coc_instance_id, requesting_user, request_status)#, request_text, requesting_user, request_status)
-        actions <- purrr::map_chr(cur_requests$request_id, function(id_) {
-          paste0(
-            '<div class="btn-group" style="width: 75px;" role="group" aria-label="Basic example">
-          <button class="btn btn-primary btn-sm edit_btn" data-toggle="tooltip" data-placement="top" title="Edit" id = ', id_, ' style="margin: 0"><i class="fa fa-pencil-square-o"></i></button>
-          <button class="btn btn-danger btn-sm delete_btn" data-toggle="tooltip" data-placement="top" title="Delete" id = ', id_, ' style="margin: 0"><i class="fa fa-trash-o"></i></button>
-        </div>'
-          )
-        })
+          join(get_db_tbl('coc_instances') |> fselect(coc_instance_id, coc), how='left') |>
+          fselect(coc_request_id, coc, coc_instance_id, requesting_user, requested_at, request_status)#, request_text, requesting_user, request_status)
+        # actions <- purrr::map_chr(cur_requests$request_id, function(id_) {
+        #   paste0(
+        #     '<div class="btn-group" style="width: 75px;" role="group" aria-label="Basic example">
+        #   <button class="btn btn-primary btn-sm edit_btn" data-toggle="tooltip" data-placement="top" title="Edit" id = ', id_, ' style="margin: 0"><i class="fa fa-pencil-square-o"></i></button>
+        #   <button class="btn btn-danger btn-sm delete_btn" data-toggle="tooltip" data-placement="top" title="Delete" id = ', id_, ' style="margin: 0"><i class="fa fa-trash-o"></i></button>
+        # </div>'
+        #   )
+        # })
         
-        datatable(cbind(actions,cur_requests), extensions = "Buttons", escape=-1,
-                  options = list(dom = 'tip'))
+        datatable(cur_requests,
+                  colnames = str_to_title(
+                    str_replace_all(names(cur_requests),'_',' ')
+                  ),
+                  extensions = "Buttons", escape=-1,
+                  options = list(dom = 'tip'), 
+                  rownames = FALSE,
+                  editable = FALSE)
       })
       
       observe({
