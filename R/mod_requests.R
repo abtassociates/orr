@@ -12,7 +12,6 @@ mod_requests_ui <- function(id) {
           DTOutput(ns('requests_dt'))|> shinycssloaders::withSpinner(),
           actionButton(ns('approve_request'), label='Approve', class='btn-success'),
           actionButton(ns('reject_request'), label='Reject', class = 'btn-danger'),
-          actionButton(ns('send_request'), label = 'Send', class = 'btn-primary'),
           uiOutput(ns('request_update_controls'))
         )
       )
@@ -55,11 +54,9 @@ mod_requests_server <- function(id, user_coc) {
         if(length(input$requests_dt_rows_selected)==0){
           shinyjs::disable(id = 'approve_request')
           shinyjs::disable(id = 'reject_request')
-          shinyjs::disable(id = 'send_request')
         } else {
           shinyjs::enable(id = 'approve_request')
           shinyjs::enable(id = 'reject_request')
-          shinyjs::enable(id = 'send_request')
         }
       })
       
