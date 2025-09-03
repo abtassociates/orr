@@ -129,7 +129,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         fileInput(ns('hic_file_upload'), label = 'Upload your HIC data',
                   accept = c('csv'))
       } else if(input$hic_import_select == 'import'){
-        # If they choose to import: create a new CoC Instance and corresponding CoC Instance User with CoC Role = Admin
         
       }
     })
@@ -231,15 +230,19 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       removeModal()
       showModal(
         modalDialog(
+          title = 'New Instance Dataset',
           radioButtons(ns('hic_import_select'),
                        label = 'Which version of the HIC data would you like to use?',
-                       choices = c(
-                         import = 'Import the HIC data as of X/X/XX',
-                         upload = 'Upload my own version of the HIC data'
+                       choices = list(
+                         'Import the HIC data as of X/X/XX' = "import",
+                         'Upload my own version of the HIC data' = "upload"
                        )
           ),
           uiOutput(ns('hic_cond_select')),
-          footer = modalButton('Create New Instance')
+          footer = tagList(
+            actionButton(inputId=ns('new_hic_instance'),label='Create New Instance'),
+            modalButton(label='Cancel')
+          )
         ),
         session = session
       )
@@ -289,6 +292,45 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         )
       )
     })
+    
+    observeEvent(input$new_hic_instance, {
+      req(input$hic_import_select == 'import')
+      
+      # If they choose to import: create a new CoC Instance and corresponding CoC Instance User with CoC Role = Admin
+      new_instance <- 
+        data.table(coc_instance_id = max(coc_iu()$coc_instance_id) + 1, 
+                   coc_instance_name = paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name)),
+                   coc = input$coc_dropdown, 
+                   ## reference_id for 'Not Started'
+                   coc_status = 8,
+                   date_created = Sys.time(), created_by = user_coc$email, 
+                   date_updated = Sys.time(), updated_by = user_coc$email)
+      
+      dbWriteTable(
+        conn = DB_CON,name = 'coc_instances',new_instance,
+        append = TRUE
+      )
+      
+      new_instance_user <- data.table(
+        coc_instance_user_id = max(coc_iu()$coc_instance_user_id) + 1,
+        coc_instance_id = new_instance$coc_instance_id,
+        username = user_coc$email,
+        ## reference_id for "Admin"
+        coc_instance_role = 5,
+        new_instance %>% fselect(date_created, created_by, date_updated, updated_by, coc)
+      )
+      
+      dbWriteTable(
+        conn = DB_CON,name = 'coc_instance_users',new_instance_user,
+        append = TRUE
+      )
+      shiny::showNotification('New CoC instance created!', type='message')
+      removeModal()
+      
+    })
+    
+    
+    
     get_hic_data <- function() {
       bed_field_mapping <- c(
         all_fam_beds = "beds_hh_w_children", 
