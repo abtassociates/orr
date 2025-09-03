@@ -48,6 +48,13 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       }
     })
     
+    coc_proxy <- dataTableProxy(ns('coc_instances_dt'))
+    
+    observe({
+      req(coc_iu())
+      replaceData(coc_proxy, coc_iu())
+    })
+    
     output$coc_instances_dt <- renderDT({
       
       datatable(coc_iu(), 
@@ -324,6 +331,11 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         conn = DB_CON,name = 'coc_instance_users',new_instance_user,
         append = TRUE
       )
+      
+      coc_iu(
+        rbind(copy(coc_iu(), new_instance_user), fill=TRUE)
+      )
+      
       shiny::showNotification('New CoC instance created!', type='message')
       removeModal()
       
