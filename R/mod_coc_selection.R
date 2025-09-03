@@ -10,7 +10,7 @@ mod_coc_selection_ui <- function(id) {
         fillable = FALSE,
         # a "Create" button or link above the table will display so they can create a new CoC Instance
         #selectInput(ns('choose_user'), "Select a User Profile",  choices=users$username),
-        DTOutput(ns('coc_instances_dt')) |> shinycssloaders::withSpinner(),
+        DTOutput(ns('coc_instances_dt'),fill = F) |> shinycssloaders::withSpinner(),
         actionButton(ns('edit_coc_instance'),"Edit Selected Instance", icon = icon('edit'), class='btn-primary'),
         actionButton(ns('create_new_instance'), "Create New Instance", icon = icon('circle-plus'), class='btn-secondary'),
         
@@ -25,8 +25,11 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     ## subset coc_instance_users to specific user
     coc_iu <- reactive({
       req(user_coc$auth)
-      coc_instance_users |> 
-        fsubset(username == user_coc$email)
+      
+      get_db_tbl('coc_instance_users') |>
+        fselect(1:(length(dbListFields(DB_CON,name = 'coc_instance_users')) -1)) |>
+        fsubset(username == user_coc$email) |>
+        fmutate(coc_instance_role = get_lookup_label(coc_instance_role, 'coc_instance_role'))
     })
     
     # # Set session-wide user
@@ -49,10 +52,11 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
                 colnames = str_to_title(
                   str_replace_all(names(coc_iu()),'_',' ')
                 ),
+                rownames = FALSE,
                 options = list(dom = 'tip'),
                 editable = FALSE,
                 style = 'default',
-                filter = list(position = 'top', plain = TRUE),
+                #filter = list(position = 'top', plain = TRUE),
                 selection = 'single'
       )
     })
