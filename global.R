@@ -21,15 +21,14 @@ library(httr)
 library(httr2)
 library(jsonlite)
 
-in_dev_mode <- F#grepl("ad.abt.local", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
+
+IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
+
+set.seed(123)
 
 # Load all utils functions
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
 
-# Pull global datasets from db
-#source(here("R/global_data_prep.R"))
 
-set.seed(123)
-
-user_entered_color <- "#e6ffe6"
+USER_ENTRY_BG_COLOR <- "#e6ffe6"

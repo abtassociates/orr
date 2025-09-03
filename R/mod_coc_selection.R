@@ -186,7 +186,8 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         fmutate(
           funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
           project_type = convert_to_factor(., "project_type", textToNum = TRUE),
-          target_population = convert_to_factor(., "target_population", textToNum = TRUE)
+          target_population = convert_to_factor(., "target_population", textToNum = TRUE),
+          created_by = SERVICE_ACCOUNT
         ) %>%
         frename(bed_field_mapping) %>%
         get_vars(dbListFields(DB_CON, "projects"))

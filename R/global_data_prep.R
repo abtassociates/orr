@@ -27,3 +27,5 @@ coc_nofo_opportunities <- get_db_tbl("coc_nofo_opportunities") %>%
       fcoalesce(population_group, "")
     ))
   )
+
+SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'

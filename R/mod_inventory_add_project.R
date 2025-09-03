@@ -380,7 +380,8 @@ mod_inventory_add_project_server <- function(
           is_dedicated_ch_ind = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind,
           mckinneyvento = TRUE,
           mckinneyventoyhdp = input$funding_source == "YHDP",
-          dv_renewal = input$funding_source == "DV" && input$funding_action == "Renew"
+          dv_renewal = input$funding_source == "DV" && input$funding_action == "Renew",
+          created_by = user_coc$username
         )
         
         modal_submission_outcome$project_data <- new_project_data
