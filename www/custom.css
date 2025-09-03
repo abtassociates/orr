@@ -6,6 +6,14 @@
   */
 }
 
+#coc_instances_dt {
+  height:100% !important; 
+}
+
+/*show red circle for disabled buttons*/
+.btn:has(.disabled) {
+  cursor: not-allowed;
+}
 
 /*make sure modals are centered*/
 .modal {
