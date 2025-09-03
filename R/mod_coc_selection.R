@@ -9,7 +9,6 @@ mod_coc_selection_ui <- function(id) {
       card_body(
         fillable = FALSE,
         # a "Create" button or link above the table will display so they can create a new CoC Instance
-        #selectInput(ns('choose_user'), "Select a User Profile",  choices=users$username),
         DTOutput(ns('coc_instances_dt'),fill = F) |> shinycssloaders::withSpinner(),
         actionButton(ns('edit_coc_instance'),"Edit Selected Instance", icon = icon('edit'), class='btn-primary'),
         actionButton(ns('delete_coc_instance'), "Delete Selected Instance", icon = icon('trash'), class='btn-danger'),
@@ -33,10 +32,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         fmutate(coc_instance_role = get_lookup_label(coc_instance_role, 'coc_instance_role'))
     })
     
-    # # Set session-wide user
-    # observe({
-    #   user_coc$username <- input$choose_user
-    # })
+    ## session variables used for sending access requests
+    admin_email <- reactiveVal(NULL)
+    coc_requested <- reactiveVal(NULL)
+    instance_requested <- reactiveVal(NULL)
     
     ## disable Edit button unless row is selected
     observe({
@@ -152,6 +151,71 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     # Once they select a CoC, close the previous modal and show another one with a radio button asking if they want to import the HIC data or import the HIC data as of X/X/XX date.
     observeEvent(input$choose_coc, {
       
+      
+      coc_requested(input$coc_dropdown)
+      
+      # If there’s an instance THEY are already associated with (by looking up CoC Instances joined with CoC Instance Users where the user is this user),
+      # warn them that they already have an ORR for this CoC and that if they wish to modify settings, they can do so within existing ORRs.
+      # Show options "Continue" or "Cancel"
+      check_if_already_have <- get_db_tbl('coc_instance_users') |> 
+        fsubset(username == user_coc$username & coc == coc_requested())
+      
+      check_if_others_have <- get_db_tbl('coc_instance_users') |>
+        fsubset(username != user_coc$username & coc == coc_requested() & coc_instance_role == 5)
+      
+      removeModal()
+      
+      
+      if(nrow(check_if_already_have) > 0){
+        admin_email(NULL)
+        instance_requested(NULL)
+        #instance_requested(check_if_already_have$coc_instance_id)
+        showModal(modalDialog(
+          title = 'Your own CoC Instance Found',
+          helpText(paste0('You have ', nrow(check_if_already_have), ' existing instances for CoC: ', coc_requested(),'. If you wish to modify settings, 
+                          you can do so within the existing ORR and click "Cancel". If you still wish to create a new instance, please click "Continue."')),
+          footer = tagList(
+            # If they continue: go to next step
+            actionButton(ns('continue_new_instance'), label='Continue'),
+            # If they cancel: close pop-up
+            modalButton(label='Cancel')
+          )
+        ))
+        
+        # If they select a CoC that SOMEONE ELSE is associated with (by looking up CoC Instances joined with CoC Instance Users where the user is NOT this user and user role = "Admin"), 
+      } else if(nrow(check_if_others_have) > 0){
+        admin_email(check_if_others_have$username)
+        instance_requested(check_if_others_have$coc_instance_id)
+        # let them know as much and provide them the option to "Request Access" or "Create ORR anyway"
+        showModal(modalDialog(
+          title = 'Other owned CoC Instance Found',
+          helpText(paste0('Another user (', check_if_others_have$username ,') has an existing instance for CoC: ', coc_requested(),'. Would you like to request
+                          access from this user, or continue creating a new instance for this CoC?')),
+          footer = tagList(
+            actionButton(ns('request_access'), label='Request Access'),
+            # If they continue: go to next step
+            actionButton(ns('continue_new_instance2'), label='Create ORR anyway')
+          )
+        ))
+       
+      } else {
+        admin_email(NULL)
+        instance_requested(NULL)
+        # If they select a CoC that has no other CoC Instances: go to next step
+        showModal(modalDialog(
+          title = 'No Existing CoC Instances Found',
+          helpText(paste0('There are no an existing instances for CoC: ', coc_requested(),'. 
+                          You will become the admin for this CoC instance upon creation. Would you like to continue?')),
+          footer = tagList(
+            # If they continue: go to next step
+            actionButton(ns('continue_new_instance3'), label='Continue'),
+            # If they cancel: close pop-up
+            modalButton(label='Cancel')
+          )
+        ))
+      }
+   
+    })
       showModal(
         modalDialog(
           radioButtons(ns('hic_import_select'),
