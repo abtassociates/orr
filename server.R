@@ -43,10 +43,6 @@ function(input, output, session) {
   mod_ranking_server("ranking")
   mod_requests_server(id="requests", user_coc)
   
-  # user <- reactiveValues(auth = FALSE, # is the user authenticated or not
-  #                        given_name = NULL, # user's given_name as stored and returned by cognito
-  #                        email = NULL)  # user's email as stored and returned by cognito
-  
   # get the url variables ----
   observe({
     query <- parseQueryString(session$clientData$url_search)
