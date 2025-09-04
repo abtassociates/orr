@@ -8,6 +8,8 @@ mod_coc_selection_ui <- function(id) {
       card_header(h4("Instances")),
       card_body(
         fillable = FALSE,
+        p('Instances are versions of a CoC\'s ORR. Multiple instances can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple instances.'),
+        p('To collaborate on an existing instance, click "Request Access". To create your own instance, click "Create New Instance". To create a copy of an existing instance, click "Copy Instance".'),
         # a "Create" button or link above the table will display so they can create a new CoC Instance
         DTOutput(ns('coc_instances_dt'),fill = F) |> shinycssloaders::withSpinner(),
         actionButton(ns('edit_coc_instance'),"Edit Selected Instance", icon = icon('edit'), class='btn-primary'),
