@@ -58,11 +58,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     })
     
     output$coc_instances_dt <- renderDT({
+      req(user_coc$auth)
       
       datatable(coc_iu(), 
-                colnames = str_to_title(
-                  str_replace_all(names(coc_iu()),'_',' ')
-                ),
+                colnames = unname(instances_variable_labels[match(names(coc_iu()),  names(instances_variable_labels))]),
                 rownames = FALSE,
                 options = list(dom = 'tip'),
                 editable = FALSE,
