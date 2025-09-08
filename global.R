@@ -26,4 +26,5 @@ set.seed(123)
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
 
+source(here("R/global_data_prep.R"))
 USER_ENTRY_BG_COLOR <- "#e6ffe6"
