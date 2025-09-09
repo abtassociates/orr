@@ -65,14 +65,14 @@ mod_rating_criteria_ui <- function(id) {
 #'
 #' @description Server logic for the main rating criteria page.
 #' @param id The module's unique ID.
-#' @param user_coc contains coc_instance_id to capture user-selected version of the ORR
+#' @param user_coc contains coc_version_id to capture user-selected version of the ORR
 #' @noRd
 mod_rating_criteria_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     # Call sub-modules for each tab
-    mod_coc_thresholds_server("coc_thresholds", user_coc$coc_instance_id)
+    mod_coc_thresholds_server("coc_thresholds", user_coc$coc_version_id)
     
     mod_renewal_factors_server(
       "renewal_factors", 
@@ -83,7 +83,7 @@ mod_rating_criteria_server <- function(id, user_coc) {
     
     mod_new_factors_server(
       "new_factors", 
-      user_coc$coc_instance_id, 
+      user_coc$coc_version_id, 
       reactive(input$target_population)
     )
   })
@@ -134,10 +134,10 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
     
     # Fetch currently selected thresholds for the active profile
     observe({
-      req(user_coc$coc_instance_id)
+      req(user_coc$coc_version_id)
       
-      selected_q <- "SELECT threshold_id FROM selected_thresholds WHERE coc_instance_id = $1"
-      selected_data <- get_db_query(selected_q, params = list(user_coc$coc_instance_id))
+      selected_q <- "SELECT threshold_id FROM selected_thresholds WHERE coc_version_id = $1"
+      selected_data <- get_db_query(selected_q, params = list(user_coc$coc_version_id))
       
       rv$selected_thresholds <- selected_data$threshold_id
     })
@@ -157,7 +157,7 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
     
     # Save logic for threshold selections
     observeEvent(input$save_thresholds, {
-      req(user_coc$coc_instance_id, user_coc$username)
+      req(user_coc$coc_version_id, user_coc$username)
       
       current_selection <- as.integer(input$threshold_selection)
       previous_selection <- rv$selected_thresholds
@@ -170,7 +170,7 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
         if (length(to_add) > 0) {
           add_df <- data.frame(
             threshold_id = to_add,
-            coc_instance_id = user_coc$coc_instance_id,
+            coc_version_id = user_coc$coc_version_id,
             created_by = user_coc$username
           )
           DBI::dbAppendTable(DB_CON, "selected_thresholds", add_df)
@@ -178,8 +178,8 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
         
         # Remove deselected items
         if (length(to_remove) > 0) {
-          remove_q <- "DELETE FROM selected_thresholds WHERE coc_instance_id = $1 AND threshold_id = ANY($2)"
-          dbExecute(DB_CON, remove_q, params = list(user_coc$coc_instance_id, to_remove))
+          remove_q <- "DELETE FROM selected_thresholds WHERE coc_version_id = $1 AND threshold_id = ANY($2)"
+          dbExecute(DB_CON, remove_q, params = list(user_coc$coc_version_id, to_remove))
         }
         
         # Update reactive value to reflect saved state
@@ -194,7 +194,7 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
 }
 
 
-fetch_and_structure_rating_factors <- function(funding_action_type, coc_instance_id, selected_project_types, selected_target_populations) {
+fetch_and_structure_rating_factors <- function(funding_action_type, coc_version_id, selected_project_types, selected_target_populations) {
   # Determine the WHERE clause based on the funding_action_type
   funding_action_values <- switch(
     funding_action_type,
@@ -236,9 +236,9 @@ fetch_and_structure_rating_factors <- function(funding_action_type, coc_instance
   selected_factors_q <- "
         SELECT rating_factor_id, goal, max_point_value
         FROM selected_rating_factors
-        WHERE coc_instance_id = $1
+        WHERE coc_version_id = $1
       "
-  selected_factors <- get_db_query(selected_factors_q, params = list(coc_instance_id))
+  selected_factors <- get_db_query(selected_factors_q, params = list(coc_version_id))
   
   # Merge them to get the final state for the UI
   if (nrow(selected_factors) > 0) {
@@ -359,10 +359,10 @@ mod_renewal_factors_server <- function(id, user_coc, selected_project_types, sel
     ns <- session$ns
     
     renewal_expand_factors_data <- reactive({
-      req(user_coc$coc_instance_id)
+      req(user_coc$coc_version_id)
       fetch_and_structure_rating_factors(
         "Renew", 
-        user_coc$coc_instance_id, 
+        user_coc$coc_version_id, 
         selected_project_types(), 
         selected_target_populations()
       )
@@ -430,17 +430,17 @@ mod_new_factors_ui <- function(id) {
 
 #' @title mod_new_factors_server
 #' @noRd
-mod_new_factors_server <- function(id, coc_instance_id, selected_target_populations) {
+mod_new_factors_server <- function(id, coc_version_id, selected_target_populations) {
   # The server logic here is identical in structure to the renewal/expansion module,
   # differing only by the `funding_action` filter ('New').
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     new_factors_data <- reactive({
-      req(user_coc$coc_instance_id)
+      req(user_coc$coc_version_id)
       fetch_and_structure_rating_factors(
         "New", 
-        user_coc$coc_instance_id, 
+        user_coc$coc_version_id, 
         selected_target_populations = selected_target_populations()
       )
     })

@@ -8,8 +8,8 @@
 #   # project_id SERIAL PRIMARY KEY -> Simple integer sequence
 #   project_id = 1:n,
 # 
-#   # coc_instance_id SMALLINT REFERENCES -> Sample from a small set of IDs
-#   coc_instance_id = sample(1:5, n, replace = TRUE),
+#   # coc_version_id SMALLINT REFERENCES -> Sample from a small set of IDs
+#   coc_version_id = sample(1:5, n, replace = TRUE),
 # 
 #   # grant_number INTEGER NULL -> Sample integers, with some NAs
 #   grant_number = sample(c(100000:150000, NA_integer_), n, replace = TRUE),
@@ -92,7 +92,7 @@
 # projects_dt[, total_ch_ind_beds := mapply(safe_sample, all_ind_beds)]
 # projects_dt[, vet_ind_beds      := mapply(safe_sample, all_ind_beds)]
 # projects_dt[, single_youth_beds := mapply(safe_sample, all_ind_beds)]
-# projects_dt[ , coc_instance_id := 6]
+# projects_dt[ , coc_version_id := 6]
 # 
 # browser()
 # RPostgres::dbAppendTable(
@@ -169,7 +169,7 @@
 # )
 # RPostgres::dbAppendTable(
 #   get_db_connection(),
-#   "coc_instances",
+#   "coc_versions",
 #   data.table(
 #     coc = "CA-026",
 #     date_created = lubridate::now(),

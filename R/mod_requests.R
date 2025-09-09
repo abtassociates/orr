@@ -5,7 +5,7 @@ mod_requests_ui <- function(id) {
     #nav_panel(
     #  "Requests",
       card(
-        card_header(h4('Instance Access Requests')),
+        card_header(h4('Version Access Requests')),
         card_body(
           fillable = FALSE,
           helpText("Please select a row from the table below update a request."),
@@ -26,11 +26,11 @@ mod_requests_server <- function(id, user_coc) {
       
       output$requests_dt <- renderDT({
         req(user_coc$auth)
-        cur_requests <- get_db_tbl('coc_instance_requests') |>
-          fsubset(coc_instance_id %in% user_coc$coc_instance_id) |># & request_status != "approved") |>
-          join(get_db_tbl('coc_instances') |> fselect(coc_instance_id, coc), how='left') |>
+        cur_requests <- get_db_tbl('coc_version_requests') |>
+          fsubset(coc_version_id %in% user_coc$coc_version_id) |># & request_status != "approved") |>
+          join(get_db_tbl('coc_versions') |> fselect(coc_version_id, coc), how='left') |>
           fmutate(request_status = get_lookup_label(request_status, "request_status")) |>
-          fselect(coc, coc_instance_id, requesting_user, date_created, request_status)#, request_text, requesting_user, request_status)
+          fselect(coc, coc_version_id, requesting_user, date_created, request_status)#, request_text, requesting_user, request_status)
         # actions <- purrr::map_chr(cur_requests$request_id, function(id_) {
         #   paste0(
         #     '<div class="btn-group" style="width: 75px;" role="group" aria-label="Basic example">

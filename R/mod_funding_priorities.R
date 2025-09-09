@@ -143,7 +143,7 @@ mod_funding_priorities_server <- function(id, user_coc) {
     priorities_data <- reactiveVal(NULL)
     
     observe({
-      req(user_coc$coc_instance_id)
+      req(user_coc$coc_version_id)
       
       # 1. Create the full, empty data structure for ALL possible populations.
       full_data <- pop_grp_toggles[, .(Population = full_text)]
@@ -157,8 +157,8 @@ mod_funding_priorities_server <- function(id, user_coc) {
       coc_funding_priorities_from_db <- get_db_query(
         "SELECT * 
          FROM coc_funding_priorities 
-         WHERE coc_instance_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
-        params = list(user_coc$coc_instance_id)
+         WHERE coc_version_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
+        params = list(user_coc$coc_version_id)
       )
       
       # 3. If data exists in the DB, merge it into our full data template.
@@ -339,7 +339,7 @@ mod_funding_priorities_server <- function(id, user_coc) {
           pop_grp_toggles, on = c(Population = "full_text"), # Join to get DB population codes
           `:=`(target_population = i.pop, population_group = i.grp)
         ][, `:=`( # Add metadata columns for the query
-          coc_instance_id = user_coc$coc_instance_id,
+          coc_version_id = user_coc$coc_version_id,
           created_by = user_coc$username,
           updated_by = user_coc$username,
           project_type = get_lookup_refid(project_type, "project_type")
@@ -352,9 +352,9 @@ mod_funding_priorities_server <- function(id, user_coc) {
 browser()
         # The "UPSERT" query
         sql_query <- "
-          INSERT INTO coc_funding_priorities (coc_instance_id, project_type, target_population, population_group, beds, funding, priority, created_by)
+          INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, beds, funding, priority, created_by)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          ON CONFLICT (coc_instance_id, project_type, target_population, population_group)
+          ON CONFLICT (coc_version_id, project_type, target_population, population_group)
           DO UPDATE SET 
             beds = EXCLUDED.beds,
             funding = EXCLUDED.funding,
@@ -370,7 +370,7 @@ browser()
               DB_CON,
               sql_query,
               params = list(
-                user_coc$coc_instance_id,
+                user_coc$coc_version_id,
                 row[["project_type"]],
                 row[["target_population"]],
                 row[["population_group"]],

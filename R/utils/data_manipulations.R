@@ -126,12 +126,12 @@ project_variable_labels <- c(
   "date_created" = "Date Created"
 )
 
-instances_variable_labels <- c(
+versions_variable_labels <- c(
   "coc" = "CoC Code",
-  "coc_instance_user_id" = "CoC Instance User ID",
-  "coc_instance_id" = "CoC Instance ID",
+  "coc_version_user_id" = "CoC Version User ID",
+  "coc_version_id" = "CoC Version ID",
   "username" = "Username",
-  "coc_instance_role" = "Role",
+  "coc_version_role" = "Role",
   "date_created" = "Date Created",
   "created_by" = "Created By",
   "updated_by" = "Updated By",

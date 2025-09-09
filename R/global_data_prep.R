@@ -1,11 +1,11 @@
 lookups <- get_db_tbl("lookups")
 users <- get_db_tbl("users")
 cocs <- get_db_tbl("cocs")
-coc_instance_users <- get_db_query(
+coc_version_users <- get_db_query(
   "SELECT u.*, i.coc 
-  FROM coc_instance_users u 
-  LEFT JOIN coc_instances i 
-  ON u.coc_instance_id = i.coc_instance_id"
+  FROM coc_version_users u 
+  LEFT JOIN coc_versions i 
+  ON u.coc_version_id = i.coc_version_id"
 )
 hud_ard_report <- get_db_tbl("hud_ard_report")
 main_project_types <- c("PSH", "RRH", "TH", "TH+RRH")

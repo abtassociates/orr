@@ -1,7 +1,7 @@
 mod_account_ui <- function(id){
   ns <- NS(id)
   
-  ## dropdown menu for managing account - requests, instances, log out
+  ## dropdown menu for managing account - requests, versions, log out
   nav_menu(
     title = "Manage Account",
     icon = icon('user'),
@@ -11,7 +11,7 @@ mod_account_ui <- function(id){
     #   mod_requests_ui('requests')
     # ),
     # nav_panel(
-    #   title = 'View Instances'
+    #   title = 'View Versions'
     # ),
     ## link to log out of application
     nav_item(

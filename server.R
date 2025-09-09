@@ -2,7 +2,7 @@ function(input, output, session) {
   projects_data <- reactiveVal(NULL)
   user_coc <- reactiveValues(
     coc = NULL,
-    coc_instance_id = NULL,
+    coc_version_id = NULL,
     username = NULL,
     auth = FALSE, # is the user authenticated or not
     given_name = NULL, # user's given_name as stored and returned by cognito
