@@ -265,7 +265,7 @@ mod_inventory_server <- function(id, user_coc) {
           funding_action = get_lookup_refid(funding_action, "funding_action"),
           project_type = get_lookup_refid(project_type, "project_type"),
           target_population = get_lookup_refid(target_population, "target_population"),
-          date_created = format(lubridate::now(), "%Y-%m-%d %H:%M:%S")
+          date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
         )
       
       DBI::dbAppendTable(DB_CON, "projects", db_data)
