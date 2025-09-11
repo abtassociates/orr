@@ -228,11 +228,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       } else {
         admin_email(NULL)
         version_requested(NULL)
-        # If they select a CoC that has no other CoC Versions: go to next step
+        # If they select a CoC that has no CoC Versions: go to next step
         showModal(modalDialog(
-          title = 'No Existing CoC Versions Found',
-          helpText(paste0('There are no an existing versions for CoC: ', coc_requested(),'. 
-                          You will become the admin for this CoC version upon creation. Would you like to continue?')),
+          title = paste0('Create ORR for ', coc_requested()),
+          helpText(paste0('You will become the Version Owner for this version of the ', coc_requested(), ' ORR, with the sole ability to manage other user requests to collaborate on this version. Would you like to continue?')),
           footer = tagList(
             # If they continue: go to next step
             actionButton(ns('continue_new_version3'), label='Continue'),
@@ -318,7 +317,12 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
       
       dbWriteTable(
-        conn = DB_CON,name = 'coc_version_users',new_version_user,
+        conn = DB_CON,name = 'coc_versions',new_version,
+        append = TRUE
+      )
+      
+      dbWriteTable(
+        conn = DB_CON,name = 'coc_version_users',new_version_user %>% fselect(-coc),
         append = TRUE
       )
       
