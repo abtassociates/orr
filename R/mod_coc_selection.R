@@ -300,21 +300,15 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       
       # If they choose to import: create a new CoC Version and corresponding CoC Version User with CoC Role = Admin
       new_version <- 
-        data.table(coc_version_id = max(coc_iu()$coc_version_id) + 1, 
-                   coc_version_name = paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name)),
-                   coc = input$coc_dropdown, 
-                   ## reference_id for 'Not Started'
-                   coc_status = 8,
-                   date_created = Sys.time(), created_by = user_coc$email, 
-                   date_updated = Sys.time(), updated_by = user_coc$email)
-      
-      dbWriteTable(
-        conn = DB_CON,name = 'coc_versions',new_version,
-        append = TRUE
-      )
+        data.table(
+          coc_version_name = paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name)),
+          coc = input$coc_dropdown, 
+          coc_status = get_lookup_refid("Not Started", "coc_status"),
+          date_created = Sys.time(), created_by = user_coc$email, 
+          date_updated = Sys.time(), updated_by = user_coc$email)
+
       
       new_version_user <- data.table(
-        coc_version_user_id = max(coc_iu()$coc_version_user_id) + 1,
         coc_version_id = new_version$coc_version_id,
         username = user_coc$email,
         ## reference_id for "Admin"
