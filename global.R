@@ -34,22 +34,3 @@ lapply(files, source)
 USER_ENTRY_BG_COLOR <- "#e6ffe6"
 
 source(here("R/global_data_prep.R"))
-
-TABS <- c(
-  "dashboard",
-  "inventory",
-  "rating_criteria",
-  "renewal_rating",
-  "new_rating",
-  "bulk_rating",
-  "funding_priorities",
-  "final_review",
-  "ranking",
-  "account"
-)
-TABS_TO_SHOW <- c(
-  "dashboard",
-  "inventory",
-  "funding_priorities",
-  "account"
-)

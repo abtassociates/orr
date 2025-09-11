@@ -28,3 +28,30 @@ coc_nofo_opportunities <- get_db_tbl("coc_nofo_opportunities") %>%
   )
 
 SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
+
+
+TABS <- c(
+  "dashboard",
+  "inventory",
+  "rating_criteria",
+  "renewal_rating",
+  "new_rating",
+  "bulk_rating",
+  "funding_priorities",
+  "final_review",
+  "ranking",
+  "account"
+)
+TABS_TO_SHOW <- c(
+  "dashboard",
+  "inventory",
+  "funding_priorities",
+  "account"
+)
+
+
+USER_VERSIONS <- get_db_tbl('coc_version_users') |> 
+  join(
+    get_db_tbl("coc_versions") %>% fselect("coc_version_id", "coc"),
+    on = "coc_version_id"
+  )
