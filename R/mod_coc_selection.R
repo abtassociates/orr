@@ -106,6 +106,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       }
     })
     
+    ## Delete version ---------------
     observeEvent(input$delete_coc_version, {
       showModal(
         modalDialog(
@@ -120,6 +121,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     })
     
     
+    ## Create new version --------------
     #  When they hit Create: display pop-up form titled "Create ORR" with a simple dropdown to select a CoC.
     observeEvent(input$create_new_version, {
       showModal(
@@ -127,7 +129,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           title = 'Create ORR',
           selectInput(ns('coc_dropdown'),
                       label = "Please choose a CoC:",
-                      choices = cocs$coc_code,
+                      choices = sort(cocs$coc_code),
                       ),
           footer = tagList(
             actionButton(ns('choose_coc'), label="Next"),
