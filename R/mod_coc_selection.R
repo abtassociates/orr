@@ -313,8 +313,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       new_version_user <- data.table(
         coc_version_id = new_version$coc_version_id,
         username = user_coc$email,
-        ## reference_id for "Admin"
-        coc_version_role = 5,
+        coc_version_role = get_lookup_refid("Owner","coc_version_role"),
         new_version %>% fselect(date_created, created_by, date_updated, updated_by, coc)
       )
       
