@@ -184,10 +184,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       # If there’s an version THEY are already associated with (by looking up CoC Versions joined with CoC Version Users where the user is this user),
       # warn them that they already have an ORR for this CoC and that if they wish to modify settings, they can do so within existing ORRs.
       # Show options "Continue" or "Cancel"
-      check_if_already_have <- get_db_tbl('coc_version_users') |> 
+      check_if_already_have <- USER_VERSIONS |>
         fsubset(username == user_coc$username & coc == coc_requested())
       
-      check_if_others_have <- get_db_tbl('coc_version_users') |>
+      check_if_others_have <- USER_VERSIONS |>
         fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == 5)
       
       removeModal()
