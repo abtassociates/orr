@@ -8,14 +8,15 @@ mod_coc_selection_ui <- function(id) {
       card_header(h4("Versions")),
       card_body(
         fillable = FALSE,
-        p('Versions are versions of a CoC\'s ORR. Multiple versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
+        p('A CoC can have multiple versions of its ORR. Versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
         p('To collaborate on an existing version, click "Request Access". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
         # a "Create" button or link above the table will display so they can create a new CoC Version
         DTOutput(ns('coc_versions_dt'),fill = F) |> shinycssloaders::withSpinner(),
-        actionButton(ns('edit_coc_version'),"Edit Selected Version", icon = icon('edit'), class='btn-primary'),
+        actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-primary'),
+        actionButton(ns('edit_coc_version'),"Edit Selected Version", icon = icon('edit'), class='btn-secondary'),
         actionButton(ns('delete_coc_version'), "Delete Selected Version", icon = icon('trash'), class='btn-danger'),
-        actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-secondary'),
-        
+        actionButton(ns('copy_version'), "Copy Version", icon = icon('copy'), class="btn-info"),
+        actionButton(ns('request_access'), "Request Access", icon = icon('unlock'), class="btn-warning")
       )
     )
   #)
@@ -24,44 +25,40 @@ mod_coc_selection_ui <- function(id) {
 mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
+    
     ## subset coc_version_users to specific user
-    coc_iu <- reactive({
-      req(user_coc$auth)
-      
-      get_db_tbl('coc_version_users') |>
-        fselect(1:(length(dbListFields(DB_CON,name = 'coc_version_users')) -1)) |>
-        fsubset(username == user_coc$email) |>
-        fmutate(coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'))
-    })
+    coc_vu <- reactiveVal(NULL)
     
     ## session variables used for sending access requests
     admin_email <- reactiveVal(NULL)
     coc_requested <- reactiveVal(NULL)
     version_requested <- reactiveVal(NULL)
     
-    ## disable Edit button unless row is selected
-    observe({
-      if(length(input$coc_versions_dt_rows_selected)==0){
-        shinyjs::disable(id = 'edit_coc_version')
-        shinyjs::disable(id = 'delete_coc_version')
-      } else {
-        shinyjs::enable(id = 'edit_coc_version')
-        shinyjs::enable(id = 'delete_coc_version')
-      }
-    })
+    ####
+    # CoC Versions table ------------------
+    ####
+    observeEvent(
+      user_coc,
+      coc_vu(
+        USER_VERSIONS |>
+          fselect(1:(length(dbListFields(DB_CON,name = 'coc_version_users')) -1)) |>
+          fsubset(username == user_coc$email) |>
+          fmutate(coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'))
+      )
+    )
     
     coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
     
     observe({
-      req(coc_iu())
-      replaceData(coc_proxy, coc_iu())
+      req(coc_vu())
+      replaceData(coc_proxy, coc_vu())
     })
     
     output$coc_versions_dt <- renderDT({
       req(user_coc$auth)
       
-      datatable(coc_iu(), 
-                colnames = unname(versions_variable_labels[match(names(coc_iu()),  names(versions_variable_labels))]),
+      datatable(coc_vu(), 
+                colnames = unname(versions_variable_labels[match(names(coc_vu()),  names(versions_variable_labels))]),
                 rownames = FALSE,
                 options = list(dom = 'tip'),
                 editable = FALSE,
@@ -71,11 +68,24 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
     })
     
+    ####
+    # CoC Version Actions --------------
+    ####
+    
+    ## Enable/disable actions when row is selected or not
+    observe({
+      shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+      shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+      shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+      shinyjs::toggle(id = 'request_access', condition = length(input$coc_versions_dt_rows_selected) > 0)
+    })
+    
+    ## Edit version ----------------
     observeEvent(input$edit_coc_version, {
-      user_coc$coc <- coc_iu()$coc[[1]]
+      user_coc$coc <- coc_vu()$coc[[1]]
       print(user_coc$coc)
       
-      user_coc$coc_version_id <- coc_iu()[
+      user_coc$coc_version_id <- coc_vu()[
         input$coc_versions_dt_rows_selected, .(coc_version_id)
       ][[1]]
       
@@ -129,6 +139,29 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
     })
     
+    ## Copy version ------------
+    observeEvent(input$copy_version, {
+      showModal(
+        modalDialog(
+          title = 'Create ORR',
+          selectInput(ns('coc_dropdown'),
+                      label = "Please choose a CoC:",
+                      choices = cocs$coc_code,
+          ),
+          footer = tagList(
+            actionButton(ns('choose_coc'), label="Next"),
+            modalButton(label="Cancel")
+          ),
+          easyClose = TRUE
+        ),
+        session = session
+      )
+    })
+    
+    
+    ####
+    # Importing/Uploading HIC Data ------------------
+    ####
     output$hic_cond_select <- renderUI({
       req(input$hic_import_select)
       
