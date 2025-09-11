@@ -326,7 +326,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
       
       coc_vu(
-        rbind(copy(coc_vu(), new_version_user), fill=TRUE)
+        rbind(copy(coc_vu()), new_version_user, fill=TRUE)
       )
       
       shiny::showNotification('New CoC version created!', type='message')
