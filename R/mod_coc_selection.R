@@ -37,13 +37,14 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     ####
     # CoC Versions table ------------------
     ####
-    observeEvent(
-      user_coc,
+    observe({
+      req(user_coc$coc)
       coc_vu(
         coc_version_users |>
           fsubset(username == user_coc$email) |>
           fmutate(coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'))
       )
+      }
     )
     
     coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
