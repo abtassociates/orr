@@ -25,7 +25,7 @@ library(jsonlite)
 IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
 
 set.seed(123)
-
+set_collapse(na.rm = TRUE, verbose = FALSE, sort = FALSE)
 # Load all utils functions
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
