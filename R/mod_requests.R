@@ -51,8 +51,8 @@ mod_requests_server <- function(id, user_coc) {
       })
       
       observe({
-        shinyjs::toggleState(id = 'approve_request', condition = length(input$requests_dt_rows_selected) > 0)
-        shinyjs::toggleState(id = 'reject_request', condition = length(input$requests_dt_rows_selected) > 0)
+        shinyjs::toggle(id = 'approve_request', condition = length(input$requests_dt_rows_selected) > 0)
+        shinyjs::toggle(id = 'reject_request', condition = length(input$requests_dt_rows_selected) > 0)
       })
       
       output$request_update_controls <- renderUI({
