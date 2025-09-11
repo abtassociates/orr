@@ -50,10 +50,3 @@ TABS_TO_SHOW <- c(
   "funding_priorities",
   "account"
 )
-
-
-USER_VERSIONS <- get_db_tbl('coc_version_users') |> 
-  join(
-    get_db_tbl("coc_versions") %>% fselect("coc_version_id", "coc"),
-    on = "coc_version_id"
-  )
