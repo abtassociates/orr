@@ -1,3 +1,5 @@
+HDX_HIC_DATE <- as.Date('2025-07-25')
+
 lookups <- get_db_tbl("lookups")
 users <- get_db_tbl("users")
 cocs <- get_db_tbl("cocs")

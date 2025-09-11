@@ -209,19 +209,24 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
    
     })
     
-    
-    observeEvent(input$continue_new_version,{
-        
-      removeModal()
+    observeEvent(
+      c(input$continue_new_version, input$continue_new_version2, input$continue_new_version3),
+      {
+        removeModal()
+        choiceList <- setNames(
+          c("import", "upload"), 
+          c(
+            paste0('Import the HIC data as of ', HDX_HIC_DATE),
+            'Upload my own version of the HIC data'
+          )
+        )
         showModal(
           modalDialog(
-            title = 'New Version Dataset',
-            radioButtons(ns('hic_import_select'),
-                         label = 'Which version of the HIC data would you like to use?',
-                         choices = list(
-                           'Import the HIC data as of X/X/XX' = "import",
-                           'Upload my own version of the HIC data' = "upload"
-                         )
+            title = 'Inventory Data Source',
+            radioButtons(
+              ns('hic_import_select'),
+              label = 'Which version of the HIC data would you like to use?',
+              choices = choiceList
             ),
             uiOutput(ns('hic_cond_select')),
             footer = tagList(
@@ -231,52 +236,8 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           ),
           session = session
         )
-                  
-    })
-    
-    observeEvent(input$continue_new_version2,{
-      removeModal()
-      showModal(
-        modalDialog(
-          title = 'New Version Dataset',
-          radioButtons(ns('hic_import_select'),
-                       label = 'Which version of the HIC data would you like to use?',
-                       choices = list(
-                         'Import the HIC data as of X/X/XX' = "import",
-                         'Upload my own version of the HIC data' = "upload"
-                       )
-          ),
-          uiOutput(ns('hic_cond_select')),
-          footer = tagList(
-            actionButton(inputId=ns('new_hic_version'),label='Create New Version'),
-            modalButton(label='Cancel')
-          )
-        ),
-        session = session
-      )
-    })
-    
-    observeEvent(input$continue_new_version3,{
-      removeModal()
-      showModal(
-        modalDialog(
-          title = 'New Version Dataset',
-          radioButtons(ns('hic_import_select'),
-                       label = 'Which version of the HIC data would you like to use?',
-                       choices = list(
-                         'Import the HIC data as of X/X/XX' = "import",
-                         'Upload my own version of the HIC data' = "upload"
-                       )
-          ),
-          uiOutput(ns('hic_cond_select')),
-          footer = tagList(
-            actionButton(inputId=ns('new_hic_version'),label='Create New Version'),
-            modalButton(label='Cancel')
-          )
-        ),
-        session = session
-      )
-    })
+      }, ignoreInit = TRUE
+    )
     
     # If they "Request Access": 
     # send email to user associated with that other CoC Version
