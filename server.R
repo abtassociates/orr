@@ -19,17 +19,11 @@ function(input, output, session) {
            tags$script("$('.modal-backdrop').css('background-color', '#777777')")
            ),
               session = session)
-    #nav_hide("nav", "coc_selection")
-    #nav_hide("nav", "inventory")
-    #nav_hide('nav', 'dashboard')
-    nav_hide("nav", "rating_criteria")
-    nav_hide("nav", "renewal_rating")
-    nav_hide("nav", "new_rating")
-    nav_hide("nav", "alternative_rating")
-    nav_hide("nav", "funding_priorities")
-    nav_hide("nav", "ranking")
-    nav_hide("nav", "final_review")
-
+    
+    for(tab in TABS) {
+      if(tab %in% TABS_TO_SHOW) nav_show("nav", tab)
+      else nav_hide("nav", tab)
+    }
   })
 
   mod_coc_selection_server("coc_selection", nav_control, projects_data, user_coc)
