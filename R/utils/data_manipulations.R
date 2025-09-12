@@ -136,7 +136,7 @@ versions_variable_labels <- c(
   "date_updated" = "Date Updated"
 )
 
-add_user_stamp <- function(x, is_new = FALSE) {
+add_user_stamp <- function(x, user_coc, is_new = FALSE) {
   if(is_new) x["created_by"] = user_coc$email
   x["updated_by"] = user_coc$email
 }
