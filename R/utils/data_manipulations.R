@@ -128,9 +128,9 @@ project_variable_labels <- c(
 
 versions_variable_labels <- c(
   "coc" = "CoC Code",
-  "coc_version_user_id" = "CoC Version User ID",
+  "coc_version_name" = "CoC Version Name",
+  "coc_status" = "Status",
   "coc_version_id" = "CoC Version ID",
-  "username" = "Username",
   "coc_version_role" = "Role",
   "date_created" = "Date Created",
   "created_by" = "Created By",
