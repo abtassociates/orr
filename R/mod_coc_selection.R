@@ -38,7 +38,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     # CoC Versions table ------------------
     ####
     observe({
-      req(user_coc$coc)
+      req(user_coc$auth)
       coc_vu(
         coc_version_users |>
           fsubset(username == user_coc$email) |>
@@ -81,28 +81,20 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     
     ## Edit version ----------------
     observeEvent(input$edit_coc_version, {
-      user_coc$coc <- coc_vu()$coc[[1]]
-      print(user_coc$coc)
-      
-      user_coc$coc_version_id <- coc_vu()[
-        input$coc_versions_dt_rows_selected, .(coc_version_id)
-      ][[1]]
-      
-      nav_control("inventory")
-      
-      # Initialize projects data
-      # If there are already Project records for this CoC Version, store those. 
-      # Otherwise, store the HIC data
-      filtered_data <- get_db_tbl("projects")
+      # Save the selected CoC and CoC Version in user_coc, to be passed around to other modules
+      current_coc_info <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
 
-      if(nrow(filtered_data) > 0) projects_data(filtered_data)
-      else {
-        filtered_data <- get_hic_data()
-        projects_data(filtered_data)
-        
-        filtered_data_db <- factor_vars_db_prep(filtered_data)
-        DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
-      }
+      user_coc$coc <- current_coc_info$coc
+      user_coc$coc_version_id <- current_coc_info$coc_version_id
+
+      
+      # Store the project data in the projects_data to be passed to other modules
+      filtered_data <- get_db_tbl("projects") |>
+        fsubset(coc_version_id == user_coc$coc_version_id)
+      
+      projects_data(filtered_data)
+
+      nav_control("inventory")
     })
     
     ## Delete version ---------------
@@ -311,26 +303,29 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           date_created = format(Sys.time(),"%Y-%m-%d %H:%M:%S"), created_by = user_coc$email, 
           date_updated = format(Sys.time(),"%Y-%m-%d %H:%M:%S"), updated_by = user_coc$email)
       
+      new_coc_version_id <- insert_and_return(
+        "coc_versions", new_version, "coc_version_id"
+      )
+      
       new_version_user <- data.table(
-        coc_version_id = new_version$coc_version_id,
+        coc_version_id = unname(unlist(new_coc_version_id)),
         username = user_coc$email,
-        coc_version_role = get_lookup_refid("Owner","coc_version_role"),
+        coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role")),
         new_version %>% fselect(date_created, created_by, date_updated, updated_by, coc)
       )
       
-      dbWriteTable(
-        conn = DB_CON,name = 'coc_versions',new_version,
-        append = TRUE
-      )
-      
-      dbWriteTable(
-        conn = DB_CON,name = 'coc_version_users',new_version_user %>% fselect(-coc),
-        append = TRUE
-      )
+      dbAppendTable(DB_CON, 'coc_version_users', new_version_user %>% fselect(-coc))
       
       coc_vu(
         rbind(copy(coc_vu()), new_version_user, fill=TRUE)
       )
+      
+      # Initialize projects data
+      filtered_data <- get_hic_data(input$coc_dropdown, new_version_user$coc_version_id)
+      projects_data(filtered_data)
+      
+      filtered_data_db <- factor_vars_db_prep(filtered_data)
+      DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
       
       shiny::showNotification('New CoC version created!', type='message')
       removeModal()
@@ -339,7 +334,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     
     
     
-    get_hic_data <- function() {
+    get_hic_data <- function(coc, coc_version_id) {
       bed_field_mapping <- c(
         all_fam_beds = "beds_hh_w_children", 
         ch_fam_beds = "ch_beds_hh_w_children",
@@ -350,11 +345,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
 
       coc_data <- get_db_tbl("all_hic_data") |>
-        fsubset(hudnum == user_coc$coc) 
+        fsubset(hudnum == coc) 
 
       project_data <- coc_data %>%
         fmutate(
-          project_id = seq_row(.),
           mckinneyvento = factor_yesno(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
           mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           dv_renewal = factor_yesno(NA),
@@ -363,7 +357,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           coc_amount_expended_last_year = as.numeric(NA),
           coc_funding_requested = as.numeric(NA),
           funding_action = fifelse(mckinneyvento == "Yes", "Renew", "Ignore"),
-          coc_version_id = user_coc$coc_version_id,
+          coc_version_id = coc_version_id,
           # additional cols user will fill out
           is_dedicated_ch_fam = factor_yesno(NA),
           is_dedicated_ch_ind = factor_yesno(NA),
