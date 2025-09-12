@@ -301,10 +301,66 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
     })
     
+    
+    # Requesting access to a CoC directly ---------------
+    # allow user to view versions and request access
+    request_access_direct_coc_versions <- reactive({
+      req(input$request_access_coc_dropdown)
+
+      coc_version_users |>
+        fsubset(
+          username != user_coc$email & 
+            coc == input$request_access_coc_dropdown &
+            coc_version_role == owner_role_refid,
+          coc, coc_version_name, username
+        )
+    })
+    # When user clicks the "Request Access to a CoC" button
     observeEvent(input$request_access_direct, {
+
       ## TODO: Allow user to select a CoC Version and request access directly
+      showModal(modalDialog(
+        title = 'Request Access to a CoC',
+        helpText('Select a CoC to view its versions...'),
+        selectInput(ns('request_access_coc_dropdown'),
+                    label = "Please choose a CoC:",
+                    choices = sort(funique(coc_version_users$coc))
+        ),
+        DT::DTOutput(ns("direct_request_coc_versions")),
+        footer = tagList(
+          # If they continue: go to next step
+          actionButton(ns('send_direct_request'), label='Send Request', disabled = TRUE),
+          # If they cancel: close pop-up
+          modalButton(label='Cancel')
+        )
+      ))
+    })
+
+    observeEvent(
+      input$direct_request_coc_versions_rows_selected,
+      updateActionButton(
+        ns('send_direct_request'), 
+        disabled = length(input$direct_request_coc_versions_rows_selected) > 0
+      )             
+    )
+    output$direct_request_coc_versions <- renderDT({
+      req(input$request_access_coc_dropdown)
+      datatable(
+        request_access_direct_coc_versions(),
+        colnames = c("CoC", "Version Name", "Owner"),
+        rownames = FALSE,
+        options = list(dom = 'tip'),
+        selection = 'multiple'
+      )
     })
     
+    observeEvent(input$send_direct_request, {
+      # TODO: Send email to version Owners of input$direct_request_coc_versions_rows_selected
+      
+    })
+    
+    
+    # Creating a new ORR from the HIC ----------------
     observeEvent(input$new_hic_version, {
       req(input$hic_import_select == 'import')
       
