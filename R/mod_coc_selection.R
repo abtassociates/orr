@@ -301,9 +301,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         data.table(
           coc_version_name = paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name)),
           coc = input$coc_dropdown, 
-          coc_status = get_lookup_refid("Not Started", "coc_status"),
-          created_by = user_coc$email, 
-          date_updated = format(Sys.time(),"%Y-%m-%d %H:%M:%S"), updated_by = user_coc$email)
+          coc_status = get_lookup_refid("Not Started", "coc_status")
         ) |>
         add_user_stamp(is_new = TRUE)
       
