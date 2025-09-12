@@ -146,12 +146,13 @@ insert_and_return <- function(table, new_dt, return_cols) {
   col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, names(new_dt)), collapse = ", ")
   return_col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, return_cols), collapse = ", ")
   placeholders <- paste0("$", seq_along(names(new_dt)), collapse = ", ")
-  
+
   sql <- sprintf(
-    "INSERT INTO %s (%s) VALUES (%s) RETURNING coc_version_id",
+    "INSERT INTO %s (%s) VALUES (%s) RETURNING %s",
     table,
     col_list,
-    placeholders
+    placeholders,
+    return_col_list
   )
   
   results <- lapply(1:nrow(new_dt), function(i) {
