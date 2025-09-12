@@ -10,6 +10,12 @@ function(input, output, session) {
   )
   nav_control <- reactiveVal("dashboard")
 
+  toggle_tabs <- function() {
+    for(tab in TABS) {
+      if(tab %in% TABS_TO_SHOW) nav_show("nav", tab)
+      else nav_hide("nav", tab)
+    }
+  }
   # Hide all panels except "account" initially, show login modal
   observe({
     showModal(
@@ -19,11 +25,8 @@ function(input, output, session) {
            tags$script("$('.modal-backdrop').css('background-color', '#777777')")
            ),
               session = session)
-    
-    for(tab in TABS) {
-      if(tab %in% TABS_TO_SHOW) nav_show("nav", tab)
-      else nav_hide("nav", tab)
-    }
+
+    toggle_tabs()
   })
 
   mod_coc_selection_server("coc_selection", nav_control, projects_data, user_coc)
@@ -78,16 +81,7 @@ function(input, output, session) {
           user_coc$username <- current_user$email
           user_coc$given_name <- current_user$given_name
          
-          #nav_show("nav", "dashboard")
-          #nav_show("nav", "coc_selection")
-          #nav_show("nav", "inventory")
-          nav_show("nav", "rating_criteria")
-          nav_show("nav", "renewal_rating")
-          nav_show("nav", "new_rating")
-          nav_show("nav", "alternative_rating")
-          nav_show("nav", "funding_priorities")
-          nav_show("nav", "final_review")
-          
+          toggle_tabs()
       }
     }
     
