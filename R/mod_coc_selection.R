@@ -34,6 +34,8 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     coc_requested <- reactiveVal(NULL)
     version_requested <- reactiveVal(NULL)
     
+    owner_role_refid <- get_lookup_refid("Owner", "coc_version_role")
+    
     ####
     # CoC Versions table ------------------
     ####
@@ -181,7 +183,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         fsubset(username == user_coc$username & coc == coc_requested())
       
       check_if_others_have <- coc_version_users |>
-        fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == 5)
+        fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == owner_role_refid)
       
       removeModal()
       
