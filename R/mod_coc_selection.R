@@ -9,14 +9,14 @@ mod_coc_selection_ui <- function(id) {
       card_body(
         fillable = FALSE,
         p('A CoC can have multiple versions of its ORR. Versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
-        p('To collaborate on an existing version, click "Request Access". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
+        p('To collaborate on an existing version, click "Request Access to a CoC". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
         # a "Create" button or link above the table will display so they can create a new CoC Version
         DTOutput(ns('coc_versions_dt'),fill = F) |> shinycssloaders::withSpinner(),
         actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-primary'),
         actionButton(ns('edit_coc_version'),"Edit Selected Version", icon = icon('edit'), class='btn-secondary'),
         actionButton(ns('delete_coc_version'), "Delete Selected Version", icon = icon('trash'), class='btn-danger'),
         actionButton(ns('copy_version'), "Copy Version", icon = icon('copy'), class="btn-info"),
-        actionButton(ns('request_access'), "Request Access", icon = icon('unlock'), class="btn-warning")
+        actionButton(ns('request_access_direct'), "Request Access to a CoC", icon = icon('unlock'), class="btn-warning")
       )
     )
   #)
@@ -77,7 +77,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
-      shinyjs::toggle(id = 'request_access', condition = length(input$coc_versions_dt_rows_selected) > 0)
     })
     
     ## Edit version ----------------
@@ -219,7 +218,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           helpText(paste0('Another user (', check_if_others_have$username ,') has an existing version for CoC: ', coc_requested(),'. Would you like to request
                           access from this user, or continue creating a new version for this CoC?')),
           footer = tagList(
-            actionButton(ns('request_access'), label='Request Access'),
+            actionButton(ns('request_access_indirect'), label='Request Access'),
             # If they continue: go to next step
             actionButton(ns('continue_new_version2'), label='Create ORR anyway')
           )
@@ -275,7 +274,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     
     # If they "Request Access": 
     # send email to user associated with that other CoC Version
-    observeEvent(input$request_access, {
+    observeEvent(input$request_access_indirect, {
       req(!is.null(admin_email()))
       
       ## TODO: send email to admin of version that is requested
@@ -294,6 +293,10 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
                '))
         )
       )
+    })
+    
+    observeEvent(input$request_access_direct, {
+      ## TODO: Allow user to select a CoC Version and request access directly
     })
     
     observeEvent(input$new_hic_version, {
