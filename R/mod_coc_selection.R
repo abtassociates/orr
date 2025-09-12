@@ -174,12 +174,12 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         add_user_stamp(user_coc)
       
       # Update CoC Version in db, and grab autonumbered coc_version_id
-      new_coc_version_id <- insert_and_return(
-        "coc_versions", new_version, "coc_version_id"
+      new_coc_version_info <- insert_and_return(
+        "coc_versions", new_version, c("coc_version_id", "date_updated")
       )
-      
+
       new_version_user <- data.table(
-        coc_version_id = unname(unlist(new_coc_version_id)),
+        coc_version_id = unlist(new_coc_version_info)[["coc_version_id"]],
         username = user_coc$email,
         coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role"))
       ) |>
@@ -196,7 +196,8 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
             fmutate(
               coc_version_role = new_version_user$coc_version_role,
               coc_status = get_lookup_label(coc_status, "coc_status"),
-              coc_version_role = get_lookup_label(coc_version_role, "coc_version_role")
+              coc_version_role = get_lookup_label(coc_version_role, "coc_version_role"),
+              date_updated = unlist(new_coc_version_info)[["date_updated"]]
             ),
           fill=TRUE
         )
@@ -209,7 +210,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       coc_version_id <- create_new_version_for_user(
         coc_vu()[input$coc_versions_dt_rows_selected] |>
           fmutate(coc_version_name = input$copy_version_name) |>
-          fselect(-coc_version_role)
+          fselect(-coc_version_role, -date_updated)
       )
       removeModal()
       # TODO: Eventually build out copying all the otehr tables
