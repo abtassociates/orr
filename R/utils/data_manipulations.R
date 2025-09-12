@@ -136,21 +136,23 @@ versions_variable_labels <- c(
   "date_updated" = "Date Updated"
 )
 
-add_user_stamp <- function(x, is_new = FALSE) {
-  if(is_new) x["created_by"] = user_coc$email
-  x["updated_by"] = user_coc$email
+add_user_stamp <- function(x, user_coc, is_new = FALSE) {
+  x <- x |> fmutate(updated_by = user_coc$email)
+  if(is_new) x <- x |> fmutate(created_by = user_coc$email)
+  return(x)
 }
 
 insert_and_return <- function(table, new_dt, return_cols) {
   col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, names(new_dt)), collapse = ", ")
   return_col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, return_cols), collapse = ", ")
   placeholders <- paste0("$", seq_along(names(new_dt)), collapse = ", ")
-  
+
   sql <- sprintf(
-    "INSERT INTO %s (%s) VALUES (%s) RETURNING coc_version_id",
+    "INSERT INTO %s (%s) VALUES (%s) RETURNING %s",
     table,
     col_list,
-    placeholders
+    placeholders,
+    return_col_list
   )
   
   results <- lapply(1:nrow(new_dt), function(i) {
