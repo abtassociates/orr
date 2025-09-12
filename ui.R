@@ -30,7 +30,7 @@ page_navbar(
   mod_rating_criteria_ui("rating_criteria"),
   mod_renewal_rating_ui("renewal_rating"),
   mod_new_rating_ui("new_rating"),
-  mod_alternative_rating_ui("bulk_rating"),
+  mod_alternative_rating_ui("alternative_rating"),
   mod_funding_priorities_ui("funding_priorities"),
   mod_final_review_ui("final_review"),
   mod_ranking_ui("ranking"),

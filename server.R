@@ -34,7 +34,7 @@ function(input, output, session) {
   mod_rating_criteria_server("rating_criteria", user_coc)
   mod_renewal_rating_server("renewal_rating", projects_data)
   mod_new_rating_server("new_rating", projects_data)
-  mod_alternative_rating_server("bulk_rating", projects_data)
+  mod_alternative_rating_server("alternative_rating", projects_data)
   mod_funding_priorities_server("funding_priorities", user_coc)
   mod_final_review_server("final_review", user_coc)
   mod_ranking_server("ranking")

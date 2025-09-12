@@ -38,7 +38,7 @@ TABS <- c(
   "rating_criteria",
   "renewal_rating",
   "new_rating",
-  "bulk_rating",
+  "alternative_rating",
   "funding_priorities",
   "final_review",
   "ranking",
