@@ -63,19 +63,14 @@ function(input, output, session) {
         # check if user is in allowed user list
         if (!(str_to_lower(current_user$email) %in% users$username)){
             print("new user added to allowed list")
-            # user not allowed, so shows a login error message
-            #showElement("login_error_user")
             
         } else {
           print("user in allowed list")
           
         }
         
-          hideElement("login_welcome_text")
-          hideElement("login_link")
-          hideElement("signup_link")
-          showElement("login_confirmed")
-          showElement("enter_app")
+          removeModal()
+          
           user_coc$auth <- TRUE
           user_coc$email <- current_user$email
           user_coc$username <- current_user$email
@@ -86,20 +81,6 @@ function(input, output, session) {
     }
     
   })
-  
-  observeEvent(input$enter_app, {
-    removeModal()
-  })
-  
-  output$confirmed_login_name <-
-    renderText({
-     
-      ifelse(!is.null(user_coc$given_name),
-             paste0("Welcome, ",user_coc$given_name),
-             paste0("Welcome, ",user_coc$email)
-         )
-      
-    })
   
   
   # Observer to update nav panel when reactive value changes
