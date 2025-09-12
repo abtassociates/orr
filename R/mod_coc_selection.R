@@ -41,11 +41,13 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       req(user_coc$auth)
       coc_vu(
         coc_version_users |>
-          fsubset(username == user_coc$email) |>
-          fmutate(coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'))
+          fsubset(username == user_coc$email, -c(username, date_created, created_by, coc_version_id)) |>
+          fmutate(
+            coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
+            coc_status = get_lookup_label(coc_status, 'coc_status')
+          )
       )
-      }
-    )
+    })
     
     coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
     
