@@ -148,15 +148,21 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     
     ## Copy version ------------
     observeEvent(input$copy_version, {
+      req(input$coc_versions_dt_rows_selected)
+      
       showModal(
         modalDialog(
-          title = 'Create ORR',
-          selectInput(ns('coc_dropdown'),
-                      label = "Please choose a CoC:",
-                      choices = cocs$coc_code,
+          title = 'Copy ORR',
+          textInput(
+            ns("copy_version_name"), 
+            "Version Name",
+            placeholder = paste0(
+              coc_vu()[input$coc_versions_dt_rows_selected, .(coc_version_name)],
+              "_v2"
+            )
           ),
           footer = tagList(
-            actionButton(ns('choose_coc'), label="Next"),
+            actionButton(ns('copy_orr_confirm'), label="Confirm"),
             modalButton(label="Cancel")
           ),
           easyClose = TRUE
@@ -165,6 +171,42 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       )
     })
     
+    create_new_version_for_user <- function(new_version_data) {
+      new_version <- new_version_data |>
+        add_user_stamp(is_new = TRUE)
+      
+      # Update CoC Version in db, and grab autonumbered coc_version_id
+      new_coc_version_id <- insert_and_return(
+        "coc_versions", new_version, "coc_version_id"
+      )
+      
+      new_version_user <- data.table(
+        coc_version_id = unname(unlist(new_coc_version_id)),
+        username = user_coc$email,
+        coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role")),
+        new_version %>% fselect(created_by, date_updated, updated_by, coc)
+      )
+      
+      # Next, update CoC Version USers in db
+      dbAppendTable(DB_CON, 'coc_version_users', new_version_user %>% fselect(-coc))
+      
+      # update reactiveVal
+      coc_vu(
+        rbind(
+          copy(coc_vu()), 
+          new_version |>
+            fmutate(coc_version_role = new_version_user$coc_version_role),
+          fill=TRUE
+        )
+      )
+    }
+    
+    observeEvent(input$copy_orr_confirm, {
+      create_new_version_for_user(
+        coc_vu()[input$coc_versions_dt_rows_selected] |>
+          fmutate(coc_version_name = input$copy_version_name)
+      )
+    })
     
     ####
     # Importing/Uploading HIC Data ------------------
@@ -365,37 +407,11 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     observeEvent(input$new_hic_version, {
       req(input$hic_import_select == 'import')
       
-      # If they choose to import: create a new CoC Version and corresponding CoC Version User with CoC Role = Admin
-      new_version <- 
+      create_new_version_for_user(
         data.table(
           coc_version_name = paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name)),
           coc = input$coc_dropdown, 
           coc_status = get_lookup_refid("Not Started", "coc_status")
-        ) |>
-        add_user_stamp(is_new = TRUE)
-      
-      # Update CoC Version in db, and grab autonumbered coc_version_id
-      new_coc_version_id <- insert_and_return(
-        "coc_versions", new_version, "coc_version_id"
-      )
-      
-      new_version_user <- data.table(
-        coc_version_id = unname(unlist(new_coc_version_id)),
-        username = user_coc$email,
-        coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role")),
-        new_version %>% fselect(created_by, date_updated, updated_by, coc)
-      )
-      
-      # Next, update CoC Version USers in db
-      dbAppendTable(DB_CON, 'coc_version_users', new_version_user %>% fselect(-coc))
-      
-      # Now update the reactiveVal behind the datatable
-      coc_vu(
-        rbind(
-          copy(coc_vu()), 
-          new_version |>
-            fmutate(coc_version_role = new_version_user$coc_version_role),
-          fill=TRUE
         )
       )
       
