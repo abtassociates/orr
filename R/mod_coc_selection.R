@@ -319,7 +319,13 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       dbAppendTable(DB_CON, 'coc_version_users', new_version_user %>% fselect(-coc))
       
       coc_vu(
-        rbind(copy(coc_vu()), new_version_user, fill=TRUE)
+        rbind(
+          copy(coc_vu()), 
+          new_version |>
+            fmutate(coc_version_role = new_version_user$coc_version_role) |>
+            fselect(-coc_version_id), 
+          fill=TRUE
+        )
       )
       
       # Initialize projects data
