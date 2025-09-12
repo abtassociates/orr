@@ -149,17 +149,14 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     ## Copy version ------------
     observeEvent(input$copy_version, {
       req(input$coc_versions_dt_rows_selected)
-      
+      current_version_name <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc_version_name)]
       showModal(
         modalDialog(
-          title = 'Copy ORR',
+          title = paste0('Copy ', current_version_name),
           textInput(
             ns("copy_version_name"), 
             "Version Name",
-            placeholder = paste0(
-              coc_vu()[input$coc_versions_dt_rows_selected, .(coc_version_name)],
-              "_v2"
-            )
+            placeholder = paste0(current_version_name, "_v2")
           ),
           footer = tagList(
             actionButton(ns('copy_orr_confirm'), label="Confirm"),
@@ -173,6 +170,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     
     create_new_version_for_user <- function(new_version_data) {
       new_version <- new_version_data |>
+        fmutate(coc_status = get_lookup_refid("Not Started", "coc_status")) |>
         add_user_stamp(user_coc)
       
       # Update CoC Version in db, and grab autonumbered coc_version_id
@@ -183,29 +181,39 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       new_version_user <- data.table(
         coc_version_id = unname(unlist(new_coc_version_id)),
         username = user_coc$email,
-        coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role")),
-        new_version %>% fselect(created_by, date_updated, updated_by, coc)
-      )
+        coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role"))
+      ) |>
+        add_user_stamp(user_coc)
       
       # Next, update CoC Version USers in db
-      dbAppendTable(DB_CON, 'coc_version_users', new_version_user %>% fselect(-coc))
+      dbAppendTable(DB_CON, 'coc_version_users', new_version_user)
       
       # update reactiveVal
       coc_vu(
         rbind(
           copy(coc_vu()), 
           new_version |>
-            fmutate(coc_version_role = new_version_user$coc_version_role),
+            fmutate(
+              coc_version_role = new_version_user$coc_version_role,
+              coc_status = get_lookup_label(coc_status, "coc_status"),
+              coc_version_role = get_lookup_label(coc_version_role, "coc_version_role")
+            ),
           fill=TRUE
         )
       )
+      
+      return(new_version_user$coc_version_id)
     }
     
     observeEvent(input$copy_orr_confirm, {
-      create_new_version_for_user(
+      coc_version_id <- create_new_version_for_user(
         coc_vu()[input$coc_versions_dt_rows_selected] |>
-          fmutate(coc_version_name = input$copy_version_name)
+          fmutate(coc_version_name = input$copy_version_name) |>
+          fselect(-coc_version_role)
       )
+      removeModal()
+      # TODO: Eventually build out copying all the otehr tables
+      # copy_additional_data()
     })
     
     ####
@@ -407,16 +415,15 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     observeEvent(input$new_hic_version, {
       req(input$hic_import_select == 'import')
       
-      create_new_version_for_user(
+      coc_version_id <- create_new_version_for_user(
         data.table(
           coc_version_name = paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name)),
-          coc = input$coc_dropdown, 
-          coc_status = get_lookup_refid("Not Started", "coc_status")
+          coc = input$coc_dropdown
         )
       )
       
       # Initialize projects data
-      filtered_data <- get_hic_data(input$coc_dropdown, new_version_user$coc_version_id)
+      filtered_data <- get_hic_data(input$coc_dropdown, coc_version_id)
       projects_data(filtered_data)
       
       filtered_data_db <- factor_vars_db_prep(filtered_data)
