@@ -135,6 +135,12 @@ versions_variable_labels <- c(
   "updated_by" = "Updated By",
   "date_updated" = "Date Updated"
 )
+
+add_user_stamp <- function(x, is_new = FALSE) {
+  if(is_new) x["created_by"] = user_coc$email
+  x["updated_by"] = user_coc$email
+}
+
 insert_and_return <- function(table, new_dt, return_cols) {
   col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, names(new_dt)), collapse = ", ")
   return_col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, return_cols), collapse = ", ")
