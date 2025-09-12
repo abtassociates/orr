@@ -278,7 +278,8 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       }, ignoreInit = TRUE
     )
     
-    # If they "Request Access": 
+    # If they "Request Access" after trying to create a new CoC Version but one 
+    # is already created: 
     # send email to user associated with that other CoC Version
     observeEvent(input$request_access_indirect, {
       req(!is.null(admin_email()))
@@ -373,6 +374,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         ) |>
         add_user_stamp(is_new = TRUE)
       
+      # Update CoC Version in db, and grab autonumbered coc_version_id
       new_coc_version_id <- insert_and_return(
         "coc_versions", new_version, "coc_version_id"
       )
@@ -384,14 +386,15 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         new_version %>% fselect(created_by, date_updated, updated_by, coc)
       )
       
+      # Next, update CoC Version USers in db
       dbAppendTable(DB_CON, 'coc_version_users', new_version_user %>% fselect(-coc))
       
+      # Now update the reactiveVal behind the datatable
       coc_vu(
         rbind(
           copy(coc_vu()), 
           new_version |>
-            fmutate(coc_version_role = new_version_user$coc_version_role) |>
-            fselect(-coc_version_id), 
+            fmutate(coc_version_role = new_version_user$coc_version_role),
           fill=TRUE
         )
       )
