@@ -302,7 +302,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           coc_version_name = paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name)),
           coc = input$coc_dropdown, 
           coc_status = get_lookup_refid("Not Started", "coc_status"),
-          date_created = format(Sys.time(),"%Y-%m-%d %H:%M:%S"), created_by = user_coc$email, 
+          created_by = user_coc$email, 
           date_updated = format(Sys.time(),"%Y-%m-%d %H:%M:%S"), updated_by = user_coc$email)
       
       new_coc_version_id <- insert_and_return(
@@ -313,7 +313,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
         coc_version_id = unname(unlist(new_coc_version_id)),
         username = user_coc$email,
         coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role")),
-        new_version %>% fselect(date_created, created_by, date_updated, updated_by, coc)
+        new_version %>% fselect(created_by, date_updated, updated_by, coc)
       )
       
       dbAppendTable(DB_CON, 'coc_version_users', new_version_user %>% fselect(-coc))
