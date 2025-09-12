@@ -173,7 +173,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     
     create_new_version_for_user <- function(new_version_data) {
       new_version <- new_version_data |>
-        add_user_stamp(user_coc, is_new = TRUE)
+        add_user_stamp(user_coc)
       
       # Update CoC Version in db, and grab autonumbered coc_version_id
       new_coc_version_id <- insert_and_return(

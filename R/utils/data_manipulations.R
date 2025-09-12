@@ -137,8 +137,9 @@ versions_variable_labels <- c(
 )
 
 add_user_stamp <- function(x, user_coc, is_new = FALSE) {
-  if(is_new) x["created_by"] = user_coc$email
-  x["updated_by"] = user_coc$email
+  x <- x |> fmutate(updated_by = user_coc$email)
+  if(is_new) x <- x |> fmutate(created_by = user_coc$email)
+  return(x)
 }
 
 insert_and_return <- function(table, new_dt, return_cols) {
