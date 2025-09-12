@@ -156,7 +156,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
           textInput(
             ns("copy_version_name"), 
             "Version Name",
-            placeholder = paste0(current_version_name, "_v2")
+            value = paste0(current_version_name, "_v2")
           ),
           footer = tagList(
             actionButton(ns('copy_orr_confirm'), label="Confirm"),
