@@ -40,7 +40,7 @@ function(input, output, session) {
     if (!("code" %in% names(query))){
       # no code in the url variables means the user hasn't logged in yet
       print('not logged in yet')
-      showElement("login_welcome_text")
+      #showElement("login_welcome_text")
       showElement("login_link")
       showElement("signup_link")
     } else {
@@ -49,7 +49,7 @@ function(input, output, session) {
       # if an error occurred during login
       if (is.null(current_user)){
         print('user is NULL')
-        hideElement("login_welcome_text")
+        #hideElement("login_welcome_text")
         user_coc$auth <- FALSE
       } else {
         print('user found!')
