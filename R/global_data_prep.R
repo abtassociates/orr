@@ -33,6 +33,7 @@ SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
 
 
 TABS <- c(
+  "about",
   "dashboard",
   "inventory",
   "rating_criteria",
@@ -45,6 +46,7 @@ TABS <- c(
   "account"
 )
 TABS_TO_SHOW <- c(
+  "about",
   "dashboard",
   "inventory",
   "funding_priorities",

@@ -17,10 +17,10 @@ mod_cognito_ui <- function(id){
     easyClose = FALSE,
     
     footer = tagList(
-      ## log in button
-      tags$a(id = "login_link", "Log in", class = 'btn btn-primary', href = aws_auth_redirect),
-      ## create account button
-      tags$a(id = "signup_link", "Create Account", class = "btn btn-primary", href = aws_auth_signup)
+      # ## log in button
+      # tags$a(id = "login_link", "Log in", class = 'btn btn-primary', href = aws_auth_redirect),
+      # ## create account button
+      # tags$a(id = "signup_link", "Create Account", class = "btn btn-primary", href = aws_auth_signup)
     )
     
   )

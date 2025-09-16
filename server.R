@@ -8,7 +8,7 @@ function(input, output, session) {
     given_name = NULL, # user's given_name as stored and returned by cognito
     email = NULL  # user's email as stored and returned by cognito
   )
-  nav_control <- reactiveVal("dashboard")
+  nav_control <- reactiveVal("about")
 
   toggle_tabs <- function() {
     for(tab in TABS) {
@@ -16,16 +16,9 @@ function(input, output, session) {
       else nav_hide("nav", tab)
     }
   }
-  # Hide all panels except "account" initially, show login modal
+  
+  # Hide specific content tabs initially
   observe({
-    showModal(
-      list(
-           mod_cognito_ui("cognito"),
-           ## adjust background color of blurred application behind modal
-           tags$script("$('.modal-backdrop').css('background-color', '#777777')")
-           ),
-              session = session)
-
     toggle_tabs()
   })
 
