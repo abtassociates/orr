@@ -30,7 +30,6 @@ set_collapse(na.rm = TRUE, verbose = FALSE, sort = FALSE)
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
 
-
 USER_ENTRY_BG_COLOR <- "#e6ffe6"
 
 source(here("R/global_data_prep.R"))

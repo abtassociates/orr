@@ -465,15 +465,24 @@ mod_inventory_server <- function(id, user_coc) {
     })
     
     observeEvent(input$view_giw_btn, {
+      data <- giw_data() %>%
+        fselect(-date_created, -date_updated, -created_by, -updated_by)
+      
+      names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
+      
       showModal(
         modalDialog(
           title = "GIW",
+          p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
           DT::renderDT(
-            giw_data(),
+            data,
             fillContainer = TRUE,
             options = list(
               pageLength = 200,
-              scrollY = "400px"
+              scrollY = "400px",
+              columnDefs = list(
+                list(visible = FALSE, targets = 0)  # 0 = first column (0-based index)
+              )
             )
           ),
           size="xl",

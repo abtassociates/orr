@@ -126,6 +126,25 @@ project_variable_labels <- c(
   "date_created" = "Date Created"
 )
 
+giw_variable_labels <- c(
+  "grant_number" = "Grant Number",
+  "coc" = "CoC",
+  "applicant_name" = "Applicant Name",
+  "project_name" = "Project Name",
+  "expiration_year" = "Expiration Year",
+  "project_component" = "Project Component",
+  "restriction_dv_or_ydhp" = "Restriction: DV or YHDP",
+  "dv_ard_estimated" = "DV ARD Estimated",
+  "yhdp_ard_estimated" = "YHDP ARD Estimated",
+  "cocs_ard_estimated" = "CoCs ARD Estimated",
+  "total_units" = "Total Units",
+  "total_ara" = "Total ARA",
+  "date_created" = "Date Created",
+  "created_by" = "Created By",
+  "date_updated" = "Date Updated",
+  "updated_by" = "Updated By"
+)
+
 versions_variable_labels <- c(
   "coc" = "CoC Code",
   "coc_version_name" = "CoC Version Name",
