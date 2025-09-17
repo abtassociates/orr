@@ -94,14 +94,13 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     })
     
     ## Edit version ----------------
-    observeEvent(input$edit_coc_version, {
-      req(user_coc$auth)
-      # Save the selected CoC and CoC Version in user_coc, to be passed around to other modules
+    observeEvent(input$coc_versions_dt_rows_selected, {
       current_coc_info <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
-
       user_coc$coc <- current_coc_info$coc
       user_coc$coc_version_id <- current_coc_info$coc_version_id
-
+    })
+    observeEvent(input$edit_coc_version, {
+      req(user_coc$auth)
       
       # Store the project data in the projects_data to be passed to other modules
       filtered_data <- get_db_tbl("projects") |>
