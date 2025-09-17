@@ -95,6 +95,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     
     ## Edit version ----------------
     observeEvent(input$edit_coc_version, {
+      req(user_coc$auth)
       # Save the selected CoC and CoC Version in user_coc, to be passed around to other modules
       current_coc_info <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
 
@@ -392,7 +393,8 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       input$direct_request_coc_versions_rows_selected,
       updateActionButton(
         ns('send_direct_request'), 
-        disabled = length(input$direct_request_coc_versions_rows_selected) > 0
+        disabled = length(input$direct_request_coc_versions_rows_selected) > 0,
+        session = session
       )             
     )
     output$direct_request_coc_versions <- renderDT({
