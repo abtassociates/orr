@@ -2,6 +2,17 @@ page_navbar(
   title = "CoC Project Rating and Ranking Tool",
   id = "nav",
   
+  window_title = 'ORR',
+  
+  theme = bs_theme(
+    version = 5,
+    #navbar_bg = "#357DAD",
+    navbar_bg = "#04153B",
+    primary = "#357DAD",
+    success = "#92D050"
+    #primary = "#04153B"
+  ),
+  
   header = tagList(
     ## css, idle management, and dimension management --------
     tags$head(

@@ -15,6 +15,18 @@
   cursor: not-allowed;
 }
 
+.btn-primary {
+  color: white;
+}
+
+.btn-primary:focus {
+  color: white;
+}
+
+.btn-primary:hover {
+  color: white;
+}
+
 /*make sure modals are centered*/
 .modal {
   display: flex !important;
