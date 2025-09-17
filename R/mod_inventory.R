@@ -7,7 +7,7 @@ mod_inventory_ui <- function(id) {
     card(
       card_body(
         fillable = FALSE,
-        DTOutput(ns("projects_table"))
+        DTOutput(ns("projects_table"))|> shinycssloaders::withSpinner()
       ),
       card_footer(
         actionButton(ns("add_project_btn"), "Add New Project"),
@@ -30,7 +30,7 @@ mod_inventory_server <- function(id, user_coc) {
     # however, we need to be able to have multiple in case they Add Another project
     modal_observers <- reactiveValues() 
     
-    # all CoC instance project data
+    # all CoC version project data
     projects_data <- reactiveVal(NULL)
     
     # binary indicator for whether a new row/project has been added
@@ -66,13 +66,13 @@ mod_inventory_server <- function(id, user_coc) {
     
     # Initialize projects_data ------
     observe({
-      req(user_coc$coc_instance_id)
+      req(user_coc$coc_version_id)
 
       data <- get_db_query(
-        "SELECT * FROM projects WHERE coc_instance_id = $1", 
-        params = user_coc$coc_instance_id
+        "SELECT * FROM projects WHERE coc_version_id = $1", 
+        params = user_coc$coc_version_id
       ) %>% 
-        fselect(-coc_instance_id, -date_created, -date_updated, -updated_by, -amount_other_public_funding, -amount_private_funding) %>%
+        fselect(-coc_version_id, -date_created, -date_updated, -updated_by, -amount_other_public_funding, -amount_private_funding) %>%
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
           project_type = convert_to_factor(., "project_type"),
@@ -97,8 +97,7 @@ mod_inventory_server <- function(id, user_coc) {
       } else {
         data <- isolate(projects_data())
       }
-
-      validate(need(
+      shiny::validate(need(
         nrow(data) > 0, 
         "No rows"
       ))
@@ -262,11 +261,11 @@ mod_inventory_server <- function(id, user_coc) {
     append_to_db <- function(new_project_data) {
       db_data <- new_project_data %>%
         fmutate(
-          coc_instance_id = user_coc$coc_instance_id,
+          coc_version_id = user_coc$coc_version_id,
           funding_action = get_lookup_refid(funding_action, "funding_action"),
           project_type = get_lookup_refid(project_type, "project_type"),
           target_population = get_lookup_refid(target_population, "target_population"),
-          date_created = format(lubridate::now(), "%Y-%m-%d %H:%M:%S")
+          date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
         )
       
       DBI::dbAppendTable(DB_CON, "projects", db_data)
@@ -406,7 +405,7 @@ mod_inventory_server <- function(id, user_coc) {
     # A function to show the modal and set up the server logic
     show_project_modal <- function(form_type = "New", funding_source = "", info = NULL, new_value = NULL, project_to_replace = NULL, observer_id = NULL) {
       if (is.null(observer_id)) {
-        # Generate a unique ID for this observer instance
+        # Generate a unique ID for this observer version
         observer_id <- paste0("modal_obs_", digest::digest(runif(1)))
       }
       

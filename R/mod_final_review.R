@@ -20,7 +20,7 @@ mod_final_review_server <- function(id, user_coc) {
       data <- get_db_query(
         "SELECT p.*, r.rating_score, t.met_threshold 
         FROM projects p 
-        LEFT JOIN coc_instances c ON p.coc_instance_id = c.coc_instance_id
+        LEFT JOIN coc_versions c ON p.coc_version_id = c.coc_version_id
         LEFT JOIN rating_scores r ON p.project_id = r.project_id
         LEFT JOIN threshold_entries r ON p.project_id = t.project_id
         WHERE c.coc = $1", 

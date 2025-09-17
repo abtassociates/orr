@@ -144,3 +144,40 @@ giw_variable_labels <- c(
   "date_updated" = "Date Updated",
   "updated_by" = "Updated By"
 )
+
+versions_variable_labels <- c(
+  "coc" = "CoC Code",
+  "coc_version_name" = "CoC Version Name",
+  "coc_status" = "Status",
+  "coc_version_id" = "CoC Version ID",
+  "coc_version_role" = "Your Role",
+  "updated_by" = "Updated By",
+  "date_updated" = "Date Updated"
+)
+
+add_user_stamp <- function(x, user_coc, is_new = FALSE) {
+  x <- x |> fmutate(updated_by = user_coc$email)
+  if(is_new) x <- x |> fmutate(created_by = user_coc$email)
+  return(x)
+}
+
+insert_and_return <- function(table, new_dt, return_cols) {
+  col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, names(new_dt)), collapse = ", ")
+  return_col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, return_cols), collapse = ", ")
+  placeholders <- paste0("$", seq_along(names(new_dt)), collapse = ", ")
+
+  sql <- sprintf(
+    "INSERT INTO %s (%s) VALUES (%s) RETURNING %s",
+    table,
+    col_list,
+    placeholders,
+    return_col_list
+  )
+  
+  results <- lapply(1:nrow(new_dt), function(i) {
+    row_values <- as.character(unname(new_dt))
+    DBI::dbGetQuery(DB_CON, sql, params = as.list(row_values))
+  })
+
+  return(results)
+}

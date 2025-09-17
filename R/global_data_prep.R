@@ -1,11 +1,13 @@
+HDX_HIC_DATE <- as.Date('2025-07-25')
+
 lookups <- get_db_tbl("lookups")
 users <- get_db_tbl("users")
 cocs <- get_db_tbl("cocs")
-coc_instance_users <- get_db_query(
-  "SELECT u.*, i.coc 
-  FROM coc_instance_users u 
-  LEFT JOIN coc_instances i 
-  ON u.coc_instance_id = i.coc_instance_id"
+coc_version_users <- get_db_query(
+  "SELECT v.*, u.username, u.coc_version_role
+  FROM coc_versions v
+  LEFT JOIN coc_version_users u
+  ON v.coc_version_id = u.coc_version_id"
 )
 hud_ard_report <- get_db_tbl("hud_ard_report")
 main_project_types <- c("PSH", "RRH", "TH", "TH+RRH")
@@ -28,3 +30,25 @@ coc_nofo_opportunities <- get_db_tbl("coc_nofo_opportunities") %>%
   )
 
 SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
+
+
+TABS <- c(
+  "about",
+  "dashboard",
+  "inventory",
+  "rating_criteria",
+  "renewal_rating",
+  "new_rating",
+  "alternative_rating",
+  "funding_priorities",
+  "final_review",
+  "ranking",
+  "account"
+)
+TABS_TO_SHOW <- c(
+  "about",
+  "dashboard",
+  "inventory",
+  "funding_priorities",
+  "account"
+)
