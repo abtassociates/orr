@@ -22,7 +22,7 @@ function(input, output, session) {
     toggle_tabs()
   })
 
-  mod_coc_selection_server("coc_selection", nav_control, projects_data, user_coc)
+  mod_coc_selection_server("coc_selection", nav_control, user_coc)
   mod_inventory_server("inventory", user_coc)
   mod_rating_criteria_server("rating_criteria", user_coc)
   mod_renewal_rating_server("renewal_rating", projects_data)
@@ -78,6 +78,11 @@ function(input, output, session) {
   
   
   # Observer to update nav panel when reactive value changes
+  observeEvent(input$nav, {
+    if(!(nav_control() == "dashboard" && input$nav == "about"))
+      nav_control(input$nav)
+  })
+  
   observeEvent(nav_control(), {
     nav_select("nav", selected = nav_control())
   })

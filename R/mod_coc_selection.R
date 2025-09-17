@@ -22,7 +22,7 @@ mod_coc_selection_ui <- function(id) {
   #)
 }
 
-mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
+mod_coc_selection_server <- function(id, nav_control, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
     
@@ -105,8 +105,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       # Store the project data in the projects_data to be passed to other modules
       filtered_data <- get_db_tbl("projects") |>
         fsubset(coc_version_id == user_coc$coc_version_id)
-      
-      projects_data(filtered_data)
 
       nav_control("inventory")
     })
@@ -502,7 +500,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       
       # Initialize projects data
       filtered_data <- get_hic_data(input$coc_dropdown, coc_version_id)
-      projects_data(filtered_data)
       
       filtered_data_db <- factor_vars_db_prep(filtered_data)
       DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)

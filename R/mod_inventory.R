@@ -91,6 +91,8 @@ mod_inventory_server <- function(id, user_coc) {
     
     # Projects datatable -----
     output$projects_table <- renderDT({
+      req(user_coc$coc_version_id)
+      
       if(is_new_project()) {
         data <- projects_data()
         is_new_project(FALSE)
