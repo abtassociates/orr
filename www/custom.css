@@ -1,19 +1,47 @@
-.green-background {
-  background-color: #e6ffe6 !important;
+
+#submit_sign_out {
+  font-weight: bold;
+  /*background-color: red;
+  color:white;
+  */
 }
 
-#inventory-projects_table table tbody > td:first-child {
-  display: none;
+#coc_versions_dt {
+  height:100% !important; 
 }
 
-#shiny-modal {
+/*show red circle for disabled buttons*/
+.btn:has(.disabled) {
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  color: white;
+}
+
+.btn-primary:focus {
+  color: white;
+}
+
+.btn-primary:hover {
+  color: white;
+}
+
+/*make sure modals are centered*/
+.modal {
+  display: flex !important;
+  align-items: center;
   overflow: hidden;
 }
 
-.modal-dialog {
-  margin-top: 1em;
-  height: 95%;
-  overflow: auto;
+/*Disallow clicking on disabled/calculated cells*/
+td.disabled {
+  pointer-events: none;
+  background-color: lightgray;
+}
+
+.hidden {
+  display: none;
 }
 
 /*CUSTOMIZE RATING CRITERIA*/
@@ -24,9 +52,10 @@
   font-size: 0.8em;
 }
 
-
 /*FUNDING PRIORITIES*/
+/*
 #funding_priorities-priorities_table table.dataTable th, 
 #funding_priorities-priorities_table table.dataTable td {
   text-align:center;
-}
+}*/
+

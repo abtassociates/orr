@@ -17,14 +17,20 @@ library(rhandsontable)
 library(shinyvalidate)
 library(purrr)
 library(shinycssloaders)
+library(httr)
+library(httr2)
+library(jsonlite)
 
-in_dev_mode <- grepl("ad.abt.local", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
 
+IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
+
+set.seed(123)
+set_collapse(na.rm = TRUE, verbose = FALSE, sort = FALSE)
 # Load all utils functions
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
 
-# Pull global datasets from db
-source(here("R/global_data_prep.R"))
 
-set.seed(123)
+USER_ENTRY_BG_COLOR <- "#e6ffe6"
+
+source(here("R/global_data_prep.R"))

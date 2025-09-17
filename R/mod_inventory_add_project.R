@@ -1,305 +1,407 @@
-mod_inventory_add_project_ui <- function(id) {
+LOOKUP_CHOICES <- list(
+  funding_action = names(get_labelled_lookups("funding_action")),
+  reallocation_funding_actions = c("New", "Expand"),
+  coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
+  coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
+  yhdp_project_types = c("PSH", "RRH", "TH", "TH+RRH", "SSO - CE"), # what about SSO-Host Homes?
+  dv_project_types = c("RRH", "TH+RRH", "SSO - CE"),
+  dv_reallocation_project_types = c("RRH", "TH+RRH", "SSO - CE"),
+  funding_source = c("CoC","YHDP","DV"),
+  no_yhdp_funding_source = c("CoC", "DV"),
+  target_populations = c("DV","HIV","Youth", "General") # AS 8/26: What are the right populations here?
+)
+
+# ===================================================================
+# UI Function (Now with a helper for bed inputs)
+# ===================================================================
+mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_replace = NULL) {
   ns <- NS(id)
   
-  fundingAction <- ns("funding_action_new")
-  projectType   <- ns("project_type_new")
-  fundingSource <- ns("funding_source_new")
-  targetPop     <- ns("target_population_new")
-  
-  # Common condition for showing bed fields (most fields hidden if Replace, HMIS,
-  # YHDP, DV, or specific project types)
-  commonHideBedCond <- glue::glue("
-            input['{fundingAction}']=='Replace' || 
-            input['{fundingSource}']=='YHDP' || 
-            input['{fundingSource}']=='DV' || 
-            input['{projectType}'].match(/^(SSO-CE|SSO|PSH|HMIS)$/)")
-  
-  # For fields that should also be hidden when Target Population is Youth:
-  commonHideBedCondNoYouth <- glue::glue("
-            {commonHideBedCond} || input['{targetPop}']=='Youth')")
-  
-  
-  # Special condition: if Replace or funding source is YHDP, then show parenting and single youth beds.
-  youthBedCond <- glue::glue("(input['{fundingAction}']=='Replace' || input['{fundingSource}']=='YHDP')")
-  
-  # DV-specific condition
-  dvBedCond <- glue::glue("input['{fundingSource}']=='DV'")
-  
-  # List of standard bed fields with their input IDs and labels
-  bedFields <- list(
-    list(
-      c1 = list(id = "all_family_beds_new", label = "All Family Beds*", cond = commonHideBedCond == FALSE),
-      c2 = list(id = "all_individual_beds_new", label = "All Individual Beds*", cond = commonHideBedCond == FALSE)
-    ),
-    list(
-      c1 = list(id = "ch_family_beds_new", label = "CH Family Beds*", cond = commonHideBedCondNoYouth == FALSE),
-      c2 = list(id = "ch_individual_beds_new", label = "CH Individual Beds*", cond = commonHideBedCondNoYouth == FALSE)
-    ),
-    list(
-      c1 = list(id = "veteran_family_beds_new", label = "Veteran Family Beds*", cond = commonHideBedCondNoYouth == FALSE),
-      c2 = list(id = "veteran_individual_beds_new", label = "Veteran Individual Beds*", cond = commonHideBedCondNoYouth == FALSE)
-    ),
-    list(
-      c1 = list(id = "parenting_youth_beds_new", label = "Parenting Youth Beds*", cond = youthBedCond),
-      c2 = list(id = "single_youth_beds_new", label = "Single Youth Beds*", cond = youthBedCond)
-    ),
-    list(
-      c1 = list(id = "dv_family_beds_new", label = "DV Family Beds*", cond = dvBedCond),
-      c2 = list(id = "dv_individual_beds_new", label = "DV Individual Beds*", cond = dvBedCond)
-    )
+  title <- switch(form_type,
+                  "YHDP Reallocation" = "YHDP Reallocation Form",
+                  "DV Reallocation"   = "DV Reallocation Form",
+                  "CoC Reallocation"  = "CoC Reallocation Form",
+                  "YHDP Replacement"  = "YHDP Replacement Form",
+                  "Add New Project"
   )
-
-  modalDialog(
-    title = "Add Additional Project",
-    size = "l",
-    fluidPage(
-      
-      # Project and Org Names
-      fluidRow(column(12, textInput(ns("project_name_new"), "Project Name *"))),
-      textInput(ns("organization_name_new"), "Organization Name *"),
-      
-      # Funding Action
-      selectizeInput(fundingAction, "Funding Action*", choices = c("", get_labelled_lookups("funding_action"))),
-      
-      # Grant Number
-      conditionalPanel(
-        condition = glue::glue("input['{fundingAction}'] != 'New (no historical performance)'"),
-        textInput(ns("grant_number_new"), "Grant Number*")
-      ),
-      
-      # Funding Source
-      selectInput(fundingSource, "Funding Source*", choices = c("CoC", "YHDP", "DV")),
-      
-      # Project Type
-      selectInput(projectType, "Project Type*^", choices = get_labelled_lookups("project_types")),
-      
-      # Target Population
-      conditionalPanel(
-        condition = glue::glue("!(input['{fundingAction}']=='Replace' || input['{projectType}']=='HMIS')"),
-        selectInput(targetPop, "Target Population*", choices = get_labelled_lookups("target_populations"))
-      ),
-      tags$hr(),
-      # Generate the standard bed fields in a loop
-      lapply(bedFields, function(field_group) {
+  
+  # Helper to create a group of bed inputs, wrapped in a div for easy toggling
+  bed_input_group <- function(group_id, fam_label, ind_label) {
+    div(id = ns(group_id),
         fluidRow(
-          lapply(field_group, function(field) {
-            column(6, conditionalPanel(
-              condition = field$cond,
-              numericInput(ns(field$id), field$label, value=NULL, min = 0)
-            ))
-          })
+          column(6, numericInput(ns(paste0(group_id, "_fam")), fam_label, value = NA, min = 0)),
+          column(6, numericInput(ns(paste0(group_id, "_ind")), ind_label, value = NA, min = 0))
         )
-      }),
+    )
+  }
+  
+  modalDialog(
+    title = title,
+    size = "m",
+    fluidPage(
+      # -- Core Project Info --
+      textInput(ns("project_name"), "Project Name*"),
+      textInput(ns("organization_name"), "Organization Name*"),
+      selectInput(ns("funding_action"), "Funding Action*", choices = c("", LOOKUP_CHOICES$funding_action)),
+      textInput(ns("grant_number"), "Grant Number"), # Visibility controlled by server
+      selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
+      selectInput(ns("project_type"), "Project Type*^", choices = c("")), # Choices populated by server
+      selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations)),
+      shinyjs::hidden(helpText(id = ns("target_population_inst"), "Select if project is targeted to DV, HIV, Youth, or General")),
+      shinyjs::hidden(checkboxInput(ns("all_dv_checkbox"), "100% targeted to DV", value = FALSE)),
       
-      # PSH-specific checkboxes
-      conditionalPanel(
-        condition = glue::glue("input['{projectType}']=='PSH'"),
-        checkboxInput(ns("presh_family"), "100% of Family Beds targeted to CH", FALSE),
-        checkboxInput(ns("presh_individual"), "100% of Individual Beds targeted to CH", FALSE)
+      tags$hr(),
+      
+      # -- Bed Fields (Generated programmatically) --
+      tags$h4("Bed & Unit Inventory"),
+      bed_input_group("total_beds", "Total Family Beds*", "Total Individual Beds*"),
+      bed_input_group("ch_beds", "CH Family Beds*", "CH Individual Beds*"),
+      bed_input_group("vet_beds", "Veteran Family Beds*", "Veteran Individual Beds*"),
+      bed_input_group("youth_beds", "Youth Family Beds*", "Youth Individual Beds*"),
+      
+      # -- PSH-specific checkboxes --
+      shinyjs::hidden(
+        div(id = ns("ch_checkbox_div"),
+            checkboxInput(ns("targeted_ch_fam"), "100% of family beds targeted to CH", FALSE),
+            checkboxInput(ns("targeted_ch_ind"), "100% of individual beds targeted to CH", FALSE)
+        )
       ),
       br(),
-      # Additional reallocation project link
-      actionLink(ns("reallocation_link"), "Is this an additional reallocation project?")
+      actionLink(ns("add_another_link"), "Submit and add another project?")
     ),
     footer = tagList(
-      div(
-        style = "width: 100%",
-        tags$p("* means required"),
-        tags$p("^ means 'See Appendix E in the instructions page for YHDP project type mapping'")
+      div(style = "width: 100%; text-align: left;",
+          tags$p("* means required if visible"),
+          tags$p("^ See Appendix E for YHDP project type mapping")
       ),
       modalButton("Cancel"),
-      actionButton(ns("submit_new_project"), "Submit")
+      actionButton(ns("submit"), "Submit")
     )
   )
 }
 
-mod_inventory_add_project_server <- function(id, projects_data) {
+# ===================================================================
+# Server Function (Refactored for clarity and consolidation)
+# ===================================================================
+mod_inventory_add_project_server <- function(
+    id, 
+    form_type = "New", 
+    funding_source = "", 
+    project_to_replace = NULL, 
+    user_coc = NULL,
+    parent_session = NULL
+) {
   moduleServer(id, function(input, output, session) {
-    ## Submission ------------
-    # 1. Initialize the validator
-    iv <- InputValidator$new()
-    
-    # 2. Add specific, conditional rules for each input
-    # --- Core Project Info ---
-    iv$add_rule("project_name_new", sv_required())
-    iv$add_rule("organization_name_new", sv_required())
-    iv$add_rule("funding_action_new", sv_required())
-    iv$add_rule("funding_source_new", sv_required())
-    iv$add_rule("project_type_new", sv_required())
-    
-    # --- Conditional Inputs ---
-    # Grant Number is required ONLY IF funding action is not "New..."
-    iv$add_rule("grant_number_new", 
-                sv_required(test = function(value) {
-                  input$funding_action_new != "New (no historical performance)"
-                })
+    ns <- session$ns
+    modal_submission_outcome <- reactiveValues(
+      status = NULL,
+      project_data = NULL
     )
-    # Target Population is required ONLY IF it's not a special case
-    iv$add_rule("target_population_new",
-                sv_required(test = function(value) {
-                  input$project_type_new == "HMIS"
-                })
-    )
+    add_another_flag <- reactiveVal(FALSE)
     
-    # --- Bed Fields ---
-    # Define the conditions from your UI as R functions for re-use
-    is_common_hidden <- function() {
-      input$funding_action_new == 'Replace' || 
-        input$funding_source_new %in% c('YHDP', 'DV') || 
-        input$project_type_new %in% c('SSO-CE', 'SSO', 'PSH', 'HMIS')
-    }
-    is_common_no_youth_hidden <- function() {
-      is_common_hidden() || (isTruthy(input$target_population_new) && input$target_population_new == 'Youth')
-    }
-    
-    # All Beds
-    iv$add_rule("all_family_beds_new", sv_required(test = function(value) !is_common_hidden()))
-    iv$add_rule("all_individual_beds_new", sv_required(test = function(value) !is_common_hidden()))
-    # CH Beds
-    iv$add_rule("ch_family_beds_new", sv_required(test = function(value) !is_common_no_youth_hidden()))
-    iv$add_rule("ch_individual_beds_new", sv_required(test = function(value) !is_common_no_youth_hidden()))
-    # Veteran Beds
-    iv$add_rule("veteran_family_beds_new", sv_required(test = function(value) !is_common_no_youth_hidden()))
-    iv$add_rule("veteran_individual_beds_new", sv_required(test = function(value) !is_common_no_youth_hidden()))
-    # Youth Beds
-    iv$add_rule("parenting_youth_beds_new", sv_required(test = function(value) input$funding_action_new == 'Replace' || input$funding_source_new == 'YHDP'))
-    iv$add_rule("single_youth_beds_new", sv_required(test = function(value) input$funding_action_new == 'Replace' || input$funding_source_new == 'YHDP'))
-    # DV Beds
-    iv$add_rule("dv_family_beds_new", sv_required(test = function(value) input$funding_source_new == 'DV'))
-    iv$add_rule("dv_individual_beds_new", sv_required(test = function(value) input$funding_source_new == 'DV'))
-    
-    
-    observeEvent(input$submit_new_project, {
-      iv$enable()
+    # =================================================================
+    # 1. Centralized State Logic (Reactive Expressions)
+    # These reactives define the form's state based on user inputs.
+    # =================================================================
 
-      if (!iv$is_valid()) {
-        showNotification(
-          "Please fix the errors in the form before continuing",
-          type = "error"
-        )
-        return()
-      }
-      
-      # Adjust funding source and target population per rules
-      funding_source <- if (input$funding_action_new == "Replace") {
-        "YHDP"
-      } else {
-        input$funding_source_new
-      }
-      
-      youth_cond <- input$funding_action_new == "Replace" || funding_source == "YHDP"
-      
-      target_population <- if (youth_cond) "Youth"
-        else if (funding_source == "DV") "DV"
-        else input$target_population_new
-      
-      # Define a helper function to decide if a standard bed field should be captured.
-      # These fields are hidden (and thus should be NA) if:
-      #   - funding_action is "Replace"
-      #   - project_type is HMIS, SSO-CE, SSO, or PSH
-      #   - funding_source is YHDP or DV
-      # For some fields, also hide when target_population is Youth.
-      shouldCapture <- function(inputId, includeYouth = FALSE) {
-        suppress <- youth_cond ||
-          input$project_type_new %in% c("HMIS", "SSO-CE", "SSO", "PSH") ||
-          funding_source == "DV"
-        if (includeYouth) {
-          suppress <- suppress || (input$target_population_new == "Youth")
-        }
-        return(!suppress)
-      }
-      
-      # Use a list to map field names to their input IDs and whether they should hide if Target Population is Youth.
-      bedSettings <- list(
-        all_family_beds      = list(id = "all_family_beds_new",      youthSensitive = FALSE),
-        all_individual_beds  = list(id = "all_individual_beds_new",  youthSensitive = FALSE),
-        ch_family_beds       = list(id = "ch_family_beds_new",       youthSensitive = TRUE),
-        ch_individual_beds   = list(id = "ch_individual_beds_new",   youthSensitive = TRUE),
-        veteran_family_beds  = list(id = "veteran_family_beds_new",  youthSensitive = TRUE),
-        veteran_individual_beds = list(id = "veteran_individual_beds_new", youthSensitive = TRUE)
-      )
-      
-      # Loop over the standard bed fields, capturing the value if applicable.
-      bedValues <- list()
-      for (name in names(bedSettings)) {
-        field <- bedSettings[[name]]
-        bedValues[[name]] <- if (shouldCapture(field$id, includeYouth = field$youthSensitive)) {
-          input[[ field$id ]]
-        } else {
-          NA
-        }
-      }
-      
-      # Process special bed fields.
-      parenting_youth_beds <- if(youth_cond) input$parenting_youth_beds_new else NA
-      single_youth_beds <- if(youth_cond) input$single_youth_beds_new else NA
-      
-      dv_family_beds <- if (funding_source == "DV") input$dv_family_beds_new else NA
-      dv_individual_beds <- if (funding_source == "DV") input$dv_individual_beds_new else NA
-      
-      # Process PSH-specific checkboxes.
-      psh_family_override <- if (input$project_type_new == "PSH") input$presh_family else NA
-      psh_individual_override <- if (input$project_type_new == "PSH") input$presh_individual else NA
-      
-      # Build the new project row using a list (combining with the bedValues list)
-      new_proj <- c(
-        list(
-          project_name      = input$project_name_new,
-          organization_name = input$organization_name_new,
-          grant_number      = if (input$funding_action_new != "New (no historical performance)") input$grant_number_new else NA,
-          funding_action    = input$funding_action_new,
-          funding_source    = funding_source,
-          project_type      = input$project_type_new,
-          target_population = target_population
-        ),
-        bedValues,
-        list(
-          parenting_youth_beds    = parenting_youth_beds,
-          single_youth_beds       = single_youth_beds,
-          dv_family_beds          = dv_family_beds,
-          dv_individual_beds      = dv_individual_beds,
-          psh_family_override     = psh_family_override,
-          psh_individual_override = psh_individual_override
-        )
-      )
-      
-      # Convert the new project to a data.frame and append it to the projects_data
-      new_row_df <- as.data.frame(new_proj, stringsAsFactors = FALSE)
-      updated <- rbind(projects_data(), new_row_df)
-      projects_data(updated)
-      
-      removeModal()
+    # Determine the definitive target population.
+    current_target_pop <- reactive({
+      if (current_funding_source() == "YHDP") "Youth" 
+      else if (current_funding_source() == "DV") "DV" 
+      else if(is.null(input$target_population) || input$target_population == "") ""
+      else input$target_population
     })
     
-    # When Funding Action changes.
-    observeEvent(input$funding_action_new, {
-      if (input$funding_action_new != "New (no historical performance)") {
-        iv$add_rule("grant_number_new", sv_required())
-      }
+    # Determine which bed groups should be visible. This is the core of the display logic.
+    visible_bed_groups <- reactive({
+      pt <- input$project_type
+      tp <- current_target_pop()
       
-      if (input$funding_action_new == "Replace") {
-        updateSelectInput(session, "funding_source_new", selected = "YHDP")
-        updateSelectInput(session, "target_population_new", selected = "Youth")
-        shinyjs::disable("funding_source_new")
-        shinyjs::disable("target_population_new")
-      } else {
-        shinyjs::enable("funding_source_new")
-        shinyjs::enable("target_population_new")
+      # Hide all beds for certain project types
+      if (isTruthy(pt) && pt %in% c("SSO", "SSO - CE", "SSO-Host Homes", "HMIS")) {
+        return(character(0))
       }
-      # For "New (no historical performance)", the Grant Number field is hidden via the UI.
-    }, ignoreInit = TRUE)
+
+      # Determine visibility based on funding and population
+      groups <- c()
+      if (current_funding_source() == "YHDP") groups <- c("youth_beds")
+      else if (current_funding_source() == "DV") groups <- c("total_beds") # Will be relabeled to "DV Beds"
+      else { # CoC logic
+        groups <- c("total_beds", "vet_beds")
+        if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
+        if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
+      }
+      return(groups)
+    })
     
-    # When Funding Source changes.
-    observeEvent(input$funding_source_new, {
-      if (input$funding_source_new == "YHDP") {
-        updateSelectInput(session, "target_population_new", selected = "Youth")
-        shinyjs::disable("target_population_new")
-      } else if (input$funding_source_new == "DV") {
-        updateSelectInput(session, "target_population_new", selected = "DV")
-        shinyjs::disable("target_population_new")
-      } else {
-        shinyjs::enable("target_population_new")
+    # =================================================================
+    # 2. Initial Form Setup (Runs once)
+    # =================================================================
+    
+    # Set initial values for reallocation or replacement
+    if (grepl("Reallocation", form_type) && funding_source != "") {
+      updateSelectInput(session, "funding_source", selected = funding_source)
+      updateSelectInput(session, "funding_action", choices = c("", LOOKUP_CHOICES$reallocation_funding_actions))
+      if (funding_source == "YHDP") {
+        updateSelectInput(session, "funding_action", selected = "New")
       }
-    }, ignoreInit = TRUE)
+      updateActionLink(session, "add_another_link", label = "Submit and add another reallocation project?")
+      shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
+      shinyjs::disable("funding_source")
+    } else if (form_type == "YHDP Replacement" && !is.null(project_to_replace)) {
+      updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
+      updateTextInput(session, "organization_name", value = project_to_replace$`Organization Name`)
+      updateSelectInput(session, "funding_action", selected = "Replace")
+      updateNumericInput(session, "youth_beds_fam", value = project_to_replace$`Par Youth Beds`)
+      updateNumericInput(session, "youth_beds_ind", value = project_to_replace$`Single Youth Beds`)
+      updateActionLink(session, "add_another_link", label = "Submit and add another replacement project?")
+      shinyjs::disable("funding_source")
+    }
+    
+    current_funding_source <- reactive({
+      ifelse(funding_source != "", funding_source,
+             ifelse(!is.null(input$funding_source), input$funding_source, ""))
+      
+    })
+    # =================================================================
+    # 3. Dynamic UI Updater (Single Observer)
+    # This observer updates the entire UI based on the state reactives.
+    # =================================================================
+    # Update project type choices when funding source or action changes
+    observeEvent(c(input$funding_action, input$funding_source), {
+      fa <- if(is.null(input$funding_action)) "" else input$funding_action
+
+      proj_type_choices <- 
+        if (current_funding_source() == "CoC" && fa %in% c("Renew", "Reallocate")) LOOKUP_CHOICES$coc_renewal_reallocate_types
+        else if (current_funding_source() == "CoC") LOOKUP_CHOICES$coc_new_expansion_types
+        else if (current_funding_source() == "YHDP") LOOKUP_CHOICES$yhdp_project_types
+        else if (current_funding_source() == "DV" && fa == "Reallocate") LOOKUP_CHOICES$dv_reallocation_project_types
+        else if (current_funding_source() == "DV") LOOKUP_CHOICES$dv_project_types
+        else c()
+      
+      updateSelectInput(session, "project_type", choices = c("", proj_type_choices))
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    
+    # Update visibility based on funding action
+    observeEvent(input$funding_action, {
+      fa <- input$funding_action
+      is_new_or_expand <- fa %in% c("New", "Expand")
+      
+      shinyjs::toggle("grant_number", condition = !is_new_or_expand & !grepl("Reallocation", form_type))
+      shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
+      shinyjs::toggleState("funding_action", condition = fa != "Replace" && !(current_funding_source() == "YHDP" && grepl("Reallocation", form_type)))
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
+    
+    # Update bed group visibility
+    observeEvent(c(input$project_type, current_target_pop()), {
+      vis_beds <- visible_bed_groups()
+      all_bed_groups <- c("total_beds", "ch_beds", "vet_beds", "youth_beds")
+      lapply(all_bed_groups, function(group) shinyjs::toggle(group, condition = group %in% vis_beds))
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    
+    # Update DV checkbox and related elements
+    observeEvent(c(input$funding_action, input$project_type, current_target_pop()), {
+      fa <- if(is.null(input$funding_action)) "" else input$funding_action
+      pt <- if(is.null(input$project_type)) "" else input$project_type
+      tp <- current_target_pop()
+      
+      is_new_or_expand <- fa %in% c("New", "Expand")
+      show_dv_check <- is_new_or_expand && (
+        (isTruthy(pt) && pt == "SSO - CE") || 
+          (tp == "DV" && isTruthy(pt) && pt %in% c("RRH", "TH+RRH"))
+      )
+      
+      shinyjs::toggle("all_dv_checkbox", condition = show_dv_check)
+      if(current_funding_source() == "DV") updateCheckboxInput(session, "all_dv_checkbox", value = TRUE)
+      shinyjs::toggle("target_population_inst", condition = current_funding_source() == "CoC" && !show_dv_check)
+      shinyjs::toggle("ch_checkbox_div", condition = current_funding_source() == "CoC" && isTruthy(pt) && pt == "PSH")
+      shinyjs::toggleState("all_dv_checkbox", condition = show_dv_check && current_funding_source() != "DV")
+      
+      # Missing organization_name state control
+      shinyjs::toggleState("organization_name", condition = form_type != "YHDP Replacement")
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    
+    # Update labels based on funding source and action
+    observeEvent(c(input$funding_action), {
+      fa <- if(is.null(input$funding_action)) "" else input$funding_action
+
+      updateNumericInput(session, "total_beds_fam", label = if (current_funding_source() == "DV") "DV Family Beds*" else "Total Family Beds*")
+      updateNumericInput(session, "total_beds_ind", label = if (current_funding_source() == "DV") "DV Individual Beds*" else "Total Individual Beds*")
+      updateTextInput(session, "grant_number", label = if (fa == "Replace") "Grant Number*" else "Grant Number")
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    
+    # Update Target Population Selection
+    observeEvent(current_target_pop(), {
+      tp <- current_target_pop()
+      
+      shinyjs::toggleState("target_population", condition = TRUE)
+      if (current_funding_source() != "CoC") updateSelectInput(session, "target_population", selected = tp)
+      shinyjs::toggleState("target_population", condition = current_funding_source() == "CoC")
+    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    
+    # --- PSH Checkbox Logic ---
+    observeEvent(input$targeted_ch_fam, 
+                 if(isTRUE(input$targeted_ch_fam)) 
+                   updateNumericInput(session, "ch_beds_fam", value = input$total_beds_fam)
+    )
+    observeEvent(input$targeted_ch_ind, 
+                 if(isTRUE(input$targeted_ch_ind)) 
+                   updateNumericInput(session, "ch_beds_ind", value = input$total_beds_ind)
+    )
+    
+    observeEvent(c(input$total_beds_fam, input$ch_beds_fam), {
+      is_equal <- input$total_beds_fam > 0 && input$total_beds_fam == input$ch_beds_fam
+      updateCheckboxInput(session, "targeted_ch_fam", value = is_equal)
+    }, ignoreNULL = FALSE)
+    observeEvent(c(input$total_beds_ind, input$ch_beds_ind), {
+      is_equal <- input$total_beds_ind > 0 && input$total_beds_ind == input$ch_beds_ind
+      updateCheckboxInput(session, "targeted_ch_ind", value = is_equal)
+    }, ignoreNULL = FALSE)
+    
+    # =================================================================
+    # 4. Validation & Submission
+    # =================================================================
+    iv <- shinyvalidate::InputValidator$new()
+
+    # Core fields are always required
+    iv$add_rule("project_name", sv_required())
+    iv$add_rule("organization_name", sv_required())
+    iv$add_rule("funding_action", sv_required())
+    iv$add_rule("project_type", sv_required())
+    iv$add_rule("funding_source", sv_required())
+    iv$add_rule("target_population", sv_required())
+    
+    # Grant number is only required if not New or Expand
+    grant_iv <- shinyvalidate::InputValidator$new()
+    grant_iv$add_rule("grant_number", sv_required())
+    grant_iv$condition( ~ !input$funding_action %in% c("New", "Expand"))
+    iv$add_validator(grant_iv)
+    
+    # Validation for visible bed fields
+    bed_groups_to_validate <- list(
+      total_beds = c("total_beds_fam", "total_beds_ind"),
+      ch_beds = c("ch_beds_fam", "ch_beds_ind"),
+      vet_beds = c("vet_beds_fam", "vet_beds_ind"),
+      youth_beds = c("youth_beds_fam", "youth_beds_ind")
+    )
+
+    # subset reactive checks if subset field is > total field (e.g., CH In beds <= Total Ind beds)
+    sv_lte_reactive <- function(max_val_formula) {
+      force(max_val_formula)
+      max_val_func <- rlang::as_function(max_val_formula)
+      function(value) {
+        # Use rlang::eval_tidy() to get the CURRENT value from the formula
+        max_val <- max_val_func()
+        
+        # Don't show an error if either value is missing
+        if (is.null(max_val) || is.na(max_val) || is.na(value)) {
+          return(NULL)
+        }
+        
+        if (value > max_val) {
+          paste0("Cannot be greater than the total (", max_val, ")")
+        } else {
+          NULL # Return NULL for success
+        }
+      }
+    }
+    # Loop to create and add all bed validation rules ONCE
+    for (group_name in names(bed_groups_to_validate)) {
+      # Use local() to capture the current value of 'group_name' for the condition formula
+      local({
+        # 'current_group' is a new variable for each loop iteration
+        current_group <- group_name
+        
+        # Create a new validator for this group
+        v <- shinyvalidate::InputValidator$new()
+        
+        # Set the condition for the ENTIRE validator group.
+        # This is much more efficient than setting it inside an observe().
+        v$condition(~ current_group %in% visible_bed_groups())
+        
+        # Add rules for the fields within this group
+        for (field in bed_groups_to_validate[[current_group]]) {
+          v$add_rule(field, sv_required())
+          v$add_rule(field, sv_integer("Must be a whole number"))
+          v$add_rule(field, sv_gte(0, "Cannot be negative"))
+        }
+        
+        # Subset validation
+        if (current_group != "total_beds") {
+          v$add_rule(paste0(current_group, "_fam"), sv_lte_reactive(~input$total_beds_fam))
+          v$add_rule(paste0(current_group, "_ind"), sv_lte_reactive(~input$total_beds_ind))
+        }
+        
+        # Add this group's validator to the main validator
+        iv$add_validator(v)
+      })
+    }
+
+    iv$enable()
+
+    # --- Submission Event ---
+    observeEvent(input$submit, {
+      if (iv$is_valid()) {
+        vis_beds <- visible_bed_groups()
+        
+        # Helper to get input value only if its group is visible
+        get_val <- function(group, field_suffix) {
+          if (group %in% vis_beds) input[[paste0(group, "_", field_suffix)]] else NA
+        }
+        
+        # Handle YHDP Reallocation special case for total beds
+        total_fam <- get_val("total_beds", "fam")
+        total_ind <- get_val("total_beds", "ind")
+        if (input$funding_source == "YHDP" && grepl("Reallocation", form_type)) {
+          total_fam <- get_val("youth_beds", "fam")
+          total_ind <- get_val("youth_beds", "ind")
+        }
+
+        # Collect data into a clean list
+        new_project_data <- data.table(
+          project_name = input$project_name,
+          organization_name = input$organization_name,
+          funding_action = input$funding_action,
+          grant_number = ifelse(input$grant_number == "", NA, input$grant_number),
+          project_type = input$project_type,
+          target_population = input$target_population,
+          is_dedicated_dv = input$all_dv_checkbox,
+          dv_fam_beds = if(input$target_population == "DV") input$total_beds_fam,
+          dv_ind_beds = if(input$target_population == "DV") input$total_beds_ind,
+          all_fam_beds = input$total_beds_fam, 
+          all_ind_beds = input$total_beds_ind,
+          ch_fam_beds = input$ch_beds_fam, 
+          total_ch_ind_beds = input$ch_beds_ind,
+          vet_fam_beds = input$vet_beds_fam, 
+          vet_ind_beds = input$vet_beds_ind,
+          par_youth_beds = input$youth_beds_fam, 
+          single_youth_beds = input$youth_beds_ind,
+          is_dedicated_ch_fam = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_fam,
+          is_dedicated_ch_ind = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind,
+          mckinneyvento = TRUE,
+          mckinneyventoyhdp = input$funding_source == "YHDP",
+          dv_renewal = input$funding_source == "DV" && input$funding_action == "Renew",
+          created_by = user_coc$username
+        )
+        
+        modal_submission_outcome$project_data <- new_project_data
+        modal_submission_outcome$status <- ifelse(add_another_flag(), "add another", "success")
+        removeModal()
+      } else {
+        add_another_flag(FALSE)
+        showNotification("Please correct the errors before submitting.", type = "error")
+      }
+    }, ignoreInit = TRUE, once=TRUE)
+    
+    observeEvent(input$add_another_link, {
+      # This action sets a flag and then programmatically clicks the main submit button.
+      # This allows us to reuse the validation and submission logic from the submit button observer.
+      add_another_flag(TRUE)
+      browser()
+      shinyjs::click("submit")
+    }, ignoreInit = TRUE, once=TRUE)
+    
+    # Return the reactiveVal to the parent module
+    return(modal_submission_outcome)
   })
 }

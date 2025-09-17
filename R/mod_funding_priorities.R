@@ -1,5 +1,5 @@
 pop_grp_toggles <- expand.grid(
-  pop = c("All" = 0, get_labelled_lookups("target_population")),
+  pop = c("All" = 0, get_labelled_lookups("target_population", lookup_col = "value_long")),
   grp = get_labelled_lookups("population_group", lookup_col = "value_long")
 ) %>%
   qDT() %>%
@@ -7,7 +7,7 @@ pop_grp_toggles <- expand.grid(
     pop_txt = ifelse(names(pop) == "Domestic Violence", "DV", names(pop)),
     grp_txt = names(grp)
   ) %>%
-  fsubset(pop_txt != "Not Applicable") %>%
+  fsubset(!pop_txt %in% c("Not Applicable", "Housing Inventory Count", "General")) %>%
   setorder(-grp, pop) %>%
   fmutate(
     full_text = fcase(
@@ -33,7 +33,7 @@ mod_funding_priorities_ui <- function(id) {
   # Funding Ceilings + Priorities
   nav_panel(
     "Funding Ceilings + Priorities",
-    value = "funding_priorities",
+    value = id,
     card(
       min_height=300,
       card_header("General Funding Information"),
@@ -59,12 +59,12 @@ mod_funding_priorities_ui <- function(id) {
           layout_columns(
             col_widths = c(6, 6),
             checkboxGroupInput(
-              ns("coc_bonus_types"),
+              ns("coc_bonus_types_1"),
               NULL,
               choices = coc_bonus_opportunities %>% head(length(.)/2)
             ),
             checkboxGroupInput(
-              ns("coc_bonus_types"),
+              ns("coc_bonus_types_2"),
               NULL,
               choices = coc_bonus_opportunities %>% tail(length(.)/2)
             )
@@ -99,9 +99,9 @@ mod_funding_priorities_ui <- function(id) {
   )
 }
 
-mod_funding_priorities_server <- function(id, selected_coc) {
+mod_funding_priorities_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
-    
+    ns <- NS(id)
     data_has_changed <- reactiveVal(FALSE)
     auto_save_timer <- reactiveTimer(5000)
 
@@ -117,7 +117,7 @@ mod_funding_priorities_server <- function(id, selected_coc) {
       "dv_bonus"
     )
     hud_ard_coc_data <- reactive({
-      hud_ard_report[coc == selected_coc$coc] %>%
+      hud_ard_report[coc == user_coc$coc] %>%
         fmutate(
           tier_2 = estimated * 0.1 + coc_bonus + dv_bonus,
           adjusted_ard = round(tier_1/0.9, 0),
@@ -128,76 +128,104 @@ mod_funding_priorities_server <- function(id, selected_coc) {
     })
     
     observe({
-      req(selected_coc$coc)
-      
-      lapply(ard_field_names, function(id) {
+      req(user_coc$coc)
+      lapply(ard_field_names, function(i) {
         updateNumericInput(
           session, 
-          id, 
-          value = hud_ard_coc_data()[[id]]
+          i, 
+          value = hud_ard_coc_data()[[i]]
         )
-        if(id != "dv_ard") shinyjs::disable(id)
+        if(i != "dv_ard") shinyjs::disable(i)
       })
     })
     
     # Priorities table -----------------
-    get_coc_funding_priorities <- reactive({
-      # set the target population + population group checkbox selections
-      # for the priorities table. If they have any data so far, check the corresponding box
-      coc_funding_priorities <- get_db_query(
+    priorities_data <- reactiveVal(NULL)
+    
+    observe({
+      req(user_coc$coc_version_id)
+      
+      # 1. Create the full, empty data structure for ALL possible populations.
+      full_data <- pop_grp_toggles[, .(Population = full_text)]
+      for(pt in main_project_types) {
+        full_data[[paste0(pt, "_Beds")]] <- NA_real_
+        full_data[[paste0(pt, "_Funding")]] <- NA_real_
+        full_data[[paste0(pt, "_Priority")]] <- NA_character_
+      }
+      
+      # 2. Fetch existing priorities from the DB
+      coc_funding_priorities_from_db <- get_db_query(
         "SELECT * 
-        FROM coc_funding_priorities 
-        WHERE coc_instance_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
-        params = list(selected_coc$coc_instance_id)
+         FROM coc_funding_priorities 
+         WHERE coc_version_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
+        params = list(user_coc$coc_version_id)
       )
       
-      # default if no priorities entered
-      if(nrow(coc_funding_priorities) == 0) 
-        return(c("All Families", "All Individuals", "Single Youth"))
+      # 3. If data exists in the DB, merge it into our full data template.
+      if (nrow(coc_funding_priorities_from_db) > 0) {
+        # You'll need to reshape your DB data from long to wide to match `full_data`.
+        # This is a conceptual example using dcast from data.table.
+        # Your column names (`project_type`, `beds`, etc.) might differ.
+        
+        # First, map the DB codes back to the `full_text` population name
+        wide_db_data <- coc_funding_priorities_from_db %>%
+          join(pop_grp_toggles, on = c("target_population" = "pop", "population_group" = "grp")) %>%
+          # Reshape logic here... for example:
+          # dcast(. ~ project_type, value.var = c("beds", "funding", "priority"))
+          # This step is highly dependent on your DB schema and `main_project_types`
+          
+          # For now, let's assume `wide_db_data` has columns like "Population", "PH_Beds", etc.
+          # We can then update the `full_data` table.
+          # This is a robust way to update a data.table by joining.
+          full_data[wide_db_data, on = "Population", names(wide_db_data) := mget(paste0("i.", names(wide_db_data)))]
+      }
+
+      # 4. Store the final, merged table in our reactiveVal.
+      #    If no data was in the DB, this is just the empty template.
+      priorities_data(full_data)
       
-      coc_funding_priorities <- coc_funding_priorities %>%
-        join(
-          pop_grp_toggles,
-          on = c("target_population" = "pop", "population_group" = "grp")
-        ) %>%
-        fmutate(
-          pop = fifelse(pop == "Domestic Violence", "DV", pop),
-          full_text = fcase(
-            pop == "Youth" & grp == "Families", "Parenting Youth",
-            pop == "Youth" & grp == "Individuals", "Single Youth",
-            default = paste(pop, grp)
-          )
-        )
+    }) # This observer only needs to run once. Consider adding `once = TRUE`.
     
-      # select the checkboxes for which there is any entry
-      lapply(coc_funding_priorities, function(p) {
-        if(!is.null(p$beds) || !is.null(p$priority) || !is.null(p$funding)) p$full_text
-      })
-    })
-    
-    # Update target pop + pop group priority toggle checkboxes
     observe({
+      # Wait until priorities_data() is populated.
+      req(priorities_data())
+      
+      data <- priorities_data()
+      
+      # Check if any data exists across any of the editable columns
+      # This checks if we started from a truly blank slate
+      has_existing_data <- any(
+        !is.na(data[, .SD, .SDcols = patterns("_Beds$|_Funding$|_Priority$")])
+      )
+      
+      selected_populations <- if (has_existing_data) {
+        # If data exists, select the populations (rows) that have any value
+        rows_to_keep <- data[, rowSums(!is.na(as.data.frame(.SD))) > 0, 
+                             .SDcols = patterns("_Beds$|_Funding$|_Priority$")]
+        data[rows_to_keep, Population]
+      } else {
+        # <--- THIS IS THE KEY LOGIC FOR THE EMPTY CASE
+        # If no data exists, apply the hardcoded default
+        c("All Families", "All Individuals", "Single Youth")
+      }
+      
       updateCheckboxGroupInput(
         session,
         "population_toggles",
-        selected = get_coc_funding_priorities()
+        selected = selected_populations
       )
     })
     
     output$priorities_table <- renderDT({
-      data <- data.table(
-        Population = input$population_toggles
-      )
+      # Require these two things to be ready before rendering
+      req(priorities_data(), input$population_toggles)
       
-      for(pt in main_project_types) {
-        data[[paste0(pt, "_Beds")]] <- NA_real_
-        data[[paste0(pt, "_Funding")]] <- NA_real_
-        data[[paste0(pt, "_Priority")]] <- NA_character_
-      }
-      
+      # Filter the full dataset based on the selected checkboxes
+      data_to_display <- priorities_data()[Population %in% input$population_toggles]
+
       # Create the header structure
       datatable(
-        data,
+        data_to_display,
         selection = 'none',
         rownames = FALSE,
         container = tags$table(
@@ -220,43 +248,55 @@ mod_funding_priorities_server <- function(id, selected_coc) {
           disable = list(columns = c(0))
         ),
         options = list(
-          dom = 't', 
-          pageLength = nrow(data),
+          dom = 't',
+          pageLength = nrow(data_to_display),
           ordering = FALSE,
           searching = FALSE,
           info = FALSE
         )
       ) %>% formatStyle(
-        columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
+        columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
         `border-right` = "1px solid black"
       )
-    })
+    }, server = FALSE)
     
     # Toggle which target population + population group is to be prioritized
     # default is All Families, All Individuals, and Single Youth
-    priorities_data <- reactiveVal(
-      data.table(
-        Population = pop_grp_toggles,
-        Enabled = TRUE,  # New column to track enabled/disabled state
-        stringsAsFactors = FALSE
-      )
-    )
+    # priorities_data <- reactiveVal(
+    #   data.table(
+    #     Population = pop_grp_toggles,
+    #     Enabled = TRUE,  # New column to track enabled/disabled state
+    #     stringsAsFactors = FALSE
+    #   )
+    # )
     
-    observeEvent(input$population_toggles, {
-      dataTableProxy("priorities_table") |> 
-        replaceData(priorities_data())
-    })
+    # priorities_table_proxy <- dataTableProxy(ns("priorities_table"))
+    # observeEvent(input$population_toggles, {
+    #   req(user_coc$coc)
+    #   browser()
+    #   replaceData(priorities_table_proxy, priorities_data())
+    # }, ignoreInit = TRUE)
     
     # Update priorities data when cell is edited
     observeEvent(input$priorities_table_cell_edit, {
       info <- input$priorities_table_cell_edit
-      data <- priorities_data()
+      current_data <- priorities_data()
       
       # Update the value
-      data[info$row + 1, info$col + 1] <- info$value
+      # Get the population name from the row that was displayed
+      # This is trickier because the view is filtered. We need to map the
+      # viewed row index back to the full data index.
+      displayed_data <- current_data[Population %in% isolate(input$population_toggles)]
+      population_to_update <- displayed_data[info$row, Population]
+      full_data_row_index <- which(current_data$Population == population_to_update)
       
-      priorities_data(data)
-      data_has_changed(TRUE) 
+      # Update the value in the full dataset
+      # The column index is correct as is.
+      current_data[full_data_row_index, info$col + 1] <- info$value
+
+      # Save the updated data back to the reactiveVal
+      priorities_data(current_data)
+      data_has_changed(TRUE)
     })
     
     observe({
@@ -265,34 +305,79 @@ mod_funding_priorities_server <- function(id, selected_coc) {
 
       # Only proceed if data has actually changed
       if (data_has_changed()) {
-        browser()
         # Isolate the data to prevent reactive loops
         data_to_save <- isolate(priorities_data())
-        browser()
+        long_data <- melt(
+          copy(data_to_save),
+          id.vars = "Population",
+          measure.vars = patterns("_Beds$|_Funding$|_Priority$"),
+          variable.name = "metric", # This will be an integer (1, 2, 3...)
+          na.rm = TRUE                        # Still the most important optimization
+        )
+        
+        # If melting results in an empty table (no values entered), stop.
+        if (nrow(long_data) == 0) {
+          data_has_changed(FALSE)
+          return()
+        }
+        
+        # Step 2: SPLIT the 'variable' column into project_type and metric.
+        long_data[, c("project_type", "metric") := tstrsplit(metric, "_", fixed = TRUE)]
+        
+        # Step 3: DCAST to pivot the 'metric' values into new columns.
+        # This is the key step you were missing. It creates the 'beds', 'funding',
+        # and 'priority' columns.
+        db_ready_data <- dcast(
+          long_data,
+          Population + project_type ~ tolower(metric), # formula: rows ~ columns_to_create
+          value.var = "value"
+        )
+        
+        # Step 4: JOIN and ADD METADATA using a final chain.
+        # This part is cleaner when chained after the main reshaping is done.
+        db_ready_data <- db_ready_data[
+          pop_grp_toggles, on = c(Population = "full_text"), # Join to get DB population codes
+          `:=`(target_population = i.pop, population_group = i.grp)
+        ][, `:=`( # Add metadata columns for the query
+          coc_version_id = user_coc$coc_version_id,
+          created_by = user_coc$username,
+          updated_by = user_coc$username,
+          project_type = get_lookup_refid(project_type, "project_type")
+        )]
+
+        # Ensure final data types are correct before sending to the database.
+        db_ready_data[, beds := ifelse("beds" %in% names(db_ready_data), as.integer(beds), NA)]
+        db_ready_data[, funding := ifelse("funding" %in% names(db_ready_data), as.integer(funding), NA)]
+        db_ready_data[, priority := ifelse("priority" %in% names(db_ready_data), as.integer(priority), NA)]
+browser()
         # The "UPSERT" query
         sql_query <- "
-          INSERT INTO coc_funding_priorities (coc_instance_id, project_type, target_population, beds, funding, priority, created_by)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-          ON CONFLICT (coc_instance_id, project_type, target_population)
+          INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, beds, funding, priority, created_by)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ON CONFLICT (coc_version_id, project_type, target_population, population_group)
           DO UPDATE SET 
-            beds = $4, 
-            funding = $5, 
-            priority = $6, 
-            updated_by = $7;
+            beds = EXCLUDED.beds,
+            funding = EXCLUDED.funding,
+            priority = EXCLUDED.priority,
+            updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
+            updated_at = NOW();
         "
         tryCatch({
           # Execute the query for each row of the long data frame
           # Using a prepared statement with `dbExecute` and `params` is safe from SQL injection
-          apply(long_data, 1, function(row) {
+          apply(db_ready_data, 1, function(row) {
             dbExecute(
               DB_CON,
               sql_query,
               params = list(
-                selected_coc$coc_instance_id,
-                row[["population_group"]],
+                user_coc$coc_version_id,
                 row[["project_type"]],
-                row[["metric"]],
-                as.character(row[["value"]]) # Ensure value is character/text
+                row[["target_population"]],
+                row[["population_group"]],
+                row[["beds"]],
+                row[["funding"]],
+                row[["priority"]],
+                user_coc$username
               )
             )
           })
