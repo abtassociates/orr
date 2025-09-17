@@ -37,8 +37,8 @@ page_navbar(
     card(id = 'about_card',
          card_header(h4('About the Tool')),
          card_body(
-          fill = FALSE, fillable = FALSE,
-     
+          fillable = FALSE,
+          fill = TRUE,
           ## log in button
           tags$a(id = "login_link", "Log in", class = 'btn btn-primary', href = aws_auth_redirect),
           ## create account button
