@@ -321,7 +321,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
             ),
             uiOutput(ns('hic_cond_select')),
             footer = tagList(
-              actionButton(inputId=ns('new_hic_version'),label='Create New Version'),
+              actionButton(inputId=ns('new_hic_version'),label='Next'),
               modalButton(label='Cancel')
             )
           ),
@@ -413,14 +413,37 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       
     })
     
+    observeEvent(input$new_hic_version, {
+      req(input$hic_import_select == 'import')
+      
+      initial_version_name <- paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name))
+
+      showModal(
+        modalDialog(
+          title = 'Name your CoC Version',
+          textInput(
+            ns("create_version_name"), 
+            "Version Name",
+            value = initial_version_name,
+          ),
+          footer = tagList(
+            actionButton(ns('create_orr_confirm'), label="Create New Version"),
+            modalButton(label="Cancel")
+          ),
+          easyClose = TRUE
+        ),
+        session = session
+      )
+      
+    })
     
     # Creating a new ORR from the HIC ----------------
-    observeEvent(input$new_hic_version, {
+    observeEvent(input$create_orr_confirm, {
       req(input$hic_import_select == 'import')
       
       coc_version_id <- create_new_version_for_user(
         data.table(
-          coc_version_name = paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name)),
+          coc_version_name = input$create_version_name,
           coc = input$coc_dropdown
         )
       )
