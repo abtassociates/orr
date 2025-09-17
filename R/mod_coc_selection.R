@@ -43,7 +43,7 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       req(user_coc$auth)
       coc_vu(
         coc_version_users |>
-          fsubset(username == user_coc$email, -c(username, date_created, created_by, coc_version_id)) |>
+          fsubset(username == user_coc$email, -c(username, date_created, created_by)) |>
           fmutate(
             coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
             coc_status = get_lookup_label(coc_status, 'coc_status')
@@ -330,30 +330,6 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
       }, ignoreInit = TRUE
     )
     
-    # If they "Request Access" after trying to create a new CoC Version but one 
-    # is already created: 
-    # send email to user associated with that other CoC Version
-    observeEvent(input$request_access_indirect, {
-      req(!is.null(admin_email()))
-      
-      ## TODO: send email to admin of version that is requested
-      
-      
-      showModal(
-        modalDialog(
-          title = 'Request Sent',
-          helpText('Thank you. A request has been sent to the Admin for this version.'),
-          HTML(paste0('<p>Request Details</p>
-               <ul>
-               <li>Requested CoC: ', input$coc_dropdown,'</li>',
-               '<li>Requested version: ','</li>',    
-               '<li>Requested at: ',Sys.time(),'</li>',
-               '</ul>
-               '))
-        )
-      )
-    })
-    
     
     # Requesting access to a CoC directly ---------------
     # allow user to view versions and request access
@@ -411,6 +387,83 @@ mod_coc_selection_server <- function(id, nav_control, projects_data, user_coc) {
     observeEvent(input$send_direct_request, {
       # TODO: Send email to version Owners of input$direct_request_coc_versions_rows_selected
       
+    })
+    
+    # Requesting access to a CoC directly ---------------
+    # allow user to view versions and request access
+    request_access_indirect_coc_versions <- reactive({
+      req(input$request_indirect_access_coc_dropdown)
+      
+      coc_version_users |>
+        fsubset(
+          username != user_coc$email & 
+            coc == input$request_indirect_access_coc_dropdown &
+            coc_version_role == owner_role_refid,
+          coc, coc_version_name, username
+        )
+    })
+    
+    # When user clicks the "Request Access" button within the "Create Version" flow
+    observeEvent(input$request_access_indirect, {
+      
+      ## TODO: Allow user to select a CoC Version and request access indirectly
+      showModal(modalDialog(
+        title = 'Request Access to a CoC',
+        helpText('Select a CoC to view its versions...'),
+        selectInput(ns('request_indirect_access_coc_dropdown'),
+                    label = "Please choose a CoC:",
+                    choices = sort(funique(coc_version_users$coc))
+        ),
+        DT::DTOutput(ns("indirect_request_coc_versions")),
+        footer = tagList(
+          # If they continue: go to next step
+          actionButton(ns('send_indirect_request'), label='Send Request', disabled = TRUE),
+          # If they cancel: close pop-up
+          modalButton(label='Cancel')
+        )
+      ))
+    })
+    
+    observeEvent(
+      input$indirect_request_coc_versions_rows_selected,
+      updateActionButton(
+        ns('send_indirect_request'), 
+        disabled = length(input$indirect_request_coc_versions_rows_selected) > 0,
+        session = session
+      )             
+    )
+    output$indirect_request_coc_versions <- renderDT({
+      req(input$request_indirect_access_coc_dropdown)
+      datatable(
+        request_access_indirect_coc_versions(),
+        colnames = c("CoC", "Version Name", "Owner"),
+        rownames = FALSE,
+        options = list(dom = 'tip'),
+        selection = 'multiple'
+      )
+    })
+    
+    # If they "Request Access" after trying to create a new CoC Version but one 
+    # is already created: 
+    # send email to user associated with that other CoC Version
+    observeEvent(input$send_indirect_request, {
+      req(!is.null(admin_email()))
+      
+      ## TODO: send email to admin of version that is requested
+      
+      showModal(
+        modalDialog(
+          title = 'Request Sent',
+          helpText('Thank you. A request has been sent to the Admin for this version.'),
+          HTML(paste0('<p>Request Details</p>
+               <ul>
+               <li>Requested CoC: ', input$coc_dropdown,'</li>',
+                      '<li>Requested version: ',input$request_indirect_access_coc_dropdown,'</li>',    
+                      '<li>Requested at: ',Sys.time(),'</li>',
+                      '</ul>
+               '))
+        )
+      )
     })
     
     observeEvent(input$new_hic_version, {
