@@ -6,15 +6,17 @@
   */
 }
 
+/*
 #coc_versions_dt {
   height:100% !important; 
 }
-
+*/
 /*show red circle for disabled buttons*/
 .btn:has(.disabled) {
   cursor: not-allowed;
 }
 
+/*
 .btn-primary {
   color: white;
 }
@@ -25,13 +27,15 @@
 
 .btn-primary:hover {
   color: white;
-}
+}*/
 
 /*make sure modals are centered*/
-.modal {
-  display: flex !important;
-  align-items: center;
-  overflow: hidden;
+.modal.show .modal-dialog, .modal.in .modal-dialog {
+    max-height: 90vh;
+}
+
+.modal-dialog-scrollable .modal-content {
+    max-height: 90vh;
 }
 
 /*Disallow clicking on disabled/calculated cells*/
@@ -45,12 +49,13 @@ td.disabled {
 }
 
 /*CUSTOMIZE RATING CRITERIA*/
+/*
 [id*="_main_accordion"] .accordion-button {
   font-size: 1em;
 }
 [id*="_sub_accordion"] .accordion-button {
   font-size: 0.8em;
-}
+}*/
 
 /*FUNDING PRIORITIES*/
 /*
