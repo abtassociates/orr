@@ -94,6 +94,7 @@ initialize_inline_edit_table_ui <- function(data, column_defs = list(), tableID,
   # --- STEP 3: datatable creation ---
   dt <- datatable(
     data,
+    style = "default",
     colnames = colnames,
     editable = list(
       target = "cell",

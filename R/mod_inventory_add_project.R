@@ -39,6 +39,11 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
     title = title,
     size = "m",
     fluidPage(
+      theme =  bs_theme(
+        version = 5,
+        bootswatch = "zephyr",
+        navbar_bg = "#04153B"
+      ),
       # -- Core Project Info --
       textInput(ns("project_name"), "Project Name*"),
       textInput(ns("organization_name"), "Organization Name*"),

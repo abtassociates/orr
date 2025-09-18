@@ -6,11 +6,8 @@ page_navbar(
   
   theme = bs_theme(
     version = 5,
-    #navbar_bg = "#357DAD",
-    navbar_bg = "#04153B",
-    primary = "#357DAD",
-    success = "#92D050"
-    #primary = "#04153B"
+    bootswatch = "zephyr",
+    navbar_bg = "#04153B"
   ),
   
   header = tagList(
@@ -25,7 +22,7 @@ page_navbar(
         "HORRT has crashed. Please submit an issue on GitHub and note the
           date and time (including timezone) in order to help the team diagnose the issue."
       ),
-      overlayColour = '#F5F5F5',
+      # overlayColour = '#F5F5F5',
       refresh = ""
     )
   ),
@@ -33,7 +30,7 @@ page_navbar(
   nav_panel(
     title = 'About',
     value = 'about',
-    
+    icon = icon("circle-info"),
     card(id = 'about_card',
          card_header(h4('About the Tool')),
          card_body(
