@@ -10,8 +10,8 @@ mod_inventory_ui <- function(id) {
         DTOutput(ns("projects_table"))|> shinycssloaders::withSpinner()
       ),
       card_footer(
-        actionButton(ns("add_project_btn"), "Add New Project"),
-        actionButton(ns("view_giw_btn"), "View GIW Data")
+        actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
+        actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
       )
     )
   )

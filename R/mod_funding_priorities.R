@@ -34,6 +34,7 @@ mod_funding_priorities_ui <- function(id) {
   nav_panel(
     "Funding Ceilings + Priorities",
     value = id,
+    icon = icon("usd"),
     card(
       min_height=300,
       card_header("General Funding Information"),

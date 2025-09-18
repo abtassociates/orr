@@ -82,6 +82,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+
       # If there are any versions NOT associated with the current user, allow them to Request Access
       if(nrow(coc_version_users) > 0) {
         shinyjs::toggle(id = 'request_access_direct', condition = coc_version_users |> 

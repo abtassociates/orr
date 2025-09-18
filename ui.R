@@ -58,7 +58,8 @@ page_navbar(
   #mod_requests_ui("requests"),
   nav_panel(title = 'My Dashboard', value = 'dashboard',
             mod_coc_selection_ui("coc_selection"),
-            mod_requests_ui("requests")
+            mod_requests_ui("requests"),
+            icon = icon("dashboard")
             ),
   #mod_coc_selection_ui("coc_selection"),
   mod_inventory_ui("inventory"),
