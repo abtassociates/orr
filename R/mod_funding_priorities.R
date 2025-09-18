@@ -350,7 +350,7 @@ mod_funding_priorities_server <- function(id, user_coc) {
         db_ready_data[, beds := ifelse("beds" %in% names(db_ready_data), as.integer(beds), NA)]
         db_ready_data[, funding := ifelse("funding" %in% names(db_ready_data), as.integer(funding), NA)]
         db_ready_data[, priority := ifelse("priority" %in% names(db_ready_data), as.integer(priority), NA)]
-browser()
+
         # The "UPSERT" query
         sql_query <- "
           INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, beds, funding, priority, created_by)
@@ -361,7 +361,7 @@ browser()
             funding = EXCLUDED.funding,
             priority = EXCLUDED.priority,
             updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-            updated_at = NOW();
+            updated_at = CURRENT_TIMESTAMP;
         "
         tryCatch({
           # Execute the query for each row of the long data frame
