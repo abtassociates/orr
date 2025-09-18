@@ -8,7 +8,7 @@ initialize_inline_edit_table_ui <- function(data, column_defs = list(), tableID,
   factor_names <- names(factor_cols)[factor_cols]
   factor_info <- lapply(data[, ..factor_names], levels)
   if(!is.null(colnames)) 
-    names(factor_info) <- project_variable_labels[match(names(factor_info), names(project_variable_labels))]
+    names(factor_info) <- toupper(project_variable_labels[match(names(factor_info), names(project_variable_labels))])
 
   # column_defs adds classname for easier management
   column_defs[[length(column_defs) + 1]] <- list(
