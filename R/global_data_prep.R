@@ -46,9 +46,6 @@ TABS <- c(
   "account"
 )
 TABS_TO_SHOW <- c(
-  "about",
-  "dashboard",
   "inventory",
-  "funding_priorities",
-  "account"
+  "funding_priorities"
 )

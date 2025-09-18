@@ -10,18 +10,10 @@ function(input, output, session) {
   )
   nav_control <- reactiveVal("about")
 
-  toggle_tabs <- function() {
-    for(tab in TABS) {
-      if(tab %in% TABS_TO_SHOW) nav_show("nav", tab)
-      else nav_hide("nav", tab)
-    }
-  }
-  
-  # Hide specific content tabs initially
-  observe({
-    toggle_tabs()
+  output$main_nav <- renderUI({
+    main_nav(user_coc$auth)
   })
-
+  
   mod_coc_selection_server("coc_selection", nav_control, user_coc)
   mod_inventory_server("inventory", user_coc)
   mod_rating_criteria_server("rating_criteria", user_coc)
@@ -70,7 +62,6 @@ function(input, output, session) {
           user_coc$username <- current_user$email
           user_coc$given_name <- current_user$given_name
           nav_control("dashboard")
-          toggle_tabs()
       }
     }
     
