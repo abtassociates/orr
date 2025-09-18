@@ -30,12 +30,16 @@
 }*/
 
 /*make sure modals are centered*/
-.modal.show .modal-dialog, .modal.in .modal-dialog {
+#add-project-modal .modal-dialog {
     max-height: 90vh;
 }
 
-.modal-dialog-scrollable .modal-content {
+#add-project-modal .modal-content {
     max-height: 90vh;
+}
+
+#add-project-modal .modal-body {
+    overflow-y: scroll;
 }
 
 /*Disallow clicking on disabled/calculated cells*/
