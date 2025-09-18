@@ -7,7 +7,9 @@ mod_inventory_ui <- function(id) {
     card(
       card_body(
         fillable = FALSE,
-        DTOutput(ns("projects_table"))|> shinycssloaders::withSpinner()
+        min_height = "60vh",
+        max_height = "80vh",
+        DTOutput(ns("projects_table"))#|> shinycssloaders::withSpinner()
       ),
       card_footer(
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
