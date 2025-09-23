@@ -1,5 +1,6 @@
 library(shiny)
 library(bslib)
+library(brandr)
 library(DT)
 library(sortable)
 library(fontawesome) # may not be needed
@@ -33,3 +34,15 @@ lapply(files, source)
 USER_ENTRY_BG_COLOR <- "#e6ffe6"
 
 source(here("R/global_data_prep.R"))
+
+
+orr_bslib_theme <- bs_theme(
+  version = 5,
+  brand = TRUE,
+  "card-cap-bg" = get_brand_color("dark_blue"),
+  "card-cap-color" = "white",
+  "card-bg" = "white",
+  preset = "zephyr"
+)
+
+orr_navbar_options <- navbar_options(theme = 'auto', bg = get_brand_color('dark_blue'))

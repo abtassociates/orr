@@ -4,20 +4,25 @@ page_navbar(
   
   window_title = 'ORR',
   
-  theme = bs_theme(
-    version = 5,
-    #navbar_bg = "#357DAD",
-    navbar_bg = "#04153B",
-    primary = "#357DAD",
-    success = "#92D050"
-    #primary = "#04153B"
-  ),
+  theme = orr_bslib_theme,
+  navbar_options = orr_navbar_options,
   
   header = tagList(
     ## css, idle management, and dimension management --------
     tags$head(
       tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
     ),
+    tags$style(HTML("
+    /* Change the background color of the selected row */
+    table.dataTable tbody tr.selected>* {
+      box-shadow: inset 0 0 0 9999px #357DAD !important;
+      color: white;
+    }
+    table.dataTable.display > tbody > tr.selected:hover>* {
+      box-shadow: inset 0 0 0 9999px #357DAD !important;
+      color: white;
+    }
+  ")),
     ## Enable shinyjs -----
     shinyjs::useShinyjs(),
     disconnectMessage(
