@@ -377,6 +377,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
         colnames = c("CoC", "Version Name", "Owner"),
         rownames = FALSE,
         options = list(dom = 'tip'),
+        style = 'default',
         selection = 'multiple'
       )
     })
@@ -436,6 +437,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
         colnames = c("CoC", "Version Name", "Owner"),
         rownames = FALSE,
         options = list(dom = 'tip'),
+        style = 'default',
         selection = 'multiple'
       )
     })
