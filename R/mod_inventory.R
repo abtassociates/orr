@@ -170,7 +170,7 @@ mod_inventory_server <- function(id, user_coc) {
       if(val == "Reallocate") {
         if(funding_source == "DV" && project_data$project_type == "SSO - CE") {
           showNotification(
-            "According to the FY2024 NOFO, you cannot reallocate a DV SSO-CE 
+            "According to the FY2026 NOFO, you cannot reallocate a DV SSO-CE 
             Renewal project. Please select a different Funding Action."
           )
           return(FALSE)
