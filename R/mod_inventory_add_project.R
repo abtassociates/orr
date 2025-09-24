@@ -70,7 +70,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
       bed_input_group("total_beds", "Total Family Beds*", "Total Individual Beds*"),
       bed_input_group("ch_beds", "CH Family Beds*", "CH Individual Beds*"),
       bed_input_group("vet_beds", "Veteran Family Beds*", "Veteran Individual Beds*"),
-      bed_input_group("youth_beds", "Youth Family Beds*", "Youth Individual Beds*"),
+      bed_input_group("youth_beds", "Parenting Youth Beds*", "Single Youth Beds*"),
       
       # -- PSH-specific checkboxes --
       shinyjs::hidden(
