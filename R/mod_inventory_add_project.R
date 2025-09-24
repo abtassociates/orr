@@ -27,27 +27,39 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
   
   # Helper to create a group of bed inputs, wrapped in a div for easy toggling
   bed_input_group <- function(group_id, fam_label, ind_label) {
-    div(id = ns(group_id),
-        fluidRow(
-          column(6, numericInput(ns(paste0(group_id, "_fam")), fam_label, value = NA, min = 0)),
-          column(6, numericInput(ns(paste0(group_id, "_ind")), ind_label, value = NA, min = 0))
-        )
+    div(
+      id = ns(group_id),
+      layout_columns(
+        numericInput(ns(paste0(group_id, "_fam")), fam_label, value = NA, min = 0),
+        numericInput(ns(paste0(group_id, "_ind")), ind_label, value = NA, min = 0),
+        col_widths = c(6, 6)
+      )
     )
   }
   
   modalDialog(
     title = title,
     size = "m",
-    fluidPage(
+    page_fluid(
       theme =  bs_theme(version = 5, bootswatch = "zephyr"),
       # -- Core Project Info --
-      textInput(ns("project_name"), "Project Name*"),
-      textInput(ns("organization_name"), "Organization Name*"),
-      selectInput(ns("funding_action"), "Funding Action*", choices = c("", LOOKUP_CHOICES$funding_action)),
-      textInput(ns("grant_number"), "Grant Number"), # Visibility controlled by server
-      selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
-      selectInput(ns("project_type"), "Project Type*^", choices = c("")), # Choices populated by server
-      selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations)),
+      layout_columns(
+        # First column
+        div(
+          textInput(ns("project_name"), "Project Name*"),
+          textInput(ns("organization_name"), "Organization Name*"),
+          selectInput(ns("funding_action"), "Funding Action*", choices = c("", LOOKUP_CHOICES$funding_action)),
+          textInput(ns("grant_number"), "Grant Number") # Visibility controlled by server
+        ),
+        # Second column  
+        div(
+          selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
+          selectInput(ns("project_type"), "Project Type*^", choices = c("")), # Choices populated by server
+          selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations))
+        ),
+        col_widths = c(6, 6)  # Equal width columns
+      ),
+      
       shinyjs::hidden(helpText(id = ns("target_population_inst"), "Select if project is targeted to DV, HIV, Youth, or General")),
       shinyjs::hidden(checkboxInput(ns("all_dv_checkbox"), "100% targeted to DV", value = FALSE)),
       
