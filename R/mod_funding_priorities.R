@@ -234,7 +234,7 @@ mod_funding_priorities_server <- function(id, user_coc) {
             tags$tr(
               tags$th(rowspan = 2, 'Population'),
               lapply(main_project_types, function(pt) {
-                tags$th(colspan = 3, pt, style = "border-right: 1px solid black")
+                tags$th(colspan = 3, pt, style = "border-right: 1px solid black; text-align: center")
               })
             ),
             tags$tr(
