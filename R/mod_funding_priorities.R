@@ -87,7 +87,7 @@ mod_funding_priorities_ui <- function(id) {
       layout_sidebar(
         fillable = TRUE,
         sidebar = sidebar(
-          width = "20%",
+          width = "25%",
           checkboxGroupInput(
             ns("population_toggles"),
             label = "Enable/Disable Populations",
