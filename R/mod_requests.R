@@ -45,6 +45,7 @@ mod_requests_server <- function(id, user_coc) {
                     str_replace_all(names(cur_requests),'_',' ')
                   ),
                   extensions = "Buttons", escape=-1,
+                  style = 'default',
                   options = list(dom = 'tip'), 
                   rownames = FALSE,
                   editable = FALSE)

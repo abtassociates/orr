@@ -6,8 +6,10 @@ mod_coc_selection_ui <- function(id) {
   #  value = id,
     card(id = id,
       card_header(h4("Versions")),
+      fill = FALSE, 
       card_body(
         fillable = FALSE,
+        
         p('A CoC can have multiple versions of its ORR. Versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
         p('To collaborate on an existing version, click "Request Access to a CoC". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
         # a "Create" button or link above the table will display so they can create a new CoC Version
@@ -378,6 +380,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
         colnames = c("CoC", "Version Name", "Owner"),
         rownames = FALSE,
         options = list(dom = 'tip'),
+        style = 'default',
         selection = 'multiple'
       )
     })
@@ -437,6 +440,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
         colnames = c("CoC", "Version Name", "Owner"),
         rownames = FALSE,
         options = list(dom = 'tip'),
+        style = 'default',
         selection = 'multiple'
       )
     })

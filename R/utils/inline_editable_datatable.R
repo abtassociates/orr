@@ -108,6 +108,7 @@ initialize_inline_edit_table_ui <- function(data, column_defs = list(), tableID,
     filter = "top",
     escape = FALSE,
     selection = "none",
+    style = 'default',
     rownames = FALSE,
     fillContainer = TRUE,
     options = list(

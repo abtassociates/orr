@@ -16,19 +16,6 @@
   cursor: not-allowed;
 }
 
-/*
-.btn-primary {
-  color: white;
-}
-
-.btn-primary:focus {
-  color: white;
-}
-
-.btn-primary:hover {
-  color: white;
-}*/
-
 /*make sure modals are centered*/
 #add-project-modal .modal-dialog {
     max-height: 90vh;
