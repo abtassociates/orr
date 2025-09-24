@@ -246,10 +246,10 @@ mod_inventory_add_project_server <- function(
     # Update Target Population Selection
     observeEvent(current_target_pop(), {
       tp <- current_target_pop()
-      
-      shinyjs::toggleState("target_population", condition = TRUE)
+
+      shinyjs::toggleState("target_population", condition = TRUE) # start by enabling so we can set the value
       if (current_funding_source() != "CoC") updateSelectInput(session, "target_population", selected = tp)
-      shinyjs::toggleState("target_population", condition = current_funding_source() == "CoC")
+      shinyjs::toggleState("target_population", condition = current_funding_source() %in% c("", "CoC"))
     }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
     # --- PSH Checkbox Logic ---
