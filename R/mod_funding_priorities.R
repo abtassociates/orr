@@ -56,7 +56,7 @@ mod_funding_priorities_ui <- function(id) {
       layout_columns(
         col_widths = c(8, 4),
         card(
-          card_header("Project Types to Consider for CoC Bonus"),
+          card_title("Project Types to Consider for CoC Bonus"),
           layout_columns(
             col_widths = c(6, 6),
             checkboxGroupInput(
@@ -72,7 +72,7 @@ mod_funding_priorities_ui <- function(id) {
           )
         ),
         card(
-          card_header("Project Types to Consider for DV Bonus"),
+          card_title("Project Types to Consider for DV Bonus"),
           checkboxGroupInput(
             ns("dv_bonus_types"),
             NULL,
