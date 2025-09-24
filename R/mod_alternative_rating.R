@@ -63,7 +63,8 @@ mod_alternative_rating_server <- function(id, projects_data) {
               className = 'green-background'
             )
           )
-        )
+        ),
+        style = 'default'
       )
     })
     

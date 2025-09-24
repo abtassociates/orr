@@ -51,7 +51,7 @@ mod_funding_priorities_ui <- function(id) {
     ),
     card(
       min_height=300,
-      card_header("FY2024 HUD CoC Program NOFO Opportunities"),
+      card_header("FY2026 HUD CoC Program NOFO Opportunities"),
       layout_columns(
         col_widths = c(8, 4),
         card(
@@ -227,6 +227,7 @@ mod_funding_priorities_server <- function(id, user_coc) {
       datatable(
         data_to_display,
         selection = 'none',
+        style = 'default',
         rownames = FALSE,
         container = tags$table(
           tags$thead(

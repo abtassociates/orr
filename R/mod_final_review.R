@@ -33,6 +33,7 @@ mod_final_review_server <- function(id, user_coc) {
                  target_population, funding_action, rating_score),
         options = list(
           pageLength = 25,
+          style = 'default',
           scrollX = TRUE
         )
       )
