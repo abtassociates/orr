@@ -3,6 +3,7 @@ mod_inventory_ui <- function(id) {
   
   nav_panel(
     "Review Projects",
+    icon = icon("list-check"),
     value = id,
     card(
       card_body(

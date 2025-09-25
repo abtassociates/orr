@@ -10,8 +10,34 @@ function(input, output, session) {
   )
   nav_control <- reactiveVal("about")
 
-  output$main_nav <- renderUI({
-    main_nav(user_coc$auth)
+  observeEvent(user_coc$auth, {
+    req(user_coc$auth)
+    
+    #mod_requests_ui("requests"),
+    insertTab(
+      "nav", 
+      nav_panel(
+        title = 'My Dashboard', 
+        value = 'dashboard',
+        icon = icon("home"),
+        mod_coc_selection_ui("coc_selection"),
+        mod_requests_ui("requests")
+      ),
+      select = TRUE
+    )
+    
+    #mod_coc_selection_ui("coc_selection"),
+    insertTab("nav", mod_inventory_ui("inventory"))
+    
+    # mod_rating_criteria_ui("rating_criteria"),
+    # mod_renewal_rating_ui("renewal_rating"),
+    # mod_new_rating_ui("new_rating"),
+    # mod_alternative_rating_ui("alternative_rating"),
+    insertTab("nav", mod_funding_priorities_ui("funding_priorities"))
+    
+    # mod_final_review_ui("final_review"),
+    # mod_ranking_ui("ranking"),
+    insertTab("nav", mod_account_ui("account"))
   })
   
   mod_coc_selection_server("coc_selection", nav_control, user_coc)
