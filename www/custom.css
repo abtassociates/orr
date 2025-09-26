@@ -6,30 +6,15 @@
   */
 }
 
-/*
 #coc_versions_dt {
   height:100% !important; 
 }
-*/
+
 /*show red circle for disabled buttons*/
 .btn:has(.disabled) {
   cursor: not-allowed;
 }
 
-/*make sure modals are centered*/
-#add-project-modal .modal-dialog {
-    max-height: 90vh;
-}
-
-#add-project-modal .modal-content {
-    max-height: 90vh;
-}
-
-/*
-#add-project-modal .modal-body {
-    overflow-y: scroll;
-}
-*/
 /*Disallow clicking on disabled/calculated cells*/
 td.disabled {
   pointer-events: none;
