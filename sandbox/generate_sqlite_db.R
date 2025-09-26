@@ -386,7 +386,7 @@ copy_pg_to_sqlite <- function(pg_conn, sqlite_conn) {
 
       # Insert into SQLite
       if (nrow(data) > 0) {
-        dbWriteTable(sqlite_conn, table, data, append = TRUE)
+        dbWriteTable(sqlite_conn, table, data, overwrite=TRUE)
         message(glue("✅ Copied {nrow(data)} rows"))
       } else {
         message("ℹ️ No data to copy")
