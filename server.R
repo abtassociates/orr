@@ -13,12 +13,12 @@ function(input, output, session) {
   observeEvent(user_coc$auth, {
     req(user_coc$auth)
     
+    # Once user logs in, load the UI + Server functions of the desired modules
     lapply(TABS_TO_SHOW, function(t) {
-      insertTab(
-        "nav", 
-        get(glue::glue("mod_{t}_ui"))(t),
-        select = t == "dashboard"
-      )
+      # UI
+      nav_insert("nav", get(glue::glue("mod_{t}_ui"))(t), select = t == "dashboard")
+      
+      # Server
       get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc)
     })
   })
