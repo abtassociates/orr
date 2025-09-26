@@ -22,6 +22,7 @@ mod_ranking_ui <- function(id) {
 
 mod_ranking_server <- function(id, app_state) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
     
     output$funding_summary <- renderUI({
       # Add funding summary UI here

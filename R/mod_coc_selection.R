@@ -26,7 +26,7 @@ mod_coc_selection_ui <- function(id) {
 
 mod_coc_selection_server <- function(id, nav_control, user_coc) {
   moduleServer(id, function(input, output, session) {
-    ns <- NS(id)
+    ns <- session$ns
     
     ## subset coc_version_users to specific user
     coc_vu <- reactiveVal(NULL)

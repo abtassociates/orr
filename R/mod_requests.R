@@ -20,9 +20,8 @@ mod_requests_ui <- function(id) {
 }
 
 mod_requests_server <- function(id, user_coc) {
-  moduleServer(
-    id,
-    function(input, output, session) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
       
       output$requests_dt <- renderDT({
         req(user_coc$auth)

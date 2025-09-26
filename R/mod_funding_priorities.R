@@ -102,7 +102,7 @@ mod_funding_priorities_ui <- function(id) {
 
 mod_funding_priorities_server <- function(id, nav_control, user_coc) {
   moduleServer(id, function(input, output, session) {
-    ns <- NS(id)
+    ns <- session$ns
     data_has_changed <- reactiveVal(FALSE)
     auto_save_timer <- reactiveTimer(5000)
 

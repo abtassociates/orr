@@ -12,8 +12,6 @@ mod_dashboard_ui <- function(id) {
 
 mod_dashboard_server <- function(id, nav_control, user_coc) {
   moduleServer(id, function(input, output, session) {
-    ns <- NS(id)
-    
     mod_coc_selection_server("coc_selection", nav_control, user_coc)
     mod_requests_server("requests", user_coc)
   })

@@ -22,7 +22,7 @@ mod_inventory_ui <- function(id) {
 
 mod_inventory_server <- function(id, nav_control, user_coc) {
   moduleServer(id, function(input, output, session) {
-    ns <- NS(id)
+    ns <- session$ns
     
     # Hardcodes and reactiveValues --------------
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
