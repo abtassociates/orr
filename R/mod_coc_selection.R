@@ -1,27 +1,21 @@
 mod_coc_selection_ui <- function(id) {
   ns <- NS(id)
-  
-  #nav_panel(
-  #  "My Dash",
-  #  value = id,
-    card(id = id,
-      card_header(h4("Versions")),
-      fill = FALSE, 
-      card_body(
-        fillable = FALSE,
-        
-        p('A CoC can have multiple versions of its ORR. Versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
-        p('To collaborate on an existing version, click "Request Access to a CoC". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
-        # a "Create" button or link above the table will display so they can create a new CoC Version
-        DTOutput(ns('coc_versions_dt'),fill = F) |> shinycssloaders::withSpinner(),
-        actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-primary'),
-        actionButton(ns('edit_coc_version'),"Edit Selected Version", icon = icon('edit'), class='btn-secondary'),
-        actionButton(ns('delete_coc_version'), "Delete Selected Version", icon = icon('trash'), class='btn-danger'),
-        actionButton(ns('copy_version'), "Copy Version", icon = icon('copy'), class="btn-info"),
-        actionButton(ns('request_access_direct'), "Request Access to a CoC", icon = icon('unlock'), class="btn-warning")
-      )
+
+  card(id = id,
+    card_header(h4("Versions")),
+    card_body(
+      fillable = FALSE,
+      p('A CoC can have multiple versions of its ORR. Versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
+      p('To collaborate on an existing version, click "Request Access to a CoC". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
+      # a "Create" button or link above the table will display so they can create a new CoC Version
+      DTOutput(ns('coc_versions_dt'),fill = F) |> shinycssloaders::withSpinner(),
+      actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-primary'),
+      actionButton(ns('edit_coc_version'),"Edit Selected Version", icon = icon('edit'), class='btn-secondary'),
+      actionButton(ns('delete_coc_version'), "Delete Selected Version", icon = icon('trash'), class='btn-danger'),
+      actionButton(ns('copy_version'), "Copy Version", icon = icon('copy'), class="btn-info"),
+      actionButton(ns('request_access_direct'), "Request Access to a CoC", icon = icon('unlock'), class="btn-warning")
     )
-  #)
+  )
 }
 
 mod_coc_selection_server <- function(id, nav_control, user_coc) {
