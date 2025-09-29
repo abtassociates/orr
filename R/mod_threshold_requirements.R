@@ -30,6 +30,8 @@ mod_threshold_requirements_ui <- function(id) {
 
 mod_threshold_requirements_server <- function(id, selected_project) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+    
     # HUD Requirements UI
     output$hud_requirements <- renderUI({
       req(selected_project)

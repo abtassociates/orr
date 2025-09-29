@@ -15,15 +15,6 @@
   cursor: not-allowed;
 }
 
-
-
-/*make sure modals are centered*/
-.modal {
-  display: flex !important;
-  align-items: center;
-  overflow: hidden;
-}
-
 /*Disallow clicking on disabled/calculated cells*/
 td.disabled {
   pointer-events: none;
@@ -35,12 +26,13 @@ td.disabled {
 }
 
 /*CUSTOMIZE RATING CRITERIA*/
+/*
 [id*="_main_accordion"] .accordion-button {
   font-size: 1em;
 }
 [id*="_sub_accordion"] .accordion-button {
   font-size: 0.8em;
-}
+}*/
 
 /*FUNDING PRIORITIES*/
 /*

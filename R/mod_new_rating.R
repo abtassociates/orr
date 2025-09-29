@@ -58,6 +58,7 @@ mod_new_rating_ui <- function(id) {
 
 mod_new_rating_server <- function(id, projects_data) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
     # New project info sidebar
     output$new_project_info_sidebar <- renderUI({
       req(projects_data())

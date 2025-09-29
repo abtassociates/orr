@@ -27,26 +27,38 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
   
   # Helper to create a group of bed inputs, wrapped in a div for easy toggling
   bed_input_group <- function(group_id, fam_label, ind_label) {
-    div(id = ns(group_id),
-        fluidRow(
-          column(6, numericInput(ns(paste0(group_id, "_fam")), fam_label, value = NA, min = 0)),
-          column(6, numericInput(ns(paste0(group_id, "_ind")), ind_label, value = NA, min = 0))
-        )
+    div(
+      id = ns(group_id),
+      layout_columns(
+        numericInput(ns(paste0(group_id, "_fam")), fam_label, value = NA, min = 0),
+        numericInput(ns(paste0(group_id, "_ind")), ind_label, value = NA, min = 0),
+        col_widths = c(6, 6)
+      )
     )
   }
   
   modalDialog(
     title = title,
     size = "m",
-    fluidPage(
+    page_fluid(
       # -- Core Project Info --
-      textInput(ns("project_name"), "Project Name*"),
-      textInput(ns("organization_name"), "Organization Name*"),
-      selectInput(ns("funding_action"), "Funding Action*", choices = c("", LOOKUP_CHOICES$funding_action)),
-      textInput(ns("grant_number"), "Grant Number"), # Visibility controlled by server
-      selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
-      selectInput(ns("project_type"), "Project Type*^", choices = c("")), # Choices populated by server
-      selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations)),
+      layout_columns(
+        # First column
+        div(
+          textInput(ns("project_name"), "Project Name*"),
+          textInput(ns("organization_name"), "Organization Name*"),
+          selectInput(ns("funding_action"), "Funding Action*", choices = c("", LOOKUP_CHOICES$funding_action)),
+          textInput(ns("grant_number"), "Grant Number") # Visibility controlled by server
+        ),
+        # Second column  
+        div(
+          selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
+          selectInput(ns("project_type"), "Project Type*^", choices = c("")), # Choices populated by server
+          selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations))
+        ),
+        col_widths = c(6, 6)  # Equal width columns
+      ),
+      
       shinyjs::hidden(helpText(id = ns("target_population_inst"), "Select if project is targeted to DV, HIV, Youth, or General")),
       shinyjs::hidden(checkboxInput(ns("all_dv_checkbox"), "100% targeted to DV", value = FALSE)),
       
@@ -57,7 +69,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
       bed_input_group("total_beds", "Total Family Beds*", "Total Individual Beds*"),
       bed_input_group("ch_beds", "CH Family Beds*", "CH Individual Beds*"),
       bed_input_group("vet_beds", "Veteran Family Beds*", "Veteran Individual Beds*"),
-      bed_input_group("youth_beds", "Youth Family Beds*", "Youth Individual Beds*"),
+      bed_input_group("youth_beds", "Parenting Youth Beds*", "Single Youth Beds*"),
       
       # -- PSH-specific checkboxes --
       shinyjs::hidden(
@@ -233,10 +245,10 @@ mod_inventory_add_project_server <- function(
     # Update Target Population Selection
     observeEvent(current_target_pop(), {
       tp <- current_target_pop()
-      
-      shinyjs::toggleState("target_population", condition = TRUE)
+
+      shinyjs::toggleState("target_population", condition = TRUE) # start by enabling so we can set the value
       if (current_funding_source() != "CoC") updateSelectInput(session, "target_population", selected = tp)
-      shinyjs::toggleState("target_population", condition = current_funding_source() == "CoC")
+      shinyjs::toggleState("target_population", condition = current_funding_source() %in% c("", "CoC"))
     }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
     # --- PSH Checkbox Logic ---
@@ -337,10 +349,10 @@ mod_inventory_add_project_server <- function(
       })
     }
 
-    iv$enable()
-
     # --- Submission Event ---
     observeEvent(input$submit, {
+      iv$enable()
+      
       if (iv$is_valid()) {
         vis_beds <- visible_bed_groups()
         

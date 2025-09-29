@@ -3,23 +3,26 @@ mod_inventory_ui <- function(id) {
   
   nav_panel(
     "Review Projects",
+    icon = icon("list-check"),
     value = id,
     card(
       card_body(
         fillable = FALSE,
-        DTOutput(ns("projects_table"))|> shinycssloaders::withSpinner()
+        min_height = "60vh",
+        max_height = "80vh",
+        DTOutput(ns("projects_table"))#|> shinycssloaders::withSpinner()
       ),
       card_footer(
-        actionButton(ns("add_project_btn"), "Add New Project"),
-        actionButton(ns("view_giw_btn"), "View GIW Data")
+        actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
+        actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
       )
     )
   )
 }
 
-mod_inventory_server <- function(id, user_coc) {
+mod_inventory_server <- function(id, nav_control, user_coc) {
   moduleServer(id, function(input, output, session) {
-    ns <- NS(id)
+    ns <- session$ns
     
     # Hardcodes and reactiveValues --------------
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
@@ -158,7 +161,7 @@ mod_inventory_server <- function(id, user_coc) {
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("projects_table"))
+    projects_table_proxy <- dataTableProxy("projects_table")
     
     observe({
       req(projects_data())
@@ -411,6 +414,7 @@ mod_inventory_server <- function(id, user_coc) {
         observer_id <- paste0("modal_obs_", digest::digest(runif(1)))
       }
       
+      shiny::invalidateLater(100)
       showModal(
         div(
           id ="add-project-modal",

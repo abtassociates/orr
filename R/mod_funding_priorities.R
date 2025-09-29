@@ -34,6 +34,7 @@ mod_funding_priorities_ui <- function(id) {
   nav_panel(
     "Funding Ceilings + Priorities",
     value = id,
+    icon = icon("usd"),
     card(
       min_height=300,
       card_header("General Funding Information"),
@@ -55,7 +56,7 @@ mod_funding_priorities_ui <- function(id) {
       layout_columns(
         col_widths = c(8, 4),
         card(
-          card_header("Project Types to Consider for CoC Bonus"),
+          card_title("Project Types to Consider for CoC Bonus"),
           layout_columns(
             col_widths = c(6, 6),
             checkboxGroupInput(
@@ -71,7 +72,7 @@ mod_funding_priorities_ui <- function(id) {
           )
         ),
         card(
-          card_header("Project Types to Consider for DV Bonus"),
+          card_title("Project Types to Consider for DV Bonus"),
           checkboxGroupInput(
             ns("dv_bonus_types"),
             NULL,
@@ -86,7 +87,7 @@ mod_funding_priorities_ui <- function(id) {
       layout_sidebar(
         fillable = TRUE,
         sidebar = sidebar(
-          width = "20%",
+          width = "25%",
           checkboxGroupInput(
             ns("population_toggles"),
             label = "Enable/Disable Populations",
@@ -99,9 +100,9 @@ mod_funding_priorities_ui <- function(id) {
   )
 }
 
-mod_funding_priorities_server <- function(id, user_coc) {
+mod_funding_priorities_server <- function(id, nav_control, user_coc) {
   moduleServer(id, function(input, output, session) {
-    ns <- NS(id)
+    ns <- session$ns
     data_has_changed <- reactiveVal(FALSE)
     auto_save_timer <- reactiveTimer(5000)
 
@@ -234,7 +235,7 @@ mod_funding_priorities_server <- function(id, user_coc) {
             tags$tr(
               tags$th(rowspan = 2, 'Population'),
               lapply(main_project_types, function(pt) {
-                tags$th(colspan = 3, pt, style = "border-right: 1px solid black")
+                tags$th(colspan = 3, pt, style = "border-right: 1px solid black; text-align: center")
               })
             ),
             tags$tr(
@@ -350,7 +351,7 @@ mod_funding_priorities_server <- function(id, user_coc) {
         db_ready_data[, beds := ifelse("beds" %in% names(db_ready_data), as.integer(beds), NA)]
         db_ready_data[, funding := ifelse("funding" %in% names(db_ready_data), as.integer(funding), NA)]
         db_ready_data[, priority := ifelse("priority" %in% names(db_ready_data), as.integer(priority), NA)]
-browser()
+
         # The "UPSERT" query
         sql_query <- "
           INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, beds, funding, priority, created_by)
@@ -361,7 +362,7 @@ browser()
             funding = EXCLUDED.funding,
             priority = EXCLUDED.priority,
             updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-            updated_at = NOW();
+            updated_at = CURRENT_TIMESTAMP;
         "
         tryCatch({
           # Execute the query for each row of the long data frame

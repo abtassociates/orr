@@ -13,6 +13,7 @@ mod_alternative_rating_ui <- function(id) {
 
 mod_alternative_rating_server <- function(id, projects_data) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
     
     # Alternative Rating table
     output$alternative_rating_table <- renderDT({

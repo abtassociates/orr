@@ -10,28 +10,18 @@ function(input, output, session) {
   )
   nav_control <- reactiveVal("about")
 
-  toggle_tabs <- function() {
-    for(tab in TABS) {
-      if(tab %in% TABS_TO_SHOW) nav_show("nav", tab)
-      else nav_hide("nav", tab)
-    }
-  }
-  
-  # Hide specific content tabs initially
-  observe({
-    toggle_tabs()
+  observeEvent(user_coc$auth, {
+    req(user_coc$auth)
+    
+    # Once user logs in, load the UI + Server functions of the desired modules
+    lapply(TABS_TO_SHOW, function(t) {
+      # UI
+      nav_insert("nav", get(glue::glue("mod_{t}_ui"))(t), select = t == "dashboard")
+      
+      # Server
+      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc)
+    })
   })
-
-  mod_coc_selection_server("coc_selection", nav_control, user_coc)
-  mod_inventory_server("inventory", user_coc)
-  mod_rating_criteria_server("rating_criteria", user_coc)
-  mod_renewal_rating_server("renewal_rating", projects_data)
-  mod_new_rating_server("new_rating", projects_data)
-  mod_alternative_rating_server("alternative_rating", projects_data)
-  mod_funding_priorities_server("funding_priorities", user_coc)
-  mod_final_review_server("final_review", user_coc)
-  mod_ranking_server("ranking")
-  mod_requests_server(id="requests", user_coc)
   
   # get the url variables ----
   observe({
@@ -70,7 +60,6 @@ function(input, output, session) {
           user_coc$username <- current_user$email
           user_coc$given_name <- current_user$given_name
           nav_control("dashboard")
-          toggle_tabs()
       }
     }
     

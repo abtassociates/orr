@@ -13,6 +13,7 @@ mod_final_review_ui <- function(id) {
 
 mod_final_review_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
     
     output$final_review_table <- renderDT({
       req(user_coc$coc)

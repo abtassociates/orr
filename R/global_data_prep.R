@@ -30,25 +30,8 @@ coc_nofo_opportunities <- get_db_tbl("coc_nofo_opportunities") %>%
   )
 
 SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
-
-
-TABS <- c(
-  "about",
-  "dashboard",
-  "inventory",
-  "rating_criteria",
-  "renewal_rating",
-  "new_rating",
-  "alternative_rating",
-  "funding_priorities",
-  "final_review",
-  "ranking",
-  "account"
-)
 TABS_TO_SHOW <- c(
-  "about",
   "dashboard",
   "inventory",
-  "funding_priorities",
-  "account"
+  "funding_priorities"
 )

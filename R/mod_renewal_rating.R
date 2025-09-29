@@ -37,6 +37,8 @@ mod_renewal_rating_ui <- function(id) {
 
 mod_renewal_rating_server <- function(id, projects_data) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+    
     # Update project selection choices when CoC is selected
     observe({
       req(projects_data())

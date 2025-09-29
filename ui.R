@@ -38,6 +38,7 @@ page_navbar(
   nav_panel(
     title = 'About',
     value = 'about',
+    icon = icon("info"),
     
     card(id = 'about_card',fill = FALSE,
          card_header(h4('About the Tool')),
@@ -63,22 +64,5 @@ page_navbar(
    
       )
     )
-  ),
-  
-  #mod_requests_ui("requests"),
-  nav_panel(title = 'My Dashboard', value = 'dashboard',
-            mod_coc_selection_ui("coc_selection"),
-            mod_requests_ui("requests")
-            ),
-  #mod_coc_selection_ui("coc_selection"),
-  mod_inventory_ui("inventory"),
-  mod_rating_criteria_ui("rating_criteria"),
-  mod_renewal_rating_ui("renewal_rating"),
-  mod_new_rating_ui("new_rating"),
-  mod_alternative_rating_ui("alternative_rating"),
-  mod_funding_priorities_ui("funding_priorities"),
-  mod_final_review_ui("final_review"),
-  mod_ranking_ui("ranking"),
-  mod_account_ui("account")
-
+  )
 )

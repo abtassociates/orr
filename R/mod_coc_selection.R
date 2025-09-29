@@ -1,32 +1,26 @@
 mod_coc_selection_ui <- function(id) {
   ns <- NS(id)
-  
-  #nav_panel(
-  #  "My Dash",
-  #  value = id,
-    card(id = id,
-      card_header(h4("Versions")),
-      fill = FALSE, 
-      card_body(
-        fillable = FALSE,
-        
-        p('A CoC can have multiple versions of its ORR. Versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
-        p('To collaborate on an existing version, click "Request Access to a CoC". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
-        # a "Create" button or link above the table will display so they can create a new CoC Version
-        DTOutput(ns('coc_versions_dt'),fill = F) |> shinycssloaders::withSpinner(),
-        actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-primary'),
-        actionButton(ns('edit_coc_version'),"Edit Selected Version", icon = icon('edit'), class='btn-secondary'),
-        actionButton(ns('delete_coc_version'), "Delete Selected Version", icon = icon('trash'), class='btn-danger'),
-        actionButton(ns('copy_version'), "Copy Version", icon = icon('copy'), class="btn-info"),
-        actionButton(ns('request_access_direct'), "Request Access to a CoC", icon = icon('unlock'), class="btn-warning")
-      )
+
+  card(id = id,
+    card_header(h4("Versions")),
+    card_body(
+      fillable = FALSE,
+      p('A CoC can have multiple versions of its ORR. Versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
+      p('To collaborate on an existing version, click "Request Access to a CoC". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
+      # a "Create" button or link above the table will display so they can create a new CoC Version
+      DTOutput(ns('coc_versions_dt'),fill = F) |> shinycssloaders::withSpinner(),
+      actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-primary'),
+      actionButton(ns('edit_coc_version'),"Edit Selected Version", icon = icon('edit'), class='btn-secondary'),
+      actionButton(ns('delete_coc_version'), "Delete Selected Version", icon = icon('trash'), class='btn-danger'),
+      actionButton(ns('copy_version'), "Copy Version", icon = icon('copy'), class="btn-info"),
+      actionButton(ns('request_access_direct'), "Request Access to a CoC", icon = icon('unlock'), class="btn-warning")
     )
-  #)
+  )
 }
 
 mod_coc_selection_server <- function(id, nav_control, user_coc) {
   moduleServer(id, function(input, output, session) {
-    ns <- NS(id)
+    ns <- session$ns
     
     ## subset coc_version_users to specific user
     coc_vu <- reactiveVal(NULL)
@@ -53,7 +47,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
       )
     })
     
-    coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
+    coc_proxy <- dataTableProxy('coc_versions_dt')
     
     observe({
       req(coc_vu())
@@ -84,6 +78,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+
       # If there are any versions NOT associated with the current user, allow them to Request Access
       if(nrow(coc_version_users) > 0) {
         shinyjs::toggle(id = 'request_access_direct', condition = coc_version_users |> 
@@ -506,6 +501,13 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
       filtered_data <- get_hic_data(input$coc_dropdown, coc_version_id)
       
       filtered_data_db <- factor_vars_db_prep(filtered_data)
+      if(IN_DEV_MODE && inherits(filtered_data_db$date_created, "POSIXct")) 
+        filtered_data_db <- filtered_data_db %>%
+          fmutate(
+            date_created = format(date_created, "%Y-%m-%d %H:%M:%S"),
+            date_updated = format(date_updated, "%Y-%m-%d %H:%M:%S")
+          )
+      
       DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
       
       shiny::showNotification('New CoC version created!', type='message')
