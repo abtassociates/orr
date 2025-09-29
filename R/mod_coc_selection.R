@@ -501,6 +501,13 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
       filtered_data <- get_hic_data(input$coc_dropdown, coc_version_id)
       
       filtered_data_db <- factor_vars_db_prep(filtered_data)
+      if(IN_DEV_MODE && inherits(filtered_data_db$date_created, "POSIXct")) 
+        filtered_data_db <- filtered_data_db %>%
+          fmutate(
+            date_created = format(date_created, "%Y-%m-%d %H:%M:%S"),
+            date_updated = format(date_updated, "%Y-%m-%d %H:%M:%S")
+          )
+      
       DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
       
       shiny::showNotification('New CoC version created!', type='message')
