@@ -349,10 +349,10 @@ mod_inventory_add_project_server <- function(
       })
     }
 
-    iv$enable()
-
     # --- Submission Event ---
     observeEvent(input$submit, {
+      iv$enable()
+      
       if (iv$is_valid()) {
         vis_beds <- visible_bed_groups()
         
