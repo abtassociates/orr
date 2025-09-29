@@ -414,6 +414,7 @@ mod_inventory_server <- function(id, nav_control, user_coc) {
         observer_id <- paste0("modal_obs_", digest::digest(runif(1)))
       }
       
+      shiny::invalidateLater(100)
       showModal(
         div(
           id ="add-project-modal",
