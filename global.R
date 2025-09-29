@@ -1,53 +1,48 @@
 library(shiny)
 library(bslib)
+library(brandr)
 library(DT)
 library(sortable)
-library(fontawesome)
+library(fontawesome) # may not be needed
 library(collapse)
 library(data.table)
-# Generate fake data
+library(shinyjs)
+library(shinydisconnect)
+library(stringr)
+library(forcats)
+library(DBI)
+library(RPostgres)
+library(digest)
+library(here)
+library(rhandsontable)
+library(shinyvalidate)
+library(purrr)
+library(shinycssloaders)
+library(httr)
+library(httr2)
+library(jsonlite)
+
+
+IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
+
 set.seed(123)
+set_collapse(na.rm = TRUE, verbose = FALSE, sort = FALSE)
+# Load all utils functions
+files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
 
-# Generate fake HIC data
-coc_codes <- paste0(rep(c("NY", "CA", "TX", "FL"), each = 25), "-", sprintf("%03d", 1:100))
-project_types <- c("PSH", "RRH", "TH", "TH+RRH")
-target_populations <- c("General", "DV", "Veterans", "Youth")
+USER_ENTRY_BG_COLOR <- "#e6ffe6"
 
-hic_data <- data.frame(
-  CoC_Code = sample(coc_codes, 30000, replace = TRUE),
-  Project_Name = paste("Project", 1:30000),
-  Organization_Name = paste("Org", sample(1:1000, 30000, replace = TRUE)),
-  Project_Type = sample(project_types, 30000, replace = TRUE),
-  Target_Population = sample(target_populations, 30000, replace = TRUE),
-  McKinney_Vento = sample(c("Yes", "No"), 30000, replace = TRUE),
-  Individual_Beds = sample(0:100, 30000, replace = TRUE),
-  Family_Beds = sample(0:100, 30000, replace = TRUE),
-  stringsAsFactors = FALSE
+source(here("R/global_data_prep.R"))
+
+
+orr_bslib_theme <- bs_theme(
+  version = 5,
+  brand = TRUE,
+  "card-cap-bg" = get_brand_color("dark_blue"),
+  "card-cap-color" = "white",
+  "card-bg" = "white",
+  preset = "zephyr"
 )
 
-# Generate fake GIW data
-giw_data <- data.frame(
-  CoC_Code = sample(coc_codes, 6500, replace = TRUE),
-  Grant_Number = paste0("GN-", 1:6500),
-  Project_Name = paste("Project", sample(1:30000, 6500)),
-  Amount = round(runif(6500, 50000, 500000), 2),
-  stringsAsFactors = FALSE
-)
-
-# Generate fake ARD data
-ard_data <- data.frame(
-  CoC_Code = unique(coc_codes),
-  Total_ARD = round(runif(length(unique(coc_codes)), 1000000, 10000000), 2),
-  Tier_1 = NA,
-  CoC_Bonus = NA,
-  DV_Bonus = NA,
-  stringsAsFactors = FALSE
-)
-ard_data$Tier_1 <- round(ard_data$Total_ARD * 0.94, 2)
-ard_data$CoC_Bonus <- round(ard_data$Total_ARD * 0.05, 2)
-ard_data$DV_Bonus <- round(ard_data$Total_ARD * 0.05, 2)
-
-# Write data to CSV files
-# write.csv(hic_data, "data/hic.csv", row.names = FALSE)
-# write.csv(giw_data, "data/giw.csv", row.names = FALSE)
-# write.csv(ard_data, "data/ard.csv", row.names = FALSE)
+orr_navbar_options <- navbar_options(theme = 'auto', bg = get_brand_color('dark_blue'))

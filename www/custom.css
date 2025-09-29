@@ -1,0 +1,43 @@
+
+#submit_sign_out {
+  font-weight: bold;
+  /*background-color: red;
+  color:white;
+  */
+}
+
+#coc_versions_dt {
+  height:100% !important; 
+}
+
+/*show red circle for disabled buttons*/
+.btn:has(.disabled) {
+  cursor: not-allowed;
+}
+
+/*Disallow clicking on disabled/calculated cells*/
+td.disabled {
+  pointer-events: none;
+  background-color: lightgray;
+}
+
+.hidden {
+  display: none;
+}
+
+/*CUSTOMIZE RATING CRITERIA*/
+/*
+[id*="_main_accordion"] .accordion-button {
+  font-size: 1em;
+}
+[id*="_sub_accordion"] .accordion-button {
+  font-size: 0.8em;
+}*/
+
+/*FUNDING PRIORITIES*/
+/*
+#funding_priorities-priorities_table table.dataTable th, 
+#funding_priorities-priorities_table table.dataTable td {
+  text-align:center;
+}*/
+

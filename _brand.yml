@@ -1,0 +1,31 @@
+meta:
+  name: orr_brand.yml
+
+logo:
+  small: brand-yml-icon.svg
+  medium: brand-yml-tall.svg
+  large: brand-yml-wide.svg
+
+color:
+  palette: 
+    # primary
+    dark_blue: '#04153B' 
+    blue: '#357DAD'
+    
+    # app background color
+    grey_bg: '#ecf0f5'
+    
+  # theme colors  
+  primary: blue
+  foreground: black
+  background: grey_bg
+  light: white
+  dark: black
+
+typography:
+  fonts:
+  - family: Open Sans
+    source: google
+  base: Open Sans
+  monospace: Open Sans
+  headings: Open Sans

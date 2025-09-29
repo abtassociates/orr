@@ -30,10 +30,8 @@ get_db_connection <- function() {
 
 # Initialize database tables
 initialize_db <- function() {
-  con <- get_db_connection()
-  
   # Create users table if it doesn't exist
-  query <- "
+  query <- str_glue("
   CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     user VARCHAR(50) UNIQUE NOT NULL,
@@ -43,12 +41,12 @@ initialize_db <- function() {
     expire DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )"
+  )")
   
-  dbExecute(con, query)
+  dbExecute(DB_CON, query)
   
   # Create default admin user if no users exist
-  user_count <- dbGetQuery(con, "SELECT COUNT(*) as count FROM users")$count
+  user_count <- dbGetQuery(DB_CON, "SELECT COUNT(*) as count FROM users")$count
   if (user_count == 0) {
     admin_password <- digest("admin123", algo = "sha256")
     dbExecute(con, "INSERT INTO users (user, password, admin, start, expire) VALUES ($1, $2, TRUE, CURRENT_DATE, CURRENT_DATE + INTERVAL '1 year')", 
@@ -60,14 +58,12 @@ initialize_db <- function() {
 
 # Custom authentication function
 auth_fun <- function(user, password) {
-  con <- get_db_connection()
-  
   # Hash the provided password
   hashed_password <- digest(password, algo = "sha256")
   
   # Query user from database
   query <- "SELECT * FROM users WHERE user = $1 AND password = $2"
-  result <- dbGetQuery(con, query, list(user, hashed_password))
+  result <- dbGetQuery(DB_CON, query, list(user, hashed_password))
   
   dbDisconnect(con)
   
@@ -92,10 +88,8 @@ auth_fun <- function(user, password) {
 
 # Function to create new user
 create_user <- function(username, password, admin = FALSE) {
-  con <- get_db_connection()
-  
   # Check if user already exists
-  existing_user <- dbGetQuery(con, "SELECT COUNT(*) as count FROM users WHERE user = $1", list(username))$count
+  existing_user <- dbGetQuery(DB_CON, "SELECT COUNT(*) as count FROM users WHERE user = $1", list(username))$count
   
   if (existing_user > 0) {
     dbDisconnect(con)
@@ -331,8 +325,7 @@ server <- function(input, output, session) {
   # User info display
   output$user_info <- renderUI({
     if (values$authenticated) {
-      con <- get_db_connection()
-      user_info <- dbGetQuery(con, "SELECT * FROM users WHERE user = $1", list(values$current_user))
+      user_info <- dbGetQuery(DB_CON, "SELECT * FROM users WHERE user = $1", list(values$current_user))
       dbDisconnect(con)
       
       if (nrow(user_info) > 0) {
