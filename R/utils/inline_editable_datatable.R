@@ -99,11 +99,12 @@ initialize_inline_edit_table_ui <- function(
     jsonlite::toJSON(factor_info), 
     tableID
   )
-  
+
   # --- STEP 3: datatable creation ---
   dt <- datatable(
     data,
     style = "default",
+    extensions = 'Buttons',
     colnames = colnames,
     editable = list(
       target = "cell",
