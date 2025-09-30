@@ -111,6 +111,8 @@ mod_inventory_server <- function(id, nav_control, user_coc) {
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
+      colnames <- unname(project_variable_labels[names(data)])
+      
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
@@ -153,8 +155,20 @@ mod_inventory_server <- function(id, nav_control, user_coc) {
             digits = 0
           )
         ),
-        colnames = unname(project_variable_labels[names(data)]),
-        cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds")
+        colnames = colnames,
+        cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
+        buttons = list(
+          list(
+            text="Show/Hide Bed Inventory",
+            action = DT::JS(sprintf("
+              function ( e, dt, node, config ) {
+                var cols = %s;
+                dt.columns(cols).visible(!dt.column(cols[0]).visible());
+              }",
+              jsonlite::toJSON(grep("Bed", colnames) - 1)
+            ))
+          )
+        )
       )
     })
     
