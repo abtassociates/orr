@@ -1,4 +1,13 @@
-initialize_inline_edit_table_ui <- function(data, column_defs = list(), tableID, initial_filter, formatting = list(), colnames=NULL, cols_to_disable = NULL) {
+initialize_inline_edit_table_ui <- function(
+    data, 
+    column_defs = list(), 
+    tableID, 
+    initial_filter, 
+    formatting = list(), 
+    colnames=NULL, 
+    cols_to_disable = NULL,
+    buttons = NULL
+) {
   # Determine factor/dropdown columns and user-editable columns
   factor_cols <- sapply(data, is.factor)
   
@@ -111,10 +120,12 @@ initialize_inline_edit_table_ui <- function(data, column_defs = list(), tableID,
     rownames = FALSE,
     fillContainer = TRUE,
     options = list(
+      dom = "Bfrtip",
       scrollY = "100%",  # Limit table height
       searchCols = initial_filter,
       columnDefs = column_defs,
-      initComplete = DT::JS(init_js)
+      initComplete = DT::JS(init_js),
+      buttons = ifelse(!is.null(buttons), buttons, NULL)
     )
   ) 
   
