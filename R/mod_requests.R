@@ -59,7 +59,7 @@ mod_requests_server <- function(id, user_coc) {
       req(user_coc$auth)
       
       datatable(
-        isolate(cur_requests() |> fsubset(request_status == "Sent")),
+        isolate(cur_requests()),
         colnames = str_to_title(
           str_replace_all(names(cur_requests()),'_',' ')
         ),
@@ -69,6 +69,9 @@ mod_requests_server <- function(id, user_coc) {
           dom = 'Bfrtip',
           columnDefs = list(
             list(targets=1, className = "hidden")
+          ),
+          language = list(
+            zeroRecords = "No outstanding requests"
           )
         ), 
         rownames = FALSE,
