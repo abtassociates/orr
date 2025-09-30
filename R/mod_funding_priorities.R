@@ -40,14 +40,14 @@ mod_funding_priorities_ui <- function(id) {
       card_header("General Funding Information"),
       layout_columns(
         col_widths = c(3, 3, 3, 3),
-        numericInput(ns("total_ard"), "Annual Renewal Demand (ARD)", value = "0"),
-        numericInput(ns("coc_bonus"), "CoC Bonus", value = "0"),
-        numericInput(ns("tier_1"), "Tier 1", value = "0"),
-        numericInput(ns("adjusted_ard"), "Adjusted ARD", value = "0"),
-        numericInput(ns("yhdp_ard"), "YHDP ARD", value = "0"),
-        numericInput(ns("tier_2"), "Tier 2", value = "0"),
-        numericInput(ns("dv_bonus"), "DV Bonus", value = "0"),
-        numericInput(ns("dv_ard"), "DV ARD", value = "0")
+        shinyWidgets::autonumericInput(ns("total_ard"), "Annual Renewal Demand (ARD)", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
+        shinyWidgets::autonumericInput(ns("coc_bonus"), "CoC Bonus", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
+        shinyWidgets::autonumericInput(ns("tier_1"), "Tier 1", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
+        shinyWidgets::autonumericInput(ns("adjusted_ard"), "Adjusted ARD", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
+        shinyWidgets::autonumericInput(ns("yhdp_ard"), "YHDP ARD", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
+        shinyWidgets::autonumericInput(ns("tier_2"), "Tier 2", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
+        shinyWidgets::autonumericInput(ns("dv_bonus"), "DV Bonus", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
+        shinyWidgets::autonumericInput(ns("dv_ard"), "DV ARD", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0)
       )
     ),
     card(
@@ -131,7 +131,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc) {
     observe({
       req(user_coc$coc)
       lapply(ard_field_names, function(i) {
-        updateNumericInput(
+        updateAutonumericInput(
           session, 
           i, 
           value = hud_ard_coc_data()[[i]]
