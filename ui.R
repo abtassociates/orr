@@ -41,7 +41,7 @@ page_navbar(
     icon = icon("info"),
     
     card(id = 'about_card',fill = FALSE,
-         card_header(h4('About the Tool')),
+         card_header(h4('Welcome to the CoC Project Rating and Ranking Tool!')),
          card_body(
           fillable = FALSE,
           fill = TRUE,
