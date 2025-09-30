@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS users (
     firstname VARCHAR(255),
     lastname VARCHAR(255),
     email VARCHAR(255),
-    pw VARCHAR(60), -- handled via Cognito
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -19,10 +18,10 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 INSERT INTO users (username, firstname, lastname, pw, created_by)
-VALUES ('alex.silverman@abtglobal.com', 'Alex', 'Silverman', 'AS2134$', NULL),
-('marschall.furman@abtglobal.com', 'Marschall', 'Furman', 'MF1234$', NULL),
-('thomas.brittain@abtglobal.com', 'Thomas', 'Brittain', 'TB1234$', NULL),
-('orr_service@abtglobal.com', 'ORR', 'Service Account', 'orr2468$', NULL);
+VALUES ('alex.silverman@abtglobal.com', 'Alex', 'Silverman', NULL),
+('marschall.furman@abtglobal.com', 'Marschall', 'Furman', NULL),
+('thomas.brittain@abtglobal.com', 'Thomas', 'Brittain', NULL),
+('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL);
 
 ----------------------
 --
@@ -269,13 +268,11 @@ INSERT INTO lookups (reference_type, value, created_by)
 VALUES
 -- from request_statuses
 ('request_status', 'Sent', 'alex.silverman@abtglobal.com'),
-('request_status', 'Received', 'alex.silverman@abtglobal.com'),
 ('request_status', 'Approved', 'alex.silverman@abtglobal.com'),
 ('request_status', 'Rejected', 'alex.silverman@abtglobal.com'),
 
 -- from coc_version_roles
 ('coc_version_role', 'Owner', 'alex.silverman@abtglobal.com'),
-('coc_version_role', 'Viewer', 'alex.silverman@abtglobal.com'),
 ('coc_version_role', 'Editor', 'alex.silverman@abtglobal.com'),
 
 -- from coc_statuses
@@ -369,7 +366,6 @@ CREATE TABLE IF NOT EXISTS coc_versions (
 CREATE TABLE IF NOT EXISTS coc_version_requests (
 	coc_request_id SERIAL PRIMARY KEY,
 	coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
-	requesting_user VARCHAR(100) REFERENCES users(username),
 	request_status SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
 	reason_for_rejection SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
