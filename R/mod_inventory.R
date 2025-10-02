@@ -119,7 +119,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
         tableID = ns("projects_table"), 
         initial_filter = initial_filter,
         column_defs = list(
-          list(targets=which(names(data) == "created_by") - 1, className = "hidden")
+          list(
+            targets =which(names(data) == "created_by") - 1, 
+            className = "hidden",
+            visible = FALSE
+          )
         ),
         formatting = list(
           function(x) formatStyle(
