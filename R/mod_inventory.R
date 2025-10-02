@@ -20,7 +20,7 @@ mod_inventory_ui <- function(id) {
   )
 }
 
-mod_inventory_server <- function(id, nav_control, user_coc) {
+mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     

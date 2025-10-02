@@ -18,7 +18,7 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, user_coc) {
+mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -75,6 +75,16 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
     ## Enable/disable actions when row is selected or not
     observe({
       req(user_coc$auth)
+      
+      # toggle Inventory tab if they have any versions selected
+      if(length(input$coc_versions_dt_rows_selected) > 0) {
+        nav_show("nav", target = "inventory", session = parent_session)
+        nav_show("nav", target = "funding_priorities", session = parent_session)
+      } else {
+        nav_hide("nav", target = "inventory", session = parent_session)
+        nav_hide("nav", target = "funding_priorities", session = parent_session)
+      }
+      
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)

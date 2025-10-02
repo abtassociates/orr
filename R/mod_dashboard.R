@@ -10,9 +10,9 @@ mod_dashboard_ui <- function(id) {
   )
 }
 
-mod_dashboard_server <- function(id, nav_control, user_coc) {
+mod_dashboard_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
-    mod_coc_selection_server("coc_selection", nav_control, user_coc)
+    mod_coc_selection_server("coc_selection", nav_control, user_coc, parent_session)
     mod_requests_server("requests", user_coc)
   })
 }
