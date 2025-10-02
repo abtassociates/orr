@@ -14,7 +14,7 @@ mod_requests_ui <- function(id) {
           actionGroupButtons(
             c(ns("filter_sent"), ns("filter_approved"), ns("filter_rejected")),
             c("Outstanding", "Approved", "Rejected"),
-            status = "info"
+            status = "default"
           ),
           DTOutput(ns('requests_dt'))|> shinycssloaders::withSpinner(),
           actionButton(ns('approve_request'), label='Approve', class='btn-success'),
