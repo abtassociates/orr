@@ -134,6 +134,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ## Create new version --------------
     #  When they hit Create: display pop-up form titled "Create ORR" with a simple dropdown to select a CoC.
     observeEvent(input$create_new_version, {
+      shiny::invalidateLater(100)
       showModal(
         modalDialog(
           title = 'Create ORR',
