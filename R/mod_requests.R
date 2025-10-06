@@ -68,7 +68,7 @@ mod_requests_server <- function(id, user_coc) {
         options = list(
           dom = 'Bfrtip',
           columnDefs = list(
-            list(targets=1, className = "hidden")
+            list(targets=0, className = "hidden")
           ),
           language = list(
             zeroRecords = "No outstanding requests"
