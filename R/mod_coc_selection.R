@@ -199,6 +199,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           copy(coc_vu()), 
           new_version |>
             fmutate(
+              coc_version_id = new_version_user$coc_version_id,
               coc_version_role = new_version_user$coc_version_role,
               coc_status = get_lookup_label(coc_status, "coc_status"),
               coc_version_role = get_lookup_label(coc_version_role, "coc_version_role"),
