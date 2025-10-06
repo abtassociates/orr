@@ -323,7 +323,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
             radioButtons(
               ns('hic_import_select'),
               label = 'Which version of the HIC data would you like to use?',
-              choices = choiceList
+              choices = choiceList,
+              width = "100%"
             ),
             uiOutput(ns('hic_cond_select')),
             footer = tagList(
