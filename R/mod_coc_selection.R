@@ -138,10 +138,11 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       showModal(
         modalDialog(
           title = 'Create ORR',
-          selectInput(ns('coc_dropdown'),
-                      label = "Please choose a CoC:",
-                      choices = sort(cocs$coc_code),
-                      ),
+          selectizeInput(
+            ns('coc_dropdown'),
+            label = "Please choose a CoC:",
+            choices = sort(cocs$coc_code)
+          ),
           footer = tagList(
             actionButton(ns('choose_coc'), label="Next"),
             modalButton(label="Cancel")
