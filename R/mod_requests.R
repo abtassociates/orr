@@ -50,7 +50,7 @@ mod_requests_server <- function(id, user_coc) {
       cur_requests(all_requests())
     })
     
-    cur_requests_proxy <- dataTableProxy("requests_dt")
+    cur_requests_proxy <- dataTableProxy(ns("requests_dt"))
     observe({
       replaceData(cur_requests_proxy, cur_requests())
     })

@@ -47,7 +47,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )
     })
     
-    coc_proxy <- dataTableProxy('coc_versions_dt')
+    coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
     
     observe({
       req(coc_vu())
