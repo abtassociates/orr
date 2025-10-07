@@ -135,6 +135,24 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           ),
           function(x) formatStyle(
             x,
+            columns = c(
+              "coc_amount_awarded_last_year", 
+              "coc_amount_expended_last_year", 
+              "is_dedicated_ch_fam",
+              "is_dedicated_ch_ind"
+            ),
+            `min-width` = "150px"
+          ),
+          function(x) formatStyle(
+            x,
+            columns = c(
+              "ch_beds_hh_w_only_children",
+              "total_ch_ind_beds"
+            ),
+            `min-width` = "110px"
+          ),
+          function(x) formatStyle(
+            x,
             columns = user_columns,
             backgroundColor = USER_ENTRY_BG_COLOR
           ),
