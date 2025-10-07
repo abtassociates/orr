@@ -344,10 +344,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       req(input$request_access_coc_dropdown)
 
       coc_version_users |>
+        fsubset(coc == input$request_access_coc_dropdown) |> 
         fsubset(
-          username != user_coc$email & 
-            coc == input$request_access_coc_dropdown &
-            coc_version_role == owner_role_refid,
+          all(username != user_coc$email),
           coc, coc_version_name, username
         )
     })
