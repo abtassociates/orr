@@ -21,7 +21,7 @@ library(shinycssloaders)
 library(httr)
 library(httr2)
 library(jsonlite)
-
+library(shinyWidgets)
 
 IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
 

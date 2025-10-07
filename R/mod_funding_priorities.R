@@ -87,21 +87,21 @@ mod_funding_priorities_ui <- function(id) {
       layout_sidebar(
         fillable = TRUE,
         sidebar = sidebar(
-          width = "25%",
+          width = "22%",
           checkboxGroupInput(
             ns("population_toggles"),
             label = "Enable/Disable Populations",
             choices = pop_grp_toggles$full_text
           )
         ),
-        p("Double-click a cell to edit"),
+        helpText("Double-click a cell to edit"),
         DTOutput(ns("priorities_table"))
       )
     )
   )
 }
 
-mod_funding_priorities_server <- function(id, nav_control, user_coc) {
+mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     data_has_changed <- reactiveVal(FALSE)
