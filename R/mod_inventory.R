@@ -202,7 +202,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     
     observe({
       req(projects_data())
-      replaceData(projects_table_proxy, projects_data())
+      replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
     })
     
     # Checks whether value is valid
