@@ -9,7 +9,7 @@ mod_inventory_ui <- function(id) {
       card_body(
         fillable = FALSE,
         min_height = "60vh",
-        max_height = "80vh",
+        max_height = "76vh",
         DTOutput(ns("projects_table"))#|> shinycssloaders::withSpinner()
       ),
       card_footer(
