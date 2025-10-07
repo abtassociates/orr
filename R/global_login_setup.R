@@ -4,8 +4,9 @@ client_id <- Sys.getenv("cognito_client_id")
 client_secret <- Sys.getenv("cognito_client_secret") 
 base_cognito_url <- Sys.getenv("cognito_base_url")
 region <- Sys.getenv("cognito_region")
+
 redirect_uri <- rstudioapi::translateLocalUrl(
-  url = "http://localhost:3000",
+  url = glue::glue("http://localhost:{Sys.getenv('TESTPORT')}"),
   absolute = TRUE
 )
 
