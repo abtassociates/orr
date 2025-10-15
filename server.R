@@ -27,6 +27,12 @@ function(input, output, session) {
   observe({
     query <- parseQueryString(session$clientData$url_search)
     
+    if(IN_DEV_MODE) {
+      login_as_dev(user_coc)
+      nav_control("dashboard")
+      req(FALSE)
+    }
+    
     if (!("code" %in% names(query))){
       # no code in the url variables means the user hasn't logged in yet
       print('not logged in yet')
@@ -52,14 +58,14 @@ function(input, output, session) {
           
         }
         
-          removeModal()
-          hideElement("login_link")
-          hideElement("signup_link")
-          user_coc$auth <- TRUE
-          user_coc$email <- current_user$email
-          user_coc$username <- current_user$email
-          user_coc$given_name <- current_user$given_name
-          nav_control("dashboard")
+        removeModal()
+        hideElement("login_link")
+        hideElement("signup_link")
+        user_coc$auth <- TRUE
+        user_coc$email <- current_user$email
+        user_coc$username <- current_user$email
+        user_coc$given_name <- current_user$given_name
+        nav_control("dashboard")
       }
     }
     

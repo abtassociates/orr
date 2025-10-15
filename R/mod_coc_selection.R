@@ -340,27 +340,25 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     
     # Requesting access to a CoC directly ---------------
+    # When user clicks the "Request Access to a CoC" button on the dashboard
     # allow user to view versions and request access
     request_access_direct_coc_versions <- reactive({
-      req(input$request_access_coc_dropdown)
-
       coc_version_users |>
-        fsubset(coc == input$request_access_coc_dropdown) |> 
-        fsubset(
-          all(username != user_coc$email),
-          coc, coc_version_name, username
-        )
+        fgroup_by(coc_version_id) |>
+        fmutate(user_associated_w_version = anyv(username, user_coc$email)) |>
+        fungroup() |>
+        fsubset(!user_associated_w_version) |>
+        fselect(coc, coc_version_name, username)
     })
     # When user clicks the "Request Access to a CoC" button
     observeEvent(input$request_access_direct, {
 
-      ## TODO: Allow user to select a CoC Version and request access directly
       showModal(modalDialog(
         title = 'Request Access to a CoC',
         helpText('Select a CoC to view its versions...'),
         selectInput(ns('request_access_coc_dropdown'),
                     label = "Please choose a CoC:",
-                    choices = sort(funique(coc_version_users$coc))
+                    choices = sort(funique(request_access_direct_coc_versions()$coc))
         ),
         DT::DTOutput(ns("direct_request_coc_versions")),
         footer = tagList(
@@ -382,8 +380,14 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     )
     output$direct_request_coc_versions <- renderDT({
       req(input$request_access_coc_dropdown)
+      
+      versions_to_show <- request_access_direct_coc_versions() |>
+        fsubset(coc == input$request_access_coc_dropdown)
+      
+      req(nrow(versions_to_show) > 0)
+      
       datatable(
-        request_access_direct_coc_versions(),
+        versions_to_show,
         colnames = c("CoC", "Version Name", "Owner"),
         rownames = FALSE,
         options = list(dom = 'tip'),
@@ -397,8 +401,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
     })
     
-    # Requesting access to a CoC directly ---------------
-    # allow user to view versions and request access
+    # Requesting access to a CoC indirectly ---------------
+    # This is for when the user tried to create a new version 
+    # but may not have known about an existing version for the same CoC
     request_access_indirect_coc_versions <- reactive({
       req(input$request_indirect_access_coc_dropdown)
       
@@ -418,10 +423,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       showModal(modalDialog(
         title = 'Request Access to a CoC',
         helpText('Select a CoC to view its versions...'),
-        selectInput(ns('request_indirect_access_coc_dropdown'),
-                    label = "Please choose a CoC:",
-                    choices = sort(funique(coc_version_users$coc))
-        ),
         DT::DTOutput(ns("indirect_request_coc_versions")),
         footer = tagList(
           # If they continue: go to next step
