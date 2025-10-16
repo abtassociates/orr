@@ -41,3 +41,7 @@ td.disabled {
   text-align:center;
 }*/
 
+#inventory-projects_table .dataTables_scrollBody {
+  height: 36vh !important;
+}
+

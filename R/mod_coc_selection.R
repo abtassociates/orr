@@ -18,7 +18,7 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, user_coc) {
+mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -47,7 +47,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
       )
     })
     
-    coc_proxy <- dataTableProxy('coc_versions_dt')
+    coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
     
     observe({
       req(coc_vu())
@@ -75,6 +75,16 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
     ## Enable/disable actions when row is selected or not
     observe({
       req(user_coc$auth)
+      
+      # toggle Inventory tab if they have any versions selected
+      if(length(input$coc_versions_dt_rows_selected) > 0) {
+        nav_show("nav", target = "inventory", session = parent_session)
+        nav_show("nav", target = "funding_priorities", session = parent_session)
+      } else {
+        nav_hide("nav", target = "inventory", session = parent_session)
+        nav_hide("nav", target = "funding_priorities", session = parent_session)
+      }
+      
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
@@ -124,13 +134,15 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
     ## Create new version --------------
     #  When they hit Create: display pop-up form titled "Create ORR" with a simple dropdown to select a CoC.
     observeEvent(input$create_new_version, {
+      shiny::invalidateLater(100)
       showModal(
         modalDialog(
           title = 'Create ORR',
-          selectInput(ns('coc_dropdown'),
-                      label = "Please choose a CoC:",
-                      choices = sort(cocs$coc_code),
-                      ),
+          selectizeInput(
+            ns('coc_dropdown'),
+            label = "Please choose a CoC:",
+            choices = sort(cocs$coc_code)
+          ),
           footer = tagList(
             actionButton(ns('choose_coc'), label="Next"),
             modalButton(label="Cancel")
@@ -189,6 +201,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
           copy(coc_vu()), 
           new_version |>
             fmutate(
+              coc_version_id = new_version_user$coc_version_id,
               coc_version_role = new_version_user$coc_version_role,
               coc_status = get_lookup_label(coc_status, "coc_status"),
               coc_version_role = get_lookup_label(coc_version_role, "coc_version_role"),
@@ -311,7 +324,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
             radioButtons(
               ns('hic_import_select'),
               label = 'Which version of the HIC data would you like to use?',
-              choices = choiceList
+              choices = choiceList,
+              width = "100%"
             ),
             uiOutput(ns('hic_cond_select')),
             footer = tagList(
@@ -326,28 +340,25 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
     
     
     # Requesting access to a CoC directly ---------------
+    # When user clicks the "Request Access to a CoC" button on the dashboard
     # allow user to view versions and request access
     request_access_direct_coc_versions <- reactive({
-      req(input$request_access_coc_dropdown)
-
       coc_version_users |>
-        fsubset(
-          username != user_coc$email & 
-            coc == input$request_access_coc_dropdown &
-            coc_version_role == owner_role_refid,
-          coc, coc_version_name, username
-        )
+        fgroup_by(coc_version_id) |>
+        fmutate(user_associated_w_version = anyv(username, user_coc$email)) |>
+        fungroup() |>
+        fsubset(!user_associated_w_version) |>
+        fselect(coc, coc_version_name, username)
     })
     # When user clicks the "Request Access to a CoC" button
     observeEvent(input$request_access_direct, {
 
-      ## TODO: Allow user to select a CoC Version and request access directly
       showModal(modalDialog(
         title = 'Request Access to a CoC',
         helpText('Select a CoC to view its versions...'),
         selectInput(ns('request_access_coc_dropdown'),
                     label = "Please choose a CoC:",
-                    choices = sort(funique(coc_version_users$coc))
+                    choices = sort(funique(request_access_direct_coc_versions()$coc))
         ),
         DT::DTOutput(ns("direct_request_coc_versions")),
         footer = tagList(
@@ -369,8 +380,14 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
     )
     output$direct_request_coc_versions <- renderDT({
       req(input$request_access_coc_dropdown)
+      
+      versions_to_show <- request_access_direct_coc_versions() |>
+        fsubset(coc == input$request_access_coc_dropdown)
+      
+      req(nrow(versions_to_show) > 0)
+      
       datatable(
-        request_access_direct_coc_versions(),
+        versions_to_show,
         colnames = c("CoC", "Version Name", "Owner"),
         rownames = FALSE,
         options = list(dom = 'tip'),
@@ -384,8 +401,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
       
     })
     
-    # Requesting access to a CoC directly ---------------
-    # allow user to view versions and request access
+    # Requesting access to a CoC indirectly ---------------
+    # This is for when the user tried to create a new version 
+    # but may not have known about an existing version for the same CoC
     request_access_indirect_coc_versions <- reactive({
       req(input$request_indirect_access_coc_dropdown)
       
@@ -405,10 +423,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
       showModal(modalDialog(
         title = 'Request Access to a CoC',
         helpText('Select a CoC to view its versions...'),
-        selectInput(ns('request_indirect_access_coc_dropdown'),
-                    label = "Please choose a CoC:",
-                    choices = sort(funique(coc_version_users$coc))
-        ),
         DT::DTOutput(ns("indirect_request_coc_versions")),
         footer = tagList(
           # If they continue: go to next step
@@ -559,7 +573,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc) {
           created_by = SERVICE_ACCOUNT
         ) %>%
         frename(bed_field_mapping) %>%
-        get_vars(dbListFields(DB_CON, "projects"))
+        get_vars(setdiff(dbListFields(DB_CON, "projects"), "project_id"))
 
       return(project_data)
     }

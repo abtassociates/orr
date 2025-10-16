@@ -9,7 +9,7 @@ mod_inventory_ui <- function(id) {
       card_body(
         fillable = FALSE,
         min_height = "60vh",
-        max_height = "80vh",
+        max_height = "76vh",
         DTOutput(ns("projects_table"))#|> shinycssloaders::withSpinner()
       ),
       card_footer(
@@ -20,7 +20,7 @@ mod_inventory_ui <- function(id) {
   )
 }
 
-mod_inventory_server <- function(id, nav_control, user_coc) {
+mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -111,13 +111,19 @@ mod_inventory_server <- function(id, nav_control, user_coc) {
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
+      colnames <- unname(project_variable_labels[names(data)])
+      
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
         tableID = ns("projects_table"), 
         initial_filter = initial_filter,
         column_defs = list(
-          list(targets=which(names(data) == "created_by") - 1, className = "hidden")
+          list(
+            targets =which(names(data) == "created_by") - 1, 
+            className = "hidden",
+            visible = FALSE
+          )
         ),
         formatting = list(
           function(x) formatStyle(
@@ -126,6 +132,24 @@ mod_inventory_server <- function(id, nav_control, user_coc) {
             `white-space` = "nowrap",
             `overflow` = "hidden",
             `max-width` = "400px"
+          ),
+          function(x) formatStyle(
+            x,
+            columns = c(
+              "coc_amount_awarded_last_year", 
+              "coc_amount_expended_last_year", 
+              "is_dedicated_ch_fam",
+              "is_dedicated_ch_ind"
+            ),
+            `min-width` = "150px"
+          ),
+          function(x) formatStyle(
+            x,
+            columns = c(
+              "ch_beds_hh_w_only_children",
+              "total_ch_ind_beds"
+            ),
+            `min-width` = "110px"
           ),
           function(x) formatStyle(
             x,
@@ -153,19 +177,32 @@ mod_inventory_server <- function(id, nav_control, user_coc) {
             digits = 0
           )
         ),
-        colnames = unname(project_variable_labels[names(data)]),
-        cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds")
+        colnames = colnames,
+        cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
+        buttons = list(
+          list(
+            extend = 'collection',
+            text="Show/Hide Bed Inventory",
+            action = DT::JS(sprintf("
+              function ( e, dt, node, config ) {
+                var cols = %s;
+                dt.columns(cols).visible(!dt.column(cols[0]).visible());
+              }",
+              jsonlite::toJSON(grep("Bed", colnames) - 1)
+            ))
+          )
+        )
       )
     })
     
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy("projects_table")
+    projects_table_proxy <- dataTableProxy(ns("projects_table"))
     
     observe({
       req(projects_data())
-      replaceData(projects_table_proxy, projects_data())
+      replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
     })
     
     # Checks whether value is valid

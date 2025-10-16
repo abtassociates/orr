@@ -33,5 +33,6 @@ SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
 TABS_TO_SHOW <- c(
   "dashboard",
   "inventory",
-  "funding_priorities"
+  "funding_priorities",
+  "account"
 )

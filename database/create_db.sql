@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS users (
     firstname VARCHAR(255),
     lastname VARCHAR(255),
     email VARCHAR(255),
-    pw VARCHAR(60), -- handled via Cognito
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -19,10 +18,114 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 INSERT INTO users (username, firstname, lastname, pw, created_by)
-VALUES ('alex.silverman@abtglobal.com', 'Alex', 'Silverman', 'AS2134$', NULL),
-('marschall.furman@abtglobal.com', 'Marschall', 'Furman', 'MF1234$', NULL),
-('thomas.brittain@abtglobal.com', 'Thomas', 'Brittain', 'TB1234$', NULL),
-('orr_service@abtglobal.com', 'ORR', 'Service Account', 'orr2468$', NULL);
+VALUES ('alex.silverman@abtglobal.com', 'Alex', 'Silverman', NULL),
+('marschall.furman@abtglobal.com', 'Marschall', 'Furman', NULL),
+('thomas.brittain@abtglobal.com', 'Thomas', 'Brittain', NULL),
+('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL);
+
+
+
+----------------------
+--
+--
+-- REFERENCES (LOOKUPS/DROPDOWNS)
+--
+--
+----------------------
+DROP TABLE IF EXISTS lookups CASCADE;
+
+-- Create a single, consolidated table for all reference/lookup values
+CREATE TABLE IF NOT EXISTS lookups (
+    reference_id SERIAL PRIMARY KEY,
+    -- Discriminator column to identify the type of reference (e.g., 'project_type', 'coc_status')
+    reference_type VARCHAR(100) NOT NULL,
+    -- The main display value for the reference item (e.g., 'Rapid Re-Housing', 'In Progress')
+    value VARCHAR(255) NOT NULL,
+    -- Optional short code or abbreviation (e.g., 'RRH', 'PSH', 'DV')
+    value_abbrev VARCHAR(100) NULL,
+    -- Optional longer description or secondary value (e.g., the plural 'Individuals')
+    value_long VARCHAR(255) NULL,
+    -- A flag to indicate if this option requires an "Other (please specify)" text field in the UI
+    other_specify_flag BOOLEAN DEFAULT FALSE,
+    -- Standard audit columns
+	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username),
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username)
+);
+
+-- Insert all data into the new consolidated table
+INSERT INTO lookups (reference_type, value, created_by)
+VALUES
+-- from request_statuses
+('request_status', 'Sent', 'alex.silverman@abtglobal.com'),
+('request_status', 'Approved', 'alex.silverman@abtglobal.com'),
+('request_status', 'Rejected', 'alex.silverman@abtglobal.com'),
+
+-- from coc_version_roles
+('coc_version_role', 'Owner', 'alex.silverman@abtglobal.com'),
+('coc_version_role', 'Editor', 'alex.silverman@abtglobal.com'),
+
+-- from coc_statuses
+('coc_status', 'Not Started', 'alex.silverman@abtglobal.com'),
+('coc_status', 'In Progress', 'alex.silverman@abtglobal.com'),
+('coc_status', 'Completed', 'alex.silverman@abtglobal.com'),
+
+-- from funding_actions
+('funding_action', 'New', 'alex.silverman@abtglobal.com'),
+('funding_action', 'Renew', 'alex.silverman@abtglobal.com'),
+('funding_action', 'Expand', 'alex.silverman@abtglobal.com'),
+('funding_action', 'Reallocate', 'alex.silverman@abtglobal.com'),
+('funding_action', 'Ignore', 'alex.silverman@abtglobal.com'),
+('funding_action', 'Replace', 'alex.silverman@abtglobal.com'),
+
+-- from bonus_types
+('bonus_type', 'CoC Bonus', 'alex.silverman@abtglobal.com'),
+('bonus_type', 'DV Bonus', 'alex.silverman@abtglobal.com'),
+
+-- from priorities
+('priority', 'High', 'alex.silverman@abtglobal.com'),
+('priority', 'Medium', 'alex.silverman@abtglobal.com'),
+('priority', 'Low', 'alex.silverman@abtglobal.com'),
+('priority', 'Unspecified', 'alex.silverman@abtglobal.com');
+
+INSERT INTO lookups (reference_type, value, other_specify_flag, created_by)
+VALUES
+-- from request_rejection_reasons
+('request_rejection_reason', 'Not Associated with CoC', FALSE, 'alex.silverman@abtglobal.com'),
+('request_rejection_reason', 'Other', TRUE, 'alex.silverman@abtglobal.com');
+
+
+INSERT INTO lookups (reference_type, value, value_long, created_by)
+VALUES
+-- from project_types
+('project_type', 'RRH', 'Rapid Re-Housing', 'alex.silverman@abtglobal.com'),
+('project_type', 'PSH', 'Permanent Supportive Housing', 'alex.silverman@abtglobal.com'),
+('project_type', 'TH', 'Transitional Housing', 'alex.silverman@abtglobal.com'),
+('project_type', 'TH+RRH', 'Transitional Housing + Rapid Re-Housing', 'alex.silverman@abtglobal.com'),
+('project_type', 'HMIS Project', 'HMIS Project', 'alex.silverman@abtglobal.com'),
+('project_type', 'SSO-CE', 'Supportive Services Only - Coordinated Entry', 'alex.silverman@abtglobal.com'),
+('project_type', 'SSO', 'Supportive Services Only', 'alex.silverman@abtglobal.com'),
+('project_type', 'DEM', 'Demonstration Project', 'alex.silverman@abtglobal.com'),
+('project_type', 'OPH', 'Other Permanent Housing', 'alex.silverman@abtglobal.com'),
+('project_type', 'SH', 'Safe Haven', 'alex.silverman@abtglobal.com'),
+('project_type', 'ES', 'Emergency Shelter', 'alex.silverman@abtglobal.com'),
+
+-- from target_populations
+('target_population', 'DV', 'Domestic Violence', 'alex.silverman@abtglobal.com'),
+('target_population', 'HIC', 'Housing Inventory Count', 'alex.silverman@abtglobal.com'),
+('target_population', 'General', 'General', 'alex.silverman@abtglobal.com'),
+('target_population', 'CH', 'Chronically Homeless', 'alex.silverman@abtglobal.com'),
+('target_population', 'Vet', 'Veteran', 'alex.silverman@abtglobal.com'),
+('target_population', 'Yth', 'Youth', 'alex.silverman@abtglobal.com'),
+('target_population', 'NA', 'Not Applicable', 'alex.silverman@abtglobal.com');
+
+INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by)
+VALUES
+-- from population_groups
+('population_group', 'Ind', 'Individual', 'Individuals', 'alex.silverman@abtglobal.com'),
+('population_group', 'Fam', 'Family', 'Families', 'alex.silverman@abtglobal.com');
+
 
 ----------------------
 --
@@ -79,7 +182,7 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
 );
 -- NOW IMPORT MANUALLY FROM "S:\projects\MCKINNEY\HORRT\Database Prep\HIC_RawData2024 - 9.23.24_TEST.csv"
 ALTER TABLE all_hic_data
-ADD COLUMN project_id SERIAL PRIMARY KEY,
+ADD COLUMN hic_data_id SERIAL,
 ADD COLUMN date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
 ADD COLUMN date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -238,110 +341,6 @@ SET created_by = 'alex.silverman@abtglobal.com', date_created = CURRENT_TIMESTAM
 ----------------------
 --
 --
--- REFERENCES (LOOKUPS/DROPDOWNS)
---
---
-----------------------
-DROP TABLE IF EXISTS lookups CASCADE;
-
--- Create a single, consolidated table for all reference/lookup values
-CREATE TABLE IF NOT EXISTS lookups (
-    reference_id SERIAL PRIMARY KEY,
-    -- Discriminator column to identify the type of reference (e.g., 'project_type', 'coc_status')
-    reference_type VARCHAR(100) NOT NULL,
-    -- The main display value for the reference item (e.g., 'Rapid Re-Housing', 'In Progress')
-    value VARCHAR(255) NOT NULL,
-    -- Optional short code or abbreviation (e.g., 'RRH', 'PSH', 'DV')
-    value_abbrev VARCHAR(100) NULL,
-    -- Optional longer description or secondary value (e.g., the plural 'Individuals')
-    value_long VARCHAR(255) NULL,
-    -- A flag to indicate if this option requires an "Other (please specify)" text field in the UI
-    other_specify_flag BOOLEAN DEFAULT FALSE,
-    -- Standard audit columns
-	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
-    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
-);
-
--- Insert all data into the new consolidated table
-INSERT INTO lookups (reference_type, value, created_by)
-VALUES
--- from request_statuses
-('request_status', 'Sent', 'alex.silverman@abtglobal.com'),
-('request_status', 'Received', 'alex.silverman@abtglobal.com'),
-('request_status', 'Approved', 'alex.silverman@abtglobal.com'),
-('request_status', 'Rejected', 'alex.silverman@abtglobal.com'),
-
--- from coc_version_roles
-('coc_version_role', 'Owner', 'alex.silverman@abtglobal.com'),
-('coc_version_role', 'Viewer', 'alex.silverman@abtglobal.com'),
-('coc_version_role', 'Editor', 'alex.silverman@abtglobal.com'),
-
--- from coc_statuses
-('coc_status', 'Not Started', 'alex.silverman@abtglobal.com'),
-('coc_status', 'In Progress', 'alex.silverman@abtglobal.com'),
-('coc_status', 'Completed', 'alex.silverman@abtglobal.com'),
-
--- from funding_actions
-('funding_action', 'New', 'alex.silverman@abtglobal.com'),
-('funding_action', 'Renew', 'alex.silverman@abtglobal.com'),
-('funding_action', 'Expand', 'alex.silverman@abtglobal.com'),
-('funding_action', 'Reallocate', 'alex.silverman@abtglobal.com'),
-('funding_action', 'Ignore', 'alex.silverman@abtglobal.com'),
-('funding_action', 'Replace', 'alex.silverman@abtglobal.com'),
-
--- from bonus_types
-('bonus_type', 'CoC Bonus', 'alex.silverman@abtglobal.com'),
-('bonus_type', 'DV Bonus', 'alex.silverman@abtglobal.com'),
-
--- from priorities
-('priority', 'High', 'alex.silverman@abtglobal.com'),
-('priority', 'Medium', 'alex.silverman@abtglobal.com'),
-('priority', 'Low', 'alex.silverman@abtglobal.com'),
-('priority', 'Unspecified', 'alex.silverman@abtglobal.com');
-
-INSERT INTO lookups (reference_type, value, other_specify_flag, created_by)
-VALUES
--- from request_rejection_reasons
-('request_rejection_reason', 'Not Associated with CoC', FALSE, 'alex.silverman@abtglobal.com'),
-('request_rejection_reason', 'Other', TRUE, 'alex.silverman@abtglobal.com');
-
-
-INSERT INTO lookups (reference_type, value, value_long, created_by)
-VALUES
--- from project_types
-('project_type', 'RRH', 'Rapid Re-Housing', 'alex.silverman@abtglobal.com'),
-('project_type', 'PSH', 'Permanent Supportive Housing', 'alex.silverman@abtglobal.com'),
-('project_type', 'TH', 'Transitional Housing', 'alex.silverman@abtglobal.com'),
-('project_type', 'TH+RRH', 'Transitional Housing + Rapid Re-Housing', 'alex.silverman@abtglobal.com'),
-('project_type', 'HMIS Project', 'HMIS Project', 'alex.silverman@abtglobal.com'),
-('project_type', 'SSO-CE', 'Supportive Services Only - Coordinated Entry', 'alex.silverman@abtglobal.com'),
-('project_type', 'SSO', 'Supportive Services Only', 'alex.silverman@abtglobal.com'),
-('project_type', 'DEM', 'Demonstration Project', 'alex.silverman@abtglobal.com'),
-('project_type', 'OPH', 'Other Permanent Housing', 'alex.silverman@abtglobal.com'),
-('project_type', 'SH', 'Safe Haven', 'alex.silverman@abtglobal.com'),
-('project_type', 'ES', 'Emergency Shelter', 'alex.silverman@abtglobal.com'),
-
--- from target_populations
-('target_population', 'DV', 'Domestic Violence', 'alex.silverman@abtglobal.com'),
-('target_population', 'HIC', 'Housing Inventory Count', 'alex.silverman@abtglobal.com'),
-('target_population', 'General', 'General', 'alex.silverman@abtglobal.com'),
-('target_population', 'CH', 'Chronically Homeless', 'alex.silverman@abtglobal.com'),
-('target_population', 'Vet', 'Veteran', 'alex.silverman@abtglobal.com'),
-('target_population', 'Yth', 'Youth', 'alex.silverman@abtglobal.com'),
-('target_population', 'NA', 'Not Applicable', 'alex.silverman@abtglobal.com');
-
-INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by)
-VALUES
--- from population_groups
-('population_group', 'Ind', 'Individual', 'Individuals', 'alex.silverman@abtglobal.com'),
-('population_group', 'Fam', 'Family', 'Families', 'alex.silverman@abtglobal.com');
-
-
-----------------------
---
---
 -- USER-COC MANAGEMENT
 --
 --
@@ -369,7 +368,6 @@ CREATE TABLE IF NOT EXISTS coc_versions (
 CREATE TABLE IF NOT EXISTS coc_version_requests (
 	coc_request_id SERIAL PRIMARY KEY,
 	coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
-	requesting_user VARCHAR(100) REFERENCES users(username),
 	request_status SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
 	reason_for_rejection SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
