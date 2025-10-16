@@ -530,7 +530,7 @@ setnames(hud_ard_data, old = c(
 DBI::dbAppendTable(DB_CON, "hud_ard_report", hud_ard_data)
 
 # Create rest of table ---------------------
-DBI::dbExecute("
+DBI::dbExecute(DB_CON, "
 -- use LATIN-1
 ALTER TABLE hud_ard_report
 ADD COLUMN date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
