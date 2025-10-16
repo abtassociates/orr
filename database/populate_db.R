@@ -1349,7 +1349,6 @@ DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_coc ON coc_v
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_coc_status ON coc_versions(coc_status);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_created_by ON coc_versions(created_by);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_version_id ON coc_version_requests(coc_version_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_user ON coc_version_requests(requesting_user);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_status ON coc_version_requests(request_status);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_users_username ON coc_version_users(username);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_users_role ON coc_version_users(coc_version_role);")
