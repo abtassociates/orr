@@ -416,7 +416,7 @@ SELECT DISTINCT
 FROM all_hic_data a1;
 ")
 
-drop_Table("git")
+drop_table("giw")
 DBI::dbExecute(DB_CON, "
 CREATE TABLE IF NOT EXISTS giw (
     grant_number VARCHAR(15) PRIMARY KEY,
