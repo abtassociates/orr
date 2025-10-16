@@ -1177,7 +1177,7 @@ CREATE TABLE IF NOT EXISTS ranking (
 ###############
 # -- Add an index on the reference_type for efficient lookups (e.g., getting all project types)
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_cocs_state ON cocs(state);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_giw_coc ON giw(coc);")")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_giw_coc ON giw(coc);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_hud_ard_report_coc ON hud_ard_report(coc);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_all_hic_data_hudnum ON all_hic_data(hudnum);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_all_hic_data_project_type ON all_hic_data(project_type);")
