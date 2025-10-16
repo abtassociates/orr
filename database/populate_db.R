@@ -435,7 +435,40 @@ CREATE TABLE IF NOT EXISTS giw (
 ")
 
 # import GIW ---------------------
-DBI::dbAppendTable(DB_CON, "giw", fread(GIW_DATA_FILEPATH))
+# Read the data
+giw_data <- fread(GIW_DATA_FILEPATH)
+
+# Rename columns to match SQL table
+setnames(giw_data, old = c(
+  "Grant Number",
+  "CoC",
+  "Applicant Name",
+  "Project Name",
+  "Expiration Year",
+  "Project Component",
+  "Restriction (DV or YHDP)",
+  "DV ARD (Estimated)",
+  "YHDP ARD (Estimated)",
+  "CoCs ARD (Estimated)",
+  "Total Units",
+  "Total ARA"
+), new = c(
+  "grant_number",
+  "coc",
+  "applicant_name",
+  "project_name",
+  "expiration_year",
+  "project_component",
+  "restriction_dv_or_ydhp",
+  "dv_ard_estimated",
+  "yhdp_ard_estimated",
+  "cocs_ard_estimated",
+  "total_units",
+  "total_ara"
+))
+
+# Append to database
+DBI::dbAppendTable(DB_CON, "giw", giw_data)
 
 
 # Update GIW ---------------------
