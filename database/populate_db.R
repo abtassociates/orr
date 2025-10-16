@@ -629,6 +629,7 @@ CREATE TABLE IF NOT EXISTS factor_groups (
 );
 ")
 
+message("about to do CTEs for factor_groups")
 DBI::dbExecute(DB_CON, "
 -- Use CTEs to look up funding_action IDs
 WITH
@@ -664,6 +665,7 @@ CREATE TABLE IF NOT EXISTS factor_subgroups (
 );
 ")
 
+message("about to do CTEs for factor_subgroups")
 DBI::dbExecute(DB_CON, "
 -- Use CTEs to look up factor_group and funding_action IDs
 WITH
@@ -688,6 +690,7 @@ VALUES
 ('Program Participant Outcomes', (SELECT factor_group_id FROM fg_equity_new), (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com');
 ")
 
+message("about to do thresholds")
 DBI::dbExecute(DB_CON, "
 -- Thresholds (Reference table)
 --- unique list of thresholds
@@ -1119,6 +1122,8 @@ CREATE TABLE IF NOT EXISTS coc_nofo_opportunities (
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
 ")
+
+message("now doing CTEs")
 
 DBI::dbExecute(DB_CON, "
 -- Use CTEs for all lookup IDs
