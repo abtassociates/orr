@@ -502,7 +502,32 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 ")
 
 # Import HUD ARD Report ---------------------
-DBI::dbAppendTable(DB_CON, "hud_ard_report", fread(HUD_ARD_DATA_FILEPATH))
+# Read the data
+hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH)
+
+# Rename columns to match SQL table
+setnames(hud_ard_data, old = c(
+  "CoCName",
+  "CoC Number and Name",
+  "PPRN",
+  "Estimated ARD",
+  "Tier 1",
+  "CoC Bonus",
+  "DV Bonus",
+  "CoC Planning"
+), new = c(
+  "coc",
+  "coc_number_and_name",
+  "pprn",
+  "estimated",
+  "tier_1",
+  "coc_bonus",
+  "dv_bonus",
+  "coc_planning"
+))
+
+# Append to database
+DBI::dbAppendTable(DB_CON, "hud_ard_report", hud_ard_data)
 
 # Create rest of table ---------------------
 DBI::dbExecute("
