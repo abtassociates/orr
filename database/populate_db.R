@@ -1,3 +1,10 @@
+IN_DEV_MODE <- FALSE
+library(here)
+library(DBI)
+source("R/utils/get_db_data.R")
+library(data.table)
+library(glue)
+
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
 HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
@@ -9,16 +16,17 @@ ADMIN_USERS <- "
   ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL)
 "
 
+drop_table <- function(tbl) {
+	message(glue::glue("Dropping {tbl}"))
+	DBI::dbExecute(DB_CON, glue::glue("DROP TABLE IF EXISTS {tbl} CASCADE;"))
+}
+
 # create users and All HIC Data ---------------------
-DBI::dbExecute(DB_CON, glue::glue("
---------------------------------------------
---
---
--- LIST OF USERS
---
---
---------------------------------------------
-DROP TABLE IF EXISTS users CASCADE;
+############################
+# LIST OF USERS
+###########################
+drop_table("users");
+DBI::dbExecute(DB_CON, " 
 CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(100) PRIMARY KEY, -- email?
     firstname VARCHAR(255),
@@ -29,18 +37,124 @@ CREATE TABLE IF NOT EXISTS users (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
-INSERT INTO users (username, firstname, lastname, pw, created_by)
+DBI::dbExecute(DB_CON, glue::glue("
+INSERT INTO users (username, firstname, lastname, created_by)
 VALUES {ADMIN_USERS};
+"))
 
-----------------------
---
---
--- HUD-PROVIDED DATA
---
---
-----------------------
-DROP TABLE IF EXISTS all_hic_data CASCADE;
+
+#######################
+# REFERENCES (LOOKUPS/DROPDOWNS)
+######################
+drop_table("lookups")
+DBI::dbExecute(DB_CON, "
+-- Create a single, consolidated table for all reference/lookup values
+CREATE TABLE IF NOT EXISTS lookups (
+    reference_id SERIAL PRIMARY KEY,
+    -- Discriminator column to identify the type of reference (e.g., 'project_type', 'coc_status')
+    reference_type VARCHAR(100) NOT NULL,
+    -- The main display value for the reference item (e.g., 'Rapid Re-Housing', 'In Progress')
+    value VARCHAR(255) NOT NULL,
+    -- Optional short code or abbreviation (e.g., 'RRH', 'PSH', 'DV')
+    value_abbrev VARCHAR(100) NULL,
+    -- Optional longer description or secondary value (e.g., the plural 'Individuals')
+    value_long VARCHAR(255) NULL,
+    -- A flag to indicate if this option requires an 'Other (please specify)' text field in the UI
+    other_specify_flag BOOLEAN DEFAULT FALSE,
+    -- Standard audit columns
+	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username),
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username)
+);
+")
+
+# -- Insert all data into the new consolidated table
+DBI::dbExecute(DB_CON, "
+INSERT INTO lookups (reference_type, value, created_by)
+VALUES
+-- from request_statuses
+('request_status', 'Sent', 'orr_service@abtglobal.com'),
+('request_status', 'Approved', 'orr_service@abtglobal.com'),
+('request_status', 'Rejected', 'orr_service@abtglobal.com'),
+
+-- from coc_version_roles
+('coc_version_role', 'Owner', 'orr_service@abtglobal.com'),
+('coc_version_role', 'Editor', 'orr_service@abtglobal.com'),
+
+-- from coc_statuses
+('coc_status', 'Not Started', 'orr_service@abtglobal.com'),
+('coc_status', 'In Progress', 'orr_service@abtglobal.com'),
+('coc_status', 'Completed', 'orr_service@abtglobal.com'),
+
+-- from funding_actions
+('funding_action', 'New', 'orr_service@abtglobal.com'),
+('funding_action', 'Renew', 'orr_service@abtglobal.com'),
+('funding_action', 'Expand', 'orr_service@abtglobal.com'),
+('funding_action', 'Reallocate', 'orr_service@abtglobal.com'),
+('funding_action', 'Ignore', 'orr_service@abtglobal.com'),
+('funding_action', 'Replace', 'orr_service@abtglobal.com'),
+
+-- from bonus_types
+('bonus_type', 'CoC Bonus', 'orr_service@abtglobal.com'),
+('bonus_type', 'DV Bonus', 'orr_service@abtglobal.com'),
+
+-- from priorities
+('priority', 'High', 'orr_service@abtglobal.com'),
+('priority', 'Medium', 'orr_service@abtglobal.com'),
+('priority', 'Low', 'orr_service@abtglobal.com'),
+('priority', 'Unspecified', 'orr_service@abtglobal.com');
+")
+
+DBI::dbExecute(DB_CON, "
+INSERT INTO lookups (reference_type, value, other_specify_flag, created_by)
+VALUES
+-- from request_rejection_reasons
+('request_rejection_reason', 'Not Associated with CoC', FALSE, 'orr_service@abtglobal.com'),
+('request_rejection_reason', 'Other', TRUE, 'orr_service@abtglobal.com');
+")
+
+DBI::dbExecute(DB_CON, "
+INSERT INTO lookups (reference_type, value, value_long, created_by)
+VALUES
+-- from project_types
+('project_type', 'RRH', 'Rapid Re-Housing', 'orr_service@abtglobal.com'),
+('project_type', 'PSH', 'Permanent Supportive Housing', 'orr_service@abtglobal.com'),
+('project_type', 'TH', 'Transitional Housing', 'orr_service@abtglobal.com'),
+('project_type', 'TH+RRH', 'Transitional Housing + Rapid Re-Housing', 'orr_service@abtglobal.com'),
+('project_type', 'HMIS Project', 'HMIS Project', 'orr_service@abtglobal.com'),
+('project_type', 'SSO-CE', 'Supportive Services Only - Coordinated Entry', 'orr_service@abtglobal.com'),
+('project_type', 'SSO', 'Supportive Services Only', 'orr_service@abtglobal.com'),
+('project_type', 'DEM', 'Demonstration Project', 'orr_service@abtglobal.com'),
+('project_type', 'OPH', 'Other Permanent Housing', 'orr_service@abtglobal.com'),
+('project_type', 'SH', 'Safe Haven', 'orr_service@abtglobal.com'),
+('project_type', 'ES', 'Emergency Shelter', 'orr_service@abtglobal.com'),
+
+-- from target_populations
+('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
+('target_population', 'HIC', 'Housing Inventory Count', 'orr_service@abtglobal.com'),
+('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
+('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
+('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
+('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
+")
+
+DBI::dbExecute(DB_CON, "
+INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by)
+VALUES
+-- from population_groups
+('population_group', 'Ind', 'Individual', 'Individuals', 'orr_service@abtglobal.com'),
+('population_group', 'Fam', 'Family', 'Families', 'orr_service@abtglobal.com');
+")
+
+#####################
+# HUD PROVIDED DATA
+###################
+drop_table("all_hic_data")
+DBI::dbExecute(DB_CON, "
 CREATE TABLE IF NOT EXISTS all_hic_data (
 	row_num INTEGER, -- unique within a CoC
 	hudnum VARCHAR(6), -- CoC Code
@@ -86,11 +200,106 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
 	-- A row num must be unique within a coc
     CONSTRAINT uq_row_num_hudnum UNIQUE (row_num, hudnum)
   );               
-"))
-
+")
 
 # import HIC data ----------------
-DBI::dbAppendTable(DB_CON, "all_hic_data", fread(HIC_DATA_FILEPATH))
+hic_data <- fread(HIC_DATA_FILEPATH)
+
+# Rename columns to match SQL table
+setnames(hic_data, old = c(
+  "Row #",
+  "HudNum",
+  "CoC",
+  "Organization Name",
+  "Project Name",
+  "Project Type",
+  "Geocode",
+  "Target Population",
+  "mcKinneyVentoEsgEs",
+  "mcKinneyVentoEsgRrh",
+  "mcKinneyVentoEsgCov",
+  "mcKinneyVentoEsgRUSH",
+  "mcKinneyVentoCocSh",
+  "mcKinneyVentoCocTh",
+  "mcKinneyVentoCocPsh",
+  "mcKinneyVentoCocRrh",
+  "mcKinneyVentoCocSro",
+  "mcKinneyVentoCocThRrh",
+  "mcKinneyVentoSpC",
+  "mcKinneyVentoS8",
+  "mcKinneyVentoShp",
+  "mcKinneyVentoYhdp",
+  "mcKinneyVentoYhdpRenewals",
+  "Beds HH w/ Children",
+  "Veteran Beds HH w/ Children",
+  "Youth Beds HH w/ Children",
+  "CH Beds HH w/ Children",
+  "Beds HH w/o Children",
+  "Veteran Beds HH w/o Children",
+  "Youth Beds HH w/o Children",
+  "CH Beds HH w/o Children",
+  "Beds HH w/ only Children",
+  "CH Beds HH w only Children"
+), new = c(
+  "row_num",
+  "hudnum",
+  "coc_name",
+  "organization_name",
+  "project_name",
+  "project_type",
+  "geocode",
+  "target_population",
+  "mckinneyventoesges",
+  "mckinneyventoesgrrh",
+  "mckinneyventoesgcov",
+  "mckinneyventoesgrrhcov",
+  "mckinneyventococsh",
+  "mckinneyventococth",
+  "mckinneyventococpsh",
+  "mckinneyventococrrh",
+  "mckinneyventococsro",
+  "mckinneyventococthrrh",
+  "mckinneyventospc",
+  "mckinneyventos8",
+  "mckinneyventoshp",
+  "mckinneyventoyhdp",
+  "mckinneyventoyhdprenewals",
+  "beds_hh_w_children",
+  "veteran_beds_hh_w_children",
+  "youth_beds_hh_w_children",
+  "ch_beds_hh_w_children",
+  "beds_hh_wo_children",
+  "veteran_beds_hh_wo_children",
+  "youth_beds_hh_wo_children",
+  "ch_beds_hh_wo_children",
+  "beds_hh_w_only_children",
+  "ch_beds_hh_w_only_children"
+))
+
+# Drop columns that aren't in your SQL table (if they exist)
+cols_to_drop <- c("mcKinneyVentoUnshelt", "mcKinneyVentoRural")
+hic_data[, (cols_to_drop) := NULL]
+
+# Add missing columns that are in SQL but not in CSV (with default values)
+hic_data[, mckinneyventoesg := FALSE]
+hic_data[, mckinneyventococ := FALSE]
+
+# Fetch lookup tables from database
+project_type_lookup <- DBI::dbGetQuery(DB_CON, 
+  "SELECT reference_id, value FROM lookups WHERE reference_type = 'project_type'")
+
+target_population_lookup <- DBI::dbGetQuery(DB_CON, 
+  "SELECT reference_id, value FROM lookups WHERE reference_type = 'target_population'")
+
+# Create named vectors for mapping
+project_type_map <- setNames(project_type_lookup$reference_id, project_type_lookup$value)
+target_population_map <- setNames(target_population_lookup$reference_id, target_population_lookup$value)
+
+# Convert character codes to reference IDs
+hic_data[, project_type := project_type_map[project_type]]
+hic_data[, target_population := target_population_map[target_population]]
+
+DBI::dbAppendTable(DB_CON, "all_hic_data", hic_data)
 
 # populate HIC, States, CoCs, and GIWs tables ---------------------
 DBI::dbExecute(DB_CON, "
@@ -100,12 +309,15 @@ ADD COLUMN date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
 ADD COLUMN date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username);
+")
 
+DBI::dbExecute(DB_CON, "
 UPDATE all_hic_data
 SET created_by = 'orr_service@abtglobal.com', date_created = CURRENT_TIMESTAMP;
+")
 
-
-DROP TABLE IF EXISTS states CASCADE;
+drop_table("states")
+DBI::dbExecute(DB_CON, "
 CREATE TABLE IF NOT EXISTS states (
     state_code VARCHAR(2) PRIMARY KEY,
     state_name VARCHAR(100),
@@ -114,6 +326,9 @@ CREATE TABLE IF NOT EXISTS states (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
+
+DBI::dbExecute(DB_CON, "
 INSERT INTO states (state_code, state_name, created_by)
 SELECT DISTINCT 
     LEFT(hudnum, 2) as state_code,
@@ -178,9 +393,10 @@ SELECT DISTINCT
     END as state_name,
     'orr_service@abtglobal.com' -- Replace with appropriate username
 FROM all_hic_data;
+")
 
-
-DROP TABLE IF EXISTS cocs CASCADE;
+drop_table("cocs")
+DBI::dbExecute(DB_CON, "
 CREATE TABLE IF NOT EXISTS cocs (
     coc_code VARCHAR(6) PRIMARY KEY,
     coc_name TEXT,
@@ -190,6 +406,9 @@ CREATE TABLE IF NOT EXISTS cocs (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
+
+DBI::dbExecute(DB_CON, "
 INSERT INTO cocs (coc_code, coc_name, state, created_by)
 SELECT DISTINCT 
     hudnum as coc_code,
@@ -197,9 +416,10 @@ SELECT DISTINCT
     LEFT(hudnum, 2) as state,
     'orr_service@abtglobal.com'
 FROM all_hic_data a1;
+")
 
-
-DROP TABLE IF EXISTS giw CASCADE;
+drop_table("giw")
+DBI::dbExecute(DB_CON, "
 CREATE TABLE IF NOT EXISTS giw (
     grant_number VARCHAR(15) PRIMARY KEY,
     coc VARCHAR(6) REFERENCES cocs(coc_code),
@@ -217,7 +437,40 @@ CREATE TABLE IF NOT EXISTS giw (
 ")
 
 # import GIW ---------------------
-DBI::dbAppendTable(DB_CON, "giw", fread(GIW_DATA_FILEPATH))
+# Read the data
+giw_data <- fread(GIW_DATA_FILEPATH, encoding = "Latin-1")
+
+# Rename columns to match SQL table
+setnames(giw_data, old = c(
+  "Grant Number",
+  "CoC",
+  "Applicant Name",
+  "Project Name",
+  "Expiration Year",
+  "Project Component",
+  "Restriction (DV or YHDP)",
+  "DV ARD (Estimated)",
+  "YHDP ARD (Estimated)",
+  "CoCs ARD (Estimated)",
+  "Total Units",
+  "Total ARA"
+), new = c(
+  "grant_number",
+  "coc",
+  "applicant_name",
+  "project_name",
+  "expiration_year",
+  "project_component",
+  "restriction_dv_or_ydhp",
+  "dv_ard_estimated",
+  "yhdp_ard_estimated",
+  "cocs_ard_estimated",
+  "total_units",
+  "total_ara"
+))
+
+# Append to database
+DBI::dbAppendTable(DB_CON, "giw", giw_data)
 
 
 # Update GIW ---------------------
@@ -228,14 +481,16 @@ ADD COLUMN date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
 ADD COLUMN date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username);
+")
 
+DBI::dbExecute(DB_CON, "
 UPDATE giw
 SET created_by = 'orr_service@abtglobal.com', date_created = CURRENT_TIMESTAMP;
 ")
 
 # Create HUD Report ---------------------
+drop_table("hud_ard_report")
 DBI::dbExecute(DB_CON, "
-DROP TABLE IF EXISTS hud_ard_report;
 CREATE TABLE IF NOT EXISTS hud_ard_report (
 	coc VARCHAR(6) REFERENCES cocs(coc_code),
     coc_number_and_name TEXT,
@@ -249,134 +504,56 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 ")
 
 # Import HUD ARD Report ---------------------
-DBI::dbAppendTable(DB_CON, "hud_ard_report", fread(HUD_ARD_DATA_FILEPATH))
+# Read the data
+hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH, encoding="Latin-1")
+
+# Rename columns to match SQL table
+setnames(hud_ard_data, old = c(
+  "CoCName",
+  "CoC Number and Name",
+  "PPRN",
+  "Estimated ARD",
+  "Tier 1",
+  "CoC Bonus",
+  "DV Bonus",
+  "CoC Planning"
+), new = c(
+  "coc",
+  "coc_number_and_name",
+  "pprn",
+  "estimated",
+  "tier_1",
+  "coc_bonus",
+  "dv_bonus",
+  "coc_planning"
+))
+
+# Append to database
+DBI::dbAppendTable(DB_CON, "hud_ard_report", hud_ard_data)
 
 # Create rest of table ---------------------
-DBI::dbExecute("
+DBI::dbExecute(DB_CON, "
 -- use LATIN-1
 ALTER TABLE hud_ard_report
 ADD COLUMN date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
 ADD COLUMN date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username);
+")
 
+DBI::dbExecute(DB_CON, "
 UPDATE hud_ard_report
 SET created_by = 'orr_service@abtglobal.com', date_created = CURRENT_TIMESTAMP;
+")
 
+#######################
+# USER-COC MANAGEMENT
+######################
+drop_table("coc_versions")
+drop_table("coc_version_requests")
+drop_table("coc_version_users")
 
-----------------------
---
---
--- REFERENCES (LOOKUPS/DROPDOWNS)
---
---
-----------------------
-DROP TABLE IF EXISTS lookups CASCADE;
-
--- Create a single, consolidated table for all reference/lookup values
-CREATE TABLE IF NOT EXISTS lookups (
-    reference_id SERIAL PRIMARY KEY,
-    -- Discriminator column to identify the type of reference (e.g., 'project_type', 'coc_status')
-    reference_type VARCHAR(100) NOT NULL,
-    -- The main display value for the reference item (e.g., 'Rapid Re-Housing', 'In Progress')
-    value VARCHAR(255) NOT NULL,
-    -- Optional short code or abbreviation (e.g., 'RRH', 'PSH', 'DV')
-    value_abbrev VARCHAR(100) NULL,
-    -- Optional longer description or secondary value (e.g., the plural 'Individuals')
-    value_long VARCHAR(255) NULL,
-    -- A flag to indicate if this option requires an 'Other (please specify)' text field in the UI
-    other_specify_flag BOOLEAN DEFAULT FALSE,
-    -- Standard audit columns
-	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
-    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
-);
-
--- Insert all data into the new consolidated table
-INSERT INTO lookups (reference_type, value, created_by)
-VALUES
--- from request_statuses
-('request_status', 'Sent', 'orr_service@abtglobal.com'),
-('request_status', 'Approved', 'orr_service@abtglobal.com'),
-('request_status', 'Rejected', 'orr_service@abtglobal.com'),
-
--- from coc_version_roles
-('coc_version_role', 'Owner', 'orr_service@abtglobal.com'),
-('coc_version_role', 'Editor', 'orr_service@abtglobal.com'),
-
--- from coc_statuses
-('coc_status', 'Not Started', 'orr_service@abtglobal.com'),
-('coc_status', 'In Progress', 'orr_service@abtglobal.com'),
-('coc_status', 'Completed', 'orr_service@abtglobal.com'),
-
--- from funding_actions
-('funding_action', 'New', 'orr_service@abtglobal.com'),
-('funding_action', 'Renew', 'orr_service@abtglobal.com'),
-('funding_action', 'Expand', 'orr_service@abtglobal.com'),
-('funding_action', 'Reallocate', 'orr_service@abtglobal.com'),
-('funding_action', 'Ignore', 'orr_service@abtglobal.com'),
-('funding_action', 'Replace', 'orr_service@abtglobal.com'),
-
--- from bonus_types
-('bonus_type', 'CoC Bonus', 'orr_service@abtglobal.com'),
-('bonus_type', 'DV Bonus', 'orr_service@abtglobal.com'),
-
--- from priorities
-('priority', 'High', 'orr_service@abtglobal.com'),
-('priority', 'Medium', 'orr_service@abtglobal.com'),
-('priority', 'Low', 'orr_service@abtglobal.com'),
-('priority', 'Unspecified', 'orr_service@abtglobal.com');
-
-INSERT INTO lookups (reference_type, value, other_specify_flag, created_by)
-VALUES
--- from request_rejection_reasons
-('request_rejection_reason', 'Not Associated with CoC', FALSE, 'orr_service@abtglobal.com'),
-('request_rejection_reason', 'Other', TRUE, 'orr_service@abtglobal.com');
-
-
-INSERT INTO lookups (reference_type, value, value_long, created_by)
-VALUES
--- from project_types
-('project_type', 'RRH', 'Rapid Re-Housing', 'orr_service@abtglobal.com'),
-('project_type', 'PSH', 'Permanent Supportive Housing', 'orr_service@abtglobal.com'),
-('project_type', 'TH', 'Transitional Housing', 'orr_service@abtglobal.com'),
-('project_type', 'TH+RRH', 'Transitional Housing + Rapid Re-Housing', 'orr_service@abtglobal.com'),
-('project_type', 'HMIS Project', 'HMIS Project', 'orr_service@abtglobal.com'),
-('project_type', 'SSO-CE', 'Supportive Services Only - Coordinated Entry', 'orr_service@abtglobal.com'),
-('project_type', 'SSO', 'Supportive Services Only', 'orr_service@abtglobal.com'),
-('project_type', 'DEM', 'Demonstration Project', 'orr_service@abtglobal.com'),
-('project_type', 'OPH', 'Other Permanent Housing', 'orr_service@abtglobal.com'),
-('project_type', 'SH', 'Safe Haven', 'orr_service@abtglobal.com'),
-('project_type', 'ES', 'Emergency Shelter', 'orr_service@abtglobal.com'),
-
--- from target_populations
-('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
-('target_population', 'HIC', 'Housing Inventory Count', 'orr_service@abtglobal.com'),
-('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
-('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
-('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
-('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
-('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
-
-INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by)
-VALUES
--- from population_groups
-('population_group', 'Ind', 'Individual', 'Individuals', 'orr_service@abtglobal.com'),
-('population_group', 'Fam', 'Family', 'Families', 'orr_service@abtglobal.com');
-
-
-----------------------
---
---
--- USER-COC MANAGEMENT
---
---
-----------------------
-DROP TABLE IF EXISTS coc_versions CASCADE;
-DROP TABLE IF EXISTS coc_version_requests CASCADE;
-DROP TABLE IF EXISTS coc_version_users CASCADE;
-
+DBI::dbExecute(DB_CON, "
 --- CoC versions (CoCs can have versions, as new users may decide to create their own)
 --- Also a single user could create multiple versions of the same CoC, to modify everything from inventory all the way to ranking
 CREATE TABLE IF NOT EXISTS coc_versions (
@@ -389,7 +566,9 @@ CREATE TABLE IF NOT EXISTS coc_versions (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
+DBI::dbExecute(DB_CON, "
 --- CoC version Requests (one row per request per CoC version)
 -- users who wish to access a particular existing version makes a 
 -- request in the system that the version Admin can approve/reject
@@ -403,7 +582,9 @@ CREATE TABLE IF NOT EXISTS coc_version_requests (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
+DBI::dbExecute(DB_CON, "
 -- CoC version Users
 --- This is a many-to-many relationship between users and CoC versions
 --- when a new user registers for a CoC that's already been created (i.e. for which an CoC version already exists)
@@ -423,24 +604,19 @@ CREATE TABLE IF NOT EXISTS coc_version_users (
     -- A user cannot be associated with the same CoC version more than once
     CONSTRAINT uq_coc_version_users UNIQUE (coc_version_id, username)
 );
+")
 
+########################
+#	TOOL-BASED DATA (HARDCODED)
+########################
+drop_table("factor_groups")
+drop_table("factor_subgroups")
+drop_table("thresholds")
+drop_table("rating_factors")
+drop_table("coc_nofo_opportunities")
 
--------------------------------------
---
---
---	TOOL-BASED DATA (HARDCODED)
---
---
--------------------------------------
-DROP TABLE IF EXISTS factor_groups CASCADE;
-DROP TABLE IF EXISTS factor_subgroups CASCADE;
-DROP TABLE IF EXISTS thresholds CASCADE;
-DROP TABLE IF EXISTS rating_factors CASCADE;
-DROP TABLE IF EXISTS coc_nofo_opportunities CASCADE;
-
--------------------------------------
---	RATING
--------------------------------------
+###### RATING #########
+DBI::dbExecute(DB_CON, "
 --- Factor Groups (heading in CUSTOMIZE RATING CRITERIA page, e.g. 'Performance Measures')
 CREATE TABLE IF NOT EXISTS factor_groups (
     factor_group_id SERIAL PRIMARY KEY,
@@ -451,7 +627,10 @@ CREATE TABLE IF NOT EXISTS factor_groups (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
+message("about to do CTEs for factor_groups")
+DBI::dbExecute(DB_CON, "
 -- Use CTEs to look up funding_action IDs
 WITH
     l_new AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'New'),
@@ -470,8 +649,9 @@ VALUES
 ('Project Effectiveness', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
 ('Equity Factors', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
 ('Other and Local Criteria', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com');
+")
 
-
+DBI::dbExecute(DB_CON, "
 --- Factor Sub Groups (subheading in CUSTOMIZE RATING CRITERIA page, e.g. 'Length of Stay')
 CREATE TABLE IF NOT EXISTS factor_subgroups (
     factor_subgroup_id SERIAL PRIMARY KEY,
@@ -483,7 +663,10 @@ CREATE TABLE IF NOT EXISTS factor_subgroups (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
+message("about to do CTEs for factor_subgroups")
+DBI::dbExecute(DB_CON, "
 -- Use CTEs to look up factor_group and funding_action IDs
 WITH
     l_new AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'New'),
@@ -505,8 +688,10 @@ VALUES
 ('Program Participant Outcomes', (SELECT factor_group_id FROM fg_equity_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
 ('Agency Leadership, Governance, and Policies', (SELECT factor_group_id FROM fg_equity_new), (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
 ('Program Participant Outcomes', (SELECT factor_group_id FROM fg_equity_new), (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com');
+")
 
-
+message("about to do thresholds")
+DBI::dbExecute(DB_CON, "
 -- Thresholds (Reference table)
 --- unique list of thresholds
 CREATE TABLE IF NOT EXISTS thresholds (
@@ -518,7 +703,10 @@ CREATE TABLE IF NOT EXISTS thresholds (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
+message("about to do populate thresholds")
+DBI::dbExecute(DB_CON, "
 INSERT INTO thresholds (type, threshold_text, created_by)
 VALUES ('CoC', 'Coordinated Entry Participation', 'orr_service@abtglobal.com'),
 ('CoC', 'Housing First and/or Low Barrier Implementation', 'orr_service@abtglobal.com'),
@@ -628,8 +816,10 @@ Applicants with unresolved civil rights matters as of the submission deadline:
 • Will be deemed ineligible
 • Will not be reviewed, rated, ranked, or funded$$,
  'orr_service@abtglobal.com');
+")
 
-
+message("about to create rating_Factors")
+DBI::dbExecute(DB_CON, "
 CREATE TABLE IF NOT EXISTS rating_factors (
     rating_factor_id SERIAL PRIMARY KEY,
     rating_factor_text TEXT,
@@ -647,7 +837,10 @@ CREATE TABLE IF NOT EXISTS rating_factors (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
+message("about to populate rating_Factors")
+DBI::dbExecute(DB_CON, "
 -- Use CTEs for all lookup IDs and factor group/subgroup IDs
 WITH
     l_new AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'New'),
@@ -911,13 +1104,12 @@ VALUES
 ('New project describes their plan for reviewing program participant outcomes with an equity lens, including the disaggregation of data by race, ethnicity, gender identity, and/or age. If already implementing a plan, describe findings from outcomes review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com'),
 ('New project describes plan to review whether programmatic changes are needed to make program participant outcomes more equitable and developed a plan to make those changes. If already implementing plan, describe findings from review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com'),
 ('New project describes plan to work with HMIS lead to develop a schedule for reviewing HMIS data with disaggregation by race, ethnicity, gender identity, and/or age. If already implementing plan, describe findings from review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com');
+")
 
-
--------------------------------------
---	FUNDING PRIORITIES
--------------------------------------
+###### FUNDING PRIORITIES #########
+drop_table("coc_nofo_opportunities")
+DBI::dbExecute(DB_CON, "
 --- This is the set of checkboxes in the middle of the Funding Priorities tab
-DROP TABLE IF EXISTS coc_nofo_opportunities CASCADE;
 CREATE TABLE IF NOT EXISTS coc_nofo_opportunities (
     coc_nofo_opportunity_id SERIAL PRIMARY KEY,
     bonus_type SMALLINT REFERENCES lookups(reference_id),
@@ -930,7 +1122,11 @@ CREATE TABLE IF NOT EXISTS coc_nofo_opportunities (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
+message("now doing CTEs")
+
+DBI::dbExecute(DB_CON, "
 -- Use CTEs for all lookup IDs
 WITH
     l_new AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'New'),
@@ -960,28 +1156,23 @@ VALUES
 ((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'), -- New TH+RRH for individuals
 ((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'), -- New TH+RRH for families
 ((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_sso_ce), NULL, NULL, 'orr_service@abtglobal.com'); -- New SSO coordinated entry
+")
 
+#####################
+# USER-ENTERED DATA
+#####################
+#-- Start from the most dependent tables
+drop_table("projects")
+drop_table("coc_funding_priorities")
+drop_table("selected_coc_nofo_opportunities")
+drop_table("selected_rating_factors")
+drop_table("selected_thresholds")
+drop_table("ranking")
+drop_table("rating_scores")
+drop_table("threshold_entries")
 
---------------------------------------------------------------
---
---
---	USER-ENTERED DATa
---
---
----------------------------------------------------------------
--- Start from the most dependent tables
-DROP TABLE IF EXISTS projects CASCADE;
-DROP TABLE IF EXISTS coc_funding_priorities CASCADE;
-DROP TABLE IF EXISTS selected_coc_nofo_opportunities CASCADE;
-DROP TABLE IF EXISTS selected_rating_factors CASCADE;
-DROP TABLE IF EXISTS selected_thresholds CASCADE;
-DROP TABLE IF EXISTS ranking CASCADE;
-DROP TABLE IF EXISTS rating_scores CASCADE;
-DROP TABLE IF EXISTS threshold_entries CASCADE;
-
-----------------------
--- INVENTORY
-----------------------
+###### INVENTORY #########
+DBI::dbExecute(DB_CON, "
 --- Projects (User can import HIC data or select their CoC from the HIC Data we have at that time)
 -- Ideally, there would be one source of truth in the HIC data, but the timing and SecOps doesn't allow that
 CREATE TABLE IF NOT EXISTS projects (
@@ -1024,15 +1215,15 @@ CREATE TABLE IF NOT EXISTS projects (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
-----------------------
--- FUNDING PRIORITIES
-----------------------
+##### FUNDING PRIORITIES ########
+drop_table("coc_funding_priorities")
+DBI::dbExecute(DB_CON, "
 --- Funding Priorities by Project Type and Population
 ---- This is the table of population and project types at the bottom of the Funding Priorities tab
 --- when a new CoC version is created, the system should generate a set of these
 --- each row corresponds to a ProjectType + TargetPopulation combo. It may not have any priorities
-DROP TABLE IF EXISTS coc_funding_priorities CASCADE;
 CREATE TABLE IF NOT EXISTS coc_funding_priorities (
     coc_funding_priority_id SERIAL PRIMARY KEY,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
@@ -1049,8 +1240,9 @@ CREATE TABLE IF NOT EXISTS coc_funding_priorities (
 
 CONSTRAINT coc_funding_priorities_unique_key UNIQUE (coc_version_id, project_type, target_population, population_group)
 );
+")
 
-
+DBI::dbExecute(DB_CON, "
 --- User-Selected NOFO Opportunities
 CREATE TABLE IF NOT EXISTS selected_coc_nofo_opportunities (
     selected_coc_nofo_opportunity_id SERIAL PRIMARY KEY,
@@ -1061,11 +1253,10 @@ CREATE TABLE IF NOT EXISTS selected_coc_nofo_opportunities (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
-
-----------------------
--- CUSTOMIZED RATING CRITERIA
-----------------------
+#### CUSTOMIZED RATING CRITERIA ####
+DBI::dbExecute(DB_CON, "
 --- User-Selected Rating Factors
 CREATE TABLE IF NOT EXISTS selected_rating_factors (
     selected_rating_factor_id SERIAL PRIMARY KEY,
@@ -1081,7 +1272,9 @@ CREATE TABLE IF NOT EXISTS selected_rating_factors (
 	-- a CoC Profile cannot have more than one of a given selected rating factor
 	CONSTRAINT uq_selected_rating_factors_profile UNIQUE (coc_version_id, rating_factor_id)
 );
+")
 
+DBI::dbExecute(DB_CON, "
 --- User-Selected Threshold Factors
 CREATE TABLE IF NOT EXISTS selected_thresholds (
     selected_threshold_id SERIAL PRIMARY KEY,
@@ -1095,11 +1288,10 @@ CREATE TABLE IF NOT EXISTS selected_thresholds (
 	-- a CoC Profile cannot have more than one of a given selected rating factor
     CONSTRAINT uq_selected_thresholds_profile UNIQUE (coc_version_id, threshold_id)
 );
-	
+")
 
-----------------------
--- RATING
-----------------------
+#### RATING ####
+DBI::dbExecute(DB_CON, "
 --- Rating_Scores
 CREATE TABLE IF NOT EXISTS rating_scores (
     rating_score_id SERIAL PRIMARY KEY,
@@ -1112,7 +1304,9 @@ CREATE TABLE IF NOT EXISTS rating_scores (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
+DBI::dbExecute(DB_CON, "
 --- Threshold_Entries
 CREATE TABLE IF NOT EXISTS threshold_entries (
     threshold_entry_id SERIAL PRIMARY KEY,
@@ -1124,10 +1318,10 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+")
 
-----------------------
--- RANKING
-----------------------
+#### RANKING ####
+DBI::dbExecute(DB_CON, "
 --- Ranking 
 CREATE TABLE IF NOT EXISTS ranking (
     rank_id SERIAL PRIMARY KEY,
@@ -1140,60 +1334,56 @@ CREATE TABLE IF NOT EXISTS ranking (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-
-
------------------------------------
----
---
--- CREATE INDEXES
---
---
------------------------------------
--- Add an index on the reference_type for efficient lookups (e.g., getting all project types)
-CREATE INDEX IF NOT EXISTS idx_cocs_state ON cocs(state);
-CREATE INDEX IF NOT EXISTS idx_giw_coc ON giw(coc);
-CREATE INDEX IF NOT EXISTS idx_hud_ard_report_coc ON hud_ard_report(coc);
-CREATE INDEX IF NOT EXISTS idx_all_hic_data_hudnum ON all_hic_data(hudnum);
-CREATE INDEX IF NOT EXISTS idx_all_hic_data_project_type ON all_hic_data(project_type);
-CREATE INDEX IF NOT EXISTS idx_coc_versions_coc ON coc_versions(coc);
-CREATE INDEX IF NOT EXISTS idx_coc_versions_coc_status ON coc_versions(coc_status);
-CREATE INDEX IF NOT EXISTS idx_coc_versions_created_by ON coc_versions(created_by);
-CREATE INDEX IF NOT EXISTS idx_coc_version_requests_version_id ON coc_version_requests(coc_version_id);
-CREATE INDEX IF NOT EXISTS idx_coc_version_requests_user ON coc_version_requests(requesting_user);
-CREATE INDEX IF NOT EXISTS idx_coc_version_requests_status ON coc_version_requests(request_status);
-CREATE INDEX IF NOT EXISTS idx_coc_version_users_username ON coc_version_users(username);
-CREATE INDEX IF NOT EXISTS idx_coc_version_users_role ON coc_version_users(coc_version_role);
-
--- Definition / 'Hardcoded' Tables
-CREATE INDEX IF NOT EXISTS idx_factor_groups_funding_action ON factor_groups(funding_action);
-CREATE INDEX IF NOT EXISTS idx_factor_subgroups_factor_group ON factor_subgroups(factor_group);
-CREATE INDEX IF NOT EXISTS idx_factor_subgroups_funding_action ON factor_subgroups(funding_action);
-CREATE INDEX IF NOT EXISTS idx_rating_factors_funding_action ON rating_factors(funding_action);
-CREATE INDEX IF NOT EXISTS idx_rating_factors_project_type ON rating_factors(project_type);
-CREATE INDEX IF NOT EXISTS idx_rating_factors_target_population ON rating_factors(target_population);
-CREATE INDEX IF NOT EXISTS idx_rating_factors_factor_group ON rating_factors(factor_group);
-CREATE INDEX IF NOT EXISTS idx_rating_factors_factor_subgroup ON rating_factors(factor_subgroup);
-CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_bonus_type ON coc_nofo_opportunities(bonus_type);
-CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_funding_action ON coc_nofo_opportunities(funding_action);
-CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_project_type ON coc_nofo_opportunities(project_type);
-
--- User-Entered Data Tables
-CREATE INDEX IF NOT EXISTS idx_projects_coc_version_id ON projects(coc_version_id);
-CREATE INDEX IF NOT EXISTS idx_projects_project_type ON projects(project_type);
-CREATE INDEX IF NOT EXISTS idx_projects_target_population ON projects(target_population);
-CREATE INDEX IF NOT EXISTS idx_projects_funding_action ON projects(funding_action);
-CREATE INDEX IF NOT EXISTS idx_coc_funding_priorities_coc_version_id ON coc_funding_priorities(coc_version_id);
-CREATE INDEX IF NOT EXISTS idx_coc_funding_priorities_project_type ON coc_funding_priorities(project_type);
-CREATE INDEX IF NOT EXISTS idx_selected_coc_nofo_opportunities_coc_version_id ON selected_coc_nofo_opportunities(coc_version_id);
-CREATE INDEX IF NOT EXISTS idx_rating_scores_project_id ON rating_scores(project_id);
-CREATE INDEX IF NOT EXISTS idx_rating_scores_selected_rating_factor_id ON rating_scores(selected_rating_factor_id);
-CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_id ON threshold_entries(project_id);
-CREATE INDEX IF NOT EXISTS idx_threshold_entries_selected_threshold_id ON threshold_entries(selected_threshold_id);
-CREATE INDEX IF NOT EXISTS idx_ranking_project_id ON ranking(project_id);
-CREATE INDEX IF NOT EXISTS idx_ranking_coc_version_id ON ranking(coc_version_id);
-
--- Composite Indexes for High-Frequency Lookups
-CREATE INDEX IF NOT EXISTS idx_rating_scores_project_factor ON rating_scores(project_id, selected_rating_factor_id);
-CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_threshold ON threshold_entries(project_id, selected_threshold_id);
-CREATE INDEX IF NOT EXISTS idx_references_type ON lookups (reference_type);               
 ")
+
+#################
+# CREATE INDEXES
+###############
+# -- Add an index on the reference_type for efficient lookups (e.g., getting all project types)
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_cocs_state ON cocs(state);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_giw_coc ON giw(coc);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_hud_ard_report_coc ON hud_ard_report(coc);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_all_hic_data_hudnum ON all_hic_data(hudnum);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_all_hic_data_project_type ON all_hic_data(project_type);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_coc ON coc_versions(coc);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_coc_status ON coc_versions(coc_status);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_created_by ON coc_versions(created_by);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_version_id ON coc_version_requests(coc_version_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_status ON coc_version_requests(request_status);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_users_username ON coc_version_users(username);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_users_role ON coc_version_users(coc_version_role);")
+
+# -- Definition / 'Hardcoded' Tables
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_factor_groups_funding_action ON factor_groups(funding_action);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_factor_subgroups_factor_group ON factor_subgroups(factor_group);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_factor_subgroups_funding_action ON factor_subgroups(funding_action);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_funding_action ON rating_factors(funding_action);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_project_type ON rating_factors(project_type);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_target_population ON rating_factors(target_population);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_factor_group ON rating_factors(factor_group);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_factor_subgroup ON rating_factors(factor_subgroup);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_bonus_type ON coc_nofo_opportunities(bonus_type);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_funding_action ON coc_nofo_opportunities(funding_action);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_project_type ON coc_nofo_opportunities(project_type);")
+
+# -- User-Entered Data Tables
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_projects_coc_version_id ON projects(coc_version_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_projects_project_type ON projects(project_type);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_projects_target_population ON projects(target_population);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_projects_funding_action ON projects(funding_action);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_funding_priorities_coc_version_id ON coc_funding_priorities(coc_version_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_funding_priorities_project_type ON coc_funding_priorities(project_type);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_selected_coc_nofo_opportunities_coc_version_id ON selected_coc_nofo_opportunities(coc_version_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_id ON rating_scores(project_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_selected_rating_factor_id ON rating_scores(selected_rating_factor_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_id ON threshold_entries(project_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_selected_threshold_id ON threshold_entries(selected_threshold_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_ranking_project_id ON ranking(project_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_ranking_coc_version_id ON ranking(coc_version_id);")
+
+#-- Composite Indexes for High-Frequency Lookups
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_factor ON rating_scores(project_id, selected_rating_factor_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_threshold ON threshold_entries(project_id, selected_threshold_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_references_type ON lookups (reference_type);")
+
+message("Done populating the db!")
