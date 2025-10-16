@@ -3,6 +3,7 @@ library(here)
 library(DBI)
 source("R/utils/get_db_data.R")
 library(data.table)
+library(glue)
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
@@ -16,6 +17,7 @@ ADMIN_USERS <- "
 "
 
 drop_table <- function(tbl) {
+	message(glue::glue("Dropping {tbl}"))
 	DBI::dbExecute(DB_CON, glue::glue("DROP TABLE IF EXISTS {tbl} CASCADE;"))
 }
 
