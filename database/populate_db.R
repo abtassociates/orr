@@ -436,7 +436,7 @@ CREATE TABLE IF NOT EXISTS giw (
 
 # import GIW ---------------------
 # Read the data
-giw_data <- fread(GIW_DATA_FILEPATH)
+giw_data <- fread(GIW_DATA_FILEPATH, encoding = "Windows-1252)
 
 # Rename columns to match SQL table
 setnames(giw_data, old = c(
