@@ -18,7 +18,7 @@ drop_table <- function(tbl) {
 # LIST OF USERS
 ###########################
 drop_table("users");
-DBI::dbExecute(DB_CON", 
+DBI::dbExecute(DB_CON, " 
 CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(100) PRIMARY KEY, -- email?
     firstname VARCHAR(255),
