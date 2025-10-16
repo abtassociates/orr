@@ -503,7 +503,7 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 
 # Import HUD ARD Report ---------------------
 # Read the data
-hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH)
+hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH, encoding="Latin-1")
 
 # Rename columns to match SQL table
 setnames(hud_ard_data, old = c(
