@@ -1,3 +1,8 @@
+IN_DEV_MODE <- FALSE
+library(here)
+library(DBI)
+source("R/utils/get_db_data.R")
+
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
 HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
