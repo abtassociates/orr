@@ -42,6 +42,112 @@ INSERT INTO users (username, firstname, lastname, created_by)
 VALUES {ADMIN_USERS};
 "))
 
+
+#######################
+# REFERENCES (LOOKUPS/DROPDOWNS)
+######################
+drop_table("lookups")
+DBI::dbExecute(DB_CON, "
+-- Create a single, consolidated table for all reference/lookup values
+CREATE TABLE IF NOT EXISTS lookups (
+    reference_id SERIAL PRIMARY KEY,
+    -- Discriminator column to identify the type of reference (e.g., 'project_type', 'coc_status')
+    reference_type VARCHAR(100) NOT NULL,
+    -- The main display value for the reference item (e.g., 'Rapid Re-Housing', 'In Progress')
+    value VARCHAR(255) NOT NULL,
+    -- Optional short code or abbreviation (e.g., 'RRH', 'PSH', 'DV')
+    value_abbrev VARCHAR(100) NULL,
+    -- Optional longer description or secondary value (e.g., the plural 'Individuals')
+    value_long VARCHAR(255) NULL,
+    -- A flag to indicate if this option requires an 'Other (please specify)' text field in the UI
+    other_specify_flag BOOLEAN DEFAULT FALSE,
+    -- Standard audit columns
+	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username),
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username)
+);
+")
+
+# -- Insert all data into the new consolidated table
+DBI::dbExecute(DB_CON, "
+INSERT INTO lookups (reference_type, value, created_by)
+VALUES
+-- from request_statuses
+('request_status', 'Sent', 'orr_service@abtglobal.com'),
+('request_status', 'Approved', 'orr_service@abtglobal.com'),
+('request_status', 'Rejected', 'orr_service@abtglobal.com'),
+
+-- from coc_version_roles
+('coc_version_role', 'Owner', 'orr_service@abtglobal.com'),
+('coc_version_role', 'Editor', 'orr_service@abtglobal.com'),
+
+-- from coc_statuses
+('coc_status', 'Not Started', 'orr_service@abtglobal.com'),
+('coc_status', 'In Progress', 'orr_service@abtglobal.com'),
+('coc_status', 'Completed', 'orr_service@abtglobal.com'),
+
+-- from funding_actions
+('funding_action', 'New', 'orr_service@abtglobal.com'),
+('funding_action', 'Renew', 'orr_service@abtglobal.com'),
+('funding_action', 'Expand', 'orr_service@abtglobal.com'),
+('funding_action', 'Reallocate', 'orr_service@abtglobal.com'),
+('funding_action', 'Ignore', 'orr_service@abtglobal.com'),
+('funding_action', 'Replace', 'orr_service@abtglobal.com'),
+
+-- from bonus_types
+('bonus_type', 'CoC Bonus', 'orr_service@abtglobal.com'),
+('bonus_type', 'DV Bonus', 'orr_service@abtglobal.com'),
+
+-- from priorities
+('priority', 'High', 'orr_service@abtglobal.com'),
+('priority', 'Medium', 'orr_service@abtglobal.com'),
+('priority', 'Low', 'orr_service@abtglobal.com'),
+('priority', 'Unspecified', 'orr_service@abtglobal.com');
+")
+
+DBI::dbExecute(DB_CON, "
+INSERT INTO lookups (reference_type, value, other_specify_flag, created_by)
+VALUES
+-- from request_rejection_reasons
+('request_rejection_reason', 'Not Associated with CoC', FALSE, 'orr_service@abtglobal.com'),
+('request_rejection_reason', 'Other', TRUE, 'orr_service@abtglobal.com');
+")
+
+DBI::dbExecute(DB_CON, "
+INSERT INTO lookups (reference_type, value, value_long, created_by)
+VALUES
+-- from project_types
+('project_type', 'RRH', 'Rapid Re-Housing', 'orr_service@abtglobal.com'),
+('project_type', 'PSH', 'Permanent Supportive Housing', 'orr_service@abtglobal.com'),
+('project_type', 'TH', 'Transitional Housing', 'orr_service@abtglobal.com'),
+('project_type', 'TH+RRH', 'Transitional Housing + Rapid Re-Housing', 'orr_service@abtglobal.com'),
+('project_type', 'HMIS Project', 'HMIS Project', 'orr_service@abtglobal.com'),
+('project_type', 'SSO-CE', 'Supportive Services Only - Coordinated Entry', 'orr_service@abtglobal.com'),
+('project_type', 'SSO', 'Supportive Services Only', 'orr_service@abtglobal.com'),
+('project_type', 'DEM', 'Demonstration Project', 'orr_service@abtglobal.com'),
+('project_type', 'OPH', 'Other Permanent Housing', 'orr_service@abtglobal.com'),
+('project_type', 'SH', 'Safe Haven', 'orr_service@abtglobal.com'),
+('project_type', 'ES', 'Emergency Shelter', 'orr_service@abtglobal.com'),
+
+-- from target_populations
+('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
+('target_population', 'HIC', 'Housing Inventory Count', 'orr_service@abtglobal.com'),
+('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
+('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
+('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
+('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
+")
+
+DBI::dbExecute(DB_CON, "
+INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by)
+VALUES
+-- from population_groups
+('population_group', 'Ind', 'Individual', 'Individuals', 'orr_service@abtglobal.com'),
+('population_group', 'Fam', 'Family', 'Families', 'orr_service@abtglobal.com');
+")
+
 #####################
 # HUD PROVIDED DATA
 ###################
@@ -363,111 +469,6 @@ ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username);
 DBI::dbExecute(DB_CON, "
 UPDATE hud_ard_report
 SET created_by = 'orr_service@abtglobal.com', date_created = CURRENT_TIMESTAMP;
-")
-
-#######################
-# REFERENCES (LOOKUPS/DROPDOWNS)
-######################
-drop_table("lookups")
-DBI::dbExecute(DB_CON, "
--- Create a single, consolidated table for all reference/lookup values
-CREATE TABLE IF NOT EXISTS lookups (
-    reference_id SERIAL PRIMARY KEY,
-    -- Discriminator column to identify the type of reference (e.g., 'project_type', 'coc_status')
-    reference_type VARCHAR(100) NOT NULL,
-    -- The main display value for the reference item (e.g., 'Rapid Re-Housing', 'In Progress')
-    value VARCHAR(255) NOT NULL,
-    -- Optional short code or abbreviation (e.g., 'RRH', 'PSH', 'DV')
-    value_abbrev VARCHAR(100) NULL,
-    -- Optional longer description or secondary value (e.g., the plural 'Individuals')
-    value_long VARCHAR(255) NULL,
-    -- A flag to indicate if this option requires an 'Other (please specify)' text field in the UI
-    other_specify_flag BOOLEAN DEFAULT FALSE,
-    -- Standard audit columns
-	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
-    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
-);
-")
-
-# -- Insert all data into the new consolidated table
-DBI::dbExecute(DB_CON, "
-INSERT INTO lookups (reference_type, value, created_by)
-VALUES
--- from request_statuses
-('request_status', 'Sent', 'orr_service@abtglobal.com'),
-('request_status', 'Approved', 'orr_service@abtglobal.com'),
-('request_status', 'Rejected', 'orr_service@abtglobal.com'),
-
--- from coc_version_roles
-('coc_version_role', 'Owner', 'orr_service@abtglobal.com'),
-('coc_version_role', 'Editor', 'orr_service@abtglobal.com'),
-
--- from coc_statuses
-('coc_status', 'Not Started', 'orr_service@abtglobal.com'),
-('coc_status', 'In Progress', 'orr_service@abtglobal.com'),
-('coc_status', 'Completed', 'orr_service@abtglobal.com'),
-
--- from funding_actions
-('funding_action', 'New', 'orr_service@abtglobal.com'),
-('funding_action', 'Renew', 'orr_service@abtglobal.com'),
-('funding_action', 'Expand', 'orr_service@abtglobal.com'),
-('funding_action', 'Reallocate', 'orr_service@abtglobal.com'),
-('funding_action', 'Ignore', 'orr_service@abtglobal.com'),
-('funding_action', 'Replace', 'orr_service@abtglobal.com'),
-
--- from bonus_types
-('bonus_type', 'CoC Bonus', 'orr_service@abtglobal.com'),
-('bonus_type', 'DV Bonus', 'orr_service@abtglobal.com'),
-
--- from priorities
-('priority', 'High', 'orr_service@abtglobal.com'),
-('priority', 'Medium', 'orr_service@abtglobal.com'),
-('priority', 'Low', 'orr_service@abtglobal.com'),
-('priority', 'Unspecified', 'orr_service@abtglobal.com');
-")
-
-DBI::dbExecute(DB_CON, "
-INSERT INTO lookups (reference_type, value, other_specify_flag, created_by)
-VALUES
--- from request_rejection_reasons
-('request_rejection_reason', 'Not Associated with CoC', FALSE, 'orr_service@abtglobal.com'),
-('request_rejection_reason', 'Other', TRUE, 'orr_service@abtglobal.com');
-")
-
-DBI::dbExecute(DB_CON, "
-INSERT INTO lookups (reference_type, value, value_long, created_by)
-VALUES
--- from project_types
-('project_type', 'RRH', 'Rapid Re-Housing', 'orr_service@abtglobal.com'),
-('project_type', 'PSH', 'Permanent Supportive Housing', 'orr_service@abtglobal.com'),
-('project_type', 'TH', 'Transitional Housing', 'orr_service@abtglobal.com'),
-('project_type', 'TH+RRH', 'Transitional Housing + Rapid Re-Housing', 'orr_service@abtglobal.com'),
-('project_type', 'HMIS Project', 'HMIS Project', 'orr_service@abtglobal.com'),
-('project_type', 'SSO-CE', 'Supportive Services Only - Coordinated Entry', 'orr_service@abtglobal.com'),
-('project_type', 'SSO', 'Supportive Services Only', 'orr_service@abtglobal.com'),
-('project_type', 'DEM', 'Demonstration Project', 'orr_service@abtglobal.com'),
-('project_type', 'OPH', 'Other Permanent Housing', 'orr_service@abtglobal.com'),
-('project_type', 'SH', 'Safe Haven', 'orr_service@abtglobal.com'),
-('project_type', 'ES', 'Emergency Shelter', 'orr_service@abtglobal.com'),
-
--- from target_populations
-('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
-('target_population', 'HIC', 'Housing Inventory Count', 'orr_service@abtglobal.com'),
-('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
-('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
-('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
-('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
-('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
-")
-
-DBI::dbExecute(DB_CON, "
-INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by)
-VALUES
--- from population_groups
-('population_group', 'Ind', 'Individual', 'Individuals', 'orr_service@abtglobal.com'),
-('population_group', 'Fam', 'Family', 'Families', 'orr_service@abtglobal.com');
 ")
 
 #######################
