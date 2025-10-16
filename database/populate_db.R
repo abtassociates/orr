@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS lookups (
 );
 ")
 
--- Insert all data into the new consolidated table
+# -- Insert all data into the new consolidated table
 DBI::dbExecute(DB_CON, "
 INSERT INTO lookups (reference_type, value, created_by)
 VALUES
