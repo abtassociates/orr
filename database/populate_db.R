@@ -95,7 +95,88 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
 ")
 
 # import HIC data ----------------
-DBI::dbAppendTable(DB_CON, "all_hic_data", fread(HIC_DATA_FILEPATH))
+hic_data <- fread(HIC_DATA_FILEPATH)
+
+# Rename columns to match SQL table
+setnames(hic_data, old = c(
+  "Row #",
+  "HudNum",
+  "CoC",
+  "Organization Name",
+  "Project Name",
+  "Project Type",
+  "Geocode",
+  "Target Population",
+  "mcKinneyVentoEsgEs",
+  "mcKinneyVentoEsgRrh",
+  "mcKinneyVentoEsgCov",
+  "mcKinneyVentoEsgRUSH",
+  "mcKinneyVentoCocSh",
+  "mcKinneyVentoCocTh",
+  "mcKinneyVentoCocPsh",
+  "mcKinneyVentoCocRrh",
+  "mcKinneyVentoCocSro",
+  "mcKinneyVentoCocThRrh",
+  "mcKinneyVentoSpC",
+  "mcKinneyVentoS8",
+  "mcKinneyVentoShp",
+  "mcKinneyVentoYhdp",
+  "mcKinneyVentoYhdpRenewals",
+  "Beds HH w/ Children",
+  "Veteran Beds HH w/ Children",
+  "Youth Beds HH w/ Children",
+  "CH Beds HH w/ Children",
+  "Beds HH w/o Children",
+  "Veteran Beds HH w/o Children",
+  "Youth Beds HH w/o Children",
+  "CH Beds HH w/o Children",
+  "Beds HH w/ only Children",
+  "CH Beds HH w only Children"
+), new = c(
+  "row_num",
+  "hudnum",
+  "coc_name",
+  "organization_name",
+  "project_name",
+  "project_type",
+  "geocode",
+  "target_population",
+  "mckinneyventoesges",
+  "mckinneyventoesgrrh",
+  "mckinneyventoesgcov",
+  "mckinneyventoesgrrhcov",
+  "mckinneyventococsh",
+  "mckinneyventococth",
+  "mckinneyventococpsh",
+  "mckinneyventococrrh",
+  "mckinneyventococsro",
+  "mckinneyventococthrrh",
+  "mckinneyventospc",
+  "mckinneyventos8",
+  "mckinneyventoshp",
+  "mckinneyventoyhdp",
+  "mckinneyventoyhdprenewals",
+  "beds_hh_w_children",
+  "veteran_beds_hh_w_children",
+  "youth_beds_hh_w_children",
+  "ch_beds_hh_w_children",
+  "beds_hh_wo_children",
+  "veteran_beds_hh_wo_children",
+  "youth_beds_hh_wo_children",
+  "ch_beds_hh_wo_children",
+  "beds_hh_w_only_children",
+  "ch_beds_hh_w_only_children"
+))
+
+# Drop columns that aren't in your SQL table (if they exist)
+cols_to_drop <- c("mcKinneyVentoUnshelt", "mcKinneyVentoRural")
+hic_data[, (cols_to_drop) := NULL]
+
+# Add missing columns that are in SQL but not in CSV (with default values)
+hic_data[, mckinneyventoesg := FALSE]
+hic_data[, mckinneyventococ := FALSE]
+
+DBI::dbAppendTable(DB_CON, "all_hic_data", hic_data)
 
 # populate HIC, States, CoCs, and GIWs tables ---------------------
 DBI::dbExecute(DB_CON, "
