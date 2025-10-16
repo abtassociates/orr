@@ -705,6 +705,7 @@ CREATE TABLE IF NOT EXISTS thresholds (
 );
 ")
 
+message("about to do populate thresholds")
 DBI::dbExecute(DB_CON, "
 INSERT INTO thresholds (type, threshold_text, created_by)
 VALUES ('CoC', 'Coordinated Entry Participation', 'orr_service@abtglobal.com'),
@@ -817,6 +818,7 @@ Applicants with unresolved civil rights matters as of the submission deadline:
  'orr_service@abtglobal.com');
 ")
 
+message("about to create rating_Factors")
 DBI::dbExecute(DB_CON, "
 CREATE TABLE IF NOT EXISTS rating_factors (
     rating_factor_id SERIAL PRIMARY KEY,
@@ -837,6 +839,7 @@ CREATE TABLE IF NOT EXISTS rating_factors (
 );
 ")
 
+message("about to populate rating_Factors")
 DBI::dbExecute(DB_CON, "
 -- Use CTEs for all lookup IDs and factor group/subgroup IDs
 WITH
@@ -875,9 +878,7 @@ WITH
     fsg_prog_part_outcomes_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Program Participant Outcomes' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
     fsg_agency_leadership_new AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Agency Leadership, Governance, and Policies' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_new) AND funding_action = (SELECT reference_id FROM l_new)),
     fsg_prog_part_outcomes_new AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Program Participant Outcomes' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_new) AND funding_action = (SELECT reference_id FROM l_new))
-")
 
-DBI::dbExecute(DB_CON, "
 INSERT INTO rating_factors 
 (rating_factor_text, rating_factor_text_short, funding_action, project_type, target_population, factor_group, factor_subgroup, performance_goal, max_point_value, created_by) 
 VALUES
