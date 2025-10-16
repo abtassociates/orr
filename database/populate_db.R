@@ -1385,3 +1385,5 @@ DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_ranking_coc_version_id ON
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_factor ON rating_scores(project_id, selected_rating_factor_id);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_threshold ON threshold_entries(project_id, selected_threshold_id);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_references_type ON lookups (reference_type);")
+
+message("Done populating the db!")
