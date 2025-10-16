@@ -282,6 +282,21 @@ hic_data[, (cols_to_drop) := NULL]
 hic_data[, mckinneyventoesg := FALSE]
 hic_data[, mckinneyventococ := FALSE]
 
+# Fetch lookup tables from database
+project_type_lookup <- DBI::dbGetQuery(DB_CON, 
+  "SELECT reference_id, code FROM lookups WHERE reference_type = 'project_type'")
+
+target_population_lookup <- DBI::dbGetQuery(DB_CON, 
+  "SELECT reference_id, code FROM lookups WHERE reference_type = 'target_population'")
+
+# Create named vectors for mapping
+project_type_map <- setNames(project_type_lookup$reference_id, project_type_lookup$code)
+target_population_map <- setNames(target_population_lookup$reference_id, target_population_lookup$code)
+
+# Convert character codes to reference IDs
+hic_data[, project_type := project_type_map[project_type]]
+hic_data[, target_population := target_population_map[target_population]]
+
 DBI::dbAppendTable(DB_CON, "all_hic_data", hic_data)
 
 # populate HIC, States, CoCs, and GIWs tables ---------------------
