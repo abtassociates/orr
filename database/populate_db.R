@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS users (
 ")
 
 DBI::dbExecute(DB_CON, glue::glue("
-INSERT INTO users (username, firstname, lastname, pw, created_by)
+INSERT INTO users (username, firstname, lastname, created_by)
 VALUES {ADMIN_USERS};
 "))
 
