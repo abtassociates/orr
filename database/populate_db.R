@@ -284,14 +284,14 @@ hic_data[, mckinneyventococ := FALSE]
 
 # Fetch lookup tables from database
 project_type_lookup <- DBI::dbGetQuery(DB_CON, 
-  "SELECT reference_id, code FROM lookups WHERE reference_type = 'project_type'")
+  "SELECT reference_id, value FROM lookups WHERE reference_type = 'project_type'")
 
 target_population_lookup <- DBI::dbGetQuery(DB_CON, 
-  "SELECT reference_id, code FROM lookups WHERE reference_type = 'target_population'")
+  "SELECT reference_id, value FROM lookups WHERE reference_type = 'target_population'")
 
 # Create named vectors for mapping
-project_type_map <- setNames(project_type_lookup$reference_id, project_type_lookup$code)
-target_population_map <- setNames(target_population_lookup$reference_id, target_population_lookup$code)
+project_type_map <- setNames(project_type_lookup$reference_id, project_type_lookup$value)
+target_population_map <- setNames(target_population_lookup$reference_id, target_population_lookup$value)
 
 # Convert character codes to reference IDs
 hic_data[, project_type := project_type_map[project_type]]
