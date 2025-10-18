@@ -35,6 +35,8 @@ USER_ENTRY_BG_COLOR <- "#e6ffe6"
 
 source(here("R/global_data_prep.R"))
 
+# Need to set this or `brandr::assert_brand_yml` will not work correctly because for non-interactive sessions, it takes the main path
+options(BRANDR_BRAND_YML = here::here("_brand.yml"))
 
 orr_bslib_theme <- bs_theme(
   version = 5,
