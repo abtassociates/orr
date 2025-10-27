@@ -67,12 +67,12 @@ mod_rating_criteria_ui <- function(id) {
 #' @param id The module's unique ID.
 #' @param user_coc contains coc_version_id to capture user-selected version of the ORR
 #' @noRd
-mod_rating_criteria_server <- function(id, user_coc) {
+mod_rating_criteria_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     # Call sub-modules for each tab
-    mod_coc_thresholds_server("coc_thresholds", user_coc$coc_version_id)
+    mod_coc_thresholds_server("coc_thresholds", user_coc)
     
     mod_renewal_factors_server(
       "renewal_factors", 
@@ -83,7 +83,7 @@ mod_rating_criteria_server <- function(id, user_coc) {
     
     mod_new_factors_server(
       "new_factors", 
-      user_coc$coc_version_id, 
+      user_coc, 
       reactive(input$target_population)
     )
   })

@@ -34,5 +34,12 @@ TABS_TO_SHOW <- c(
   "dashboard",
   "inventory",
   "funding_priorities",
+  "rating_criteria",
   "account"
+)
+
+TABS_AFTER_COC_SELECTION <- c(
+  "inventory",
+  "funding_priorities",
+  "rating_criteria"
 )
