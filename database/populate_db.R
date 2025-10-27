@@ -1,4 +1,4 @@
-IN_DEV_MODE <- FALSE
+IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
 library(here)
 library(DBI)
 source("R/utils/get_db_data.R")
@@ -18,8 +18,10 @@ ADMIN_USERS <- "
 
 drop_table <- function(tbl) {
 	message(glue::glue("Dropping {tbl}"))
-	DBI::dbExecute(DB_CON, glue::glue("DROP TABLE IF EXISTS {tbl} CASCADE;"))
+	DBI::dbExecute(DB_CON, glue::glue("DROP TABLE IF EXISTS {tbl};"))
 }
+
+id_var_attrs <- if(IN_DEV_MODE) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
 
 # create users and All HIC Data ---------------------
 ############################
@@ -49,10 +51,10 @@ VALUES {ADMIN_USERS};
 # REFERENCES (LOOKUPS/DROPDOWNS)
 ######################
 drop_table("lookups")
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 -- Create a single, consolidated table for all reference/lookup values
 CREATE TABLE IF NOT EXISTS lookups (
-    reference_id SERIAL PRIMARY KEY,
+    reference_id {id_var_attrs},
     -- Discriminator column to identify the type of reference (e.g., 'project_type', 'coc_status')
     reference_type VARCHAR(100) NOT NULL,
     -- The main display value for the reference item (e.g., 'Rapid Re-Housing', 'In Progress')
@@ -69,7 +71,7 @@ CREATE TABLE IF NOT EXISTS lookups (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 # -- Insert all data into the new consolidated table
 DBI::dbExecute(DB_CON, "
@@ -302,18 +304,19 @@ hic_data[, target_population := target_population_map[target_population]]
 DBI::dbAppendTable(DB_CON, "all_hic_data", hic_data)
 
 # populate HIC, States, CoCs, and GIWs tables ---------------------
-DBI::dbExecute(DB_CON, "
-ALTER TABLE all_hic_data
-ADD COLUMN hic_data_id SERIAL,
-ADD COLUMN date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
-ADD COLUMN date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username);
-")
+DBI::dbExecute(DB_CON, "ALTER TABLE all_hic_data ADD COLUMN hic_data_id INTEGER")
+DBI::dbExecute(DB_CON, "ALTER TABLE all_hic_data ADD COLUMN date_created TIMESTAMP")
+DBI::dbExecute(DB_CON, "ALTER TABLE all_hic_data ADD COLUMN created_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(DB_CON, "ALTER TABLE all_hic_data ADD COLUMN date_updated TIMESTAMP")
+DBI::dbExecute(DB_CON, "ALTER TABLE all_hic_data ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username)")
 
 DBI::dbExecute(DB_CON, "
 UPDATE all_hic_data
-SET created_by = 'orr_service@abtglobal.com', date_created = CURRENT_TIMESTAMP;
+SET 
+  created_by = 'orr_service@abtglobal.com', 
+  updated_by = 'orr_service@abtglobal.com', 
+  date_updated = CURRENT_TIMESTAMP,
+  date_created = CURRENT_TIMESTAMP;
 ")
 
 drop_table("states")
@@ -331,8 +334,8 @@ CREATE TABLE IF NOT EXISTS states (
 DBI::dbExecute(DB_CON, "
 INSERT INTO states (state_code, state_name, created_by)
 SELECT DISTINCT 
-    LEFT(hudnum, 2) as state_code,
-    CASE LEFT(hudnum, 2)
+    SUBSTR(hudnum, 1, 2) as state_code,
+    CASE SUBSTR(hudnum, 1, 2)
         WHEN 'AL' THEN 'Alabama'
         WHEN 'AK' THEN 'Alaska'
         WHEN 'AZ' THEN 'Arizona'
@@ -413,7 +416,7 @@ INSERT INTO cocs (coc_code, coc_name, state, created_by)
 SELECT DISTINCT 
     hudnum as coc_code,
 	coc_name as coc_name,
-    LEFT(hudnum, 2) as state,
+    SUBSTR(hudnum, 1, 2) as state,
     'orr_service@abtglobal.com'
 FROM all_hic_data a1;
 ")
@@ -474,18 +477,18 @@ DBI::dbAppendTable(DB_CON, "giw", giw_data)
 
 
 # Update GIW ---------------------
-DBI::dbExecute(DB_CON, "
--- use LATIN-1
-ALTER TABLE giw
-ADD COLUMN date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
-ADD COLUMN date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username);
-")
+DBI::dbExecute(DB_CON, "ALTER TABLE giw ADD COLUMN date_created TIMESTAMP")
+DBI::dbExecute(DB_CON, "ALTER TABLE giw ADD COLUMN created_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(DB_CON, "ALTER TABLE giw ADD COLUMN date_updated TIMESTAMP")
+DBI::dbExecute(DB_CON, "ALTER TABLE giw ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username)")
 
 DBI::dbExecute(DB_CON, "
 UPDATE giw
-SET created_by = 'orr_service@abtglobal.com', date_created = CURRENT_TIMESTAMP;
+SET 
+  created_by = 'orr_service@abtglobal.com', 
+  updated_by = 'orr_service@abtglobal.com', 
+  date_updated = CURRENT_TIMESTAMP,
+  date_created = CURRENT_TIMESTAMP;
 ")
 
 # Create HUD Report ---------------------
@@ -532,18 +535,18 @@ setnames(hud_ard_data, old = c(
 DBI::dbAppendTable(DB_CON, "hud_ard_report", hud_ard_data)
 
 # Create rest of table ---------------------
-DBI::dbExecute(DB_CON, "
--- use LATIN-1
-ALTER TABLE hud_ard_report
-ADD COLUMN date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
-ADD COLUMN date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username);
-")
+DBI::dbExecute(DB_CON, "ALTER TABLE hud_ard_report ADD COLUMN date_created TIMESTAMP")
+DBI::dbExecute(DB_CON, "ALTER TABLE hud_ard_report ADD COLUMN created_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(DB_CON, "ALTER TABLE hud_ard_report ADD COLUMN date_updated TIMESTAMP")
+DBI::dbExecute(DB_CON, "ALTER TABLE hud_ard_report ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username)")
 
 DBI::dbExecute(DB_CON, "
 UPDATE hud_ard_report
-SET created_by = 'orr_service@abtglobal.com', date_created = CURRENT_TIMESTAMP;
+SET 
+    created_by = 'orr_service@abtglobal.com',
+    updated_by = 'orr_service@abtglobal.com',  
+    date_updated = CURRENT_TIMESTAMP,
+    date_created = CURRENT_TIMESTAMP;
 ")
 
 #######################
@@ -553,11 +556,11 @@ drop_table("coc_versions")
 drop_table("coc_version_requests")
 drop_table("coc_version_users")
 
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- CoC versions (CoCs can have versions, as new users may decide to create their own)
 --- Also a single user could create multiple versions of the same CoC, to modify everything from inventory all the way to ranking
 CREATE TABLE IF NOT EXISTS coc_versions (
-    coc_version_id SERIAL PRIMARY KEY,
+    coc_version_id {id_var_attrs},
 	coc_version_name VARCHAR(255),
     coc VARCHAR(6) REFERENCES cocs(coc_code),
     coc_status SMALLINT REFERENCES lookups(reference_id),
@@ -566,14 +569,14 @@ CREATE TABLE IF NOT EXISTS coc_versions (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- CoC version Requests (one row per request per CoC version)
 -- users who wish to access a particular existing version makes a 
 -- request in the system that the version Admin can approve/reject
 CREATE TABLE IF NOT EXISTS coc_version_requests (
-	coc_request_id SERIAL PRIMARY KEY,
+	coc_request_id {id_var_attrs},
 	coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
 	request_status SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
 	reason_for_rejection SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
@@ -582,9 +585,9 @@ CREATE TABLE IF NOT EXISTS coc_version_requests (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 -- CoC version Users
 --- This is a many-to-many relationship between users and CoC versions
 --- when a new user registers for a CoC that's already been created (i.e. for which an CoC version already exists)
@@ -592,7 +595,7 @@ DBI::dbExecute(DB_CON, "
 --- if a user creates a new CoC version for the same CoC, the MVP will copy everything over from the original CoC version
 --- Advanced would allow them to select what to carry over
 CREATE TABLE IF NOT EXISTS coc_version_users (
-    coc_version_user_id SERIAL PRIMARY KEY,
+    coc_version_user_id {id_var_attrs},
     coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
     username VARCHAR(100) REFERENCES users(username),
     coc_version_role SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
@@ -604,7 +607,7 @@ CREATE TABLE IF NOT EXISTS coc_version_users (
     -- A user cannot be associated with the same CoC version more than once
     CONSTRAINT uq_coc_version_users UNIQUE (coc_version_id, username)
 );
-")
+"))
 
 ########################
 #	TOOL-BASED DATA (HARDCODED)
@@ -613,13 +616,12 @@ drop_table("factor_groups")
 drop_table("factor_subgroups")
 drop_table("thresholds")
 drop_table("rating_factors")
-drop_table("coc_nofo_opportunities")
 
 ###### RATING #########
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- Factor Groups (heading in CUSTOMIZE RATING CRITERIA page, e.g. 'Performance Measures')
 CREATE TABLE IF NOT EXISTS factor_groups (
-    factor_group_id SERIAL PRIMARY KEY,
+    factor_group_id {id_var_attrs},
     factor_group VARCHAR(100),
     funding_action SMALLINT REFERENCES lookups(reference_id),
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -627,7 +629,7 @@ CREATE TABLE IF NOT EXISTS factor_groups (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 message("about to do CTEs for factor_groups")
 DBI::dbExecute(DB_CON, "
@@ -651,10 +653,10 @@ VALUES
 ('Other and Local Criteria', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com');
 ")
 
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- Factor Sub Groups (subheading in CUSTOMIZE RATING CRITERIA page, e.g. 'Length of Stay')
 CREATE TABLE IF NOT EXISTS factor_subgroups (
-    factor_subgroup_id SERIAL PRIMARY KEY,
+    factor_subgroup_id {id_var_attrs},
     factor_subgroup VARCHAR(100),
     factor_group SMALLINT REFERENCES factor_groups(factor_group_id),
     funding_action SMALLINT REFERENCES lookups(reference_id), -- 1. New, 2. Renew
@@ -663,7 +665,7 @@ CREATE TABLE IF NOT EXISTS factor_subgroups (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 message("about to do CTEs for factor_subgroups")
 DBI::dbExecute(DB_CON, "
@@ -691,11 +693,11 @@ VALUES
 ")
 
 message("about to do thresholds")
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 -- Thresholds (Reference table)
 --- unique list of thresholds
 CREATE TABLE IF NOT EXISTS thresholds (
-    threshold_id SERIAL PRIMARY KEY,
+    threshold_id {id_var_attrs},
     type VARCHAR(3), -- 'CoC' or 'HUD'
     threshold_text TEXT,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -703,7 +705,7 @@ CREATE TABLE IF NOT EXISTS thresholds (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 message("about to do populate thresholds")
 DBI::dbExecute(DB_CON, "
@@ -720,108 +722,77 @@ VALUES ('CoC', 'Coordinated Entry Participation', 'orr_service@abtglobal.com'),
 ('CoC', 'Acceptable organizational audit/financial review', 'orr_service@abtglobal.com'),
 ('CoC', 'PIT participation', 'orr_service@abtglobal.com'),
 ('CoC', 'Healthcare MOU', 'orr_service@abtglobal.com'),
-('HUD', $$1. Applicant has Active SAM registration with current information, and maintains an active SAM registration annually.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$2. Applicant has Valid UEI (Unique Entity Identifier) Number.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$3. CoC Program Eligibility – Project applicants and potential subrecipients meet the eligibility requirements of the CoC Program as described in the Act and the Rule and provide evidence of eligibility required in the application (e.g., nonprofit documentation).$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$4. Financial and Management Capacity:
-• Project applicants and subrecipients demonstrate the financial and management capacity and experience to carry out the project as detailed in the project application
-• Applicants must demonstrate the capacity to administer federal funds.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$5. Certifications – Project applicants submit the required certifications specified in the NOFO.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$6. Population Served – The population to be served meets program eligibility requirements as described in the Act, the Rule, and the NOFO.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$7. HMIS Participation –
-• Project applicants (except those only receiving CoC planning or UFA Costs) agree to participate in a local HMIS system.
-• Victim service providers must not disclose any personally identifying client info in HMIS.
-• Victim service providers must use a comparable database meeting HMIS requirements.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$8. Applicant has no Outstanding Delinquent Federal Debts –
+('HUD', '1. Applicant has Active SAM registration with current information, and maintains an active SAM registration annually.', 'orr_service@abtglobal.com'),
+('HUD', '2. Applicant has Valid UEI (Unique Entity Identifier) Number.', 'orr_service@abtglobal.com'),
+('HUD', '3. CoC Program Eligibility – Project applicants and potential subrecipients meet the eligibility requirements of the CoC Program as described in the Act and the Rule and provide evidence of eligibility required in the application (e.g., nonprofit documentation).', 'orr_service@abtglobal.com'),
+('HUD', '4. Financial and Management Capacity:
+- Project applicants and subrecipients demonstrate the financial and management capacity and experience to carry out the project as detailed in the project application
+- Applicants must demonstrate the capacity to administer federal funds.', 'orr_service@abtglobal.com'),
+('HUD', '5. Certifications – Project applicants submit the required certifications specified in the NOFO.', 'orr_service@abtglobal.com'),
+('HUD', '6. Population Served – The population to be served meets program eligibility requirements as described in the Act, the Rule, and the NOFO.', 'orr_service@abtglobal.com'),
+('HUD', '7. HMIS Participation –
+- Project applicants (except those only receiving CoC planning or UFA Costs) agree to participate in a local HMIS system.
+- Victim service providers must not disclose any personally identifying client info in HMIS.
+- Victim service providers must use a comparable database meeting HMIS requirements.', 'orr_service@abtglobal.com'),
+('HUD', '8. Applicant has no Outstanding Delinquent Federal Debts –
 It is HUD policy that applicants with delinquent federal debt are not eligible unless:
    a) A negotiated repayment schedule is established and not delinquent, or
-   b) Other arrangements satisfactory to HUD are made before the award of funds.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$9. Applicant has no Debarments and/or Suspensions –
-In accordance with 2 CFR 2424, no federal funds may be awarded to debarred or suspended applicants.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$10. Pre-selection Review of Performance –
+   b) Other arrangements satisfactory to HUD are made before the award of funds.', 'orr_service@abtglobal.com'),
+('HUD', '9. Applicant has no Debarments and/or Suspensions –
+In accordance with 2 CFR 2424, no federal funds may be awarded to debarred or suspended applicants.', 'orr_service@abtglobal.com'),
+('HUD', '10. Pre-selection Review of Performance –
 If your organization has delinquent federal debt or is excluded from doing business with the Federal government, HUD may:
    a) Deny funding or consider suspension/termination for cause;
    b) Require removal of key individuals from project roles;
    c) Change payment or reporting terms.
 
 HUD reviews OMB-designated sources such as:
-• Federal Awardee Performance and Integrity Information System (FAPIIS)
-• The “Do Not Pay” website.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$11. Sufficiency of Financial Management System –
+- Federal Awardee Performance and Integrity Information System (FAPIIS)
+- The \"Do Not Pay\" website.', 'orr_service@abtglobal.com'),
+('HUD', '11. Sufficiency of Financial Management System –
 HUD will not award funds to applicants lacking a compliant financial management system per 2 CFR 200.302.
 HUD may conduct surveys for:
-• New applicants without federal award history
-• Applicants flagged as high risk due to past performance or financial findings.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$12. False Statements –
+- New applicants without federal award history
+- Applicants flagged as high risk due to past performance or financial findings.', 'orr_service@abtglobal.com'),
+('HUD', '12. False Statements –
 A false statement in an application may result in:
-• Denial or termination of award
-• Criminal, civil, and/or administrative sanctions
-• Fines, penalties, and imprisonment
-Applicants confirm all statements are truthful.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$13. Mandatory Disclosure Requirement –
+- Denial or termination of award
+- Criminal, civil, and/or administrative sanctions
+- Fines, penalties, and imprisonment
+Applicants confirm all statements are truthful.', 'orr_service@abtglobal.com'),
+('HUD', '13. Mandatory Disclosure Requirement –
 Recipients or applicants must disclose, in writing, to HUD:
-• Any violations of Federal criminal law involving fraud, bribery, or gratuity affecting the award
-• Disclosures must occur within 10 days of learning of the violation
+- Any violations of Federal criminal law involving fraud, bribery, or gratuity affecting the award
+- Disclosures must occur within 10 days of learning of the violation
 Recipients are also required to:
-• Report proceedings via SAM, per Appendix XII to 2 CFR part 200
-• Comply with 2 CFR part 180, 31 U.S.C. 3321, and 31 U.S.C. 2313
-Failure to disclose may lead to suspension, debarment, or other remedies in §200.338.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$14. Prohibition Against Lobbying Activities –
+- Report proceedings via SAM, per Appendix XII to 2 CFR part 200
+- Comply with 2 CFR part 180, 31 U.S.C. 3321, and 31 U.S.C. 2313
+Failure to disclose may lead to suspension, debarment, or other remedies in §200.338.', 'orr_service@abtglobal.com'),
+('HUD', '14. Prohibition Against Lobbying Activities –
 Applicants must comply with:
-• The Byrd Amendment (31 U.S.C. 1352)
-• 24 CFR part 87
+- The Byrd Amendment (31 U.S.C. 1352)
+- 24 CFR part 87
 
 Applicants must:
-• Submit a signed Certification Regarding Lobbying
-• Disclose non-federal lobbying efforts via SFLLL (Standard Form for Lobbying)
+- Submit a signed Certification Regarding Lobbying
+- Disclose non-federal lobbying efforts via SFLLL (Standard Form for Lobbying)
 
 Federally recognized Indian tribes and TDHEs (created via tribal sovereignty) are exempt from the Byrd Amendment.
-State-recognized tribes and TDHEs under state law must comply.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$15. Equal Participation of Faith-Based Organizations –
+State-recognized tribes and TDHEs under state law must comply.', 'orr_service@abtglobal.com'),
+('HUD', '15. Equal Participation of Faith-Based Organizations –
 All projects must comply with 24 CFR 5.109, updated by HUD (81 FR 19355) on April 4, 2016, to reflect E.O. 13559:
-“Fundamental Principles and Policymaking Criteria for Partnerships with Faith-Based and Other Neighborhood Organizations”
-Applies to all HUD programs and activities unless otherwise exempted by program statutes or regulations.$$,
- 'orr_service@abtglobal.com'),
-
-('HUD', $$16. Resolution of Civil Rights Matters –
+\"Fundamental Principles and Policymaking Criteria for Partnerships with Faith-Based and Other Neighborhood Organizations\"
+Applies to all HUD programs and activities unless otherwise exempted by program statutes or regulations.', 'orr_service@abtglobal.com'),
+('HUD', '16. Resolution of Civil Rights Matters –
 Applicants with unresolved civil rights matters as of the submission deadline:
-• Will be deemed ineligible
-• Will not be reviewed, rated, ranked, or funded$$,
- 'orr_service@abtglobal.com');
+- Will be deemed ineligible
+- Will not be reviewed, rated, ranked, or funded', 'orr_service@abtglobal.com');
 ")
 
 message("about to create rating_Factors")
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 CREATE TABLE IF NOT EXISTS rating_factors (
-    rating_factor_id SERIAL PRIMARY KEY,
+    rating_factor_id {id_var_attrs},
     rating_factor_text TEXT,
     rating_factor_text_short TEXT,
     funding_action SMALLINT REFERENCES lookups(reference_id),
@@ -837,7 +808,7 @@ CREATE TABLE IF NOT EXISTS rating_factors (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 message("about to populate rating_Factors")
 DBI::dbExecute(DB_CON, "
@@ -846,13 +817,13 @@ WITH
     l_new AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'New'),
     l_renew AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'Renew'),
 
-    l_rrh AS (SELECT reference_id FROM lookups WHERE reference_type = 'project_type' AND value_abbrev = 'RRH'),
-    l_psh AS (SELECT reference_id FROM lookups WHERE reference_type = 'project_type' AND value_abbrev = 'PSH'),
-    l_th AS (SELECT reference_id FROM lookups WHERE reference_type = 'project_type' AND value_abbrev = 'TH'),
-    l_th_rrh AS (SELECT reference_id FROM lookups WHERE reference_type = 'project_type' AND value_abbrev = 'TH+RRH'),
+    l_rrh AS (SELECT reference_id FROM lookups WHERE reference_type = 'project_type' AND value = 'RRH'),
+    l_psh AS (SELECT reference_id FROM lookups WHERE reference_type = 'project_type' AND value = 'PSH'),
+    l_th AS (SELECT reference_id FROM lookups WHERE reference_type = 'project_type' AND value = 'TH'),
+    l_th_rrh AS (SELECT reference_id FROM lookups WHERE reference_type = 'project_type' AND value = 'TH+RRH'),
 
-    l_dv AS (SELECT reference_id FROM lookups WHERE reference_type = 'target_population' AND value_abbrev = 'DV'),
-    l_hic AS (SELECT reference_id FROM lookups WHERE reference_type = 'target_population' AND value_abbrev = 'HIC'), -- Assuming this is used for the second population in pairs
+    l_dv AS (SELECT reference_id FROM lookups WHERE reference_type = 'target_population' AND value = 'DV'),
+    l_hic AS (SELECT reference_id FROM lookups WHERE reference_type = 'target_population' AND value = 'HIC'), -- Assuming this is used for the second population in pairs
 
     fg_perf_meas_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Performance Measures' AND funding_action = (SELECT reference_id FROM l_renew)),
     fg_high_needs_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Serve High Needs Populations' AND funding_action = (SELECT reference_id FROM l_renew)),
@@ -1108,10 +1079,10 @@ VALUES
 
 ###### FUNDING PRIORITIES #########
 drop_table("coc_nofo_opportunities")
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- This is the set of checkboxes in the middle of the Funding Priorities tab
 CREATE TABLE IF NOT EXISTS coc_nofo_opportunities (
-    coc_nofo_opportunity_id SERIAL PRIMARY KEY,
+    coc_nofo_opportunity_id {id_var_attrs},
     bonus_type SMALLINT REFERENCES lookups(reference_id),
     funding_action SMALLINT REFERENCES lookups(reference_id),
     project_type SMALLINT REFERENCES lookups(reference_id),
@@ -1122,7 +1093,7 @@ CREATE TABLE IF NOT EXISTS coc_nofo_opportunities (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 message("now doing CTEs")
 
@@ -1143,19 +1114,19 @@ WITH
     l_fam AS (SELECT reference_id FROM lookups WHERE reference_type = 'population_group' AND value_abbrev = 'Fam')
 INSERT INTO coc_nofo_opportunities (bonus_type, funding_action, project_type, target_population, population_group, created_by)
 VALUES 
-((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_psh), (SELECT reference_id FROM l_ch), (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'), -- New PSH for 100% Dedicated PLUS or chronically homeless individuals
-((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_psh), (SELECT reference_id FROM l_ch), (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'), -- New PSH for 100% Dedicated PLUS or chronically homeless families
-((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'), -- New RRH for individuals
-((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'), -- New RRH for families
-((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'), -- New TH+RRH for families (Original had TH+RRH for fam, then indiv, corrected order)
-((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'), -- New TH+RRH for individuals (Original had TH+RRH for fam, then indiv, corrected order)
-((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_hmis), NULL, NULL, 'orr_service@abtglobal.com'), -- New HMIS Project
-((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_sso_ce), NULL, NULL, 'orr_service@abtglobal.com'), -- New SSO coordinated entry
-((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'), -- New RRH for individuals
-((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'), -- New RRH for families
-((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'), -- New TH+RRH for individuals
-((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'), -- New TH+RRH for families
-((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_sso_ce), NULL, NULL, 'orr_service@abtglobal.com'); -- New SSO coordinated entry
+((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_psh), (SELECT reference_id FROM l_ch), (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_psh), (SELECT reference_id FROM l_ch), (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'), 
+((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_hmis), NULL, NULL, 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_coc_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_sso_ce), NULL, NULL, 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_ind), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_th_rrh), NULL, (SELECT reference_id FROM l_fam), 'orr_service@abtglobal.com'),
+((SELECT reference_id FROM l_dv_bonus), (SELECT reference_id FROM l_new), (SELECT reference_id FROM l_sso_ce), NULL, NULL, 'orr_service@abtglobal.com');
 ")
 
 #####################
@@ -1172,11 +1143,11 @@ drop_table("rating_scores")
 drop_table("threshold_entries")
 
 ###### INVENTORY #########
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- Projects (User can import HIC data or select their CoC from the HIC Data we have at that time)
 -- Ideally, there would be one source of truth in the HIC data, but the timing and SecOps doesn't allow that
 CREATE TABLE IF NOT EXISTS projects (
-    project_id SERIAL PRIMARY KEY,
+    project_id {id_var_attrs},
     coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
     organization_name VARCHAR,
     project_name VARCHAR,
@@ -1215,17 +1186,17 @@ CREATE TABLE IF NOT EXISTS projects (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 ##### FUNDING PRIORITIES ########
 drop_table("coc_funding_priorities")
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- Funding Priorities by Project Type and Population
 ---- This is the table of population and project types at the bottom of the Funding Priorities tab
 --- when a new CoC version is created, the system should generate a set of these
 --- each row corresponds to a ProjectType + TargetPopulation combo. It may not have any priorities
 CREATE TABLE IF NOT EXISTS coc_funding_priorities (
-    coc_funding_priority_id SERIAL PRIMARY KEY,
+    coc_funding_priority_id {id_var_attrs},
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     project_type SMALLINT REFERENCES lookups(reference_id),
     target_population SMALLINT REFERENCES lookups(reference_id),
@@ -1240,12 +1211,12 @@ CREATE TABLE IF NOT EXISTS coc_funding_priorities (
 
 CONSTRAINT coc_funding_priorities_unique_key UNIQUE (coc_version_id, project_type, target_population, population_group)
 );
-")
+"))
 
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- User-Selected NOFO Opportunities
 CREATE TABLE IF NOT EXISTS selected_coc_nofo_opportunities (
-    selected_coc_nofo_opportunity_id SERIAL PRIMARY KEY,
+    selected_coc_nofo_opportunity_id {id_var_attrs},
     coc_nofo_opportunity_id SMALLINT REFERENCES coc_nofo_opportunities(coc_nofo_opportunity_id),
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1253,13 +1224,13 @@ CREATE TABLE IF NOT EXISTS selected_coc_nofo_opportunities (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 #### CUSTOMIZED RATING CRITERIA ####
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- User-Selected Rating Factors
 CREATE TABLE IF NOT EXISTS selected_rating_factors (
-    selected_rating_factor_id SERIAL PRIMARY KEY,
+    selected_rating_factor_id {id_var_attrs},
     rating_factor_id SMALLINT REFERENCES rating_factors(rating_factor_id),
 	goal VARCHAR(5) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes'
 	max_point_value NUMERIC(4, 1),
@@ -1272,12 +1243,12 @@ CREATE TABLE IF NOT EXISTS selected_rating_factors (
 	-- a CoC Profile cannot have more than one of a given selected rating factor
 	CONSTRAINT uq_selected_rating_factors_profile UNIQUE (coc_version_id, rating_factor_id)
 );
-")
+"))
 
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- User-Selected Threshold Factors
 CREATE TABLE IF NOT EXISTS selected_thresholds (
-    selected_threshold_id SERIAL PRIMARY KEY,
+    selected_threshold_id {id_var_attrs},
     threshold_id SMALLINT REFERENCES thresholds(threshold_id),
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1288,13 +1259,13 @@ CREATE TABLE IF NOT EXISTS selected_thresholds (
 	-- a CoC Profile cannot have more than one of a given selected rating factor
     CONSTRAINT uq_selected_thresholds_profile UNIQUE (coc_version_id, threshold_id)
 );
-")
+"))
 
 #### RATING ####
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- Rating_Scores
 CREATE TABLE IF NOT EXISTS rating_scores (
-    rating_score_id SERIAL PRIMARY KEY,
+    rating_score_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id),
     selected_rating_factor_id SMALLINT REFERENCES selected_rating_factors(selected_rating_factor_id),
     rating_score INTEGER,
@@ -1304,12 +1275,12 @@ CREATE TABLE IF NOT EXISTS rating_scores (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- Threshold_Entries
 CREATE TABLE IF NOT EXISTS threshold_entries (
-    threshold_entry_id SERIAL PRIMARY KEY,
+    threshold_entry_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id),
     selected_threshold_id SMALLINT REFERENCES selected_thresholds(selected_threshold_id),
     met_threshold BOOLEAN,
@@ -1318,13 +1289,13 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 #### RANKING ####
-DBI::dbExecute(DB_CON, "
+DBI::dbExecute(DB_CON, glue::glue("
 --- Ranking 
 CREATE TABLE IF NOT EXISTS ranking (
-    rank_id SERIAL PRIMARY KEY,
+    rank_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id),
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     rank SMALLINT,
@@ -1334,7 +1305,7 @@ CREATE TABLE IF NOT EXISTS ranking (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-")
+"))
 
 #################
 # CREATE INDEXES
