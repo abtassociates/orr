@@ -178,7 +178,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     create_new_version_for_user <- function(new_version_data) {
       new_version <- new_version_data |>
         fmutate(coc_status = get_lookup_refid("Not Started", "coc_status")) |>
-        add_user_stamp(user_coc)
+        add_user_stamp(user_coc, is_new = TRUE)
       
       # Update CoC Version in db, and grab autonumbered coc_version_id
       new_coc_version_info <- insert_and_return(
@@ -190,7 +190,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         username = user_coc$email,
         coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role"))
       ) |>
-        add_user_stamp(user_coc)
+        add_user_stamp(user_coc, is_new = TRUE)
       
       # Next, update CoC Version USers in db
       dbAppendTable(DB_CON, 'coc_version_users', new_version_user)
@@ -206,7 +206,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
               coc_status = get_lookup_label(coc_status, "coc_status"),
               coc_version_role = get_lookup_label(coc_version_role, "coc_version_role"),
               date_updated = unlist(new_coc_version_info)[["date_updated"]]
-            ),
+            ) |> 
+            fselect(-created_by),
           fill=TRUE
         )
       )
@@ -255,7 +256,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == owner_role_refid)
       
       removeModal()
-      
       
       if(nrow(check_if_already_have) > 0){
         admin_email(NULL)
@@ -310,6 +310,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     observeEvent(
       c(input$continue_new_version, input$continue_new_version2, input$continue_new_version3),
       {
+        req(isTruthy(input$continue_new_version) | 
+              isTruthy(input$continue_new_version2) |
+              isTruthy(input$continue_new_version3))
         removeModal()
         choiceList <- setNames(
           c("import", "upload"), 
@@ -335,7 +338,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           ),
           session = session
         )
-      }, ignoreInit = TRUE
+      }
     )
     
     
@@ -405,15 +408,14 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # This is for when the user tried to create a new version 
     # but may not have known about an existing version for the same CoC
     request_access_indirect_coc_versions <- reactive({
-      req(input$request_indirect_access_coc_dropdown)
-      
-      coc_version_users |>
-        fsubset(
-          username != user_coc$email & 
-            coc == input$request_indirect_access_coc_dropdown &
-            coc_version_role == owner_role_refid,
-          coc, coc_version_name, username
-        )
+     req(input$coc_dropdown)
+
+     coc_version_users |>
+       fgroup_by(coc_version_id) |>
+       fmutate(user_associated_w_version = anyv(username, user_coc$email)) |>
+       fungroup() |>
+       fsubset(!user_associated_w_version & coc == input$coc_dropdown) |>
+       fselect(coc, coc_version_name, username)
     })
     
     # When user clicks the "Request Access" button within the "Create Version" flow
@@ -442,7 +444,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )             
     )
     output$indirect_request_coc_versions <- renderDT({
-      req(input$request_indirect_access_coc_dropdown)
+      req(input$coc_dropdown)
       datatable(
         request_access_indirect_coc_versions(),
         colnames = c("CoC", "Version Name", "Owner"),
