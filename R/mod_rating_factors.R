@@ -121,7 +121,7 @@ render_nested_factor_accordion_ui <- function(ns, funding_action = "Renew", data
       
       all_subgroup_factors_selected <- nrow(subgroup_data) == nrow(subgroup_data[selected == TRUE])
       bslib::accordion_panel(
-        title = fcoalesce(subgroup_name, ""),
+        title = ifelse(subgroup_name == "NA", "", subgroup_name),
         fluidRow(
           column(1,
                  tags$b("Use in rating?"),
