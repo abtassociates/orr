@@ -14,7 +14,10 @@ mod_coc_thresholds_ui <- function(id) {
     card(
       em("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
       uiOutput(ns("threshold_checkboxes_ui")) %>% withSpinner(),
-      actionButton(ns("save_thresholds"), "Save CoC Threshold Selections", icon = icon("save"), class = "btn-primary")
+      card_footer(
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        actionButton(ns("save_thresholds"), "Save CoC Threshold Selections", icon = icon("save"), class = "btn-primary")
+      )
     )
   )
 }
