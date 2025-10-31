@@ -674,9 +674,9 @@ WITH
     l_new AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'New'),
     l_renew AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'Renew'),
     fg_perf_meas_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Performance Measures' AND funding_action = (SELECT reference_id FROM l_renew)),
-    fg_high_needs_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Serve High Needs Populations' AND funding_action = (SELECT reference_id FROM l_renew)),
+    fg_high_needs_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Serve High Needs Populations' AND funding_action = (SELECT reference_id FROM l_renew))
     -- fg_equity_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_renew)),
-    fg_equity_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_new))
+    -- fg_equity_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_new))
 INSERT INTO factor_subgroups (factor_subgroup, factor_group, funding_action, created_by)
 VALUES
 ('Length of Stay', (SELECT factor_group_id FROM fg_perf_meas_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
@@ -844,7 +844,7 @@ WITH
     fsg_new_inc_income_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'New or Increased Income and Earned Income' AND factor_group = (SELECT factor_group_id FROM fg_perf_meas_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
     fsg_coord_assess_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Coordinated Assessment Score' AND factor_group = (SELECT factor_group_id FROM fg_high_needs_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
     fsg_proj_chron_homeless_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Project Focuses on Chronically Homeless People' AND factor_group = (SELECT factor_group_id FROM fg_high_needs_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
-    fsg_apr_data_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'APR Data on ≥ 50% Disability/Zero Income/Unsheltered' AND factor_group = (SELECT factor_group_id FROM fg_high_needs_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
+    fsg_apr_data_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'APR Data on ≥ 50% Disability/Zero Income/Unsheltered' AND factor_group = (SELECT factor_group_id FROM fg_high_needs_renew) AND funding_action = (SELECT reference_id FROM l_renew))
     -- fsg_agency_leadership_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Agency Leadership, Governance, and Policies' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
     -- fsg_prog_part_outcomes_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Program Participant Outcomes' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
     -- fsg_agency_leadership_new AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Agency Leadership, Governance, and Policies' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_new) AND funding_action = (SELECT reference_id FROM l_new)),
@@ -1062,7 +1062,7 @@ VALUES
 
 -- Project Effectiveness (factor_group = fg_proj_effect_new)
 ('Coordinated Entry Participation- Minimum percent of entries projected to come from CE referrals', NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_new), NULL, '95 %', 5, 'orr_service@abtglobal.com'),
-('Coordinated Entry Participation- Minimum percent of entries projected to come from CE referrals', NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_hic), (SELECT factor_group_id FROM fg_proj_effect_new), NULL, '95 %', 5, 'orr_service@abtglobal.com'),
+('Coordinated Entry Participation- Minimum percent of entries projected to come from CE referrals', NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_hic), (SELECT factor_group_id FROM fg_proj_effect_new), NULL, '95 %', 5, 'orr_service@abtglobal.com');
 
 -- Equity Factors (factor_group = fg_equity_factors_new)
 -- Subgroup: Agency Leadership, Governance, and Policies (fsg_agency_leadership_new)
