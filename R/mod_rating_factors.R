@@ -14,7 +14,7 @@ fetch_and_structure_rating_factors <- function(funding_action_type, coc_version_
                rf.max_point_value AS default_points, fg.factor_group, fsg.factor_subgroup
         FROM rating_factors rf
         JOIN factor_groups fg ON rf.factor_group = fg.factor_group_id
-        JOIN factor_subgroups fsg ON rf.factor_subgroup = fsg.factor_subgroup_id
+        LEFT JOIN factor_subgroups fsg ON rf.factor_subgroup = fsg.factor_subgroup_id
         JOIN lookups fa ON rf.funding_action = fa.reference_id
         WHERE fa.reference_type = 'funding_action' AND fa.value IN ($1)
       "
