@@ -20,12 +20,12 @@ pop_grp_toggles <- expand.grid(
 mod_funding_priorities_ui <- function(id) {
   ns <- NS(id)
 
-  coc_bonus_opportunities <- coc_nofo_opportunities[
+  coc_bonus_opportunities <- COC_NOFO_OPPORTUNITIES[
     bonus_type == "CoC Bonus", 
     setNames(coc_nofo_opportunity_id, full_text)
   ]
   
-  dv_bonus_opportunities <- coc_nofo_opportunities[
+  dv_bonus_opportunities <- COC_NOFO_OPPORTUNITIES[
     bonus_type == "DV Bonus", 
     setNames(coc_nofo_opportunity_id, full_text)
   ]
@@ -119,7 +119,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       "dv_bonus"
     )
     hud_ard_coc_data <- reactive({
-      hud_ard_report[coc == user_coc$coc] %>%
+      HUD_ARD_REPORT[coc == user_coc$coc] %>%
         fmutate(
           tier_2 = estimated * 0.1 + coc_bonus + dv_bonus,
           adjusted_ard = round(tier_1/0.9, 0),
@@ -149,7 +149,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # 1. Create the full, empty data structure for ALL possible populations.
       full_data <- pop_grp_toggles[, .(Population = full_text)]
-      for(pt in main_project_types) {
+      for(pt in MAIN_PROJECT_TYPES) {
         full_data[[paste0(pt, "_Beds")]] <- NA_real_
         full_data[[paste0(pt, "_Funding")]] <- NA_real_
         full_data[[paste0(pt, "_Priority")]] <- NA_character_
@@ -174,7 +174,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           join(pop_grp_toggles, on = c("target_population" = "pop", "population_group" = "grp")) %>%
           # Reshape logic here... for example:
           # dcast(. ~ project_type, value.var = c("beds", "funding", "priority"))
-          # This step is highly dependent on your DB schema and `main_project_types`
+          # This step is highly dependent on your DB schema and `MAIN_PROJECT_TYPES`
           
           # For now, let's assume `wide_db_data` has columns like "Population", "PH_Beds", etc.
           # We can then update the `full_data` table.
@@ -235,12 +235,12 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           tags$thead(
             tags$tr(
               tags$th(rowspan = 2, 'Population'),
-              lapply(main_project_types, function(pt) {
+              lapply(MAIN_PROJECT_TYPES, function(pt) {
                 tags$th(colspan = 3, pt, style = "border-right: 1px solid black; text-align: center")
               })
             ),
             tags$tr(
-              lapply(rep(c("Beds", "Funding", "Priority"), length(main_project_types)), function(col) {
+              lapply(rep(c("Beds", "Funding", "Priority"), length(MAIN_PROJECT_TYPES)), function(col) {
                 tags$th(col, style=ifelse(col == "Priority", "border-right: 1px solid black", ""))
               })
             )

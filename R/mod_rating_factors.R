@@ -170,9 +170,9 @@ project_and_pop_dropdowns <- function(ns, funding_action) {
   project_type_dropdown <- selectInput(
     inputId = ns("project_type"),
     label = "Select project type",
-    choices = get_labelled_lookups("project_type")[main_project_types],
+    choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
     multiple = TRUE,
-    selected = main_project_types # Pre-select all for initial state
+    selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
   )
   
   target_pop_dropdown <- selectInput(
