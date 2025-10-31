@@ -22,16 +22,16 @@ get_labelled_lookups <- function(l, lookup_col = "value") {
 get_lookup_label <- function(v, ref_type, lookup_col = "value") {
   filtered_lookups <- LOOKUPS[reference_type == ref_type]
   if(is.character(v)) {
-    filtered_LOOKUPS[reference_id == v, get(lookup_col)]
+    filtered_lookups[reference_id == v, get(lookup_col)]
   } else {
-    filtered_LOOKUPS[.(v), get(lookup_col), on = "reference_id"]
+    filtered_lookups[.(v), get(lookup_col), on = "reference_id"]
   } 
 }
 
 get_lookup_refid <- function(v, ref_type, lookup_col = "value") {
   filtered_lookups <- LOOKUPS[reference_type == ref_type]
   return(
-    filtered_LOOKUPS[match(v, get(lookup_col))]$reference_id
+    filtered_lookups[match(v, get(lookup_col))]$reference_id
   )
 }
 
