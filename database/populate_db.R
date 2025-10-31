@@ -802,8 +802,8 @@ CREATE TABLE IF NOT EXISTS rating_factors (
     factor_subgroup SMALLINT REFERENCES factor_subgroups(factor_subgroup_id),
     goal VARCHAR(10) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes',
     max_point_value NUMERIC(4, 1),
-    performance_goal TEXT NULL,
-	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    coc_version_id SMALLINT NULL REFERENCES coc_versions(coc_version_id), -- only filled out for custom factors
+	  date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
@@ -851,7 +851,7 @@ WITH
     -- fsg_prog_part_outcomes_new AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Program Participant Outcomes' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_new) AND funding_action = (SELECT reference_id FROM l_new))
 
 INSERT INTO rating_factors 
-(rating_factor_text, rating_factor_text_short, funding_action, project_type, target_population, factor_group, factor_subgroup, performance_goal, max_point_value, created_by) 
+(rating_factor_text, rating_factor_text_short, funding_action, project_type, target_population, factor_group, factor_subgroup, goal, max_point_value, created_by) 
 VALUES
 -- RENEWAL RATING FACTORS
 -- Performance Measures (factor_group = fg_perf_meas_renew)
