@@ -504,16 +504,11 @@ mod_renewal_factors_server <- function(id, user_coc, selected_project_types, sel
           # --- NEW: Save Custom Factors ---
           num_custom_factors <- custom_factor_counter()
           if (num_custom_factors > 0) {
-            # Find the factor_group and factor_subgroup IDs for "Other/Local Priority"
-            other_local_ids <- get_db_query("
-              SELECT fg.factor_group_id, fsg.factor_subgroup_id 
-              FROM factor_groups fg
-              JOIN factor_subgroups fsg ON fg.factor_group = fsg.factor_group 
-              WHERE fg.factor_group = 'Other and Local Criteria' AND fsg.factor_subgroup = 'Other/Local Priority'
+            other_factor_group_id <- get_db_query("
+              SELECT factor_group_id 
+              FROM factor_groups
+              WHERE factor_group = 'Other and Local Criteria'
             ")
-            if (nrow(other_local_ids) == 0) {
-              stop("Could not find the 'Other and Local Criteria' group in the database.")
-            }
             
             for (i in 1:num_custom_factors) {
               # Check if the row still exists in the UI (wasn't removed)
@@ -522,14 +517,14 @@ mod_renewal_factors_server <- function(id, user_coc, selected_project_types, sel
                 
                 # 1. Insert into rating_factors table and get the new ID back
                 new_factor_id <- get_db_query(
-                  "INSERT INTO rating_factors (funding_action, project_type, target_population, rating_factor_text, factor_group, factor_subgroup) 
-                   VALUES (3, $1, $2, $3, $4, $5) RETURNING rating_factor_id", # Assuming 'Renew' has ID 3
+                  "INSERT INTO rating_factors (funding_action, project_type, target_population, rating_factor_text, factor_group) 
+                   VALUES (3, $1, $2, $3, $4, $5) 
+                  RETURNING rating_factor_id", # Assuming 'Renew' has ID 3
                   params = list(
                     input[[paste0("custom_pt_", i)]],
                     input[[paste0("custom_tp_", i)]],
                     input[[paste0("custom_text_", i)]],
-                    other_local_ids$factor_group_id,
-                    other_local_ids$factor_subgroup_id
+                    other_factor_group_id$factor_group_id
                   )
                 )$rating_factor_id
                 
