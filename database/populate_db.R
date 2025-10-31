@@ -642,14 +642,14 @@ VALUES
 ('Performance Measures', (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
 ('Serve High Needs Populations', (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
 ('Project Effectiveness', (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
-('Equity Factors', (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
+-- ('Equity Factors', (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
 ('Other and Local Criteria', (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
 ('Experience', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
 ('Design of Housing & Supportive Services', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
 ('Timeliness', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
 ('Financial', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
 ('Project Effectiveness', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
-('Equity Factors', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
+-- ('Equity Factors', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
 ('Other and Local Criteria', (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com');
 ")
 
@@ -675,7 +675,7 @@ WITH
     l_renew AS (SELECT reference_id FROM lookups WHERE reference_type = 'funding_action' AND value = 'Renew'),
     fg_perf_meas_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Performance Measures' AND funding_action = (SELECT reference_id FROM l_renew)),
     fg_high_needs_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Serve High Needs Populations' AND funding_action = (SELECT reference_id FROM l_renew)),
-    fg_equity_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_renew)),
+    -- fg_equity_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_renew)),
     fg_equity_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_new))
 INSERT INTO factor_subgroups (factor_subgroup, factor_group, funding_action, created_by)
 VALUES
@@ -685,11 +685,11 @@ VALUES
 ('New or Increased Income and Earned Income', (SELECT factor_group_id FROM fg_perf_meas_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
 ('Coordinated Assessment Score', (SELECT factor_group_id FROM fg_high_needs_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
 ('Project Focuses on Chronically Homeless People', (SELECT factor_group_id FROM fg_high_needs_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
-('APR Data on ≥ 50% Disability/Zero Income/Unsheltered', (SELECT factor_group_id FROM fg_high_needs_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
-('Agency Leadership, Governance, and Policies', (SELECT factor_group_id FROM fg_equity_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
-('Program Participant Outcomes', (SELECT factor_group_id FROM fg_equity_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
-('Agency Leadership, Governance, and Policies', (SELECT factor_group_id FROM fg_equity_new), (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
-('Program Participant Outcomes', (SELECT factor_group_id FROM fg_equity_new), (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com');
+('APR Data on ≥ 50% Disability/Zero Income/Unsheltered', (SELECT factor_group_id FROM fg_high_needs_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com');
+-- ('Agency Leadership, Governance, and Policies', (SELECT factor_group_id FROM fg_equity_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
+-- ('Program Participant Outcomes', (SELECT factor_group_id FROM fg_equity_renew), (SELECT reference_id FROM l_renew), 'orr_service@abtglobal.com'),
+-- ('Agency Leadership, Governance, and Policies', (SELECT factor_group_id FROM fg_equity_new), (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com'),
+-- ('Program Participant Outcomes', (SELECT factor_group_id FROM fg_equity_new), (SELECT reference_id FROM l_new), 'orr_service@abtglobal.com');
 ")
 
 message("about to do thresholds")
@@ -828,14 +828,14 @@ WITH
     fg_perf_meas_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Performance Measures' AND funding_action = (SELECT reference_id FROM l_renew)),
     fg_high_needs_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Serve High Needs Populations' AND funding_action = (SELECT reference_id FROM l_renew)),
     fg_proj_effect_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Project Effectiveness' AND funding_action = (SELECT reference_id FROM l_renew)),
-    fg_equity_factors_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_renew)),
+    -- fg_equity_factors_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_renew)),
     fg_other_local_renew AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Other and Local Criteria' AND funding_action = (SELECT reference_id FROM l_renew)),
     fg_experience_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Experience' AND funding_action = (SELECT reference_id FROM l_new)),
     fg_design_housing_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Design of Housing & Supportive Services' AND funding_action = (SELECT reference_id FROM l_new)),
     fg_timeliness_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Timeliness' AND funding_action = (SELECT reference_id FROM l_new)),
     fg_financial_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Financial' AND funding_action = (SELECT reference_id FROM l_new)),
     fg_proj_effect_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Project Effectiveness' AND funding_action = (SELECT reference_id FROM l_new)),
-    fg_equity_factors_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_new)),
+    -- fg_equity_factors_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Equity Factors' AND funding_action = (SELECT reference_id FROM l_new)),
     fg_other_local_new AS (SELECT factor_group_id FROM factor_groups WHERE factor_group = 'Other and Local Criteria' AND funding_action = (SELECT reference_id FROM l_new)),
 
     fsg_los_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Length of Stay' AND factor_group = (SELECT factor_group_id FROM fg_perf_meas_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
@@ -845,10 +845,10 @@ WITH
     fsg_coord_assess_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Coordinated Assessment Score' AND factor_group = (SELECT factor_group_id FROM fg_high_needs_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
     fsg_proj_chron_homeless_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Project Focuses on Chronically Homeless People' AND factor_group = (SELECT factor_group_id FROM fg_high_needs_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
     fsg_apr_data_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'APR Data on ≥ 50% Disability/Zero Income/Unsheltered' AND factor_group = (SELECT factor_group_id FROM fg_high_needs_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
-    fsg_agency_leadership_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Agency Leadership, Governance, and Policies' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
-    fsg_prog_part_outcomes_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Program Participant Outcomes' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
-    fsg_agency_leadership_new AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Agency Leadership, Governance, and Policies' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_new) AND funding_action = (SELECT reference_id FROM l_new)),
-    fsg_prog_part_outcomes_new AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Program Participant Outcomes' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_new) AND funding_action = (SELECT reference_id FROM l_new))
+    -- fsg_agency_leadership_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Agency Leadership, Governance, and Policies' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
+    -- fsg_prog_part_outcomes_renew AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Program Participant Outcomes' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_renew) AND funding_action = (SELECT reference_id FROM l_renew)),
+    -- fsg_agency_leadership_new AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Agency Leadership, Governance, and Policies' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_new) AND funding_action = (SELECT reference_id FROM l_new)),
+    -- fsg_prog_part_outcomes_new AS (SELECT factor_subgroup_id FROM factor_subgroups WHERE factor_subgroup = 'Program Participant Outcomes' AND factor_group = (SELECT factor_group_id FROM fg_equity_factors_new) AND funding_action = (SELECT reference_id FROM l_new))
 
 INSERT INTO rating_factors 
 (rating_factor_text, rating_factor_text_short, funding_action, project_type, target_population, factor_group, factor_subgroup, performance_goal, max_point_value, created_by) 
@@ -996,15 +996,15 @@ VALUES
 
 -- Equity Factors, Governance, and Policies (factor_group = fg_equity_factors_renew)
 -- Subgroup: Agency Leadership, Governance, and Policies (fsg_agency_leadership_renew)
-('Recipient has under-represented individuals (BIPOC, LGBTQ+, etc) in managerial and leadership positions', 'Recipient Management & Leadership Positions', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_agency_leadership_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
-('Recipient''s board of directors includes representation from more than one person with lived experience of homelessness', 'Recipient Board of Directors', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_agency_leadership_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
-('Recipient has relational process for receiving and incorporating feedback from persons with lived experience of homelessness', 'Process for receiving & incorporating feedback', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_agency_leadership_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
-('Recipient has reviewed internal policies and procedures with an equity lens and has a plan for developing and implementing equitable policies that do not impose undue barriers', 'Internal Policies and Procedures', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_agency_leadership_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('Recipient has under-represented individuals (BIPOC, LGBTQ+, etc) in managerial and leadership positions', 'Recipient Management & Leadership Positions', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_agency_leadership_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('Recipient''s board of directors includes representation from more than one person with lived experience of homelessness', 'Recipient Board of Directors', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_agency_leadership_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('Recipient has relational process for receiving and incorporating feedback from persons with lived experience of homelessness', 'Process for receiving & incorporating feedback', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_agency_leadership_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('Recipient has reviewed internal policies and procedures with an equity lens and has a plan for developing and implementing equitable policies that do not impose undue barriers', 'Internal Policies and Procedures', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_agency_leadership_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
 
 -- Program Participant Outcomes (factor_group = fg_equity_factors_renew, subgroup = fsg_prog_part_outcomes_renew)
-('Recipient has reviewed program participant outcomes with an equity lens, including the disaggregation of data by race, ethnicity, gender identity, age, and/or other underserved populations', 'Outcomes with an equity lens', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
-('Recipient has identified programmatic changes needed to make program participant outcomes more equitable and developed a plan to make those changes', 'Program changes for equitable outcomes', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
-('Recipient is working with HMIS lead to develop a schedule for reviewing and/or other underserved populations', 'HMIS data review with equity lens', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('Recipient has reviewed program participant outcomes with an equity lens, including the disaggregation of data by race, ethnicity, gender identity, age, and/or other underserved populations', 'Outcomes with an equity lens', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('Recipient has identified programmatic changes needed to make program participant outcomes more equitable and developed a plan to make those changes', 'Program changes for equitable outcomes', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('Recipient is working with HMIS lead to develop a schedule for reviewing and/or other underserved populations', 'HMIS data review with equity lens', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_renew), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_renew), 'Yes', 10, 'orr_service@abtglobal.com'),
 
 -- Other and Local Criteria (factor_group = fg_other_local_renew, factor_subgroup = NULL)
 ('Applicant Narrative that CoC Scores', 'Applicant Narrative', (SELECT reference_id FROM l_renew), NULL, NULL, (SELECT factor_group_id FROM fg_other_local_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
@@ -1066,15 +1066,15 @@ VALUES
 
 -- Equity Factors (factor_group = fg_equity_factors_new)
 -- Subgroup: Agency Leadership, Governance, and Policies (fsg_agency_leadership_new)
-('New project has under-represented individuals (BIPOC, LGBTQ+, etc) in managerial and leadership positions', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_agency_leadership_new), 'Yes', 10, 'orr_service@abtglobal.com'),
-('New project''s organizational board of directors includes representation from more than one person with lived experience (per 578.75(g))', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_agency_leadership_new), 'Yes', 10, 'orr_service@abtglobal.com'),
-('New project has relational process for receiving and incorporating feedback from persons with lived experience or a plan to create one', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_agency_leadership_new), 'Yes', 10, 'orr_service@abtglobal.com'),
-('New project has reviewed internal policies and procedures with an equity lens and has a plan for developing and implementing equitable policies that do not impose undue barriers that exacerbate disparities and outcomes', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_agency_leadership_new), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('New project has under-represented individuals (BIPOC, LGBTQ+, etc) in managerial and leadership positions', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_agency_leadership_new), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('New project''s organizational board of directors includes representation from more than one person with lived experience (per 578.75(g))', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_agency_leadership_new), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('New project has relational process for receiving and incorporating feedback from persons with lived experience or a plan to create one', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_agency_leadership_new), 'Yes', 10, 'orr_service@abtglobal.com'),
+-- ('New project has reviewed internal policies and procedures with an equity lens and has a plan for developing and implementing equitable policies that do not impose undue barriers that exacerbate disparities and outcomes', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_agency_leadership_new), 'Yes', 10, 'orr_service@abtglobal.com'),
 
 -- Program Participant Outcomes (factor_group = fg_equity_factors_new, subgroup = fsg_prog_part_outcomes_new)
-('New project describes their plan for reviewing program participant outcomes with an equity lens, including the disaggregation of data by race, ethnicity, gender identity, and/or age. If already implementing a plan, describe findings from outcomes review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com'),
-('New project describes plan to review whether programmatic changes are needed to make program participant outcomes more equitable and developed a plan to make those changes. If already implementing plan, describe findings from review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com'),
-('New project describes plan to work with HMIS lead to develop a schedule for reviewing HMIS data with disaggregation by race, ethnicity, gender identity, and/or age. If already implementing plan, describe findings from review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com');
+-- ('New project describes their plan for reviewing program participant outcomes with an equity lens, including the disaggregation of data by race, ethnicity, gender identity, and/or age. If already implementing a plan, describe findings from outcomes review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com'),
+-- ('New project describes plan to review whether programmatic changes are needed to make program participant outcomes more equitable and developed a plan to make those changes. If already implementing plan, describe findings from review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com'),
+-- ('New project describes plan to work with HMIS lead to develop a schedule for reviewing HMIS data with disaggregation by race, ethnicity, gender identity, and/or age. If already implementing plan, describe findings from review', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT factor_group_id FROM fg_equity_factors_new), (SELECT factor_subgroup_id FROM fsg_prog_part_outcomes_new), NULL, 10, 'orr_service@abtglobal.com');
 ")
 
 ###### FUNDING PRIORITIES #########
