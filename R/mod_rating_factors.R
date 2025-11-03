@@ -11,7 +11,7 @@ mod_rating_factors_ui <- function(id, funding_action) {
     card(
       project_and_pop_dropdowns(ns, funding_action),
       hr(),
-      uiOutput(ns("factors_ui")),
+      uiOutput(ns("factors_ui")) %>% withSpinner(),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
