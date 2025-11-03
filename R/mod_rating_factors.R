@@ -1,3 +1,77 @@
+#' @title mod_new_factors_ui
+#' @noRd
+mod_rating_factors_ui <- function(id, funding_action) {
+  ns <- NS(id)
+  
+  display_funding_action = ifelse(funding_action == "Renew", "Renewal/Expansion", "New")
+  
+  nav_panel(
+    paste0(display_funding_action, " Project Rating Criteria"),
+    value = id,
+    card(
+      project_and_pop_dropdowns(ns, funding_action),
+      hr(),
+      uiOutput(ns("factors_ui")),
+      card_footer(
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
+        actionButton(ns("save_factors"), paste0("Save ", display_funding_action, " Criteria"), icon = icon("save"), class = "btn-primary")
+      )
+    )
+  )
+}
+
+#' @title mod_new_factors_server
+#' @noRd
+mod_rating_factors_server <- function(id, user_coc, funding_action) {
+  # The server logic here is identical in structure to the renewal/expansion module,
+  # differing only by the `funding_action` filter ('New').
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+    
+    # Counter for unique IDs for custom factor rows
+    custom_factor_counter <- reactiveVal(0)
+    # Store observers for remove buttons to manage them
+    custom_factor_observers <- reactiveValues()
+    subgroup_check_all_values <- reactiveValues()
+    
+    
+    factors_data <- reactive({
+      req(user_coc$coc_version_id)
+
+      fetch_and_structure_rating_factors(
+        funding_action, 
+        user_coc$coc_version_id, 
+        selected_target_populations = input$target_population,
+        selected_project_types = input$project_type
+      )
+    })
+    
+    output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
+      data_groups_nested <- factors_data()
+
+      render_nested_factor_accordion_ui(
+        ns = ns,
+        funding_action = funding_action,
+        data_groups_nested = data_groups_nested,
+        placeholder_text = "No rating factors found"
+      )
+    })
+    
+    handle_check_all_box_functionality(input, factors_data(), funding_action)
+    
+    # Observer for the "Add Custom Rating Factor" button
+    observeEvent(input$add_custom_factor, {
+      add_custom_factor(ns, input, funding_action)
+    }, ignoreInit = TRUE)
+    
+    observeEvent(input$save_factors, {
+      save_factors(ns, input, funding_action, factors_data())
+    }, ignoreInit = TRUE)
+  })
+}
+
+
 fetch_and_structure_rating_factors <- function(funding_action_type, coc_version_id, selected_target_populations = NULL, selected_project_types = NULL) {
   # Determine the WHERE clause based on the funding_action_type
   funding_action_values <- switch(
@@ -200,427 +274,307 @@ project_and_pop_dropdowns <- function(ns, funding_action) {
   )
 }
 
-#-------------------------------------------------------------------------------
-# 3. RENEWAL/EXPANSION Project Factors Sub-Module
-# - Displays rating factors applicable to Renewal and Expansion projects.
-# - Allows customization of 'Goal' and 'Max Point Value'.
-#-------------------------------------------------------------------------------
-#' @title mod_renewal_factors_ui
-#' @noRd
-mod_renewal_factors_ui <- function(id) {
-  ns <- NS(id)
+handle_check_all_box_functionality <- function(input, factors_data, funding_action) {
+  # 1. Fetch ALL possible subgroup names ONCE at the start.
+  #    This decouples observer creation from the reactive data flow.
+  #    We query the source table directly for this static list.
+  funding_action_id <- get_lookup_refid(funding_action, "funding_action")
   
-  nav_panel(
-    "Renewal/Expansion Project Rating Criteria",
-    value = id,
-    card(
-      project_and_pop_dropdowns(ns, "Renew"),
-      hr(),
-      uiOutput(ns("renewal_factors_ui")) %>% withSpinner(),
-      card_footer(
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
-        actionButton(ns("save_renewal_factors"), "Save Renewal/Expansion Criteria", icon = icon("save"), class = "btn-primary")
+  
+  all_possible_subgroups <- get_db_query(
+    "SELECT DISTINCT factor_subgroup 
+    FROM factor_subgroups
+    WHERE funding_action = $1
+  ", params = funding_action_id)$factor_subgroup
+  
+  lapply(all_possible_subgroups, function(subgroup) {
+    subgroup_check_all_input <- paste0("check_all_", subgroup)
+    observeEvent(input[[subgroup_check_all_input]], {
+      
+      # When triggered by a user click, get the CURRENT state of the data
+      val <- input[[subgroup_check_all_input]]
+      # message(paste0("handling ", subgroup, " check box"))
+      if (is.null(val)) return()
+      # message(paste0(subgroup, " check box is not null!"))
+      
+      stored_val <- subgroup_check_all_values[[subgroup_check_all_input]]
+      is_initialized <- !is.null(stored_val)
+      
+      if(!identical(val, stored_val) && is_initialized) {
+        # Find the factor IDs for this specific subgroup from the current data
+        factor_ids_to_update <- c()
+        for (group in factors_data) {
+          # Check if the clicked subgroup exists in this group for the current filters
+          if (subgroup %in% names(group)) {
+            factor_ids_to_update <- group[[subgroup]]$rating_factor_id
+            break # Found it, no need to check other groups
+          }
+        }
+        # message("updating individual checkboxes")
+        lapply(factor_ids_to_update, function(factor_id) {
+          updateCheckboxInput(session, paste0("select_", factor_id), value = val)
+        })
+      }
+      
+      subgroup_check_all_values[[subgroup_check_all_input]] <- val
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+  })
+  
+  # Update subgroup check-all-that-apply boxes based on underlying factor boxes ------
+  observe({
+    req(factors_data)
+    
+    # This part checks the children and updates the parent "check all" box.
+    
+    # Loop through only the groups and subgroups currently visible on the UI.
+    for (group in factors_data) {
+      for (subgroup_name in names(group)) {
+        
+        subgroup_data <- group[[subgroup_name]]
+        factor_ids <- subgroup_data$rating_factor_id
+        
+        # Read the current values of all child factor checkboxes for this subgroup.
+        # The `req(input[[...]])` is crucial to prevent this from running before
+        # the child checkboxes are rendered and available in the `input` object.
+        factor_selections <- lapply(factor_ids, function(id) input[[paste0("select_", id)]])
+        if(is.null(unlist(factor_selections))) next
+        
+        message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
+        # Determine the new state for the parent "check all" box.
+        # It should be checked if and only if all its children are checked.
+        parent_should_be_checked <- all(unlist(factor_selections))
+        
+        # Get the ID of the parent checkbox
+        subgroup_check_all_input <- paste0("check_all_", subgroup_name)
+        
+        # Update the parent checkbox ONLY if its state needs to change.
+        # This avoids unnecessary updates and potential infinite loops.
+        if (!identical(input[[subgroup_check_all_input]], parent_should_be_checked)) {
+          updateCheckboxInput(session, ns(subgroup_check_all_input), value = parent_should_be_checked)
+          
+          # CRITICAL: Also update our memory so that this programmatic change
+          # doesn't re-trigger the `check_all -> factors` logic above.
+          subgroup_check_all_values[[subgroup_check_all_input]] <- parent_should_be_checked
+        }
+      }
+    }
+  })
+}
+
+
+# Function to generate the UI for a single custom factor row
+create_custom_factor_row_ui <- function(ns, row_id, funding_action) {
+  # Use a unique ID for the row's wrapper div for easy removal
+  row_div_id <- ns(paste0("custom_row_", row_id))
+  
+  # Define the namespaced input IDs
+  pt_input_id <- ns(paste0("custom_pt_", row_id))
+  tp_input_id <- ns(paste0("custom_tp_", row_id))
+  
+  div(
+    id = row_div_id,
+    fluidRow(
+      style = "padding-top: 10px; border-top: 1px solid #eee;",
+      column(1, checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE)),
+      column(1, if(funding_action == "Renew") 
+        selectInput(
+          inputId = pt_input_id,
+          label = NULL,
+          choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
+          multiple = TRUE,
+          selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
+        ) else NULL
+      ),
+      column(1, selectInput(
+        inputId = tp_input_id,
+        label = NULL,
+        choices = get_labelled_lookups("target_population")[c("DV", "General")],
+        multiple = TRUE,
+        selected = c("DV", "General") # Pre-select all for initial state
+      )),
+      column(7, textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text")),
+      column(1, textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal")),
+      column(1, 
+             div(style="display:flex; align-items:center; gap:5px;",
+                 numericInput(ns(paste0("custom_points_", row_id)), label = NULL, value = 0, step = 1),
+                 actionButton(ns(paste0("remove_custom_", row_id)), "", icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
+             )
       )
     )
   )
 }
 
-#' @title mod_renewal_factors_server
-#' @noRd
-mod_renewal_factors_server <- function(id, user_coc, selected_project_types, selected_target_populations) {
-  # This server function would be nearly identical to the new_factors_server,
-  # but with a different filter on `funding_action`. A helper function could be
-  # created to avoid code duplication. For clarity here, it is written out.
-  moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-    
-    subgroup_check_all_values <- reactiveValues()
-    
-    renewal_expand_factors_data <- reactive({
-      req(user_coc$coc_version_id)
+add_custom_factor <- function(ns, input, funding_action) {
+  # Increment counter
+  current_id <- custom_factor_counter() + 1
+  custom_factor_counter() <- current_id
+  
+  bslib::accordion_panel_open(
+    id = "main_accordion", 
+    values = "Other and Local Criteria"
+  )
+  
+  # Insert the new UI row
+  insertUI(
+    selector = paste0("#", ns("custom_factors_placeholder")),
+    where = "beforeEnd",
+    ui = create_custom_factor_row_ui(ns, current_id, funding_action)
+  )
+  
+  # Focus on the first text input of the new row
+  pt_input_id_js <- ns(paste0("custom_pt_", current_id))
+  shinyjs::runjs(sprintf("$('#%s').focus();", pt_input_id_js))
+  
+  # Create and store an observer for the new "Remove" button
+  remove_btn_id <- paste0("remove_custom_", current_id)
+  custom_factor_observers[[remove_btn_id]] <- observeEvent(input[[remove_btn_id]], {
+    removeUI(selector = paste0("#", ns(paste0("custom_row_", current_id))))
+    # Destroy this observer to prevent memory leaks
+    custom_factor_observers[[remove_btn_id]]$destroy()
+  }, ignoreInit = TRUE, once = TRUE) # `once = TRUE` is crucial
+}
+
+save_factors <- function(ns, input, funding_action, factor_data) {
+  # 1. Get all factor IDs that were rendered on the UI.
+  all_ids <- rbindlist(
+    unlist(factor_data, recursive = FALSE), 
+    use.names = TRUE, 
+    fill = TRUE
+  )$rating_factor_id
+  
+  # Give user immediate feedback
+  showNotification(
+    "Saving criteria...", 
+    duration = NULL, 
+    id = ns("saving_msg"),
+    type = "message"
+  )
+  
+  # 2. Collect the current state from the UI into a data.table
+  ui_state <- purrr::map_df(all_ids, function(id) {
+    data.table(
+      rating_factor_id = id,
+      is_selected = isTRUE(input[[paste0("select_", id)]]),
+      goal = as.character(input[[paste0("goal_", id)]]),
+      max_point_value = as.numeric(input[[paste0("points_", id)]])
+    )
+  })
+  
+  # 3. Get the current state from the database
+  db_factors <- get_db_query(
+    "SELECT rating_factor_id FROM selected_rating_factors WHERE coc_version_id = $1",
+    params = list(user_coc$coc_version_id)
+  )
+  db_ids <- if(nrow(db_factors) > 0) db_factors$rating_factor_id else integer(0)
+  
+  # 4. Determine what needs to be inserted, updated, or deleted
+  to_insert <- ui_state[is_selected & !(rating_factor_id %in% db_ids)]
+  to_update <- ui_state[is_selected & rating_factor_id %in% db_ids]
+  to_delete_ids <- ui_state[!is_selected & rating_factor_id %in% db_ids, rating_factor_id]
+  
+  # 8. Wrap all database operations in a transaction for atomicity
+  # This assumes you have a helper function `poolWithTransaction`.
+  # If not, you would use DBI::dbBegin, tryCatch, DBI::dbCommit/dbRollback here.
+  tryCatch({
+    DBI::dbWithTransaction(DB_CON, {
       
-      fetch_and_structure_rating_factors(
-        "Renew", 
-        user_coc$coc_version_id, 
-        selected_target_populations = input$target_population,
-        selected_project_types = input$project_type
-      )
-    })
-    
-    # Dynamically render the UI for rating factors using nested accordions
-    output$renewal_factors_ui <- renderUI({
-      data_groups_nested <- renewal_expand_factors_data() # This now returns the nested list
-      if (length(data_groups_nested) == 0) return(p("No rating factors found for Renewal/Expansion projects."))
-      
-      render_nested_factor_accordion_ui(
-        ns = ns,
-        funding_action = "Renew",
-        data_groups_nested = data_groups_nested,
-        placeholder_text = "No rating factors found for Renewal/Expansion projects."
-      )
-    })
-    
-    # 1. Fetch ALL possible subgroup names ONCE at the start.
-    #    This decouples observer creation from the reactive data flow.
-    #    We query the source table directly for this static list.
-    all_possible_subgroups <- get_db_query("SELECT DISTINCT factor_subgroup FROM factor_subgroups")$factor_subgroup
-    
-    lapply(all_possible_subgroups, function(subgroup) {
-      subgroup_check_all_input <- paste0("check_all_", subgroup)
-      observeEvent(input[[subgroup_check_all_input]], {
-        
-        # When triggered by a user click, get the CURRENT state of the data
-        val <- input[[subgroup_check_all_input]]
-        message(paste0("handling ", subgroup, " check box"))
-        if (is.null(val)) return()
-        message(paste0(subgroup, " check box is not null!"))
-        
-        stored_val <- subgroup_check_all_values[[subgroup_check_all_input]]
-        is_initialized <- !is.null(stored_val)
-        
-        if(!identical(val, stored_val) && is_initialized) {
-          # Find the factor IDs for this specific subgroup from the current data
-          factor_ids_to_update <- c()
-          for (group in renewal_expand_factors_data()) {
-            # Check if the clicked subgroup exists in this group for the current filters
-            if (subgroup %in% names(group)) {
-              factor_ids_to_update <- group[[subgroup]]$rating_factor_id
-              break # Found it, no need to check other groups
-            }
-          }
-          message("updating individual checkboxes")
-          lapply(factor_ids_to_update, function(factor_id) {
-            updateCheckboxInput(session, paste0("select_", factor_id), value = val)
-          })
-        }
-        
-        subgroup_check_all_values[[subgroup_check_all_input]] <- val
-      }, ignoreInit = TRUE, ignoreNULL = TRUE)
-    })
-    
-    # Update subgroup check-all-that-apply boxes based on underlying factor boxes ------
-    observe({
-      current_data <- renewal_expand_factors_data()
-      req(current_data)
-      
-      # This part checks the children and updates the parent "check all" box.
-      
-      # Loop through only the groups and subgroups currently visible on the UI.
-      for (group in current_data) {
-        for (subgroup_name in names(group)) {
-          
-          subgroup_data <- group[[subgroup_name]]
-          factor_ids <- subgroup_data$rating_factor_id
-          
-          # Read the current values of all child factor checkboxes for this subgroup.
-          # The `req(input[[...]])` is crucial to prevent this from running before
-          # the child checkboxes are rendered and available in the `input` object.
-          factor_selections <- lapply(factor_ids, function(id) input[[paste0("select_", id)]])
-          if(is.null(unlist(factor_selections))) next
-          
-          message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
-          # Determine the new state for the parent "check all" box.
-          # It should be checked if and only if all its children are checked.
-          parent_should_be_checked <- all(unlist(factor_selections))
-          
-          # Get the ID of the parent checkbox
-          subgroup_check_all_input <- paste0("check_all_", subgroup_name)
-          
-          # Update the parent checkbox ONLY if its state needs to change.
-          # This avoids unnecessary updates and potential infinite loops.
-          if (!identical(input[[subgroup_check_all_input]], parent_should_be_checked)) {
-            updateCheckboxInput(session, ns(subgroup_check_all_input), value = parent_should_be_checked)
-            
-            # CRITICAL: Also update our memory so that this programmatic change
-            # doesn't re-trigger the `check_all -> factors` logic above.
-            subgroup_check_all_values[[subgroup_check_all_input]] <- parent_should_be_checked
-          }
-        }
-      }
-    })
-    
-    
-    # Handle custom rating factors ------------------
-    # Counter for unique IDs for custom factor rows
-    custom_factor_counter <- reactiveVal(0)
-    # Store observers for remove buttons to manage them
-    custom_factor_observers <- reactiveValues()
-    
-    # Function to generate the UI for a single custom factor row
-    create_custom_factor_row_ui <- function(row_id) {
-      # Use a unique ID for the row's wrapper div for easy removal
-      row_div_id <- ns(paste0("custom_row_", row_id))
-      
-      # Define the namespaced input IDs
-      pt_input_id <- ns(paste0("custom_pt_", row_id))
-      tp_input_id <- ns(paste0("custom_tp_", row_id))
-      
-      div(
-        id = row_div_id,
-        fluidRow(
-          style = "padding-top: 10px; border-top: 1px solid #eee;",
-          column(1, checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE)),
-          column(1, selectInput(
-            inputId = ns("project_type"),
-            label = NULL,
-            choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-            multiple = TRUE,
-            selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
-          )),
-          column(1, selectInput(
-            inputId = ns("target_population"),
-            label = NULL,
-            choices = get_labelled_lookups("target_population")[c("DV", "General")],
-            multiple = TRUE,
-            selected = c("DV", "General") # Pre-select all for initial state
-          )),
-          column(7, textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text")),
-          column(1, textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal")),
-          column(1, 
-                 div(style="display:flex; align-items:center; gap:5px;",
-                     numericInput(ns(paste0("custom_points_", row_id)), label = NULL, value = 0, step = 1),
-                     actionButton(ns(paste0("remove_custom_", row_id)), "", icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
-                 )
-          )
-        )
-      )
-    }
-    
-    # Observer for the "Add Custom Rating Factor" button
-    observeEvent(input$add_custom_factor, {
-      # Increment counter
-      current_id <- custom_factor_counter() + 1
-      custom_factor_counter(current_id)
-     
-      bslib::accordion_panel_open(
-        id = "main_accordion", 
-        values = "Other and Local Criteria"
-      )
-      
-      # Insert the new UI row
-      insertUI(
-        selector = paste0("#", ns("custom_factors_placeholder")),
-        where = "beforeEnd",
-        ui = create_custom_factor_row_ui(current_id)
-      )
-      
-      # Focus on the first text input of the new row
-      pt_input_id_js <- ns(paste0("custom_pt_", current_id))
-      shinyjs::runjs(sprintf("$('#%s').focus();", pt_input_id_js))
-      
-      # Create and store an observer for the new "Remove" button
-      remove_btn_id <- paste0("remove_custom_", current_id)
-      custom_factor_observers[[remove_btn_id]] <- observeEvent(input[[remove_btn_id]], {
-        removeUI(selector = paste0("#", ns(paste0("custom_row_", current_id))))
-        # Destroy this observer to prevent memory leaks
-        custom_factor_observers[[remove_btn_id]]$destroy()
-      }, ignoreInit = TRUE, once = TRUE) # `once = TRUE` is crucial
-    })
-    
-    # Save Logic for Renewal/Expansion Factors --------------
-    observeEvent(input$save_renewal_factors, {
-      # Ensure we have the necessary ID to save against
-      req(user_coc$coc_version_id)
-      
-      # 1. Get all factor IDs that were rendered on the UI.
-      all_ids <- rbindlist(
-        unlist(renewal_expand_factors_data(), recursive = FALSE), 
-        use.names = TRUE, 
-        fill = TRUE
-      )$rating_factor_id
-      
-      # Give user immediate feedback
-      showNotification(
-        "Saving criteria...", 
-        duration = NULL, 
-        id = ns("saving_msg"),
-        type = "message"
-      )
-      
-      # 2. Collect the current state from the UI into a data.table
-      ui_state <- purrr::map_df(all_ids, function(id) {
-        data.table(
-          rating_factor_id = id,
-          is_selected = isTRUE(input[[paste0("select_", id)]]),
-          goal = as.character(input[[paste0("goal_", id)]]),
-          max_point_value = as.numeric(input[[paste0("points_", id)]])
-        )
-      })
-      
-      # 3. Get the current state from the database
-      db_factors <- get_db_query(
-        "SELECT rating_factor_id FROM selected_rating_factors WHERE coc_version_id = $1",
-        params = list(user_coc$coc_version_id)
-      )
-      db_ids <- if(nrow(db_factors) > 0) db_factors$rating_factor_id else integer(0)
-      
-      # 4. Determine what needs to be inserted, updated, or deleted
-      to_insert <- ui_state[is_selected & !(rating_factor_id %in% db_ids)]
-      to_update <- ui_state[is_selected & rating_factor_id %in% db_ids]
-      to_delete_ids <- ui_state[!is_selected & rating_factor_id %in% db_ids, rating_factor_id]
-      
-      # 8. Wrap all database operations in a transaction for atomicity
-      # This assumes you have a helper function `poolWithTransaction`.
-      # If not, you would use DBI::dbBegin, tryCatch, DBI::dbCommit/dbRollback here.
-      tryCatch({
-        DBI::dbWithTransaction(DB_CON, {
-          
-          # 7. DELETE records that were deselected
-          if (length(to_delete_ids) > 0) {
-            delete_q <- glue::glue_sql("
+      # 7. DELETE records that were deselected
+      if (length(to_delete_ids) > 0) {
+        delete_q <- glue::glue_sql("
               DELETE FROM selected_rating_factors
               WHERE coc_version_id = {coc_id} AND rating_factor_id IN ({ids*})
             ", coc_id = user_coc$coc_version_id, ids = to_delete_ids, .con = DB_CON)
-            
-            dbExecute(DB_CON, delete_q)
-          }
-          
-          # 5. INSERT new records that are now selected
-          if (nrow(to_insert) > 0) {
-            dbAppendTable(
-              DB_CON,
-              "selected_rating_factors",
-              to_insert %>% fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
-            )
-          }
-          
-          # 6. UPDATE existing records
-          if (nrow(to_update) > 0) {
-            update_q <- "
+        
+        dbExecute(DB_CON, delete_q)
+      }
+      
+      # 5. INSERT new records that are now selected
+      if (nrow(to_insert) > 0) {
+        dbAppendTable(
+          DB_CON,
+          "selected_rating_factors",
+          to_insert %>% fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
+        )
+      }
+      
+      # 6. UPDATE existing records
+      if (nrow(to_update) > 0) {
+        update_q <- "
               UPDATE selected_rating_factors
               SET goal = $1, max_point_value = $2
               WHERE coc_version_id = $3 AND rating_factor_id = $4
             "
-            purrr::pwalk(to_update, function(rating_factor_id, goal, max_point_value, ...) {
+        purrr::pwalk(to_update, function(rating_factor_id, goal, max_point_value, ...) {
+          dbExecute(
+            DB_CON,
+            update_q,
+            params = list(goal, max_point_value, user_coc$coc_version_id, rating_factor_id)
+          )
+        })
+      }
+      
+      if (custom_factor_counter() > 0) {
+        num_custom_factors <- custom_factor_counter()
+        funding_action_id <- get_lookup_refid(funding_action, "funding_action")
+        
+        other_factor_group_id <- get_db_query("
+          SELECT factor_group_id 
+          FROM factor_groups
+          WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1
+        ", params = funding_action_id)
+        
+        for (i in 1:num_custom_factors) {
+          # Check if the row still exists in the UI (wasn't removed)
+          # We check the first input; if it's NULL, the row is gone.
+          if (!is.null(input[[paste0("custom_pt_", i)]])) {
+            browser()
+            # 1. Insert into rating_factors table and get the new ID back
+            new_factor_id <- get_db_query(
+              "INSERT INTO rating_factors (funding_action, project_type, target_population, rating_factor_text, factor_group) 
+              VALUES ($1, $2, $3, $4, $5, $6) 
+              RETURNING rating_factor_id", # Assuming 'Renew' has ID 3
+              params = list(
+                funding_action_id,
+                input[[paste0("custom_pt_", i)]],
+                input[[paste0("custom_tp_", i)]],
+                input[[paste0("custom_text_", i)]],
+                other_factor_group_id$factor_group_id
+              )
+            )$rating_factor_id
+            
+            # 2. If it was selected, insert into selected_rating_factors
+            if (isTRUE(input[[paste0("custom_select_", i)]])) {
               dbExecute(
                 DB_CON,
-                update_q,
-                params = list(goal, max_point_value, user_coc$coc_version_id, rating_factor_id)
+                "INSERT INTO selected_rating_factors (coc_version_id, rating_factor_id, goal, max_point_value) 
+                VALUES ($1, $2, $3, $4)",
+                params = list(
+                  user_coc$coc_version_id,
+                  new_factor_id,
+                  input[[paste0("custom_goal_", i)]],
+                  input[[paste0("custom_points_", i)]]
+                )
               )
-            })
-          }
-          
-          # --- NEW: Save Custom Factors ---
-          num_custom_factors <- custom_factor_counter()
-          if (num_custom_factors > 0) {
-            other_factor_group_id <- get_db_query("
-              SELECT factor_group_id 
-              FROM factor_groups
-              WHERE factor_group = 'Other and Local Criteria'
-            ")
-            
-            for (i in 1:num_custom_factors) {
-              # Check if the row still exists in the UI (wasn't removed)
-              # We check the first input; if it's NULL, the row is gone.
-              if (!is.null(input[[paste0("custom_pt_", i)]])) {
-                
-                # 1. Insert into rating_factors table and get the new ID back
-                new_factor_id <- get_db_query(
-                  "INSERT INTO rating_factors (funding_action, project_type, target_population, rating_factor_text, factor_group) 
-                   VALUES (3, $1, $2, $3, $4, $5) 
-                  RETURNING rating_factor_id", # Assuming 'Renew' has ID 3
-                  params = list(
-                    input[[paste0("custom_pt_", i)]],
-                    input[[paste0("custom_tp_", i)]],
-                    input[[paste0("custom_text_", i)]],
-                    other_factor_group_id$factor_group_id
-                  )
-                )$rating_factor_id
-                
-                # 2. If it was selected, insert into selected_rating_factors
-                if (isTRUE(input[[paste0("custom_select_", i)]])) {
-                  dbExecute(
-                    DB_CON,
-                    "INSERT INTO selected_rating_factors (coc_version_id, rating_factor_id, goal, max_point_value) 
-                     VALUES ($1, $2, $3, $4)",
-                    params = list(
-                      user_coc$coc_version_id,
-                      new_factor_id,
-                      input[[paste0("custom_goal_", i)]],
-                      input[[paste0("custom_points_", i)]]
-                    )
-                  )
-                }
-              }
             }
           }
-        }) # End dbWithTransaction
-        
-        removeNotification(ns("saving_msg"))
-        showNotification("Renewal/Expansion criteria saved successfully!")
-        
-        custom_factor_counter(0) 
-      }, error = function(e) {
-        # Log the error for debugging
-        removeNotification(ns("saving_msg"))
-        showNotification(
-          paste("Error saving criteria:", e$message),
-          type = "error",
-          duration = 10 # Keep error message on screen longer
-        )
-        cat("Database save error:", e$message, "\n")
-        # Return the error object or FALSE
-        e
-      })
-    }) # End save button
-  })
-}
-
-
-#-------------------------------------------------------------------------------
-# 4. NEW Project Factors Sub-Module
-# - Displays rating factors applicable to New projects.
-# - Allows customization of 'Goal' and 'Max Point Value'.
-#-------------------------------------------------------------------------------
-
-#' @title mod_new_factors_ui
-#' @noRd
-mod_new_factors_ui <- function(id) {
-  ns <- NS(id)
-  
-  nav_panel(
-    "New Project Rating Criteria",
-    value = id,
-    card(
-      project_and_pop_dropdowns(ns, "New"),
-      hr(),
-      uiOutput(ns("new_factors_ui")),
-      actionButton(ns("save_new_factors"), "Save New Project Criteria", icon = icon("save"), class = "btn-primary")
+        }
+      }
+    }) # End dbWithTransaction
+    
+    removeNotification(ns("saving_msg"))
+    showNotification("Criteria saved successfully!")
+    
+    custom_factor_counter()<- 0
+  }, error = function(e) {
+    # Log the error for debugging
+    removeNotification(ns("saving_msg"))
+    showNotification(
+      paste("Error saving criteria:", e$message),
+      type = "error",
+      duration = 10 # Keep error message on screen longer
     )
-  )
-}
-
-#' @title mod_new_factors_server
-#' @noRd
-mod_new_factors_server <- function(id, user_coc, selected_target_populations) {
-  # The server logic here is identical in structure to the renewal/expansion module,
-  # differing only by the `funding_action` filter ('New').
-  moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-    
-    new_factors_data <- reactive({
-      req(user_coc$coc_version_id)
-      fetch_and_structure_rating_factors(
-        "New", 
-        user_coc$coc_version_id, 
-        selected_target_populations = input$target_population
-      )
-    })
-    
-    output$new_factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
-      data_groups_nested <- new_factors_data()
-      render_nested_factor_accordion_ui(
-        ns = ns,
-        funding_action = "New",
-        data_groups_nested = data_groups_nested,
-        placeholder_text = "No rating factors found for New projects."
-      )
-    })
-    
-    observeEvent(input$save_new_factors, {
-      # The save logic would be implemented here, identical in form to the renewal logic.
-      shiny::showNotification("New Project criteria save logic would be implemented here.", type = "message")
-    })
-  })
+    cat("Database save error:", e$message, "\n")
+    # Return the error object or FALSE
+    e
+  }) 
 }

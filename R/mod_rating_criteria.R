@@ -20,8 +20,8 @@ mod_rating_criteria_ui <- function(id) {
     navset_tab(
       id = "rating_criteria_subtabs",
       mod_coc_thresholds_ui(ns("coc_thresholds")),
-      mod_renewal_factors_ui(ns("renewal_factors")),
-      mod_new_factors_ui(ns("new_factors")) 
+      mod_rating_factors_ui(ns("renewal_rating_factors"), "Renew"),
+      mod_rating_factors_ui(ns("new_rating_factors"), "New")
     )
   )
 }
@@ -39,15 +39,8 @@ mod_rating_criteria_server <- function(id, nav_control, user_coc, parent_session
     # Call sub-modules for each tab
     mod_coc_thresholds_server("coc_thresholds", user_coc)
     
-    mod_renewal_factors_server(
-      "renewal_factors", 
-      user_coc
-    )
-    
-    mod_new_factors_server(
-      "new_factors", 
-      user_coc
-    )
+    mod_rating_factors_server("renewal_rating_factors", user_coc, "Renew")
+    mod_rating_factors_server("new_rating_factors", user_coc, "New")
   })
 }
 
