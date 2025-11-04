@@ -30,13 +30,29 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     coc_requested <- reactiveVal(NULL)
     version_requested <- reactiveVal(NULL)
     
-    filtered_data <- reactive({
+    project_ids <- reactive({
       req(user_coc$coc_version_id)
-      
+
       get_db_query(
         "SELECT project_id FROM projects WHERE coc_version_id = $1", 
         params = user_coc$coc_version_id
-      )
+      )$project_id
+    })
+    
+    selected_criteria <- reactive({
+      req(user_coc$coc_version_id)
+
+      factors <- get_db_query(
+        "SELECT selected_rating_factor_id FROM selected_rating_factors WHERE coc_version_id = $1", 
+        params = user_coc$coc_version_id
+      )$selected_rating_factor_id
+      
+      thresholds <- get_db_query(
+        "SELECT selected_threshold_id FROM selected_thresholds WHERE coc_version_id = $1", 
+        params = user_coc$coc_version_id
+      )$selected_threshold_id
+      
+      c(factors, thresholds)
     })
     
     owner_role_refid <- get_lookup_refid("Owner", "coc_version_role")
@@ -84,7 +100,12 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ## Enable/disable actions when row is selected or not
     toggle_navs_on_coc_selection <- function() {
       for(t in TABS_AFTER_COC_SELECTION) {
-        if(length(input$coc_versions_dt_rows_selected) > 0)
+        show <- length(input$coc_versions_dt_rows_selected) > 0
+        if(t == "rating") show <- show && length(project_ids()) > 0 && length(selected_criteria()) > 0
+        if(t == "ranking") show <- show && length(project_ids()) > 0
+        
+        
+        if(show)
           nav_show("nav", target = t, session = parent_session)
         else
           nav_hide("nav", target = t, session = parent_session)
