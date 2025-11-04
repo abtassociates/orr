@@ -1,5 +1,4 @@
 function(input, output, session) {
-  projects_data <- reactiveVal(NULL)
   user_coc <- reactiveValues(
     coc = NULL,
     coc_version_id = NULL,
@@ -14,7 +13,7 @@ function(input, output, session) {
     req(user_coc$auth)
     
     # Once user logs in, load the UI + Server functions of the desired modules
-    lapply(TABS_TO_SHOW, function(t) {
+    lapply(TABS_AFTER_LOGIN, function(t) {
       # UI
       nav_insert("nav", get(glue::glue("mod_{t}_ui"))(t), select = t == "dashboard")
       
