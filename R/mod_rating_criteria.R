@@ -45,5 +45,5 @@ mod_rating_criteria_server <- function(id, nav_control, user_coc, parent_session
 }
 
 
-source(here("R/mod_coc_thresholds.R"))
-source(here("R/mod_rating_factors.R"))
+source(here("R/mod_coc_thresholds_criteria_selection.R"))
+source(here("R/mod_rating_factors_criteria_selection.R"))

@@ -5,6 +5,38 @@ mod_rating_factors_ui <- function(id, funding_action) {
   
   display_funding_action = ifelse(funding_action == "Renew", "Renewal/Expansion", "New")
   
+  project_and_pop_dropdowns <- function(ns, funding_action) {
+    project_type_dropdown <- selectInput(
+      inputId = ns("project_type"),
+      label = "Select project type",
+      choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
+      multiple = TRUE,
+      selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
+    )
+    
+    target_pop_dropdown <- selectInput(
+      inputId = ns("target_population"),
+      label = "Select special populations",
+      choices = get_labelled_lookups("target_population")[c("DV", "General")],
+      multiple = TRUE,
+      selected = c("DV", "General") # Pre-select all for initial state
+    )
+    
+    dropdowns_to_include <- target_pop_dropdown
+    if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
+    inner_layout_args <- c(
+      # if Renew, each dropdown takes half of this 8-column space. If New, it's just one column taking up the whole space
+      width = ifelse(funding_action == "Renew", 1/2, 1),
+      dropdowns_to_include
+    )
+    bslib::layout_column_wrap(
+      width = 1/3,
+      div(), # left spacer
+      do.call(bslib::layout_column_wrap, inner_layout_args),
+      div() # right spacer
+    )
+  }
+  
   nav_panel(
     paste0(display_funding_action, " Project Rating Criteria"),
     value = id,
@@ -246,9 +278,11 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       
       all_possible_subgroups <- get_db_query(
         "SELECT DISTINCT factor_subgroup 
-    FROM factor_subgroups
-    WHERE funding_action = $1
-  ", params = funding_action_id)$factor_subgroup
+          FROM factor_subgroups
+          WHERE funding_action = $1
+        ", 
+        params = funding_action_id
+      )$factor_subgroup
       
       lapply(all_possible_subgroups, function(subgroup) {
         subgroup_check_all_input <- paste0("check_all_", subgroup)
@@ -302,7 +336,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
             factor_selections <- lapply(factor_ids, function(id) input[[paste0("select_", id)]])
             if(is.null(unlist(factor_selections))) next
             
-            message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
+            # message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
             # Determine the new state for the parent "check all" box.
             # It should be checked if and only if all its children are checked.
             parent_should_be_checked <- all(unlist(factor_selections))
