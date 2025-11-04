@@ -30,6 +30,15 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     coc_requested <- reactiveVal(NULL)
     version_requested <- reactiveVal(NULL)
     
+    filtered_data <- reactive({
+      req(user_coc$coc_version_id)
+      
+      get_db_query(
+        "SELECT project_id FROM projects WHERE coc_version_id = $1", 
+        params = user_coc$coc_version_id
+      )
+    })
+    
     owner_role_refid <- get_lookup_refid("Owner", "coc_version_role")
     
     ####
@@ -110,11 +119,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     })
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
-      
-      # Store the project data in the projects_data to be passed to other modules
-      filtered_data <- get_db_tbl("projects") |>
-        fsubset(coc_version_id == user_coc$coc_version_id)
-
       nav_control("inventory")
     })
     
@@ -514,9 +518,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )
       
       # Initialize projects data
-      filtered_data <- get_hic_data(input$coc_dropdown, coc_version_id)
+      data <- get_hic_data(input$coc_dropdown, coc_version_id)
       
-      filtered_data_db <- factor_vars_db_prep(filtered_data)
+      filtered_data_db <- factor_vars_db_prep(data)
       if(IN_DEV_MODE && inherits(filtered_data_db$date_created, "POSIXct")) 
         filtered_data_db <- filtered_data_db %>%
           fmutate(
