@@ -2,35 +2,56 @@
 mod_threshold_requirements_ui <- function(id) {
   ns <- NS(id)
   
-  navset_card_tab(
-    nav_panel(
-      "Threshold Requirements",
-      accordion(
-        accordion_panel(
-          "HUD Requirements",
-          uiOutput(ns("hud_requirements"))
-        ),
-        accordion_panel(
-          "CoC Requirements",
-          uiOutput(ns("coc_requirements"))
-        )
+  nav_panel(
+    "Threshold Entry",
+    accordion(
+      accordion_panel(
+        "HUD Requirements",
+        uiOutput(ns("hud_requirements"))
       ),
-      card(
-        card_footer(
-          div(
-            class = "d-grid gap-2",
-            actionButton(ns("save_threshold_ratings"), "Save Threshold Ratings", 
-                         class = "btn-primary")
-          )
-        )
+      accordion_panel(
+        "CoC Requirements",
+        uiOutput(ns("coc_requirements"))
+      )
+    ),
+    card(
+      card_footer(
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        actionButton(ns("save_threshold_ratings"), "Save Threshold Ratings", 
+                     class = "btn-primary")
       )
     )
   )
 }
 
-mod_threshold_requirements_server <- function(id, selected_project) {
+mod_threshold_requirements_server <- function(id, user_coc, selected_project, selected_criteria) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    
+    
+    selected_thresholds <- reactive({
+      req(user_coc$coc_version_id)
+      
+      get_db_query(glue::glue_sql(
+        "SELECT st.selected_threshold_id, st.type, t.threshold_text
+        FROM thresholds
+        FULL JOIN selected_thresholds st ON st.threshold_id = t.threshold_id
+        WHERE st.coc_version_id = {user_coc$coc_version_id} OR t.type = 'HUD'
+      "))
+    })
+    
+    threshold_entries <- reactive({
+      req(user_coc$coc_version_id)
+      req(input$project_select)
+      
+      e <- get_db_query(glue::glue_sql(
+        "SELECT selected_threshold_id, met_threshold
+        FROM threshold_entries te
+        INNER JOIN selected_thresholds st ON st.selected_threshold_id = te.selected_threshold_id
+        WHERE te.project_id = {input$project_select}
+      ", .con = DB_CON)) |>
+        join(selected_thresholds(), on="selected_threshold_id")
+    })
     
     # HUD Requirements UI
     output$hud_requirements <- renderUI({

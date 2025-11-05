@@ -35,14 +35,14 @@ TABS_AFTER_LOGIN <- c(
   "dashboard",
   "inventory",
   "funding_priorities",
-  "rating_criteria",
+  "customize_rating_criteria",
   "rating",
   "account"
 )
 TABS_AFTER_COC_SELECTION <- c(
   "inventory",
   "funding_priorities",
-  "rating_criteria",
+  "customize_rating_criteria",
   "rating"
 )
 

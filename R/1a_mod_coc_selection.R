@@ -39,22 +39,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )$project_id
     })
     
-    selected_criteria <- reactive({
-      req(user_coc$coc_version_id)
-
-      factors <- get_db_query(
-        "SELECT selected_rating_factor_id FROM selected_rating_factors WHERE coc_version_id = $1", 
-        params = user_coc$coc_version_id
-      )$selected_rating_factor_id
-      
-      thresholds <- get_db_query(
-        "SELECT selected_threshold_id FROM selected_thresholds WHERE coc_version_id = $1", 
-        params = user_coc$coc_version_id
-      )$selected_threshold_id
-      
-      c(factors, thresholds)
-    })
-    
     owner_role_refid <- get_lookup_refid("Owner", "coc_version_role")
     
     ####
@@ -101,9 +85,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     toggle_navs_on_coc_selection <- function() {
       for(t in TABS_AFTER_COC_SELECTION) {
         show <- length(input$coc_versions_dt_rows_selected) > 0
-        if(t == "rating") show <- show && length(project_ids()) > 0 && length(selected_criteria()) > 0
-        if(t == "ranking") show <- show && length(project_ids()) > 0
-        
+        if(t %in% c("rating","ranking")) show <- show && length(project_ids()) > 0
         
         if(show)
           nav_show("nav", target = t, session = parent_session)

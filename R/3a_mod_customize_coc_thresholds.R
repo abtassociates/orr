@@ -6,7 +6,7 @@
 
 #' @title mod_coc_thresholds_ui
 #' @noRd
-mod_coc_thresholds_ui <- function(id) {
+mod_customize_coc_thresholds_ui <- function(id) {
   ns <- NS(id)
   nav_panel(
     "CoC Thresholds Requirements",
@@ -24,7 +24,7 @@ mod_coc_thresholds_ui <- function(id) {
 
 #' @title mod_coc_thresholds_server
 #' @noRd
-mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
+mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     

@@ -1,6 +1,6 @@
 #' @title mod_new_factors_ui
 #' @noRd
-mod_rating_factors_ui <- function(id, funding_action) {
+mod_customize_rating_factors_ui <- function(id, funding_action) {
   ns <- NS(id)
   
   display_funding_action = ifelse(funding_action == "Renew", "Renewal/Expansion", "New")
@@ -55,7 +55,7 @@ mod_rating_factors_ui <- function(id, funding_action) {
 
 #' @title mod_new_factors_server
 #' @noRd
-mod_rating_factors_server <- function(id, user_coc, funding_action) {
+mod_customize_rating_factors_server <- function(id, user_coc, funding_action, module_returns) {
   # The server logic here is identical in structure to the renewal/expansion module,
   # differing only by the `funding_action` filter ('New').
   moduleServer(id, function(input, output, session) {
@@ -66,7 +66,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
     # Store observers for remove buttons to manage them
     custom_factor_observers <- reactiveValues()
     subgroup_check_all_values <- reactiveValues()
-    
+
     fetch_and_structure_rating_factors <- function(funding_action_type, coc_version_id, selected_target_populations = NULL, selected_project_types = NULL) {
       # Determine the WHERE clause based on the funding_action_type
       funding_action_values <- switch(
@@ -269,7 +269,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       )
     }
     
-    handle_check_all_box_functionality <- function(input, factors_data, funding_action) {
+    handle_check_all_box_functionality <- function(input, funding_action) {
       # 1. Fetch ALL possible subgroup names ONCE at the start.
       #    This decouples observer creation from the reactive data flow.
       #    We query the source table directly for this static list.
@@ -300,7 +300,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
           if(!identical(val, stored_val) && is_initialized) {
             # Find the factor IDs for this specific subgroup from the current data
             factor_ids_to_update <- c()
-            for (group in factors_data) {
+            for (group in selected_factors_data()) {
               # Check if the clicked subgroup exists in this group for the current filters
               if (subgroup %in% names(group)) {
                 factor_ids_to_update <- group[[subgroup]]$rating_factor_id
@@ -319,12 +319,12 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       
       # Update subgroup check-all-that-apply boxes based on underlying factor boxes ------
       observe({
-        req(factors_data)
+        req(selected_factors_data())
         
         # This part checks the children and updates the parent "check all" box.
         
         # Loop through only the groups and subgroups currently visible on the UI.
-        for (group in factors_data) {
+        for (group in selected_factors_data()) {
           for (subgroup_name in names(group)) {
             
             subgroup_data <- group[[subgroup_name]]
@@ -431,10 +431,10 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       }, ignoreInit = TRUE, once = TRUE) # `once = TRUE` is crucial
     }
     
-    save_factors <- function(ns, input, funding_action, factor_data) {
+    save_factors <- function(ns, input, funding_action) {
       # 1. Get all factor IDs that were rendered on the UI.
       all_ids <- rbindlist(
-        unlist(factor_data, recursive = FALSE), 
+        unlist(selected_factors_data(), recursive = FALSE), 
         use.names = TRUE, 
         fill = TRUE
       )$rating_factor_id
@@ -577,7 +577,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
     }
     
     
-    factors_data <- reactive({
+    selected_factors_data <- reactive({
       req(user_coc$coc_version_id)
 
       fetch_and_structure_rating_factors(
@@ -589,7 +589,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
     })
     
     output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
-      data_groups_nested <- factors_data()
+      data_groups_nested <- selected_factors_data()
 
       render_nested_factor_accordion_ui(
         ns = ns,
@@ -599,7 +599,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       )
     })
     
-    handle_check_all_box_functionality(input, factors_data(), funding_action)
+    handle_check_all_box_functionality(input, funding_action)
     
     # Observer for the "Add Custom Rating Factor" button
     observeEvent(input$add_custom_factor, {
@@ -607,7 +607,8 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
     }, ignoreInit = TRUE)
     
     observeEvent(input$save_factors, {
-      save_factors(ns, input, funding_action, factors_data())
+      save_factors(ns, input, funding_action)
+      module_returns$customize_rating_criteria <- module_returns$customize_rating_criteria*-1
     }, ignoreInit = TRUE)
   })
 }
