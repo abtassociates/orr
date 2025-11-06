@@ -608,7 +608,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     
     observeEvent(input$save_factors, {
       save_factors(ns, input, funding_action)
-      module_returns$customize_rating_criteria <- module_returns$customize_rating_criteria*-1
+      module_returns$customize_rating_criteria <- !module_returns$customize_rating_criteria
     }, ignoreInit = TRUE)
   })
 }
