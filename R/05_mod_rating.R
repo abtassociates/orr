@@ -34,24 +34,6 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # selected_criteria <- reactive({
-    #   req(user_coc$coc_version_id)
-    #   
-    #   factors <- get_db_query(
-    #     "SELECT selected_rating_factor_id FROM selected_rating_factors WHERE coc_version_id = $1", 
-    #     params = user_coc$coc_version_id
-    #   )$selected_rating_factor_id
-    #   
-    #   thresholds <- get_db_query(
-    #     "SELECT selected_threshold_id FROM selected_thresholds WHERE coc_version_id = $1", 
-    #     params = user_coc$coc_version_id
-    #   )$selected_threshold_id
-    #   
-    #   c(factors, thresholds)
-    # })
-    
-    # selected_criteria <- module_returns$rating_criteria
-    
     observe({
       req(module_returns$rating_criteria)
       
