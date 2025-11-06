@@ -8,12 +8,12 @@ mod_rating_ui <- function(id) {
     icon = icon("star"),
     value = id,
     nav_panel(
-      title = "Renew/Expand Rating",
+      title = "Individual Rating: Renew/Expand Rating",
       value = ns("renew_rating"),
       mod_project_rating_ui(ns("renew_rating"), "Renew")
     ),
     nav_panel(
-      title = "New Rating",
+      title = "Individual Rating: New Rating",
       value = ns("new_rating"),
       mod_project_rating_ui(ns("new_rating"), "New")
     ),
