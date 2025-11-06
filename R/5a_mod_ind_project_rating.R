@@ -2,16 +2,22 @@
 mod_project_rating_ui <- function(id, funding_action) {
   ns <- NS(id)
   
-  layout_sidebar(
-    sidebar = sidebar(
-      id = ns("project_selection_sidebar"),
-      selectInput(ns("project_select"), label = "Select Project", choices = NULL),
-      uiOutput(ns("project_info_sidebar"))
+  card(
+    layout_sidebar(
+      sidebar = sidebar(
+        id = ns("project_selection_sidebar"),
+        selectInput(ns("project_select"), label = "Select Project", choices = NULL),
+        uiOutput(ns("project_info_sidebar"))
+      ),
+      navset_tab(
+        id = ns("main_contents"),
+        mod_threshold_requirements_ui(ns("threshold_requirements")),
+        mod_rating_scores_ui(ns("rating_scores"))
+      )
     ),
-    navset_tab(
-      id = ns("main_contents"),
-      mod_threshold_requirements_ui(ns("threshold_requirements")),
-      mod_rating_scores_ui(ns("rating_scores"))
+    card_footer(
+      style = "display: flex; justify-content: space-between; align-items: center;",
+      actionButton(ns("save_rating"), paste0("Save Rating"), icon = icon("save"), class = "btn-primary")
     )
   )
 }

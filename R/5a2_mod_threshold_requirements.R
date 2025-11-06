@@ -13,13 +13,6 @@ mod_threshold_requirements_ui <- function(id) {
         "CoC Requirements",
         uiOutput(ns("coc_requirements"))
       )
-    ),
-    card(
-      card_footer(
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("save_threshold_ratings"), "Save Threshold Ratings", 
-                     class = "btn-primary")
-      )
     )
   )
 }
