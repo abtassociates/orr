@@ -4,6 +4,20 @@ mod_rating_scores_ui <- function(id) {
   nav_panel(
     "Rating Entry",
     value = id,
+    singleton(tags$head(tags$script(HTML("
+      // Use event delegation. Listen for 'change' events on the document.
+      $(document).on('change', '.score-input input', function() {
+        const group = $(this).closest('.score-input').data('group');
+
+        let groupTotal = 0;
+        
+        $('.score-input[data-group=\"' + group + '\"] input').each(function() {
+          groupTotal += Number($(this).val()) || 0;
+        });
+        
+        $('.subtotal-display[data-subtotal-for=\"' + group + '\"]').text(groupTotal);
+      });"
+    )))),
     uiOutput(ns("project_rating_factors"))
   )
 }
@@ -41,86 +55,101 @@ mod_rating_scores_server <- function(id, user_coc, selected_project, funding_act
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
       req(factors_and_scores_for_project())
-
-      nested_data <- list()
-      unique_groups <- funique(factors_and_scores_for_project()$factor_group)
       
-      for (group_name in unique_groups) {
-        group_dt <- factors_and_scores_for_project()[factor_group == group_name]
-        nested_data[[group_name]] <- split(group_dt, by = "factor_subgroup")
-      }
-
-      # Get applicable rating factors based on project type and population
-      # This should match the factors defined in the Customize Rating Criteria tab
-      accordion_items_group <- purrr::map(names(nested_data), function(group_name) {
-        group_data_subgroups <- nested_data[[group_name]]
-
-        sub_accordion_items <- purrr::map(names(group_data_subgroups), function(subgroup_name) {
-          subgroup_data <- nested_data[[group_name]][[subgroup_name]]
-
+      # Group data only by the main factor_group
+      grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
+      
+      # Create a main accordion panel for each group
+      accordion_items_group <- purrr::map(names(grouped_data), function(group_name) {
+        group_dt <- grouped_data[[group_name]]
+        group_id <- make.names(group_name) # Create a safe ID for JS
+        
+        # Now, within this group, let's create the table-like content
+        # First, split by subgroup to render subgroup headers
+        subgroups_in_group <- split(group_dt, by = "factor_subgroup")
+        
+        # Use map to generate the HTML for each subgroup and its factors
+        table_content <- purrr::map(names(subgroups_in_group), function(subgroup_name) {
+          
+          subgroup_data <- subgroups_in_group[[subgroup_name]]
+          
+          # Generate the rows for each rating factor in this subgroup
           factor_rows <- purrr::pmap(
             list(
               subgroup_data$rating_factor_id,
-              subgroup_data$rating_factor_text_short,
-              subgroup_data$piping_text,
+              subgroup_data$rating_factor_text, # Using the longer text here, you can choose
               subgroup_data$goal,
               subgroup_data$performance,
               subgroup_data$rating_score,
               subgroup_data$max_point_value
-            ), function(id, text_short, piping_text, goal, performance, rating_score, max_points) {
-              piped_text <- gsub("<<goal>>", goal, piping_text)
-
+            ),
+            function(id, text, goal, performance, rating_score, max_points) {
+              # This is a single data row
               fluidRow(
-                column(3, p(text_short)),
-                column(4, p(piped_text)),
-                column(1, textInput(ns(paste0("performance_", id)), label = NULL, value = performance)),
-                column(1, textInput(ns(paste0("rating_score_", id)), label = NULL, value = rating_score)),
-                column(1, p("out of", style = "text-align: center;")),
-                column(1, p(max_points, style = "text-align: center;"))
+                # We can add a class for CSS styling, e.g., for indentation
+                column(5, p(text)),
+                column(2, p(goal)),
+                column(2, class = "input-col", textInput(ns(paste0("performance_", id)), label = NULL, value = performance)),
+                column(1, class = "input-col", numericInput(
+                  ns(paste0("rating_score_", id)), 
+                  label = NULL, 
+                  value = rating_score,
+                  min = 0,
+                  max = max_points
+                )) %>%
+                  tagAppendAttributes(class = 'score-input', `data-group` = group_id),
+                column(2, p(paste("out of", max_points)))
               )
             }
           )
-
-          bslib::accordion_panel(
-            title = ifelse(subgroup_name == "NA", "", subgroup_name),
-            hr(),
-            list(fluidRow(
-              column(3, p("RATING FACTOR")),
-              column(4, p("PERFORMANCE GOAL")),
-              column(1, p("PERFORMANCE", style = "text-align: center;")),
-              column(1, p("POINTS AWARDED", style = "text-align: center;")),
-              column(1, p("")),
-              column(1, p("MAX POINT VALUE", style = "text-align: center;"))
-            ),
+          
+          # Combine the subgroup header and its factor rows
+          # The subgroup header is just a simple div or row
+          tagList(
+            if (subgroup_name != "NA") {
+              fluidRow(
+                column(12, h5(subgroup_name, class = "subgroup-header"))
+              )
+            },
             factor_rows
-            ),
-            # --- NEW: Add a placeholder for custom factors ---
-            # This div will only be added for the specific subgroup.
-            # Adjust "Other/Local Priority" to match the exact name in your database.
-            if (group_name == "Other and Local Criteria") {
-              div(id = ns("custom_factors_placeholder"))
-            }
           )
         })
-
+        
+        # Create the single accordion panel for the whole group
         bslib::accordion_panel(
           title = group_name,
-          bslib::accordion(
-            !!!sub_accordion_items,
-            id = ns(paste0("sub_accordion_", make.names(group_name))),
-            multiple = TRUE,
-            open = names(group_data_subgroups)[1]
+          # The single header row for the "table"
+          fluidRow(
+            class = "rating-table-header",
+            column(5, strong("RATING FACTOR")),
+            column(2, strong("PERFORMANCE GOAL")),
+            column(2, strong("PERFORMANCE")),
+            column(1, strong("POINTS AWARDED")),
+            column(2, strong("MAX POINT VALUE"))
+          ),
+          hr(),
+          # Add the content we generated above
+          !!!table_content,
+          # Add the subtotal row at the end of the group
+          hr(),
+          fluidRow(
+            column(5, strong(paste0(group_name, " Subtotal"))),
+            column(2), # empty placeholder
+            column(2), # empty placeholder
+            # column(1, strong(sum(group_dt$rating_score, na.rm = TRUE)), style="text-align:center"), # Example calculation
+            column(1, style = "text-align:center;", class = "subtotal-column", strong(class = "subtotal-display", `data-subtotal-for` = group_id, "0")),
+            column(2, strong(paste("out of", sum(group_dt$max_point_value, na.rm = TRUE)))) # Example
           )
         )
       })
-
       
+      # The final accordion structure
       bslib::accordion(
         !!!accordion_items_group,
         id = ns("main_accordion"),
         multiple = TRUE,
-        open = names(nested_data)[1]
+        open = names(grouped_data)[1] # Open the first group by default
       )
-    })
+    }) # end render factors
   })
 }
