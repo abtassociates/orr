@@ -36,6 +36,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
     # Fetch all available CoC thresholds
     observe({
       req(DB_CON)
+
       rv$all_thresholds <- get_db_query(
         "SELECT threshold_id, threshold_text 
         FROM thresholds
@@ -46,17 +47,16 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
     # Fetch currently selected thresholds for the active profile
     observe({
       req(user_coc$coc_version_id)
-      
+
       selected_q <- "SELECT threshold_id FROM selected_thresholds WHERE coc_version_id = $1"
       selected_data <- get_db_query(selected_q, params = list(user_coc$coc_version_id))
-      
+
       rv$selected_thresholds <- selected_data$threshold_id
     })
     
     # Dynamically render the checkboxes based on available and selected data
     output$threshold_checkboxes_ui <- renderUI({
       req(nrow(rv$all_thresholds) > 0)
-      
       checkboxGroupInput(
         inputId = ns("threshold_selection"),
         label = "CoC Threshold Requirements",

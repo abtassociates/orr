@@ -1,8 +1,10 @@
 
-mod_project_rating_ui <- function(id, funding_action) {
+mod_in_app_rating_ui <- function(id, funding_action) {
   ns <- NS(id)
   
-  card(
+  nav_panel(
+    title = ifelse(grepl("renew", id), "Rate Renewal/Expansion Projects", "Rate New Projects"),
+    value = id,
     layout_sidebar(
       sidebar = sidebar(
         id = ns("project_selection_sidebar"),
@@ -11,18 +13,15 @@ mod_project_rating_ui <- function(id, funding_action) {
       ),
       navset_tab(
         id = ns("main_contents"),
+        mod_customize_rating_factors_ui(ns("rating_factors"), funding_action),
         mod_threshold_requirements_ui(ns("threshold_requirements")),
-        mod_rating_scores_ui(ns("rating_scores"))
+        mod_rating_scores_ui(ns("rating_scores")),
       )
-    ),
-    card_footer(
-      style = "display: flex; justify-content: space-between; align-items: center;",
-      actionButton(ns("save_rating"), paste0("Save Rating"), icon = icon("save"), class = "btn-primary")
     )
   )
 }
 
-mod_project_rating_server <- function(id, user_coc, funding_action, module_returns) {
+mod_in_app_rating_server <- function(id, user_coc, funding_action, module_returns) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -73,6 +72,7 @@ mod_project_rating_server <- function(id, user_coc, funding_action, module_retur
       )
     })
     
+    mod_customize_rating_factors_server("rating_factors", user_coc, funding_action, module_returns)
     mod_threshold_requirements_server("threshold_requirements", user_coc, input$project_select, module_returns)
     mod_rating_scores_server("rating_scores", user_coc, selected_project, funding_action, module_returns)
   })

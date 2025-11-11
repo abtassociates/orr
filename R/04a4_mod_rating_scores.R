@@ -18,7 +18,13 @@ mod_rating_scores_ui <- function(id) {
         $('.subtotal-display[data-subtotal-for=\"' + group + '\"]').text(groupTotal);
       });"
     )))),
-    uiOutput(ns("project_rating_factors"))
+    card(
+      uiOutput(ns("project_rating_factors")),
+      card_footer(
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"))
+      )
+    )
   )
 }
 

@@ -5,7 +5,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
   
   display_funding_action = ifelse(funding_action == "Renew", "Renewal/Expansion", "New")
   
-  project_and_pop_dropdowns <- function(ns, funding_action) {
+  project_and_pop_dropdowns <- function(ns) {
     project_type_dropdown <- selectInput(
       inputId = ns("project_type"),
       label = "Select project type",
@@ -38,10 +38,10 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
   }
   
   nav_panel(
-    paste0(display_funding_action, " Project Rating Criteria"),
+    "Customize Rating Criteria",
     value = id,
     card(
-      project_and_pop_dropdowns(ns, funding_action),
+      project_and_pop_dropdowns(ns),
       hr(),
       uiOutput(ns("factors_ui")) %>% withSpinner(),
       card_footer(
@@ -201,9 +201,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
                      )
               ),
               if(funding_action == "Renew") column(1, tags$b("Project Type")),
-              if(funding_action == "Renew") column(1, tags$b("Target Population")),
+              if(funding_action == "Renew") column(1, tags$b("Target Population", style="word-wrap: normal;")),
               column(ifelse(funding_action == "Renew", 7, 9), tags$b("Rating Factor")),
-              column(1, tags$b("Factor/Goal")),
+              column(1, tags$b("Factor/Goal", style="word-wrap: normal;")),
               column(1, tags$b("Max Point Value"))
             ),
             hr(),
@@ -237,44 +237,43 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       )
     }
     
-    project_and_pop_dropdowns <- function(ns, funding_action) {
-      project_type_dropdown <- selectInput(
-        inputId = ns("project_type"),
-        label = "Select project type",
-        choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-        multiple = TRUE,
-        selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
-      )
-      
-      target_pop_dropdown <- selectInput(
-        inputId = ns("target_population"),
-        label = "Select special populations",
-        choices = get_labelled_lookups("target_population")[c("DV", "General")],
-        multiple = TRUE,
-        selected = c("DV", "General") # Pre-select all for initial state
-      )
-      
-      dropdowns_to_include <- target_pop_dropdown
-      if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
-      inner_layout_args <- c(
-        # if Renew, each dropdown takes half of this 8-column space. If New, it's just one column taking up the whole space
-        width = ifelse(funding_action == "Renew", 1/2, 1),
-        dropdowns_to_include
-      )
-      bslib::layout_column_wrap(
-        width = 1/3,
-        div(), # left spacer
-        do.call(bslib::layout_column_wrap, inner_layout_args),
-        div() # right spacer
-      )
-    }
-    
-    handle_check_all_box_functionality <- function(input, funding_action) {
+    # project_and_pop_dropdowns <- function(ns, funding_action) {
+    #   project_type_dropdown <- selectInput(
+    #     inputId = ns("project_type"),
+    #     label = "Select project type",
+    #     choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
+    #     multiple = TRUE,
+    #     selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
+    #   )
+    #   
+    #   target_pop_dropdown <- selectInput(
+    #     inputId = ns("target_population"),
+    #     label = "Select special populations",
+    #     choices = get_labelled_lookups("target_population")[c("DV", "General")],
+    #     multiple = TRUE,
+    #     selected = c("DV", "General") # Pre-select all for initial state
+    #   )
+    #   
+    #   dropdowns_to_include <- target_pop_dropdown
+    #   if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
+    #   inner_layout_args <- c(
+    #     # if Renew, each dropdown takes half of this 8-column space. If New, it's just one column taking up the whole space
+    #     width = ifelse(funding_action == "Renew", 1/2, 1),
+    #     dropdowns_to_include
+    #   )
+    #   bslib::layout_column_wrap(
+    #     width = 1/3,
+    #     div(), # left spacer
+    #     do.call(bslib::layout_column_wrap, inner_layout_args),
+    #     div() # right spacer
+    #   )
+    # }
+    # 
+    handle_check_all_box_functionality <- function(input) {
       # 1. Fetch ALL possible subgroup names ONCE at the start.
       #    This decouples observer creation from the reactive data flow.
       #    We query the source table directly for this static list.
       funding_action_id <- get_lookup_refid(funding_action, "funding_action")
-      
       
       all_possible_subgroups <- get_db_query(
         "SELECT DISTINCT factor_subgroup 
@@ -401,7 +400,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       )
     }
     
-    add_custom_factor <- function(ns, input, funding_action) {
+    add_custom_factor <- function(ns, input) {
       # Increment counter
       current_id <- custom_factor_counter() + 1
       custom_factor_counter(current_id)
@@ -431,7 +430,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       }, ignoreInit = TRUE, once = TRUE) # `once = TRUE` is crucial
     }
     
-    save_factors <- function(ns, input, funding_action) {
+    save_factors <- function(ns, input) {
       # 1. Get all factor IDs that were rendered on the UI.
       all_ids <- rbindlist(
         unlist(selected_factors_data(), recursive = FALSE), 
@@ -599,15 +598,15 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       )
     })
     
-    handle_check_all_box_functionality(input, funding_action)
+    handle_check_all_box_functionality(input)
     
     # Observer for the "Add Custom Rating Factor" button
     observeEvent(input$add_custom_factor, {
-      add_custom_factor(ns, input, funding_action)
+      add_custom_factor(ns, input)
     }, ignoreInit = TRUE)
     
     observeEvent(input$save_factors, {
-      save_factors(ns, input, funding_action)
+      save_factors(ns, input)
       module_returns$customize_rating_criteria <- !module_returns$customize_rating_criteria
     }, ignoreInit = TRUE)
   })
