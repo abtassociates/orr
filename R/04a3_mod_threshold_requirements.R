@@ -4,6 +4,7 @@ mod_threshold_requirements_ui <- function(id) {
   
   nav_panel(
     "Threshold Entry",
+    value = id,
     card(
       accordion(
         accordion_panel(

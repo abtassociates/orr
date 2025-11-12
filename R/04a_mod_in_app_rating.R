@@ -6,10 +6,12 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     title = ifelse(grepl("renew", id), "Rate Renewal/Expansion Projects", "Rate New Projects"),
     value = id,
     layout_sidebar(
+      # the side bar will be 
       sidebar = sidebar(
         id = ns("project_selection_sidebar"),
         selectInput(ns("project_select"), label = "Select Project", choices = NULL),
-        uiOutput(ns("project_info_sidebar"))
+        uiOutput(ns("project_info_sidebar")),
+        open = F
       ),
       navset_tab(
         id = ns("main_contents"),
@@ -25,6 +27,14 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    # Collapse sidebar when user is on Customize Rating Criteria tab, since it's
+    # not useful there
+    observeEvent(input$main_contents, {
+      req(user_coc$coc_version_id)
+      toggle_sidebar(id = "project_selection_sidebar", open = input$main_contents != ns("rating_factors"))
+    }, ignoreInit = TRUE)
+    
+    # Get all projects for the CoC and the current funding action
     all_projects <- reactive({
       funding_action_ids <- get_lookup_refid(
         ifelse(funding_action == "Renew", c("Renew","Expand"), "New"),
@@ -39,6 +49,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
       ))
     })
     
+    # Get the project to be rated from the dropdown in the sidebar
     selected_project <- reactive({
       req(input$project_select)
       all_projects() |> 
@@ -58,7 +69,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
       )
     })
     
-    # Project info sidebar
+    # Show project info about the selected project
     output$project_info_sidebar <- renderUI({
       req(input$project_select)
       
@@ -72,6 +83,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
       )
     })
     
+    # call the module servers of the subtabs
     mod_customize_rating_factors_server("rating_factors", user_coc, funding_action, module_returns)
     mod_threshold_requirements_server("threshold_requirements", user_coc, input$project_select, module_returns)
     mod_rating_scores_server("rating_scores", user_coc, selected_project, funding_action, module_returns)
