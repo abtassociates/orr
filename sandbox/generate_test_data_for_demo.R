@@ -51,10 +51,6 @@ coc_version_users <- data.table(
 coc_version_requests <- data.table(
   coc_request_id = 1:2,
   coc_version_id = c(10, 12),  # AK-500 Main and AK-501 Main (where you are Owner)
-  requesting_user = c(
-    second_user,
-    second_user
-  ),
   request_status = c(1, 3),  # Sent, Approved
   reason_for_rejection = NA_integer_,
   created_by = c(

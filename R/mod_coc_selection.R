@@ -38,7 +38,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     observe({
       req(user_coc$auth)
       coc_vu(
-        coc_version_users |>
+        COC_VERSION_USERS |>
           fsubset(username == user_coc$email, -c(username, date_created, created_by)) |>
           fmutate(
             coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
@@ -73,25 +73,27 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ####
     
     ## Enable/disable actions when row is selected or not
+    toggle_navs_on_coc_selection <- function() {
+      for(t in TABS_AFTER_COC_SELECTION) {
+        if(length(input$coc_versions_dt_rows_selected) > 0)
+          nav_show("nav", target = t, session = parent_session)
+        else
+          nav_hide("nav", target = t, session = parent_session)
+      }
+    }
     observe({
       req(user_coc$auth)
       
       # toggle Inventory tab if they have any versions selected
-      if(length(input$coc_versions_dt_rows_selected) > 0) {
-        nav_show("nav", target = "inventory", session = parent_session)
-        nav_show("nav", target = "funding_priorities", session = parent_session)
-      } else {
-        nav_hide("nav", target = "inventory", session = parent_session)
-        nav_hide("nav", target = "funding_priorities", session = parent_session)
-      }
+      toggle_navs_on_coc_selection()
       
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
 
       # If there are any versions NOT associated with the current user, allow them to Request Access
-      if(nrow(coc_version_users) > 0) {
-        shinyjs::toggle(id = 'request_access_direct', condition = coc_version_users |> 
+      if(nrow(COC_VERSION_USERS) > 0) {
+        shinyjs::toggle(id = 'request_access_direct', condition = COC_VERSION_USERS |> 
                           fgroup_by(coc) |> 
                           fsummarize(no_version_access = !any(username == user_coc$email)) |> 
                           fsubset(no_version_access) |> 
@@ -248,10 +250,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       # If there’s an version THEY are already associated with (by looking up CoC Versions joined with CoC Version Users where the user is this user),
       # warn them that they already have an ORR for this CoC and that if they wish to modify settings, they can do so within existing ORRs.
       # Show options "Continue" or "Cancel"
-      check_if_already_have <- coc_version_users |>
+      check_if_already_have <- COC_VERSION_USERS |>
         fsubset(username == user_coc$username & coc == coc_requested())
       
-      check_if_others_have <- coc_version_users |>
+      check_if_others_have <- COC_VERSION_USERS |>
         fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == owner_role_refid)
       
       removeModal()
@@ -343,7 +345,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # When user clicks the "Request Access to a CoC" button on the dashboard
     # allow user to view versions and request access
     request_access_direct_coc_versions <- reactive({
-      coc_version_users |>
+      COC_VERSION_USERS |>
         fgroup_by(coc_version_id) |>
         fmutate(user_associated_w_version = anyv(username, user_coc$email)) |>
         fungroup() |>
@@ -407,7 +409,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     request_access_indirect_coc_versions <- reactive({
       req(input$request_indirect_access_coc_dropdown)
       
-      coc_version_users |>
+      COC_VERSION_USERS |>
         fsubset(
           username != user_coc$email & 
             coc == input$request_indirect_access_coc_dropdown &
