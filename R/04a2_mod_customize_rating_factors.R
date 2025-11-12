@@ -43,7 +43,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
     card(
       project_and_pop_dropdowns(ns),
       hr(),
-      uiOutput(ns("factors_ui")) %>% withSpinner(),
+      uiOutput(ns("factors_ui")) |> withSpinner(),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
@@ -94,15 +94,15 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       if(!is.null(selected_target_populations)) all_factors <- all_factors[target_population %in% selected_target_populations]
       
       # Update rating_factor_text to include project_type and target_population
-      # all_factors <- all_factors %>%
+      # all_factors <- all_factors |>
       #   join(
       #     lookups[reference_type == "project_type", .("project_type_value" = value, reference_id)], 
       #     on = c("project_type" = "reference_id")
-      #   ) %>%
+      #   ) |>
       #   join(
       #     lookups[reference_type == "target_population", .("target_population_value" = value, reference_id)], 
       #     on = c("target_population" = "reference_id")
-      #   )  %>%
+      #   )  |>
       # fmutate(
       #   rating_factor_text = fifelse(
       #     !is.na(project_type_value) & !is.na(target_population_value),
@@ -130,17 +130,17 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       if (nrow(selected_factors) > 0) {
         merged_data <- join(
           all_factors, 
-          selected_factors %>% fmutate(selected = TRUE), 
+          selected_factors |> fmutate(selected = TRUE), 
           on = "rating_factor_id"
-        ) %>%
+        ) |>
           fmutate(
             selected = fcoalesce(selected, FALSE),
             goal = fcoalesce(goal, default_goal),
             max_point_value = fcoalesce(as.double(max_point_value), as.double(default_points))
           )
       } else {
-        merged_data <- all_factors %>%
-          frename(goal = default_goal, max_point_value = default_points) %>%
+        merged_data <- all_factors |>
+          frename(goal = default_goal, max_point_value = default_points) |>
           fmutate(selected = FALSE)
       }
       
@@ -489,7 +489,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
             dbAppendTable(
               DB_CON,
               "selected_rating_factors",
-              to_insert %>% fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
+              to_insert |> fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
             )
           }
           

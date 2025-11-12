@@ -49,7 +49,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     # Add fields only displayed in Inventory
     add_calculated_fields <- function(project_data, is_new = FALSE) {
-      project_data <- project_data %>%
+      project_data <- project_data |>
         fmutate(
           ch_bed_inventory = ch_fam_beds + total_ch_ind_beds,
           vet_bed_inventory = vet_fam_beds + vet_ind_beds,
@@ -58,7 +58,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
 
       # New/Additional projects have some fields set, not calculated
       if(!is_new) {
-        project_data <- project_data %>% 
+        project_data <- project_data |>
           fmutate(
             all_ind_beds = beds_hh_wo_children + beds_hh_w_only_children,
             total_ch_ind_beds = ch_beds_hh_wo_children + ch_beds_hh_w_only_children
@@ -74,8 +74,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       data <- get_db_query(
         "SELECT * FROM projects WHERE coc_version_id = $1", 
         params = user_coc$coc_version_id
-      ) %>% 
-        fselect(-coc_version_id, -date_created, -date_updated, -updated_by, -amount_other_public_funding, -amount_private_funding) %>%
+      ) |>
+        fselect(-coc_version_id, -date_created, -date_updated, -updated_by, -amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
           project_type = convert_to_factor(., "project_type"),
@@ -86,7 +86,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
           is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
           is_dedicated_dv = factor_yesno(is_dedicated_dv)
-        ) %>%
+        ) |>
         add_calculated_fields()
 
       projects_data(data)
@@ -259,7 +259,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       updated_data <- copy(projects_data())[
         project_id == proj_id, 
         (col_name) := value
-      ] %>%
+      ] |>
         add_calculated_fields()
       
       projects_data(updated_data)
@@ -275,7 +275,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     }
     
     append_to_datatable <- function(new_project_data) {
-      new_row <- new_project_data %>% 
+      new_row <- new_project_data |> 
         fmutate(
           project_id = as.integer(fmax(projects_data()$project_id) + 1),
           mckinneyvento = factor_yesno(mckinneyvento),
@@ -290,7 +290,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
           is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
           is_dedicated_dv = factor_yesno(is_dedicated_dv)
-        ) %>%
+        ) |>
         add_calculated_fields(TRUE)
       
       projects_data(
@@ -301,7 +301,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     }
     
     append_to_db <- function(new_project_data) {
-      db_data <- new_project_data %>%
+      db_data <- new_project_data |>
         fmutate(
           coc_version_id = user_coc$coc_version_id,
           funding_action = get_lookup_refid(funding_action, "funding_action"),
@@ -508,7 +508,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     })
     
     observeEvent(input$view_giw_btn, {
-      data <- giw_data() %>%
+      data <- giw_data() |>
         fselect(-date_created, -date_updated, -created_by, -updated_by)
       
       names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]

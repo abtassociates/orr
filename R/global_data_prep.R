@@ -12,7 +12,7 @@ COC_VERSION_USERS <- get_db_query(
 HUD_ARD_REPORT <- get_db_tbl("hud_ard_report")
 MAIN_PROJECT_TYPES <- c("PSH", "RRH", "TH", "TH+RRH")
 
-COC_NOFO_OPPORTUNITIES <- get_db_tbl("coc_nofo_opportunities") %>%
+COC_NOFO_OPPORTUNITIES <- get_db_tbl("coc_nofo_opportunities") |>
   fmutate(
     funding_action = get_lookup_label(funding_action, "funding_action"),
     project_type = get_lookup_label(project_type, "project_type"),

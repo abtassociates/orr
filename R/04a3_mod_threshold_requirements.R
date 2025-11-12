@@ -58,7 +58,7 @@ mod_threshold_requirements_server <- function(id, user_coc, selected_project, se
     
     # HUD Requirements UI
     load_selected_thresholds <- function(threshold_type) {
-      thresholds <- threshold_entries() %>%
+      thresholds <- threshold_entries() |>
         fsubset(type == threshold_type)
 
       lapply(1:nrow(thresholds), function(i) {

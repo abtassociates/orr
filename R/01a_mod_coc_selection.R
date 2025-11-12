@@ -525,7 +525,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       filtered_data_db <- factor_vars_db_prep(data)
       if(IN_DEV_MODE && inherits(filtered_data_db$date_created, "POSIXct")) 
-        filtered_data_db <- filtered_data_db %>%
+        filtered_data_db <- filtered_data_db |>
           fmutate(
             date_created = format(date_created, "%Y-%m-%d %H:%M:%S"),
             date_updated = format(date_updated, "%Y-%m-%d %H:%M:%S")
@@ -553,7 +553,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       coc_data <- get_db_tbl("all_hic_data") |>
         fsubset(hudnum == coc) 
 
-      project_data <- coc_data %>%
+      project_data <- coc_data |>
         fmutate(
           mckinneyvento = factor_yesno(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
           mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
@@ -574,14 +574,14 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           total_ch_ind_beds = ch_beds_hh_wo_children + ch_beds_hh_w_only_children,
           dv_fam_beds = fifelse(target_population == "DV", beds_hh_w_children, as.integer(0)),
           dv_ind_beds = fifelse(target_population == "DV", all_ind_beds, as.integer(0))
-        ) %>%
+        ) |>
         fmutate(
           funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
           project_type = convert_to_factor(., "project_type", textToNum = TRUE),
           target_population = convert_to_factor(., "target_population", textToNum = TRUE),
           created_by = SERVICE_ACCOUNT
-        ) %>%
-        frename(bed_field_mapping) %>%
+        ) |>
+        frename(bed_field_mapping) |>
         get_vars(setdiff(dbListFields(DB_CON, "projects"), "project_id"))
 
       return(project_data)

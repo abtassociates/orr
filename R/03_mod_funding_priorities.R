@@ -1,14 +1,14 @@
 pop_grp_toggles <- expand.grid(
   pop = c("All" = 0, get_labelled_lookups("target_population", lookup_col = "value_long")),
   grp = get_labelled_lookups("population_group", lookup_col = "value_long")
-) %>%
-  qDT() %>%
+) |>
+  qDT() |>
   fmutate(
     pop_txt = ifelse(names(pop) == "Domestic Violence", "DV", names(pop)),
     grp_txt = names(grp)
-  ) %>%
-  fsubset(!pop_txt %in% c("Not Applicable", "Housing Inventory Count", "General")) %>%
-  setorder(-grp, pop) %>%
+  ) |>
+  fsubset(!pop_txt %in% c("Not Applicable", "Housing Inventory Count", "General")) |>
+  setorder(-grp, pop) |>
   fmutate(
     full_text = fcase(
       pop_txt == "Youth" & grp_txt == "Families", "Parenting Youth",
@@ -62,12 +62,12 @@ mod_funding_priorities_ui <- function(id) {
             checkboxGroupInput(
               ns("coc_bonus_types_1"),
               NULL,
-              choices = coc_bonus_opportunities %>% head(length(.)/2)
+              choices = coc_bonus_opportunities %>% head(length(.)/2) #needs to be %>% instead of |>
             ),
             checkboxGroupInput(
               ns("coc_bonus_types_2"),
               NULL,
-              choices = coc_bonus_opportunities %>% tail(length(.)/2)
+              choices = coc_bonus_opportunities %>% tail(length(.)/2) #needs to be %>% instead of |>
             )
           )
         ),
@@ -119,13 +119,13 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       "dv_bonus"
     )
     hud_ard_coc_data <- reactive({
-      HUD_ARD_REPORT[coc == user_coc$coc] %>%
+      HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
           tier_2 = estimated * 0.1 + coc_bonus + dv_bonus,
           adjusted_ard = round(tier_1/0.9, 0),
           yhdp_ard = estimated - adjusted_ard,
           dv_ard = as.numeric(NA)
-        ) %>%
+        ) |>
         frename(estimated = "total_ard")
     })
     
@@ -170,8 +170,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         # Your column names (`project_type`, `beds`, etc.) might differ.
         
         # First, map the DB codes back to the `full_text` population name
-        wide_db_data <- coc_funding_priorities_from_db %>%
-          join(pop_grp_toggles, on = c("target_population" = "pop", "population_group" = "grp")) %>%
+        wide_db_data <- coc_funding_priorities_from_db |>
+          join(pop_grp_toggles, on = c("target_population" = "pop", "population_group" = "grp"))
           # Reshape logic here... for example:
           # dcast(. ~ project_type, value.var = c("beds", "funding", "priority"))
           # This step is highly dependent on your DB schema and `MAIN_PROJECT_TYPES`

@@ -102,7 +102,7 @@ mod_rating_scores_server <- function(id, user_coc, selected_project, funding_act
                   value = rating_score,
                   min = 0,
                   max = max_points
-                )) %>%
+                )) |>
                   tagAppendAttributes(class = 'score-input', `data-group` = group_id),
                 column(2, p(paste("out of", max_points)))
               )
