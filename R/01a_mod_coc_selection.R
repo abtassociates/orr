@@ -214,7 +214,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
               coc_version_role = new_version_user$coc_version_role,
               coc_status = get_lookup_label(coc_status, "coc_status"),
               coc_version_role = get_lookup_label(coc_version_role, "coc_version_role"),
-              date_updated = unlist(new_coc_version_info)[["date_updated"]]
+              date_updated = new_version_user$date_updated
             ),
           fill=TRUE
         )
