@@ -553,7 +553,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       coc_data <- get_db_tbl("all_hic_data") |>
         fsubset(hudnum == coc) 
 
-      project_data <- coc_data |>
+      project_data <- coc_data %>% # %>% needed for gvr to work
         fmutate(
           mckinneyvento = factor_yesno(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
           mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
@@ -574,7 +574,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           total_ch_ind_beds = ch_beds_hh_wo_children + ch_beds_hh_w_only_children,
           dv_fam_beds = fifelse(target_population == "DV", beds_hh_w_children, as.integer(0)),
           dv_ind_beds = fifelse(target_population == "DV", all_ind_beds, as.integer(0))
-        ) |>
+        ) %>% # %>% needed for convert_to_factor to work
         fmutate(
           funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
           project_type = convert_to_factor(., "project_type", textToNum = TRUE),
