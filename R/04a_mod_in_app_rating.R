@@ -2,22 +2,24 @@
 mod_in_app_rating_ui <- function(id, funding_action) {
   ns <- NS(id)
   
+  ptypes <- ifelse(grepl("renew", id), "Renewal/Expansion Projects", "New Projects")
+  
   nav_panel(
-    title = ifelse(grepl("renew", id), "Rate Renewal/Expansion Projects", "Rate New Projects"),
+    title = paste0("Rate ", ptypes),
     value = id,
+    br(),
+    em(paste0("Rate your ", ptypes, " against your selected criteria")),
     layout_sidebar(
       # the side bar will be 
       sidebar = sidebar(
         id = ns("project_selection_sidebar"),
         selectInput(ns("project_select"), label = "Select Project", choices = NULL),
-        uiOutput(ns("project_info_sidebar")),
-        open = F
+        uiOutput(ns("project_info_sidebar"))
       ),
       navset_tab(
         id = ns("main_contents"),
-        mod_customize_rating_factors_ui(ns("rating_factors"), funding_action),
-        mod_threshold_requirements_ui(ns("threshold_requirements")),
-        mod_rating_scores_ui(ns("rating_scores")),
+        mod_thresholds_entry_ui(ns("thresholds_entry")),
+        mod_rating_scores_entry_ui(ns("rating_scores_entry")),
       )
     )
   )
@@ -84,8 +86,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
     })
     
     # call the module servers of the subtabs
-    mod_customize_rating_factors_server("rating_factors", user_coc, funding_action, module_returns)
-    mod_threshold_requirements_server("threshold_requirements", user_coc, input$project_select, module_returns)
-    mod_rating_scores_server("rating_scores", user_coc, selected_project, funding_action, module_returns)
+    mod_thresholds_entry_server("thresholds_entry", user_coc, input$project_select, module_returns)
+    mod_rating_scores_entry_server("rating_scores", user_coc, selected_project, funding_action, module_returns)
   })
 }

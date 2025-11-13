@@ -85,7 +85,7 @@ mod_rating_ui <- function(id) {
           value = ns("in_app"),
           navset_tab(
             id = ns("rating_tabs"),
-            mod_customize_coc_thresholds_ui(ns("coc_thresholds")),
+            mod_customize_criteria_ui(ns("customize_criteria")),
             mod_in_app_rating_ui(ns("renew"), funding_action = "Renew"),
             mod_in_app_rating_ui(ns("new"), funding_action = "New")
             # footer = card_footer(
@@ -137,7 +137,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
     #   }
     # })
     
-    mod_customize_coc_thresholds_server("coc_thresholds", user_coc, nav_control)
+    mod_customize_criteria_server("customize_criteria", user_coc, nav_control, parent_session, module_returns)
     mod_in_app_rating_server("renew", user_coc, "Renew", module_returns)
     mod_in_app_rating_server("new", user_coc, "New", module_returns)
     mod_rating_summary_server("rating_summary")

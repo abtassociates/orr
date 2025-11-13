@@ -29,25 +29,25 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
       width = ifelse(funding_action == "Renew", 1/2, 1),
       dropdowns_to_include
     )
-    bslib::layout_column_wrap(
-      width = 1/3,
-      div(), # left spacer
-      do.call(bslib::layout_column_wrap, inner_layout_args),
-      div() # right spacer
-    )
+    
+    dropdowns_to_include
   }
   
   nav_panel(
-    "Customize Rating Criteria",
+    paste0(display_funding_action, " Rating Factors"),
     value = id,
-    card(
-      project_and_pop_dropdowns(ns),
-      hr(),
-      uiOutput(ns("factors_ui")) |> withSpinner(),
-      card_footer(
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
-        actionButton(ns("save_factors"), paste0("Save ", display_funding_action, " Criteria"), icon = icon("save"), class = "btn-primary")
+    layout_sidebar(
+      sidebar = sidebar(
+        width = "10%",
+        project_and_pop_dropdowns(ns)
+      ),
+      card(
+        uiOutput(ns("factors_ui")) |> withSpinner(),
+        card_footer(
+          style = "display: flex; justify-content: space-between; align-items: center;",
+          actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
+          actionButton(ns("save_factors"), paste0("Save ", display_funding_action, " Criteria"), icon = icon("save"), class = "btn-primary")
+        )
       )
     )
   )
@@ -476,12 +476,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
           
           # 7. DELETE records that were deselected
           if (length(to_delete_ids) > 0) {
-            delete_q <- glue::glue_sql("
+            dbExecute(DB_CON, glue::glue_sql("
               DELETE FROM selected_rating_factors
-              WHERE coc_version_id = {coc_id} AND rating_factor_id IN ({ids*})
-            ", coc_id = user_coc$coc_version_id, ids = to_delete_ids, .con = DB_CON)
-            
-            dbExecute(DB_CON, delete_q)
+              WHERE coc_version_id = {user_coc$coc_version_id} AND rating_factor_id IN ({to_delete_ids*})
+            ", .con = DB_CON))
           }
           
           # 5. INSERT new records that are now selected

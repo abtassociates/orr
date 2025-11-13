@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # 2. CoC Thresholds Sub-Module
 # - This module allows users to select which CoC-specific thresholds apply.
-# - Selections are saved to the `selected_thresholds` table.
+# - Selections are saved to the `selected_coc_thresholds` table.
 #-------------------------------------------------------------------------------
 
 #' @title mod_coc_thresholds_ui
@@ -30,7 +30,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
     
     rv <- reactiveValues(
       all_thresholds = data.table(),
-      selected_thresholds = c()
+      selected_coc_thresholds = c()
     )
     
     # Fetch all available CoC thresholds
@@ -48,21 +48,22 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
     observe({
       req(user_coc$coc_version_id)
 
-      selected_q <- "SELECT threshold_id FROM selected_thresholds WHERE coc_version_id = $1"
+      selected_q <- "SELECT threshold_id FROM selected_coc_thresholds WHERE coc_version_id = $1"
       selected_data <- get_db_query(selected_q, params = list(user_coc$coc_version_id))
 
-      rv$selected_thresholds <- selected_data$threshold_id
+      rv$selected_coc_thresholds <- selected_data$threshold_id
     })
     
     # Dynamically render the checkboxes based on available and selected data
     output$threshold_checkboxes_ui <- renderUI({
       req(nrow(rv$all_thresholds) > 0)
+      
       checkboxGroupInput(
         inputId = ns("threshold_selection"),
         label = "CoC Threshold Requirements",
         choices = setNames(rv$all_thresholds$threshold_id, rv$all_thresholds$threshold_text),
         width = "100%",
-        selected = rv$selected_thresholds
+        selected = rv$selected_coc_thresholds
       )
     })
     
@@ -71,7 +72,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       req(user_coc$coc_version_id, user_coc$username)
       
       current_selection <- as.integer(input$threshold_selection)
-      previous_selection <- rv$selected_thresholds
+      previous_selection <- rv$selected_coc_thresholds
       
       to_add <- setdiff(current_selection, previous_selection)
       to_remove <- setdiff(previous_selection, current_selection)
@@ -84,22 +85,22 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
             coc_version_id = user_coc$coc_version_id,
             created_by = user_coc$username
           )
-          DBI::dbAppendTable(DB_CON, "selected_thresholds", add_df)
+          DBI::dbAppendTable(DB_CON, "selected_coc_thresholds", add_df)
         }
         
         # Remove deselected items
         if (length(to_remove) > 0) {
-          remove_q <- "DELETE FROM selected_thresholds WHERE coc_version_id = $1 AND threshold_id = ANY($2)"
+          remove_q <- "DELETE FROM selected_coc_thresholds WHERE coc_version_id = $1 AND threshold_id = ANY($2)"
           dbExecute(DB_CON, remove_q, params = list(user_coc$coc_version_id, to_remove))
         }
         
         # Update reactive value to reflect saved state
-        rv$selected_thresholds <- current_selection
+        rv$selected_coc_thresholds <- current_selection
         
         shiny::showNotification("CoC Thresholds saved successfully.", type = "message")
       }, error = function(e) {
         shiny::showNotification(paste("Error saving thresholds:", e$message), type = "error")
       })
-    })
+    }, ignoreInit = TRUE)
   })
 }

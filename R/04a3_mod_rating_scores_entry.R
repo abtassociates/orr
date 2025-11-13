@@ -1,5 +1,5 @@
 # UI modules for project rating
-mod_rating_scores_ui <- function(id) {
+mod_rating_scores_entry_ui <- function(id) {
   ns <- NS(id)
   nav_panel(
     "Rating Entry",
@@ -28,7 +28,7 @@ mod_rating_scores_ui <- function(id) {
   )
 }
 
-mod_rating_scores_server <- function(id, user_coc, selected_project, funding_action, module_returns) {
+mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, module_returns) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
