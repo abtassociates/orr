@@ -1138,7 +1138,7 @@ drop_table("projects")
 drop_table("coc_funding_priorities")
 drop_table("selected_coc_nofo_opportunities")
 drop_table("selected_rating_factors")
-drop_table("selected_thresholds")
+drop_table("selected_coc_thresholds")
 drop_table("ranking")
 drop_table("rating_scores")
 drop_table("threshold_entries")
@@ -1248,7 +1248,7 @@ CREATE TABLE IF NOT EXISTS selected_rating_factors (
 
 DBI::dbExecute(DB_CON, glue::glue("
 --- User-Selected Threshold Factors
-CREATE TABLE IF NOT EXISTS selected_thresholds (
+CREATE TABLE IF NOT EXISTS selected_coc_thresholds (
     selected_threshold_id {id_var_attrs},
     threshold_id SMALLINT REFERENCES thresholds(threshold_id),
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
@@ -1258,7 +1258,7 @@ CREATE TABLE IF NOT EXISTS selected_thresholds (
     updated_by VARCHAR(100) NULL REFERENCES users(username),
 
 	-- a CoC Profile cannot have more than one of a given selected rating factor
-    CONSTRAINT uq_selected_thresholds_profile UNIQUE (coc_version_id, threshold_id)
+    CONSTRAINT uq_selected_coc_thresholds_profile UNIQUE (coc_version_id, threshold_id)
 );
 "))
 
@@ -1283,7 +1283,7 @@ DBI::dbExecute(DB_CON, glue::glue("
 CREATE TABLE IF NOT EXISTS threshold_entries (
     threshold_entry_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id),
-    selected_threshold_id SMALLINT REFERENCES selected_thresholds(selected_threshold_id),
+    threshold_id SMALLINT REFERENCES thresholds(threshold_id),
     met_threshold BOOLEAN,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
@@ -1349,13 +1349,13 @@ DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_selected_coc_nofo_opportu
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_id ON rating_scores(project_id);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_selected_rating_factor_id ON rating_scores(selected_rating_factor_id);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_id ON threshold_entries(project_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_selected_threshold_id ON threshold_entries(selected_threshold_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_threshold_id ON threshold_entries(threshold_id);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_ranking_project_id ON ranking(project_id);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_ranking_coc_version_id ON ranking(coc_version_id);")
 
 #-- Composite Indexes for High-Frequency Lookups
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_factor ON rating_scores(project_id, selected_rating_factor_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_threshold ON threshold_entries(project_id, selected_threshold_id);")
+DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_threshold ON threshold_entries(project_id, threshold_id);")
 DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_references_type ON lookups (reference_type);")
 
 message("Done populating the db!")
