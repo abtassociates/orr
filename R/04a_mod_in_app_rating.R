@@ -87,6 +87,6 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
     
     # call the module servers of the subtabs
     mod_thresholds_entry_server("thresholds_entry", user_coc, input$project_select, module_returns)
-    mod_rating_scores_entry_server("rating_scores", user_coc, selected_project, funding_action, module_returns)
+    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, funding_action, module_returns)
   })
 }
