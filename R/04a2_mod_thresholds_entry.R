@@ -14,7 +14,8 @@ mod_thresholds_entry_ui <- function(id) {
         accordion_panel(
           "CoC Requirements",
           uiOutput(ns("coc_requirements"))
-        )
+        ),
+        open = TRUE
       ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
