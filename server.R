@@ -64,7 +64,6 @@ function(input, output, session) {
         hideElement("login_link")
         hideElement("signup_link")
         user_coc$auth <- TRUE
-        user_coc$email <- current_user$email
         user_coc$username <- current_user$email
         user_coc$given_name <- current_user$given_name
         nav_control("dashboard")

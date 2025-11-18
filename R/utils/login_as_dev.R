@@ -14,7 +14,6 @@ login_as_dev <- function(user_coc) {
   hideElement("login_link")
   hideElement("signup_link")
   user_coc$auth <- TRUE
-  user_coc$email <- u$email
   user_coc$username <- u$email
   user_coc$given_name <- u$given_name
 }

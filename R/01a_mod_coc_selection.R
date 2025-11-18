@@ -48,7 +48,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       req(user_coc$auth)
       coc_vu(
         COC_VERSION_USERS |>
-          fsubset(username == user_coc$email, -c(username, date_created, created_by)) |>
+          fsubset(username == user_coc$username, -c(username, date_created, created_by)) |>
           fmutate(
             coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
             coc_status = get_lookup_label(coc_status, 'coc_status')
@@ -107,7 +107,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       if(nrow(COC_VERSION_USERS) > 0) {
         shinyjs::toggle(id = 'request_access_direct', condition = COC_VERSION_USERS |> 
                           fgroup_by(coc) |> 
-                          fsummarize(no_version_access = !any(username == user_coc$email)) |> 
+                          fsummarize(no_version_access = !any(username == user_coc$username)) |> 
                           fsubset(no_version_access) |> 
                           nrow() > 0
         )
@@ -187,7 +187,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     create_new_version_for_user <- function(new_version_data) {
       new_version <- new_version_data |>
         fmutate(coc_status = get_lookup_refid("Not Started", "coc_status")) |>
-        add_user_stamp(user_coc)
+        add_user_stamp(user_coc, is_new = TRUE)
       
       # Update CoC Version in db, and grab autonumbered coc_version_id
       new_coc_version_info <- insert_and_return(
@@ -196,10 +196,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
 
       new_version_user <- data.table(
         coc_version_id = unlist(new_coc_version_info)[["coc_version_id"]],
-        username = user_coc$email,
+        username = user_coc$username,
         coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role"))
       ) |>
-        add_user_stamp(user_coc)
+        add_user_stamp(user_coc, is_new = TRUE)
       
       # Next, update CoC Version USers in db
       dbAppendTable(DB_CON, 'coc_version_users', new_version_user)
@@ -354,7 +354,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     request_access_direct_coc_versions <- reactive({
       COC_VERSION_USERS |>
         fgroup_by(coc_version_id) |>
-        fmutate(user_associated_w_version = anyv(username, user_coc$email)) |>
+        fmutate(user_associated_w_version = anyv(username, user_coc$username)) |>
         fungroup() |>
         fsubset(!user_associated_w_version) |>
         fselect(coc, coc_version_name, username)
@@ -418,7 +418,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       COC_VERSION_USERS |>
         fsubset(
-          username != user_coc$email & 
+          username != user_coc$username & 
             coc == input$request_indirect_access_coc_dropdown &
             coc_version_role == owner_role_refid,
           coc, coc_version_name, username

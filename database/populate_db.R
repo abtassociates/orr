@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(100) PRIMARY KEY, -- email?
     firstname VARCHAR(255),
     lastname VARCHAR(255),
-    email VARCHAR(255),
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

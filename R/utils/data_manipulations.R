@@ -155,11 +155,10 @@ versions_variable_labels <- c(
   "date_updated" = "Date Updated"
 )
 
-add_user_stamp <- function(x, user_coc) {
-  x |> fmutate(
-    updated_by = user_coc$email,
-    created_by = user_coc$email
-  )
+add_user_stamp <- function(x, user_coc, is_new = FALSE) {
+  x <- x |> fmutate(updated_by = user_coc$username)
+  if(is_new) x <- x |> fmutate(created_by = user_coc$username)
+  return(x)
 }
 
 insert_and_return <- function(table, new_dt, return_cols) {

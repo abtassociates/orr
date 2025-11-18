@@ -83,8 +83,8 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
           add_df <- data.frame(
             threshold_id = to_add,
             coc_version_id = user_coc$coc_version_id,
-            created_by = user_coc$username
-          )
+          ) %>% 
+            add_user_stamp(user_coc, is_new = TRUE)
           DBI::dbAppendTable(DB_CON, "selected_coc_thresholds", add_df)
         }
         
