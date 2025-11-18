@@ -354,7 +354,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     request_access_direct_coc_versions <- reactive({
       COC_VERSION_USERS |>
         fgroup_by(coc_version_id) |>
-        fmutate(user_associated_w_version = anyv(username, user_coc$username)) |>
+        fmutate(user_associated_w_version = any(username == user_coc$username, na.rm=TRUE)) |>
         fungroup() |>
         fsubset(!user_associated_w_version) |>
         fselect(coc, coc_version_name, username)
