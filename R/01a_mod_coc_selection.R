@@ -319,6 +319,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     observeEvent(
       c(input$continue_new_version, input$continue_new_version2, input$continue_new_version3),
       {
+        req(input$continue_new_version == 1 || input$continue_new_version2 == 1 || input$continue_new_version3 == 1)
+        
         removeModal()
         choiceList <- setNames(
           c("import", "upload"), 
