@@ -4,8 +4,8 @@ dbExecute(DB_CON, "DELETE FROM coc_version_requests")
 dbExecute(DB_CON, "DELETE FROM projects WHERE coc_version_id > 4")
 
 USERS <- get_db_tbl("users")
-main_user <- toString(USERS[1, 1])
-second_user <- toString(USERS[3, 1])
+main_user <- toString(USERS[1, 1]) # alex.silverman@abtglobal.com
+second_user <- toString(USERS[3, 1]) # thomas.brittain@abtglobal.com
 
 coc_versions <- data.table(
   coc_version_id = 10:12,
