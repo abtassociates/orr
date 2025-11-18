@@ -346,7 +346,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
         ifelse(
           identical(levels(projects_data()[[col_name]]), c("Yes","No")),
           ifelse(info$value == "Yes", 1, 0),
-          lookups[reference_type == col_name & value == info$value]$reference_id
+          LOOKUPS[reference_type == col_name & value == info$value]$reference_id
         ),
         info$value
       )

@@ -137,5 +137,4 @@ retrieve_user_data <- function(user_code){
 
 
 # define a tibble of allowed users (this can also be read from a local file or from a database)
-allowed_users <- data.frame(
-  user_email = users$username)
+# allowed_users <- data.frame(user_email = USERS$username)

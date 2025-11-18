@@ -34,7 +34,7 @@ mod_requests_server <- function(id, user_coc) {
     all_requests <- reactive({
       req(user_coc$auth)
       
-      user_versions <- coc_version_users |>
+      user_versions <- COC_VERSION_USERS |>
         fsubset(username == user_coc$username)
       
       get_db_tbl('coc_version_requests') |>
