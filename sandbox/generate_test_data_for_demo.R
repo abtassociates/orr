@@ -8,7 +8,7 @@ main_user <- toString(USERS[1, 1])
 second_user <- toString(USERS[3, 1])
 
 coc_versions <- data.table(
-  coc_version_id = 10:13,
+  coc_version_id = 10:12,
   coc_version_name = c(
     'AK-500 Main Version',
     'AK-500 Alternative Version',
