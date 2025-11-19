@@ -372,7 +372,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         DT::DTOutput(ns("direct_request_coc_versions")),
         footer = tagList(
           # If they continue: go to next step
-          actionButton(ns('send_direct_request'), label='Send Request', disabled = TRUE),
+          actionButton(ns('send_direct_request'), label='Send Request', disabled = FALSE),
           # If they cancel: close pop-up
           modalButton(label='Cancel')
         )
@@ -405,9 +405,42 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )
     })
     
+    create_request <- function(cur_coc, version_name,
+                               requester) {
+      request_status_num <- get_lookup_refid('Sent','request_status')
+
+      version_id <- COC_VERSION_USERS |> 
+        fsubset(coc == cur_coc & coc_version_name == version_name) |> 
+        fselect('coc_version_id') %>% 
+        ffirst()
+      
+      request_row <- data.table(
+        coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
+        coc_version_id = version_id,
+        request_status = request_status_num,
+        reason_for_rejection = NA,
+        date_created = Sys.time(),
+        date_updated = Sys.time(),
+        created_by = requester,
+        updated_by = requester
+      )
+      
+        # Add row to requests table
+      DBI::dbAppendTable(
+        DB_CON,
+        "coc_version_requests",
+         request_row
+      )
+        
+    }
+    
     observeEvent(input$send_direct_request, {
       # TODO: Send email to version Owners of input$direct_request_coc_versions_rows_selected
-      
+      create_request(cur_coc = input$request_access_coc_dropdown,
+                     version_name = input$direct_request_coc_versions_cell_clicked$value,
+                     requester = user_coc$username)
+      removeModal()
+      showNotification('Request sent!', duration = 3)
     })
     
     # Requesting access to a CoC indirectly ---------------
