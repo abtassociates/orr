@@ -1,19 +1,19 @@
 #-------------------------------------------------------------------------------
 # 2. CoC Thresholds Sub-Module
 # - This module allows users to select which CoC-specific thresholds apply.
-# - Selections are saved to the `selected_thresholds` table.
+# - Selections are saved to the `selected_coc_thresholds` table.
 #-------------------------------------------------------------------------------
 
 #' @title mod_coc_thresholds_ui
 #' @noRd
-mod_coc_thresholds_ui <- function(id) {
+mod_customize_coc_thresholds_ui <- function(id) {
   ns <- NS(id)
   nav_panel(
     "CoC Thresholds Requirements",
     value = id,
     card(
       em("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
-      uiOutput(ns("threshold_checkboxes_ui")) %>% withSpinner(),
+      uiOutput(ns("threshold_checkboxes_ui")) |> withSpinner(),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         actionButton(ns("save_thresholds"), "Save CoC Threshold Selections", icon = icon("save"), class = "btn-primary")
@@ -24,18 +24,19 @@ mod_coc_thresholds_ui <- function(id) {
 
 #' @title mod_coc_thresholds_server
 #' @noRd
-mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
+mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     rv <- reactiveValues(
       all_thresholds = data.table(),
-      selected_thresholds = c()
+      selected_coc_thresholds = c()
     )
     
     # Fetch all available CoC thresholds
     observe({
       req(DB_CON)
+
       rv$all_thresholds <- get_db_query(
         "SELECT threshold_id, threshold_text 
         FROM thresholds
@@ -46,11 +47,11 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
     # Fetch currently selected thresholds for the active profile
     observe({
       req(user_coc$coc_version_id)
-      
-      selected_q <- "SELECT threshold_id FROM selected_thresholds WHERE coc_version_id = $1"
+
+      selected_q <- "SELECT threshold_id FROM selected_coc_thresholds WHERE coc_version_id = $1"
       selected_data <- get_db_query(selected_q, params = list(user_coc$coc_version_id))
-      
-      rv$selected_thresholds <- selected_data$threshold_id
+
+      rv$selected_coc_thresholds <- selected_data$threshold_id
     })
     
     # Dynamically render the checkboxes based on available and selected data
@@ -62,7 +63,7 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
         label = "CoC Threshold Requirements",
         choices = setNames(rv$all_thresholds$threshold_id, rv$all_thresholds$threshold_text),
         width = "100%",
-        selected = rv$selected_thresholds
+        selected = rv$selected_coc_thresholds
       )
     })
     
@@ -71,7 +72,7 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
       req(user_coc$coc_version_id, user_coc$username)
       
       current_selection <- as.integer(input$threshold_selection)
-      previous_selection <- rv$selected_thresholds
+      previous_selection <- rv$selected_coc_thresholds
       
       to_add <- setdiff(current_selection, previous_selection)
       to_remove <- setdiff(previous_selection, current_selection)
@@ -82,24 +83,24 @@ mod_coc_thresholds_server <- function(id, user_coc, all_thresholds) {
           add_df <- data.frame(
             threshold_id = to_add,
             coc_version_id = user_coc$coc_version_id,
-            created_by = user_coc$username
-          )
-          DBI::dbAppendTable(DB_CON, "selected_thresholds", add_df)
+          ) %>% 
+            add_user_stamp(user_coc, is_new = TRUE)
+          DBI::dbAppendTable(DB_CON, "selected_coc_thresholds", add_df)
         }
         
         # Remove deselected items
         if (length(to_remove) > 0) {
-          remove_q <- "DELETE FROM selected_thresholds WHERE coc_version_id = $1 AND threshold_id = ANY($2)"
+          remove_q <- "DELETE FROM selected_coc_thresholds WHERE coc_version_id = $1 AND threshold_id = ANY($2)"
           dbExecute(DB_CON, remove_q, params = list(user_coc$coc_version_id, to_remove))
         }
         
         # Update reactive value to reflect saved state
-        rv$selected_thresholds <- current_selection
+        rv$selected_coc_thresholds <- current_selection
         
         shiny::showNotification("CoC Thresholds saved successfully.", type = "message")
       }, error = function(e) {
         shiny::showNotification(paste("Error saving thresholds:", e$message), type = "error")
       })
-    })
+    }, ignoreInit = TRUE)
   })
 }

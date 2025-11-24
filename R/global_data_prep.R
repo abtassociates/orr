@@ -1,7 +1,7 @@
 HDX_HIC_DATE <- as.Date('2025-07-25')
 
 LOOKUPS <- get_db_tbl("lookups")
-# USERS <- get_db_tbl("users")
+
 cocs <- get_db_tbl("cocs")
 COC_VERSION_USERS <- get_db_query(
   "SELECT v.*, u.username, u.coc_version_role
@@ -12,7 +12,7 @@ COC_VERSION_USERS <- get_db_query(
 HUD_ARD_REPORT <- get_db_tbl("hud_ard_report")
 MAIN_PROJECT_TYPES <- c("PSH", "RRH", "TH", "TH+RRH")
 
-COC_NOFO_OPPORTUNITIES <- get_db_tbl("coc_nofo_opportunities") %>%
+COC_NOFO_OPPORTUNITIES <- get_db_tbl("coc_nofo_opportunities") |>
   fmutate(
     funding_action = get_lookup_label(funding_action, "funding_action"),
     project_type = get_lookup_label(project_type, "project_type"),
@@ -30,16 +30,20 @@ COC_NOFO_OPPORTUNITIES <- get_db_tbl("coc_nofo_opportunities") %>%
   )
 
 SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
-TABS_TO_SHOW <- c(
+
+TABS_AFTER_LOGIN <- c(
   "dashboard",
   "inventory",
   "funding_priorities",
-  "rating_criteria",
+  "rating",
   "account"
 )
-
 TABS_AFTER_COC_SELECTION <- c(
   "inventory",
   "funding_priorities",
-  "rating_criteria"
+  "rating"
+)
+
+TABS_AFTER_PROJECTS_EXIST <- c(
+  "rating"
 )

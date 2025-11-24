@@ -45,3 +45,12 @@ td.disabled {
   height: 36vh !important;
 }
 
+
+/* Add to your app's CSS */
+/* Center align the input boxes too */
+.input-col .form-group {
+  text-align: center;
+}
+.input-col input {
+  text-align: center;
+}

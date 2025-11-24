@@ -129,7 +129,7 @@ retrieve_user_data <- function(user_code){
   #                         add_headers(Authorization = paste("Bearer", token_res$access_token)))
   
   ## transpose so attributes are easier to pull
-  user_attr <- user_information$details$UserAttributes %>% 
+  user_attr <- user_information$details$UserAttributes |>
     tidyr::pivot_wider(names_from='Name',values_from='Value')
   
   return(user_attr)

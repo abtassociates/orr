@@ -29,6 +29,6 @@ mod_account_ui <- function(id){
   )
 }
 
-mod_account_server <- function(id, nav_control, user_coc, parent_session) {
+mod_account_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
   moduleServer(id, function(input, output, session) {})
 }

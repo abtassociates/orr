@@ -132,7 +132,7 @@ initialize_inline_edit_table_ui <- function(
   
   # Add any passed in formatting
   for (f in formatting) {
-    dt <- dt %>% f
+    dt <- dt %>% f # needs to be %>% instead of |>
   }
   return(dt)
 }
