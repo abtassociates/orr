@@ -1,21 +1,53 @@
 #' @title mod_new_factors_ui
 #' @noRd
-mod_rating_factors_ui <- function(id, funding_action) {
+mod_customize_rating_factors_ui <- function(id, funding_action) {
   ns <- NS(id)
   
   display_funding_action = ifelse(funding_action == "Renew", "Renewal/Expansion", "New")
   
+  project_and_pop_dropdowns <- function(ns) {
+    project_type_dropdown <- selectInput(
+      inputId = ns("project_type"),
+      label = "Select project type",
+      choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
+      multiple = TRUE,
+      selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
+    )
+    
+    target_pop_dropdown <- selectInput(
+      inputId = ns("target_population"),
+      label = "Select special populations",
+      choices = get_labelled_lookups("target_population")[c("DV", "General")],
+      multiple = TRUE,
+      selected = c("DV", "General") # Pre-select all for initial state
+    )
+    
+    dropdowns_to_include <- target_pop_dropdown
+    if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
+    inner_layout_args <- c(
+      # if Renew, each dropdown takes half of this 8-column space. If New, it's just one column taking up the whole space
+      width = ifelse(funding_action == "Renew", 1/2, 1),
+      dropdowns_to_include
+    )
+    
+    dropdowns_to_include
+  }
+  
   nav_panel(
-    paste0(display_funding_action, " Project Rating Criteria"),
+    paste0(display_funding_action, " Rating Factors"),
     value = id,
-    card(
-      project_and_pop_dropdowns(ns, funding_action),
-      hr(),
-      uiOutput(ns("factors_ui")) %>% withSpinner(),
-      card_footer(
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
-        actionButton(ns("save_factors"), paste0("Save ", display_funding_action, " Criteria"), icon = icon("save"), class = "btn-primary")
+    layout_sidebar(
+      sidebar = sidebar(
+        width = "10%",
+        project_and_pop_dropdowns(ns)
+      ),
+      card(
+        uiOutput(ns("factors_ui")) |> withSpinner(),
+        card_footer(
+          style = "display: flex; justify-content: space-between; align-items: center;",
+          actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
+          actionButton(ns("save_factors"), paste0("Save ", display_funding_action, " Criteria"), icon = icon("save"), class = "btn-primary")
+        )
       )
     )
   )
@@ -23,7 +55,7 @@ mod_rating_factors_ui <- function(id, funding_action) {
 
 #' @title mod_new_factors_server
 #' @noRd
-mod_rating_factors_server <- function(id, user_coc, funding_action) {
+mod_customize_rating_factors_server <- function(id, user_coc, funding_action, module_returns) {
   # The server logic here is identical in structure to the renewal/expansion module,
   # differing only by the `funding_action` filter ('New').
   moduleServer(id, function(input, output, session) {
@@ -34,7 +66,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
     # Store observers for remove buttons to manage them
     custom_factor_observers <- reactiveValues()
     subgroup_check_all_values <- reactiveValues()
-    
+
     fetch_and_structure_rating_factors <- function(funding_action_type, coc_version_id, selected_target_populations = NULL, selected_project_types = NULL) {
       # Determine the WHERE clause based on the funding_action_type
       funding_action_values <- switch(
@@ -62,15 +94,15 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       if(!is.null(selected_target_populations)) all_factors <- all_factors[target_population %in% selected_target_populations]
       
       # Update rating_factor_text to include project_type and target_population
-      # all_factors <- all_factors %>%
+      # all_factors <- all_factors |>
       #   join(
       #     lookups[reference_type == "project_type", .("project_type_value" = value, reference_id)], 
       #     on = c("project_type" = "reference_id")
-      #   ) %>%
+      #   ) |>
       #   join(
       #     lookups[reference_type == "target_population", .("target_population_value" = value, reference_id)], 
       #     on = c("target_population" = "reference_id")
-      #   )  %>%
+      #   )  |>
       # fmutate(
       #   rating_factor_text = fifelse(
       #     !is.na(project_type_value) & !is.na(target_population_value),
@@ -98,17 +130,17 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       if (nrow(selected_factors) > 0) {
         merged_data <- join(
           all_factors, 
-          selected_factors %>% fmutate(selected = TRUE), 
+          selected_factors |> fmutate(selected = TRUE), 
           on = "rating_factor_id"
-        ) %>%
+        ) |>
           fmutate(
             selected = fcoalesce(selected, FALSE),
             goal = fcoalesce(goal, default_goal),
             max_point_value = fcoalesce(as.double(max_point_value), as.double(default_points))
           )
       } else {
-        merged_data <- all_factors %>%
-          frename(goal = default_goal, max_point_value = default_points) %>%
+        merged_data <- all_factors |>
+          frename(goal = default_goal, max_point_value = default_points) |>
           fmutate(selected = FALSE)
       }
       
@@ -169,9 +201,9 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
                      )
               ),
               if(funding_action == "Renew") column(1, tags$b("Project Type")),
-              if(funding_action == "Renew") column(1, tags$b("Target Population")),
+              if(funding_action == "Renew") column(1, tags$b("Target Population", style="word-wrap: normal;")),
               column(ifelse(funding_action == "Renew", 7, 9), tags$b("Rating Factor")),
-              column(1, tags$b("Factor/Goal")),
+              column(1, tags$b("Factor/Goal", style="word-wrap: normal;")),
               column(1, tags$b("Max Point Value"))
             ),
             hr(),
@@ -205,50 +237,51 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       )
     }
     
-    project_and_pop_dropdowns <- function(ns, funding_action) {
-      project_type_dropdown <- selectInput(
-        inputId = ns("project_type"),
-        label = "Select project type",
-        choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-        multiple = TRUE,
-        selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
-      )
-      
-      target_pop_dropdown <- selectInput(
-        inputId = ns("target_population"),
-        label = "Select special populations",
-        choices = get_labelled_lookups("target_population")[c("DV", "General")],
-        multiple = TRUE,
-        selected = c("DV", "General") # Pre-select all for initial state
-      )
-      
-      dropdowns_to_include <- target_pop_dropdown
-      if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
-      inner_layout_args <- c(
-        # if Renew, each dropdown takes half of this 8-column space. If New, it's just one column taking up the whole space
-        width = ifelse(funding_action == "Renew", 1/2, 1),
-        dropdowns_to_include
-      )
-      bslib::layout_column_wrap(
-        width = 1/3,
-        div(), # left spacer
-        do.call(bslib::layout_column_wrap, inner_layout_args),
-        div() # right spacer
-      )
-    }
-    
-    handle_check_all_box_functionality <- function(input, factors_data, funding_action) {
+    # project_and_pop_dropdowns <- function(ns, funding_action) {
+    #   project_type_dropdown <- selectInput(
+    #     inputId = ns("project_type"),
+    #     label = "Select project type",
+    #     choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
+    #     multiple = TRUE,
+    #     selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
+    #   )
+    #   
+    #   target_pop_dropdown <- selectInput(
+    #     inputId = ns("target_population"),
+    #     label = "Select special populations",
+    #     choices = get_labelled_lookups("target_population")[c("DV", "General")],
+    #     multiple = TRUE,
+    #     selected = c("DV", "General") # Pre-select all for initial state
+    #   )
+    #   
+    #   dropdowns_to_include <- target_pop_dropdown
+    #   if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
+    #   inner_layout_args <- c(
+    #     # if Renew, each dropdown takes half of this 8-column space. If New, it's just one column taking up the whole space
+    #     width = ifelse(funding_action == "Renew", 1/2, 1),
+    #     dropdowns_to_include
+    #   )
+    #   bslib::layout_column_wrap(
+    #     width = 1/3,
+    #     div(), # left spacer
+    #     do.call(bslib::layout_column_wrap, inner_layout_args),
+    #     div() # right spacer
+    #   )
+    # }
+    # 
+    handle_check_all_box_functionality <- function(input) {
       # 1. Fetch ALL possible subgroup names ONCE at the start.
       #    This decouples observer creation from the reactive data flow.
       #    We query the source table directly for this static list.
       funding_action_id <- get_lookup_refid(funding_action, "funding_action")
       
-      
       all_possible_subgroups <- get_db_query(
         "SELECT DISTINCT factor_subgroup 
-    FROM factor_subgroups
-    WHERE funding_action = $1
-  ", params = funding_action_id)$factor_subgroup
+          FROM factor_subgroups
+          WHERE funding_action = $1
+        ", 
+        params = funding_action_id
+      )$factor_subgroup
       
       lapply(all_possible_subgroups, function(subgroup) {
         subgroup_check_all_input <- paste0("check_all_", subgroup)
@@ -266,7 +299,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
           if(!identical(val, stored_val) && is_initialized) {
             # Find the factor IDs for this specific subgroup from the current data
             factor_ids_to_update <- c()
-            for (group in factors_data) {
+            for (group in selected_factors_data()) {
               # Check if the clicked subgroup exists in this group for the current filters
               if (subgroup %in% names(group)) {
                 factor_ids_to_update <- group[[subgroup]]$rating_factor_id
@@ -285,12 +318,12 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       
       # Update subgroup check-all-that-apply boxes based on underlying factor boxes ------
       observe({
-        req(factors_data)
+        req(selected_factors_data())
         
         # This part checks the children and updates the parent "check all" box.
         
         # Loop through only the groups and subgroups currently visible on the UI.
-        for (group in factors_data) {
+        for (group in selected_factors_data()) {
           for (subgroup_name in names(group)) {
             
             subgroup_data <- group[[subgroup_name]]
@@ -302,7 +335,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
             factor_selections <- lapply(factor_ids, function(id) input[[paste0("select_", id)]])
             if(is.null(unlist(factor_selections))) next
             
-            message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
+            # message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
             # Determine the new state for the parent "check all" box.
             # It should be checked if and only if all its children are checked.
             parent_should_be_checked <- all(unlist(factor_selections))
@@ -367,7 +400,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       )
     }
     
-    add_custom_factor <- function(ns, input, funding_action) {
+    add_custom_factor <- function(ns, input) {
       # Increment counter
       current_id <- custom_factor_counter() + 1
       custom_factor_counter(current_id)
@@ -397,10 +430,10 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       }, ignoreInit = TRUE, once = TRUE) # `once = TRUE` is crucial
     }
     
-    save_factors <- function(ns, input, funding_action, factor_data) {
+    save_factors <- function(ns, input) {
       # 1. Get all factor IDs that were rendered on the UI.
       all_ids <- rbindlist(
-        unlist(factor_data, recursive = FALSE), 
+        unlist(selected_factors_data(), recursive = FALSE), 
         use.names = TRUE, 
         fill = TRUE
       )$rating_factor_id
@@ -443,12 +476,10 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
           
           # 7. DELETE records that were deselected
           if (length(to_delete_ids) > 0) {
-            delete_q <- glue::glue_sql("
+            dbExecute(DB_CON, glue::glue_sql("
               DELETE FROM selected_rating_factors
-              WHERE coc_version_id = {coc_id} AND rating_factor_id IN ({ids*})
-            ", coc_id = user_coc$coc_version_id, ids = to_delete_ids, .con = DB_CON)
-            
-            dbExecute(DB_CON, delete_q)
+              WHERE coc_version_id = {user_coc$coc_version_id} AND rating_factor_id IN ({to_delete_ids*})
+            ", .con = DB_CON))
           }
           
           # 5. INSERT new records that are now selected
@@ -456,7 +487,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
             dbAppendTable(
               DB_CON,
               "selected_rating_factors",
-              to_insert %>% fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
+              to_insert |> fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
             )
           }
           
@@ -543,7 +574,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
     }
     
     
-    factors_data <- reactive({
+    selected_factors_data <- reactive({
       req(user_coc$coc_version_id)
 
       fetch_and_structure_rating_factors(
@@ -555,7 +586,7 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
     })
     
     output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
-      data_groups_nested <- factors_data()
+      data_groups_nested <- selected_factors_data()
 
       render_nested_factor_accordion_ui(
         ns = ns,
@@ -565,15 +596,16 @@ mod_rating_factors_server <- function(id, user_coc, funding_action) {
       )
     })
     
-    handle_check_all_box_functionality(input, factors_data(), funding_action)
+    handle_check_all_box_functionality(input)
     
     # Observer for the "Add Custom Rating Factor" button
     observeEvent(input$add_custom_factor, {
-      add_custom_factor(ns, input, funding_action)
+      add_custom_factor(ns, input)
     }, ignoreInit = TRUE)
     
     observeEvent(input$save_factors, {
-      save_factors(ns, input, funding_action, factors_data())
+      save_factors(ns, input)
+      module_returns$customize_rating_criteria <- !module_returns$customize_rating_criteria
     }, ignoreInit = TRUE)
   })
 }

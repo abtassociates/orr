@@ -3,11 +3,12 @@ dbExecute(DB_CON, "DELETE FROM coc_versions WHERE coc_version_id > 4")
 dbExecute(DB_CON, "DELETE FROM coc_version_requests")
 dbExecute(DB_CON, "DELETE FROM projects WHERE coc_version_id > 4")
 
-main_user <- toString(users[1, 1])
-second_user <- toString(users[3, 1])
+USERS <- get_db_tbl("users")
+main_user <- toString(USERS[1, 1]) # alex.silverman@abtglobal.com
+second_user <- toString(USERS[3, 1]) # thomas.brittain@abtglobal.com
 
 coc_versions <- data.table(
-  coc_version_id = 10:13,
+  coc_version_id = 10:12,
   coc_version_name = c(
     'AK-500 Main Version',
     'AK-500 Alternative Version',
@@ -99,8 +100,8 @@ get_hic_data <- function(coc, coc_version_id) {
     ) %>%
     fmutate(
       funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
-      project_type = convert_to_factor(., "project_type", textToNum = TRUE),
-      target_population = convert_to_factor(., "target_population", textToNum = TRUE),
+      # project_type = convert_to_factor(., "project_type", textToNum = TRUE),
+      # target_population = convert_to_factor(., "target_population", textToNum = TRUE),
       created_by = SERVICE_ACCOUNT
     ) %>%
     frename(bed_field_mapping) %>%

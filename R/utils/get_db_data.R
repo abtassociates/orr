@@ -42,7 +42,7 @@ get_db_query <- function(sql, params = NULL) {
 
 
 get_db_tbl <- function(tbl_name) {
-  dbReadTable(DB_CON, tbl_name) %>% 
+  dbReadTable(DB_CON, tbl_name) |>
     qDT()
 }
 

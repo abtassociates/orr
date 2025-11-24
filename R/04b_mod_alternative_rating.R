@@ -4,9 +4,9 @@ mod_alternative_rating_ui <- function(id) {
   # Alternative Rating
   nav_panel(
     "Alternative Rating",
-    value = "alternative_rating",
+    value = id,
     card(
-      DTOutput(ns("alternative_rating_table"))
+      DTOutput(ns("rating_table"))
     )
   )
 }
