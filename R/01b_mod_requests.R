@@ -107,21 +107,24 @@ mod_requests_server <- function(id, user_coc) {
           params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
         )
         
-        # Create version user
-        user_role_num <- get_lookup_refid("Editor", "coc_version_role")
-        DBI::dbAppendTable(
-          DB_CON,
-          "coc_version_users",
-          data.table(
-            coc_version_id = row[["coc_version_id"]],
-            username = row[["created_by"]],
-            coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
-            created_by = user_coc$username,
-            date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-            date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-            updated_by = user_coc$username
+        if(request_status_num == 2){
+          
+          # Create version user
+          user_role_num <- get_lookup_refid("Editor", "coc_version_role")
+          DBI::dbAppendTable(
+            DB_CON,
+            "coc_version_users",
+            data.table(
+              coc_version_id = row[["coc_version_id"]],
+              username = row[["created_by"]],
+              coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
+              created_by = user_coc$username,
+              date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+              date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+              updated_by = user_coc$username
+            )
           )
-        )
+        }
       })
         
       # Updaet datatable proxy
