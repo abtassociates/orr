@@ -403,16 +403,11 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )
     })
     
-    create_request <- function(cur_coc, version_name) {
+    create_request <- function(cur_coc, version_id) {
       request_status_num <- get_lookup_refid('Sent','request_status')
-
-      version_id <- COC_VERSION_USERS |> 
-        fsubset(coc == cur_coc & coc_version_name == version_name) |> 
-        fselect('coc_version_id') %>% 
-        ffirst()
       
       request_row <- data.table(
-        coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
+        #coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
         coc_version_id = version_id,
         request_status = request_status_num,
         reason_for_rejection = NA,
@@ -421,7 +416,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       ) |>
         add_user_stamp(user_coc, is_new = TRUE)
       
-        # Add row to requests table
+      # Add row to requests table
       DBI::dbAppendTable(
         DB_CON,
         "coc_version_requests",
@@ -431,12 +426,29 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     }
     
     observeEvent(input$send_direct_request, {
-      # TODO: Send email to version Owners of input$direct_request_coc_versions_rows_selected
-      create_request(cur_coc = input$request_access_coc_dropdown,
-                     version_name = input$direct_request_coc_versions_cell_clicked$value,
-                     requester = user_coc$username)
-      removeModal()
-      showNotification('Request sent!', duration = 3)
+      
+      prev_requests <- get_db_tbl('coc_version_requests')
+      
+      version_id <- COC_VERSION_USERS |> 
+        fsubset(coc == input$request_access_coc_dropdown & 
+                coc_version_name == input$direct_request_coc_versions_cell_clicked$value) |> 
+        fselect('coc_version_id') %>% 
+        ffirst()
+      
+      check_if_already_requested <- prev_requests %>% 
+        fsubset(coc_version_id == version_id & 
+                  created_by == user_coc$username)
+      
+      if(fnrow(check_if_already_requested) > 0){
+        showNotification('You already have an outstanding request for this CoC Version. Please select another one.')
+      } else {
+        # TODO: Send email to version Owners of input$direct_request_coc_versions_rows_selected
+        create_request(cur_coc = input$request_access_coc_dropdown,
+                       version_id = version_id)
+        removeModal()
+        showNotification('Request sent!', duration = 3)
+      }
+     
     })
     
     # Requesting access to a CoC indirectly ---------------
