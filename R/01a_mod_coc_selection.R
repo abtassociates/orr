@@ -405,8 +405,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )
     })
     
-    create_request <- function(cur_coc, version_name,
-                               requester) {
+    create_request <- function(cur_coc, version_name) {
       request_status_num <- get_lookup_refid('Sent','request_status')
 
       version_id <- COC_VERSION_USERS |> 
@@ -420,10 +419,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         request_status = request_status_num,
         reason_for_rejection = NA,
         date_created = Sys.time(),
-        date_updated = Sys.time(),
-        created_by = requester,
-        updated_by = requester
-      )
+        date_updated = Sys.time()
+      ) |>
+        add_user_stamp(user_coc, is_new = TRUE)
       
         # Add row to requests table
       DBI::dbAppendTable(
