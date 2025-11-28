@@ -203,7 +203,9 @@ mod_requests_server <- function(id, user_coc) {
     }
     
     observeEvent(input$request_filters, {
-      filter_requests(status = input$request_filters)
+      status <- ifelse(input$request_filters == 'Outstanding', 'Sent',
+                       input$request_filters)
+      filter_requests(status = status)
     })
   
   }
