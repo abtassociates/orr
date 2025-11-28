@@ -135,8 +135,14 @@ mod_requests_server <- function(id, user_coc) {
           )
       )
     }
-    observeEvent(input$approve_request, {update_request("Approved")})
-    observeEvent(input$reject_request, {update_request("Rejected")})
+    observeEvent(input$approve_request, {
+      update_request("Approved")
+      showNotification('Request approved.', type='message') 
+    })
+    observeEvent(input$reject_request, {
+      update_request("Rejected")
+      showNotification('Request rejected.', type = 'warning')
+    })
     
     filter_requests <- function(status) {
       cur_requests(
