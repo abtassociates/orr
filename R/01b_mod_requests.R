@@ -140,11 +140,45 @@ mod_requests_server <- function(id, user_coc) {
       )
     }
     observeEvent(input$approve_request, {
+      showModal(
+        modalDialog(
+          title = 'Confirm Approval',
+          "Please confirm that you would like to approve access to the selected CoC versions.",
+          footer = tagList(
+            actionButton('confirm_approve', 'Confirm'),
+            modalButton('Cancel')
+          )
+        )
+      )
+    })
+    
+    observeEvent(input$confirm_approve, {
       update_request("Approved")
       showNotification('Request approved.', type='message') 
     })
+    
     observeEvent(input$reject_request, {
+      showModal(
+        modalDialog(
+          title = 'Confirm Rejection',
+          radioButton('rej_reason', label = 'Please specify a reason for rejection and confirm.',
+                      choices = get_db_tbl('request_rejection_reasons')$request_rejection_reason),
+          # conditionalPanel(
+          #   condition = 'input.rej_reason == "Other"',
+          #   textInput('rej_other_specify', "Other - please specify:"),
+          # ),
+          footer = tagList(
+            actionButton('confirm_reject', 'Confirm'),
+            modalButton('Cancel')
+          )
+        )
+      )
+      
+    })
+    
+    observeEvent(input$confirm_reject, {
       update_request("Rejected")
+      
       showNotification('Request rejected.', type = 'warning')
     })
     
