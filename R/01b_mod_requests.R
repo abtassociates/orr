@@ -98,16 +98,18 @@ mod_requests_server <- function(id, user_coc) {
       selected_requests <- cur_requests()[input$requests_dt_rows_selected]
       
       apply(selected_requests, 1, function(row) {
-        # Set Status in Requests table
-        DBI::dbExecute(
-          DB_CON,
-          "UPDATE coc_version_requests 
+        
+       
+        if(request_status_num == 2){
+          
+          # Set Status in Requests table
+          DBI::dbExecute(
+            DB_CON,
+            "UPDATE coc_version_requests 
           SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2
           WHERE coc_request_id = $3", 
-          params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
-        )
-        
-        if(request_status_num == 2){
+            params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
+          )
           
           # Create version user
           user_role_num <- get_lookup_refid("Editor", "coc_version_role")
@@ -123,6 +125,16 @@ mod_requests_server <- function(id, user_coc) {
               date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
               updated_by = user_coc$username
             )
+          )
+        } else if(request_status_num == 3){
+          # Set Status in Requests table
+          DBI::dbExecute(
+            DB_CON,
+            "UPDATE coc_version_requests 
+          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2,
+              reason_for_rejection = $3
+          WHERE coc_request_id = $4", 
+            params = list(request_status_num, user_coc$username, input$rej_reason, row[["coc_request_id"]])
           )
         }
       })
@@ -145,7 +157,7 @@ mod_requests_server <- function(id, user_coc) {
           title = 'Confirm Approval',
           "Please confirm that you would like to approve access to the selected CoC versions.",
           footer = tagList(
-            actionButton('confirm_approve', 'Confirm'),
+            actionButton(ns('confirm_approve'), 'Confirm'),
             modalButton('Cancel')
           )
         )
@@ -154,6 +166,7 @@ mod_requests_server <- function(id, user_coc) {
     
     observeEvent(input$confirm_approve, {
       update_request("Approved")
+      removeModal()
       showNotification('Request approved.', type='message') 
     })
     
@@ -161,14 +174,14 @@ mod_requests_server <- function(id, user_coc) {
       showModal(
         modalDialog(
           title = 'Confirm Rejection',
-          radioButton('rej_reason', label = 'Please specify a reason for rejection and confirm.',
+          radioButtons(ns('rej_reason'), label = 'Please specify a reason for rejection and confirm.',
                       choices = get_db_tbl('request_rejection_reasons')$request_rejection_reason),
           # conditionalPanel(
           #   condition = 'input.rej_reason == "Other"',
           #   textInput('rej_other_specify', "Other - please specify:"),
           # ),
           footer = tagList(
-            actionButton('confirm_reject', 'Confirm'),
+            actionButton(ns('confirm_reject'), 'Confirm'),
             modalButton('Cancel')
           )
         )
@@ -178,7 +191,7 @@ mod_requests_server <- function(id, user_coc) {
     
     observeEvent(input$confirm_reject, {
       update_request("Rejected")
-      
+      removeModal()
       showNotification('Request rejected.', type = 'warning')
     })
     
