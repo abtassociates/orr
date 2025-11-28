@@ -416,8 +416,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         coc_version_id = version_id,
         request_status = request_status_num,
         reason_for_rejection = NA,
-        date_created = Sys.time(),
-        date_updated = Sys.time()
+        date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+        date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
       ) |>
         add_user_stamp(user_coc, is_new = TRUE)
       
