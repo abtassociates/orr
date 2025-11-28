@@ -11,10 +11,11 @@ mod_requests_ui <- function(id) {
           helpText("Please select a row from the table below to update a request."),
           br(),
           br(),
-          actionGroupButtons(
-            c(ns("filter_sent"), ns("filter_approved"), ns("filter_rejected")),
-            c("Outstanding", "Approved", "Rejected"),
-            status = "default"
+          radioGroupButtons(
+            ns('request_filters'),
+            choices = c('Outstanding','Approved','Rejected'),
+            selected = NULL,
+            status = "primary"
           ),
           DTOutput(ns('requests_dt'))|> shinycssloaders::withSpinner(),
           actionButton(ns('approve_request'), label='Approve', class='btn-success'),
@@ -150,8 +151,10 @@ mod_requests_server <- function(id, user_coc) {
           fsubset(request_status == status)
       )
     }
-    observeEvent(input$filter_sent, {filter_requests("Sent")})
-    observeEvent(input$filter_approved, {filter_requests("Approved")})
-    observeEvent(input$filter_rejected, {filter_requests("Rejected")})
+    
+    observeEvent(input$request_filters, {
+      filter_requests(status = input$request_filters)
+    })
+  
   }
 )}
