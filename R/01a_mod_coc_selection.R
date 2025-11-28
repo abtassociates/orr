@@ -353,10 +353,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # allow user to view versions and request access
     request_access_direct_coc_versions <- reactive({
       COC_VERSION_USERS |>
-        fgroup_by(coc_version_id) |>
-        fmutate(user_associated_w_version = any(username == user_coc$username, na.rm=TRUE)) |>
-        fungroup() |>
-        fsubset(!user_associated_w_version) |>
+        fsubset(username != user_coc$username) |>
         fselect(coc, coc_version_name, username)
     })
     # When user clicks the "Request Access to a CoC" button
@@ -391,7 +388,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       req(input$request_access_coc_dropdown)
       
       versions_to_show <- request_access_direct_coc_versions() |>
-        fsubset(coc == input$request_access_coc_dropdown)
+        fsubset(coc == input$request_access_coc_dropdown & 
+                username != user_coc$username)
       
       req(nrow(versions_to_show) > 0)
       
