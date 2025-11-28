@@ -42,8 +42,16 @@ get_db_query <- function(sql, params = NULL) {
 
 
 get_db_tbl <- function(tbl_name) {
-  dbReadTable(DB_CON, tbl_name) |>
+  tbl <- dbReadTable(DB_CON, tbl_name) |>
     qDT()
+  
+  if("date_created" %in% names(tbl)) 
+    tbl[, date_created := as.POSIXct(date_created)]
+  
+  if("date_updated" %in% names(tbl)) 
+    tbl[, date_updated := as.POSIXct(date_updated)]
+  
+  return(tbl)
 }
 
 DB_CON <- get_db_connection()
