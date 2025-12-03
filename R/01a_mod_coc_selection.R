@@ -504,23 +504,32 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # is already created: 
     # send email to user associated with that other CoC Version
     observeEvent(input$send_indirect_request, {
-      req(!is.null(admin_email()))
+      #req(!is.null(admin_email()))
       
-      ## TODO: send email to admin of version that is requested
       
-      showModal(
-        modalDialog(
-          title = 'Request Sent',
-          helpText('Thank you. A request has been sent to the Admin for this version.'),
-          HTML(paste0('<p>Request Details</p>
-               <ul>
-               <li>Requested CoC: ', input$coc_dropdown,'</li>',
-                      '<li>Requested version: ',input$request_indirect_access_coc_dropdown,'</li>',    
-                      '<li>Requested at: ',Sys.time(),'</li>',
-                      '</ul>
-               '))
-        )
-      )
+      prev_requests <- get_db_tbl('coc_version_requests')
+      
+      version_id <- COC_VERSION_USERS |> 
+        fsubset(coc == input$request_indirect_access_coc_dropdown & 
+                  coc_version_name == input$indirect_request_coc_versions_cell_clicked$value) |> 
+        fselect('coc_version_id') %>% 
+        ffirst()
+      
+      check_if_already_requested <- prev_requests %>% 
+        fsubset(coc_version_id == version_id & 
+                  created_by == user_coc$username)
+      
+      if(fnrow(check_if_already_requested) > 0){
+        showNotification('You already have an outstanding request for this CoC Version. Please select another one.')
+      } else {
+        ## TODO: send email to admin of version that is requested
+        
+        create_request(cur_coc = input$request_indirect_access_coc_dropdown,
+                       version_id = version_id)
+        removeModal()
+        showNotification('Request sent!', duration = 3)
+      }
+      
     })
     
     observeEvent(input$new_hic_version, {
