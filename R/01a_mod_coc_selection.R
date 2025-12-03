@@ -376,14 +376,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       ))
     })
 
-    observeEvent(
-      input$direct_request_coc_versions_rows_selected,
-      updateActionButton(
-        ns('send_direct_request'), 
-        disabled = length(input$direct_request_coc_versions_rows_selected) > 0,
-        session = session
-      )             
-    )
     output$direct_request_coc_versions <- renderDT({
       req(input$request_access_coc_dropdown)
       
@@ -473,24 +465,27 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       showModal(modalDialog(
         title = 'Request Access to a CoC',
         helpText('Select a CoC to view its versions...'),
+        selectInput(ns('request_indirect_access_coc_dropdown'),
+                    label = "Please choose a CoC:",
+                    choices = sort(funique(request_access_indirect_coc_versions()$coc))
+        ),
         DT::DTOutput(ns("indirect_request_coc_versions")),
         footer = tagList(
           # If they continue: go to next step
-          actionButton(ns('send_indirect_request'), label='Send Request', disabled = TRUE),
+          actionButton(ns('send_indirect_request'), label='Send Request', disabled = FALSE),
           # If they cancel: close pop-up
           modalButton(label='Cancel')
         )
       ))
     })
     
-    observeEvent(
-      input$indirect_request_coc_versions_rows_selected,
-      updateActionButton(
-        ns('send_indirect_request'), 
-        disabled = length(input$indirect_request_coc_versions_rows_selected) > 0,
-        session = session
-      )             
-    )
+    ## enable/disable request actionbuttons based on if a CoC version is selected from the modal table
+    observe({
+      shinyjs::toggleState(id = 'send_direct_request', condition = length(input$direct_request_coc_versions_rows_selected) > 0)
+      
+      shinyjs::toggleState(id = 'send_indirect_request', condition = length(input$indirect_request_coc_versions_rows_selected) > 0)
+    })
+    
     output$indirect_request_coc_versions <- renderDT({
       req(input$request_indirect_access_coc_dropdown)
       datatable(
