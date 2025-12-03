@@ -132,7 +132,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           title = 'Confirm Deletion',
           helpText("Are you sure you want to delete this CoC version? This action cannot be undone."),
           footer = tagList(
-            actionButton(ns('confirm_deletion'), label='Confirm'),
+            actionButton(ns('confirm_deletion'), label='Confirm', icon = icon('trash'), class='btn-danger'),
             modalButton(label='Cancel')
           )
         )
@@ -153,7 +153,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
             choices = sort(cocs$coc_code)
           ),
           footer = tagList(
-            actionButton(ns('choose_coc'), label="Next"),
+            actionButton(ns('choose_coc'), label="Continue", class='btn-primary'),
             modalButton(label="Cancel")
           ),
           easyClose = TRUE
@@ -175,7 +175,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
             value = paste0(current_version_name, "_v2")
           ),
           footer = tagList(
-            actionButton(ns('copy_orr_confirm'), label="Confirm"),
+            actionButton(ns('copy_orr_confirm'), label="Confirm", class="btn-primary"),
             modalButton(label="Cancel")
           ),
           easyClose = TRUE
@@ -276,7 +276,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
                           you can do so within the existing ORR and click "Cancel". If you still wish to create a new version, please click "Continue."')),
           footer = tagList(
             # If they continue: go to next step
-            actionButton(ns('continue_new_version'), label='Continue'),
+            actionButton(ns('continue_new_version'), label='Continue', class="btn-primary"),
             # If they cancel: close pop-up
             modalButton(label='Cancel')
           )
@@ -292,9 +292,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           helpText(paste0('Another user (', check_if_others_have$username ,') has an existing version for CoC: ', coc_requested(),'. Would you like to request
                           access from this user, or continue creating a new version for this CoC?')),
           footer = tagList(
-            actionButton(ns('request_access_indirect'), label='Request Access'),
+            actionButton(ns('request_access_indirect'), label='Request Access', icon = icon('unlock'), class="btn-warning"),
             # If they continue: go to next step
-            actionButton(ns('continue_new_version2'), label='Create ORR anyway')
+            actionButton(ns('continue_new_version2'), label='Create New Version', icon('circle-plus'), class="btn-primary"),
+            modalButton('Cancel')
           )
         ))
        
@@ -307,7 +308,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           helpText(paste0('You will become the Version Owner for this version of the ', coc_requested(), ' ORR, with the sole ability to manage other user requests to collaborate on this version. Would you like to continue?')),
           footer = tagList(
             # If they continue: go to next step
-            actionButton(ns('continue_new_version3'), label='Continue'),
+            actionButton(ns('continue_new_version3'), label='Continue', class="btn-primary"),
             # If they cancel: close pop-up
             modalButton(label='Cancel')
           )
@@ -319,6 +320,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     observeEvent(
       c(input$continue_new_version, input$continue_new_version2, input$continue_new_version3),
       {
+        req(isTruthy(input$continue_new_version) || isTruthy(input$continue_new_version2) ||
+            isTruthy(input$continue_new_version3))
+       
         removeModal()
         choiceList <- setNames(
           c("import", "upload"), 
@@ -338,7 +342,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
             ),
             uiOutput(ns('hic_cond_select')),
             footer = tagList(
-              actionButton(inputId=ns('new_hic_version'),label='Next'),
+              actionButton(inputId=ns('new_hic_version'),label='Continue', class="btn-primary"),
               modalButton(label='Cancel')
             )
           ),
@@ -369,7 +373,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         DT::DTOutput(ns("direct_request_coc_versions")),
         footer = tagList(
           # If they continue: go to next step
-          actionButton(ns('send_direct_request'), label='Send Request', disabled = FALSE),
+          actionButton(ns('send_direct_request'), label='Send Request', disabled = FALSE, class="btn-warning"),
           # If they cancel: close pop-up
           modalButton(label='Cancel')
         )
@@ -476,7 +480,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         DT::DTOutput(ns("indirect_request_coc_versions")),
         footer = tagList(
           # If they continue: go to next step
-          actionButton(ns('send_indirect_request'), label='Send Request', disabled = TRUE),
+          actionButton(ns('send_indirect_request'), label='Send Request', disabled = TRUE, class="btn-warning"),
           # If they cancel: close pop-up
           modalButton(label='Cancel')
         )
@@ -540,7 +544,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
             value = initial_version_name,
           ),
           footer = tagList(
-            actionButton(ns('create_orr_confirm'), label="Create New Version"),
+            actionButton(ns('create_orr_confirm'), label="Create New Version", icon('circle-plus'), class="btn-primary"),
             modalButton(label="Cancel")
           ),
           easyClose = TRUE
