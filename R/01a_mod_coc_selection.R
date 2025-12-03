@@ -447,15 +447,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # This is for when the user tried to create a new version 
     # but may not have known about an existing version for the same CoC
     request_access_indirect_coc_versions <- reactive({
-      req(input$request_indirect_access_coc_dropdown)
       
       COC_VERSION_USERS |>
-        fsubset(
-          username != user_coc$username & 
-            coc == input$request_indirect_access_coc_dropdown &
-            coc_version_role == owner_role_refid,
-          coc, coc_version_name, username
-        )
+        fsubset(username != user_coc$username) |>
+        fselect(coc, coc_version_name, username)
     })
     
     # When user clicks the "Request Access" button within the "Create Version" flow
@@ -488,8 +483,15 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     output$indirect_request_coc_versions <- renderDT({
       req(input$request_indirect_access_coc_dropdown)
+      
+      versions_to_show <- request_access_indirect_coc_versions() |>
+        fsubset(coc == input$request_indirect_access_coc_dropdown & 
+                  username != user_coc$username)
+      
+      req(nrow(versions_to_show) > 0)
+      
       datatable(
-        request_access_indirect_coc_versions(),
+        versions_to_show,
         colnames = c("CoC", "Version Name", "Owner"),
         rownames = FALSE,
         options = list(dom = 'tip'),
