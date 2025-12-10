@@ -14,6 +14,7 @@ redirect_uri <- if(IN_DEV_MODE) {
   "https://orr.abtsites.com"
 }
 
+print(redirect_uri)
 ## generate redirect URL
 aws_auth_redirect <-
   paste0(
