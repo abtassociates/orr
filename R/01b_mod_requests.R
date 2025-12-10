@@ -40,9 +40,10 @@ mod_requests_server <- function(id, user_coc) {
       
       get_db_tbl('coc_version_requests') |>
         fsubset(coc_version_id %in% user_versions$coc_version_id) |># & request_status != "approved") |>
-        join(get_db_tbl('coc_versions') |> fselect(coc_version_id, coc), how='left') |>
+        join(get_db_tbl('coc_versions') |> fselect(coc_version_id, coc, coc_version_name), how='left') |>
         fmutate(request_status = get_lookup_label(request_status, "request_status")) |>
-        fselect(coc_request_id, coc, coc_version_id, created_by, date_created, request_status) |>
+        join(get_db_tbl('cocs'), how = 'left', on = c('coc' = 'coc_code')) |>
+        fselect(coc_request_id, coc_version_name, coc_name, coc, coc_version_id, created_by, date_created, request_status) |>
         roworder(-request_status)
     })
     
@@ -67,9 +68,10 @@ mod_requests_server <- function(id, user_coc) {
         escape=-1,
         style = 'default',
         options = list(
-          dom = 'Bfrtip',
+          dom = 'tip',
+          autoWidth = FALSE,
           columnDefs = list(
-            list(targets=0, className = "hidden")
+            list(targets=which(names(cur_requests()) %in% c('coc_request_id', 'coc_version_id')) - 1, className = "hidden", visible = FALSE)
           ),
           language = list(
             zeroRecords = "No outstanding requests"
