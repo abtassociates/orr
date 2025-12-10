@@ -60,8 +60,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
-      req(factors_and_scores_for_project())
-      
+      req(nrow(factors_and_scores_for_project()) > 0)
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
       

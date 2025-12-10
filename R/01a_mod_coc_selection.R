@@ -265,7 +265,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       removeModal()
       
-      
       if(nrow(check_if_already_have) > 0){
         admin_email(NULL)
         version_requested(NULL)
@@ -348,7 +347,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           ),
           session = session
         )
-      }, ignoreInit = TRUE
+      }
     )
     
     
@@ -365,10 +364,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
 
       showModal(modalDialog(
         title = 'Request Access to a CoC',
-        helpText('Select a CoC to view its versions...'),
-        selectInput(ns('request_access_coc_dropdown'),
-                    label = "Please choose a CoC:",
-                    choices = sort(funique(request_access_direct_coc_versions()$coc))
+        selectizeInput(
+          ns('request_access_coc_dropdown'),
+          label = "Please choose a CoC to view its versions:",
+          choices = sort(funique(request_access_direct_coc_versions()$coc))
         ),
         DT::DTOutput(ns("direct_request_coc_versions")),
         footer = tagList(
@@ -376,7 +375,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           actionButton(ns('send_direct_request'), label='Send Request', disabled = FALSE, class="btn-warning"),
           # If they cancel: close pop-up
           modalButton(label='Cancel')
-        )
+        ),
+        size = "l"
       ))
     })
 

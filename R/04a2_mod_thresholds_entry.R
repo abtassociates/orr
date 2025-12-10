@@ -45,14 +45,19 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       thresholds <- thresholds_to_enter() |>
         fsubset(type == threshold_type)
 
-      lapply(1:nrow(thresholds), function(i) {
-        checkboxInput(
-          ns(paste0(threshold_type, "_req_", thresholds$threshold_id[i])),
-          value = fcoalesce(as.logical(thresholds$met_threshold[i]), FALSE),
-          label = thresholds$threshold_text[i],
-          width = '100%'
-        )
-      })
+      if(fnrow(thresholds) == 0){
+        return(NULL)  
+      } else {
+        lapply(1:nrow(thresholds), function(i) {
+          checkboxInput(
+            ns(paste0(threshold_type, "_req_", thresholds$threshold_id[i])),
+            value = fcoalesce(as.logical(thresholds$met_threshold[i]), FALSE),
+            label = thresholds$threshold_text[i],
+            width = '100%'
+          )
+        })
+      }
+      
     }
     
     # HUD Requirements UI
