@@ -11,10 +11,11 @@ mod_requests_ui <- function(id) {
           helpText("Please select a row from the table below to update a request."),
           br(),
           br(),
-          actionGroupButtons(
-            c(ns("filter_sent"), ns("filter_approved"), ns("filter_rejected")),
-            c("Outstanding", "Approved", "Rejected"),
-            status = "default"
+          radioGroupButtons(
+            ns('request_filters'),
+            choices = c('Outstanding','Approved','Rejected'),
+            selected = NULL,
+            status = "primary"
           ),
           DTOutput(ns('requests_dt'))|> shinycssloaders::withSpinner(),
           actionButton(ns('approve_request'), label='Approve', class='btn-success'),
@@ -97,30 +98,45 @@ mod_requests_server <- function(id, user_coc) {
       selected_requests <- cur_requests()[input$requests_dt_rows_selected]
       
       apply(selected_requests, 1, function(row) {
-        # Set Status in Requests table
-        DBI::dbExecute(
-          DB_CON,
-          "UPDATE coc_version_requests 
+        
+       
+        if(request_status_num == 2){
+          
+          # Set Status in Requests table
+          DBI::dbExecute(
+            DB_CON,
+            "UPDATE coc_version_requests 
           SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2
           WHERE coc_request_id = $3", 
-          params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
-        )
-        
-        # Create version user
-        user_role_num <- get_lookup_refid("Editor", "coc_version_role")
-        DBI::dbAppendTable(
-          DB_CON,
-          "coc_version_users",
-          data.table(
-            coc_version_id = row[["coc_version_id"]],
-            username = row[["created_by"]],
-            coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
-            created_by = user_coc$username,
-            date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-            date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-            updated_by = user_coc$username
+            params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
           )
-        )
+          
+          # Create version user
+          user_role_num <- get_lookup_refid("Editor", "coc_version_role")
+          DBI::dbAppendTable(
+            DB_CON,
+            "coc_version_users",
+            data.table(
+              coc_version_id = row[["coc_version_id"]],
+              username = row[["created_by"]],
+              coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
+              created_by = user_coc$username,
+              date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+              date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+              updated_by = user_coc$username
+            )
+          )
+        } else if(request_status_num == 3){
+          # Set Status in Requests table
+          DBI::dbExecute(
+            DB_CON,
+            "UPDATE coc_version_requests 
+          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2,
+              reason_for_rejection = $3
+          WHERE coc_request_id = $4", 
+            params = list(request_status_num, user_coc$username, input$rej_reason, row[["coc_request_id"]])
+          )
+        }
       })
         
       # Updaet datatable proxy
@@ -135,8 +151,49 @@ mod_requests_server <- function(id, user_coc) {
           )
       )
     }
-    observeEvent(input$approve_request, {update_request("Approved")})
-    observeEvent(input$reject_request, {update_request("Rejected")})
+    observeEvent(input$approve_request, {
+      showModal(
+        modalDialog(
+          title = 'Confirm Approval',
+          "Please confirm that you would like to approve access to the selected CoC versions.",
+          footer = tagList(
+            actionButton(ns('confirm_approve'), 'Confirm'),
+            modalButton('Cancel')
+          )
+        )
+      )
+    })
+    
+    observeEvent(input$confirm_approve, {
+      update_request("Approved")
+      removeModal()
+      showNotification('Request approved.', type='message') 
+    })
+    
+    observeEvent(input$reject_request, {
+      showModal(
+        modalDialog(
+          title = 'Confirm Rejection',
+          radioButtons(ns('rej_reason'), label = 'Please specify a reason for rejection and confirm.',
+                      choices = get_db_tbl('request_rejection_reasons')$request_rejection_reason),
+          # conditionalPanel(
+          #   condition = 'input.rej_reason == "Other"',
+          #   textInput('rej_other_specify', "Other - please specify:"),
+          # ),
+          footer = tagList(
+            actionButton(ns('confirm_reject'), 'Confirm'),
+            modalButton('Cancel')
+          )
+        )
+      )
+      
+    })
+    
+    observeEvent(input$confirm_reject, {
+      update_request("Rejected")
+      removeModal()
+      showNotification('Request rejected.', type = 'warning')
+    })
     
     filter_requests <- function(status) {
       cur_requests(
@@ -144,8 +201,12 @@ mod_requests_server <- function(id, user_coc) {
           fsubset(request_status == status)
       )
     }
-    observeEvent(input$filter_sent, {filter_requests("Sent")})
-    observeEvent(input$filter_approved, {filter_requests("Approved")})
-    observeEvent(input$filter_rejected, {filter_requests("Rejected")})
+    
+    observeEvent(input$request_filters, {
+      status <- ifelse(input$request_filters == 'Outstanding', 'Sent',
+                       input$request_filters)
+      filter_requests(status = status)
+    })
+  
   }
 )}
