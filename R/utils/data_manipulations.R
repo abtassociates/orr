@@ -147,12 +147,14 @@ giw_variable_labels <- c(
 
 versions_variable_labels <- c(
   "coc" = "CoC Code",
+  "coc_name" = "CoC Name",
   "coc_version_name" = "CoC Version Name",
   "coc_status" = "Status",
   "coc_version_id" = "CoC Version ID",
   "coc_version_role" = "Your Role",
   "updated_by" = "Updated By",
-  "date_updated" = "Date Updated"
+  "date_updated" = "Date Updated",
+  "date_created" = "Date Created"
 )
 
 add_user_stamp <- function(x, user_coc, is_new = FALSE) {

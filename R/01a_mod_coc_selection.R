@@ -48,11 +48,14 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       req(user_coc$auth)
       coc_vu(
         COC_VERSION_USERS |>
-          fsubset(username == user_coc$username, -c(username, date_created, created_by)) |>
+          fsubset(username == user_coc$username, -c(username, created_by)) |>
           fmutate(
             coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
             coc_status = get_lookup_label(coc_status, 'coc_status')
-          )
+          ) %>% 
+          join(cocs %>% fselect(coc_code, coc_name),
+               how = 'left', on = c('coc' = 'coc_code')) %>% 
+          colorder(coc, coc_name, pos = "after")
       )
     })
     
@@ -69,7 +72,13 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       datatable(coc_vu(), 
                 colnames = unname(versions_variable_labels[match(names(coc_vu()),  names(versions_variable_labels))]),
                 rownames = FALSE,
-                options = list(dom = 'tip'),
+                options = list(
+                  dom = 'tip', 
+                  autowidth = FALSE,
+                  columnDefs = list(
+                    list(targets=0, className = "hidden")
+                  )
+                ),
                 editable = FALSE,
                 style = 'default',
                 #filter = list(position = 'top', plain = TRUE),
@@ -191,7 +200,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       # Update CoC Version in db, and grab autonumbered coc_version_id
       new_coc_version_info <- insert_and_return(
-        "coc_versions", new_version, c("coc_version_id", "date_updated")
+        "coc_versions", new_version %>% fselect(-coc_name), c("coc_version_id", "date_updated")
       )
 
       new_version_user <- data.table(
@@ -214,10 +223,11 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
               coc_version_role = new_version_user$coc_version_role,
               coc_status = get_lookup_label(coc_status, "coc_status"),
               coc_version_role = get_lookup_label(coc_version_role, "coc_version_role"),
-              date_updated = new_version_user$date_updated
+              date_updated = as.POSIXct(new_coc_version_info[[1]]$date_updated),
+              date_created = as.POSIXct(new_coc_version_info[[1]]$date_updated)
             ),
           fill=TRUE
-        )
+        ) %>% fselect(-created_by)
       )
       
       return(new_version_user$coc_version_id)
@@ -227,7 +237,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       coc_version_id <- create_new_version_for_user(
         coc_vu()[input$coc_versions_dt_rows_selected] |>
           fmutate(coc_version_name = input$copy_version_name) |>
-          fselect(-coc_version_role, -date_updated)
+          fselect(-coc_version_role, -date_updated, -date_created)
       )
       removeModal()
       # TODO: Eventually build out copying all the otehr tables
@@ -567,7 +577,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       coc_version_id <- create_new_version_for_user(
         data.table(
           coc_version_name = input$create_version_name,
-          coc = input$coc_dropdown
+          coc = input$coc_dropdown,
+          coc_name = cocs$coc_name[cocs$coc_code == input$coc_dropdown]
         )
       )
       
