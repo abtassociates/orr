@@ -627,9 +627,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           dv_ind_beds = fifelse(target_population == "DV", all_ind_beds, as.integer(0))
         ) %>% # %>% needed for convert_to_factor to work
         fmutate(
-          funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
-          project_type = convert_to_factor(., "project_type", textToNum = TRUE),
-          target_population = convert_to_factor(., "target_population", textToNum = TRUE),
+          funding_action = convert_to_factor(., "funding_action", textToNum = T),
+          project_type = convert_to_factor(., "project_type", textToNum = F),
+          target_population = convert_to_factor(., "target_population", textToNum = F),
           created_by = SERVICE_ACCOUNT
         ) |>
         frename(bed_field_mapping) |>

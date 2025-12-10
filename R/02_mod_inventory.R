@@ -120,7 +120,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         initial_filter = initial_filter,
         column_defs = list(
           list(
-            targets =which(names(data) == "created_by") - 1, 
+            targets =c(which(names(data) == "created_by") - 1,
+                       which(names(data) == 'geocode') - 1), 
             className = "hidden",
             visible = FALSE
           )

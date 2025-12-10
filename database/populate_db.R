@@ -138,7 +138,7 @@ VALUES
 
 -- from target_populations
 ('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
-('target_population', 'HIC', 'Housing Inventory Count', 'orr_service@abtglobal.com'),
+('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
 ('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
@@ -298,6 +298,9 @@ target_population_lookup <- DBI::dbGetQuery(DB_CON,
 # Create named vectors for mapping
 project_type_map <- setNames(project_type_lookup$reference_id, project_type_lookup$value)
 target_population_map <- setNames(target_population_lookup$reference_id, target_population_lookup$value)
+
+# Convert NAs, empty string to actual valid value "NA"
+hic_data[, target_population := ifelse(is.na(target_population) | target_population == "", "NA", target_population)]
 
 # Convert character codes to reference IDs
 hic_data[, project_type := project_type_map[project_type]]

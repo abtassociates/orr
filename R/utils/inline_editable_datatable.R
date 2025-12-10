@@ -104,7 +104,7 @@ initialize_inline_edit_table_ui <- function(
   dt <- datatable(
     data,
     style = "default",
-    extensions = 'Buttons',
+    extensions = c('Buttons', 'KeyTable'),
     colnames = colnames,
     editable = list(
       target = "cell",
@@ -121,8 +121,9 @@ initialize_inline_edit_table_ui <- function(
     rownames = FALSE,
     fillContainer = TRUE,
     options = list(
-      dom = "Bfrtip",
+      dom = "Btip",
       scrollY = "100%",  # Limit table height
+      keys = TRUE,
       searchCols = initial_filter,
       columnDefs = column_defs,
       initComplete = DT::JS(init_js),
