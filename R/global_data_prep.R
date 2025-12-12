@@ -3,12 +3,7 @@ HDX_HIC_DATE <- as.Date('2025-07-25')
 LOOKUPS <- get_db_tbl("lookups")
 
 cocs <- get_db_tbl("cocs")
-COC_VERSION_USERS <- get_db_query(
-  "SELECT v.*, u.username, u.coc_version_role
-  FROM coc_versions v
-  LEFT JOIN coc_version_users u
-  ON v.coc_version_id = u.coc_version_id"
-)
+
 HUD_ARD_REPORT <- get_db_tbl("hud_ard_report")
 MAIN_PROJECT_TYPES <- c("PSH", "RRH", "TH", "TH+RRH")
 
