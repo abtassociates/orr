@@ -157,6 +157,17 @@ versions_variable_labels <- c(
   "date_created" = "Date Created"
 )
 
+requests_variable_labels <- c(
+  "coc_version_id" = "coc_version_id",
+  "coc_request_id" = "coc_request_id",
+  "coc" = "CoC Code",
+  "coc_name" = "CoC Name",
+  "coc_version_name" = "CoC Version Name",
+  "request_status" = "Request Status",
+  "created_by" = "Requested By",
+  "date_created" = "Date Requested"
+)
+
 add_user_stamp <- function(x, user_coc, is_new = FALSE) {
   x <- x |> fmutate(updated_by = user_coc$username)
   if(is_new) x <- x |> fmutate(created_by = user_coc$username)

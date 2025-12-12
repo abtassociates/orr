@@ -13,7 +13,7 @@ mod_requests_ui <- function(id) {
           br(),
           radioGroupButtons(
             ns('request_filters'),
-            choices = c('Outstanding','Approved','Rejected'),
+            choices = c('Received','Sent','Approved','Rejected'),
             selected = NULL,
             status = "primary"
           ),
@@ -35,11 +35,16 @@ mod_requests_server <- function(id, user_coc) {
     all_requests <- reactive({
       req(user_coc$auth)
       
-      user_versions <- COC_VERSION_USERS |>
+      user_versions <-  get_db_query(
+        "SELECT v.*, u.username, u.coc_version_role
+          FROM coc_versions v
+          LEFT JOIN coc_version_users u
+          ON v.coc_version_id = u.coc_version_id"
+      ) |> #COC_VERSION_USERS |>
         fsubset(username == user_coc$username)
       
       get_db_tbl('coc_version_requests') |>
-        fsubset(coc_version_id %in% user_versions$coc_version_id) |># & request_status != "approved") |>
+        fsubset(created_by == user_coc$username | coc_version_id %in% user_versions$coc_version_id) |>
         join(get_db_tbl('coc_versions') |> fselect(coc_version_id, coc, coc_version_name), how='left') |>
         fmutate(request_status = get_lookup_label(request_status, "request_status")) |>
         join(get_db_tbl('cocs'), how = 'left', on = c('coc' = 'coc_code')) |>
@@ -60,18 +65,19 @@ mod_requests_server <- function(id, user_coc) {
     output$requests_dt <- renderDT({
       req(user_coc$auth)
       
+      # create "sent to " field when category is Sent
+      cols_to_hide <- which(names(cur_requests()) %in% c('coc_request_id', 'coc_version_id')) - 1
+      
       datatable(
         isolate(cur_requests()),
-        colnames = str_to_title(
-          str_replace_all(names(cur_requests()),'_',' ')
-        ),
+        colnames = unname(requests_variable_labels[names(cur_requests())]),
         escape=-1,
         style = 'default',
         options = list(
           dom = 'tip',
           autoWidth = FALSE,
           columnDefs = list(
-            list(targets=which(names(cur_requests()) %in% c('coc_request_id', 'coc_version_id')) - 1, className = "hidden", visible = FALSE)
+            list(targets= cols_to_hide, className = "hidden", visible = FALSE)
           ),
           language = list(
             zeroRecords = "No outstanding requests"
@@ -79,7 +85,11 @@ mod_requests_server <- function(id, user_coc) {
         ), 
         rownames = FALSE,
         editable = FALSE
-      )
+      ) %>% 
+        formatDate(
+          columns = c('date_created'),
+          method = 'toLocaleString'
+        )
     })
     
     # Toggle Approve/Reject buttons depending on whether user has selected a row or not
@@ -141,7 +151,7 @@ mod_requests_server <- function(id, user_coc) {
         }
       })
         
-      # Updaet datatable proxy
+      # Update datatable proxy
       cur_requests(
         cur_requests() |> 
           fmutate(
@@ -199,15 +209,25 @@ mod_requests_server <- function(id, user_coc) {
     
     filter_requests <- function(status) {
       cur_requests(
-        all_requests() |> 
-          fsubset(request_status == status)
+        if(status == 'Received'){
+          all_requests() |> 
+            fsubset(request_status == 'Sent' & created_by != user_coc$username)
+        } else if(status == 'Sent') {
+          all_requests() |> 
+            fsubset(created_by == user_coc$username)
+        } else if(status == 'Approved'){
+          all_requests() |> 
+            fsubset(request_status == 'Approved' & created_by != user_coc$username)
+        } else if(status == 'Rejected') {
+          all_requests() |> 
+            fsubset(request_status == 'Rejected' & created_by != user_coc$username)
+        }
+       
       )
     }
     
     observeEvent(input$request_filters, {
-      status <- ifelse(input$request_filters == 'Outstanding', 'Sent',
-                       input$request_filters)
-      filter_requests(status = status)
+      filter_requests(status = input$request_filters)
     })
   
   }
