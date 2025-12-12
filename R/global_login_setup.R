@@ -11,7 +11,7 @@ redirect_uri <- if(IN_DEV_MODE) {
     absolute = TRUE
   )
 } else {
-  "https://orr.abtsites.com"
+  "https://orr.abtsites.com/ORR"
 }
 
 print(redirect_uri)
