@@ -505,12 +505,15 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     # View GIW Data -------
     giw_data <- reactive({
+      req(user_coc$auth)
       get_db_tbl("giw")[coc == user_coc$coc]
     })
     
     observeEvent(input$view_giw_btn, {
-      data <- giw_data() |>
-        fselect(-date_created, -date_updated, -created_by, -updated_by)
+      req(isTruthy(giw_data()))
+      
+        data <- giw_data() |>
+          fselect(-date_created, -date_updated, -created_by, -updated_by)
       
       names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
       
@@ -526,6 +529,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
               scrollY = "400px",
               columnDefs = list(
                 list(visible = FALSE, targets = 0)  # 0 = first column (0-based index)
+              ),
+              language = list(
+                zeroRecords = "No GIW data available for this CoC."
               )
             )
           ),
