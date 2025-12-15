@@ -94,8 +94,8 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
        ),
       actionLink(ns("add_another_link"), "Submit and add another project?"),
       
-      modalButton("Cancel"),
-      actionButton(ns("submit"), "Submit")
+      actionButton(ns("cancel"), label="Cancel"),
+      actionButton(ns("submit"), "Submit", class = "btn-primary")
     )
   )
 }
@@ -126,7 +126,7 @@ mod_inventory_add_project_server <- function(
 
     # Determine the definitive target population.
     current_target_pop <- reactive({
-      if (current_funding_source() == "YHDP") "Youth" 
+      if (current_funding_source() == "YHDP") "Yth" 
       else if (current_funding_source() == "DV") "DV" 
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
@@ -148,7 +148,7 @@ mod_inventory_add_project_server <- function(
       else if (current_funding_source() == "DV") groups <- c("total_beds") # Will be relabeled to "DV Beds"
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
-        if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
+        if (tp == "Yth" || tp == "") groups <- c(groups, "youth_beds")
         if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
       }
       return(groups)
@@ -208,8 +208,8 @@ mod_inventory_add_project_server <- function(
       is_new_or_expand <- fa %in% c("New", "Expand")
       
       shinyjs::toggle("grant_number", condition = !is_new_or_expand & !grepl("Reallocation", form_type))
-      shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
-      shinyjs::toggleState("funding_action", condition = fa != "Replace" && !(current_funding_source() == "YHDP" && grepl("Reallocation", form_type)))
+      # shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
+      # shinyjs::toggleState("funding_action", condition = fa != "Replace" && !(current_funding_source() == "YHDP" && grepl("Reallocation", form_type)))
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update bed group visibility
@@ -357,6 +357,12 @@ mod_inventory_add_project_server <- function(
       })
     }
 
+    # --- If they cancel, regardless of previous submission attempts, disable the iv
+    observeEvent(input$cancel, {
+      iv$disable()
+      removeModal()
+    }, ignoreInit = TRUE, once = TRUE)
+    
     # --- Submission Event ---
     observeEvent(input$submit, {
       iv$enable()
