@@ -403,10 +403,11 @@ mod_inventory_add_project_server <- function(
           dv_renewal = input$funding_source == "DV" && input$funding_action == "Renew",
           created_by = user_coc$username
         )
-        
+        removeModal()
         modal_submission_outcome$project_data <- new_project_data
         modal_submission_outcome$status <- ifelse(add_another_flag(), "add another", "success")
-        removeModal()
+        iv$disable()
+        showNotification("Project submitted successfully.", type = "message")
       } else {
         add_another_flag(FALSE)
         showNotification("Please correct the errors before submitting.", type = "error")
@@ -417,7 +418,7 @@ mod_inventory_add_project_server <- function(
       # This action sets a flag and then programmatically clicks the main submit button.
       # This allows us to reuse the validation and submission logic from the submit button observer.
       add_another_flag(TRUE)
-      browser()
+      #browser()
       shinyjs::click("submit")
     }, ignoreInit = TRUE, once=TRUE)
     

@@ -272,7 +272,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       append_to_datatable(new_project_data)
       append_to_db(new_project_data)
       
-      showNotification("Project submitted successfully.", type = "message")
+      #showNotification("Project submitted successfully.", type = "message")
     }
     
     append_to_datatable <- function(new_project_data) {
