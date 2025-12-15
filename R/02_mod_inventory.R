@@ -113,8 +113,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       ))
       
       ## filter out Ignores by default-----
-      initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
+      # initial_filter <- vector("list", ncol(data))
+      # initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
       colnames <- unname(project_variable_labels[names(data)])
       
@@ -122,7 +122,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initialize_inline_edit_table_ui(
         data,
         tableID = ns("projects_table"), 
-        initial_filter = initial_filter,
+        initial_filter = NULL, #initial_filter,
         column_defs = list(
           list(
             targets =c(which(names(data) == "created_by") - 1,
@@ -548,7 +548,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     output$projects_table_counts <- renderText({
       req(projects_data())
-      paste0("Showing ", length(input$projects_table_rows_current), " projects (filtered from ", fnrow( projects_data()), " total projects)")
+      paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
     })
     
   }) # end moduleServer
