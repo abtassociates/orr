@@ -30,8 +30,8 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
     div(
       id = ns(group_id),
       layout_columns(
-        numericInput(ns(paste0(group_id, "_fam")), fam_label, value = NA, min = 0),
-        numericInput(ns(paste0(group_id, "_ind")), ind_label, value = NA, min = 0),
+        numericInput(ns(paste0(group_id, "_fam")), fam_label, value = 0, min = 0),
+        numericInput(ns(paste0(group_id, "_ind")), ind_label, value = 0, min = 0),
         col_widths = c(6, 6)
       )
     )
@@ -83,7 +83,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
         col_widths = c(6,6)
       ), 
         
-      shinyjs::hidden(helpText(id = ns("target_population_inst"), "Select if project is targeted to DV, HIV, Youth, or General")),
+      #shinyjs::hidden(helpText(id = ns("target_population_inst"), "Select if project is targeted to DV, HIV, Youth, or General")),
       shinyjs::hidden(checkboxInput(ns("all_dv_checkbox"), "100% targeted to DV", value = FALSE)),
       
     ),
