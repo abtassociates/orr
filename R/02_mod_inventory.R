@@ -6,10 +6,13 @@ mod_inventory_ui <- function(id) {
     icon = icon("list-check"),
     value = id,
     card(
+      card_header(h4("Projects to be Reviewed")),
       card_body(
         fillable = FALSE,
         min_height = "60vh",
         max_height = "76vh",
+        helpText("To edit or update an existing project, double-click into a cell. 
+                 The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
         DTOutput(ns("projects_table")),#|> shinycssloaders::withSpinner()
         br(),
         textOutput(ns("projects_table_counts"))
