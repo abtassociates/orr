@@ -92,10 +92,11 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
            tags$p("* = Required field"),
            #tags$p("^ See Appendix E for YHDP project type mapping")
        ),
-      actionLink(ns("add_another_link"), "Submit and add another project?"),
       
       actionButton(ns("cancel"), label="Cancel"),
-      actionButton(ns("submit"), "Submit", class = "btn-primary")
+      actionButton(ns("submit"), "Submit project", class = "btn-primary", icon = icon('check')),
+      actionButton(ns("add_another_link"), "Submit and add another project", class = "btn-primary", icon = icon('check-double')),
+      
     )
   )
 }
@@ -233,7 +234,7 @@ mod_inventory_add_project_server <- function(
       
       shinyjs::toggle("all_dv_checkbox", condition = show_dv_check)
       if(current_funding_source() == "DV") updateCheckboxInput(session, "all_dv_checkbox", value = TRUE)
-      shinyjs::toggle("target_population_inst", condition = current_funding_source() == "CoC" && !show_dv_check)
+      #shinyjs::toggle("target_population_inst", condition = current_funding_source() == "CoC" && !show_dv_check)
       shinyjs::toggle("ch_checkbox_div", condition = current_funding_source() == "CoC" && isTruthy(pt) && pt == "PSH")
       shinyjs::toggleState("all_dv_checkbox", condition = show_dv_check && current_funding_source() != "DV")
       
@@ -418,7 +419,7 @@ mod_inventory_add_project_server <- function(
         add_another_flag(FALSE)
         showNotification("Please correct the errors before submitting.", type = "error")
       }
-    }, ignoreInit = TRUE)
+    }, ignoreInit = TRUE, once = TRUE)
     
     observeEvent(input$add_another_link, {
       # This action sets a flag and then programmatically clicks the main submit button.
@@ -426,7 +427,8 @@ mod_inventory_add_project_server <- function(
       add_another_flag(TRUE)
       #browser()
       shinyjs::click("submit")
-    }, ignoreInit = TRUE, once=TRUE)
+      
+    })
     
     # Return the reactiveVal to the parent module
     return(modal_submission_outcome)
