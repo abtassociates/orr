@@ -10,7 +10,9 @@ mod_inventory_ui <- function(id) {
         fillable = FALSE,
         min_height = "60vh",
         max_height = "76vh",
-        DTOutput(ns("projects_table"))#|> shinycssloaders::withSpinner()
+        DTOutput(ns("projects_table")),#|> shinycssloaders::withSpinner()
+        br(),
+        textOutput(ns("projects_table_counts"))
       ),
       card_footer(
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
@@ -539,6 +541,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           easyClose = TRUE
         )
       )
+    })
+    
+    output$projects_table_counts <- renderText({
+      req(projects_data())
+      paste0("Showing ", length(input$projects_table_rows_current), " projects (filtered from ", fnrow( projects_data()), " total projects)")
     })
     
   }) # end moduleServer

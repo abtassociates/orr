@@ -121,7 +121,8 @@ initialize_inline_edit_table_ui <- function(
     rownames = FALSE,
     fillContainer = TRUE,
     options = list(
-      dom = "Btip",
+      dom = "Bt",
+      paging = FALSE,
       scrollY = "100%",  # Limit table height
       keys = TRUE,
       searchCols = initial_filter,
