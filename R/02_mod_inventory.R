@@ -80,7 +80,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         "SELECT * FROM projects WHERE coc_version_id = $1", 
         params = user_coc$coc_version_id
       ) |>
-        fselect(-coc_version_id, -date_created, -date_updated, -updated_by, -amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
+        fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
           project_type = convert_to_factor(., "project_type"),
@@ -204,7 +204,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("projects_table"))
+    projects_table_proxy <- dataTableProxy(ns("projects_table"),session = session)
     
     observe({
       req(projects_data())
@@ -300,7 +300,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         add_calculated_fields(TRUE)
       
       projects_data(
-        rbind(new_row, copy(projects_data()), fill=TRUE)
+        rowbind(projects_data(), new_row, fill = TRUE) |> roworderv(neworder = nrow(projects_data()))
       )
       
       is_new_project(TRUE)
