@@ -39,53 +39,61 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
   
   modalDialog(
     title = title,
-    size = "m",
+    size = "xl",
     page_fluid(
       # -- Core Project Info --
       layout_columns(
+        
         # First column
         div(
+          style = "padding-right: 5px; margin-right: -5px;",
+        layout_columns(  
+        div(
           textInput(ns("project_name"), "Project Name*"),
-          textInput(ns("organization_name"), "Organization Name*"),
-          selectInput(ns("funding_action"), "Funding Action*", choices = c("", LOOKUP_CHOICES$funding_action)),
+          selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
+          selectInput(ns("project_type"), "Project Type*", choices = c("Select Funding Source first" = "")), # Choices populated by server
           textInput(ns("grant_number"), "Grant Number") # Visibility controlled by server
         ),
         # Second column  
         div(
-          selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
-          selectInput(ns("project_type"), "Project Type*^", choices = c("")), # Choices populated by server
+          textInput(ns("organization_name"), "Organization Name*"),
+          selectInput(ns("funding_action"), "Funding Action*", choices = c("", LOOKUP_CHOICES$funding_action)),
           selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations))
+        )
         ),
-        col_widths = c(6, 6)  # Equal width columns
-      ),
-      
+        col_widths = c(6,6)
+        ),
+        div(
+          style = "border-left: 1px solid gray; padding-left: 10px; margin-left: -5px;",
+          
+          # -- Bed Fields (Generated programmatically) --
+          bed_input_group("total_beds", "Total Family Beds*", "Total Individual Beds*"),
+          bed_input_group("ch_beds", "CH Family Beds*", "CH Individual Beds*"),
+          bed_input_group("vet_beds", "Veteran Family Beds*", "Veteran Individual Beds*"),
+          bed_input_group("youth_beds", "Parenting Youth Beds*", "Single Youth Beds*"),
+          
+          # -- PSH-specific checkboxes --
+          shinyjs::hidden(
+            div(id = ns("ch_checkbox_div"),
+                checkboxInput(ns("targeted_ch_fam"), "100% of family beds targeted to CH", FALSE),
+                checkboxInput(ns("targeted_ch_ind"), "100% of individual beds targeted to CH", FALSE)
+            )
+          ),
+        ),
+        col_widths = c(6,6)
+      ), 
+        
       shinyjs::hidden(helpText(id = ns("target_population_inst"), "Select if project is targeted to DV, HIV, Youth, or General")),
       shinyjs::hidden(checkboxInput(ns("all_dv_checkbox"), "100% targeted to DV", value = FALSE)),
       
-      tags$hr(),
-      
-      # -- Bed Fields (Generated programmatically) --
-      tags$h4("Bed & Unit Inventory"),
-      bed_input_group("total_beds", "Total Family Beds*", "Total Individual Beds*"),
-      bed_input_group("ch_beds", "CH Family Beds*", "CH Individual Beds*"),
-      bed_input_group("vet_beds", "Veteran Family Beds*", "Veteran Individual Beds*"),
-      bed_input_group("youth_beds", "Parenting Youth Beds*", "Single Youth Beds*"),
-      
-      # -- PSH-specific checkboxes --
-      shinyjs::hidden(
-        div(id = ns("ch_checkbox_div"),
-            checkboxInput(ns("targeted_ch_fam"), "100% of family beds targeted to CH", FALSE),
-            checkboxInput(ns("targeted_ch_ind"), "100% of individual beds targeted to CH", FALSE)
-        )
-      ),
-      br(),
-      actionLink(ns("add_another_link"), "Submit and add another project?")
     ),
     footer = tagList(
-      div(style = "width: 100%; text-align: left;",
-          tags$p("* means required if visible"),
-          tags$p("^ See Appendix E for YHDP project type mapping")
-      ),
+      div(style = "width: 50%; text-align:left;",
+           tags$p("* = Required field"),
+           #tags$p("^ See Appendix E for YHDP project type mapping")
+       ),
+      actionLink(ns("add_another_link"), "Submit and add another project?"),
+      
       modalButton("Cancel"),
       actionButton(ns("submit"), "Submit")
     )
