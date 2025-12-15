@@ -8,7 +8,7 @@ LOOKUP_CHOICES <- list(
   dv_reallocation_project_types = c("RRH", "TH+RRH", "SSO - CE"),
   funding_source = c("CoC","YHDP","DV"),
   no_yhdp_funding_source = c("CoC", "DV"),
-  target_populations = c("DV","HIV","Youth", "General") # AS 8/26: What are the right populations here?
+  target_populations = names(get_labelled_lookups("target_population"))#c("DV","HIV","Youth", "General") # AS 8/26: What are the right populations here?
 )
 
 # ===================================================================
@@ -199,7 +199,7 @@ mod_inventory_add_project_server <- function(
         else if (current_funding_source() == "DV") LOOKUP_CHOICES$dv_project_types
         else c()
       
-      updateSelectInput(session, "project_type", choices = c("", proj_type_choices))
+      updateSelectInput(session, "project_type", choices = c("Select Funding Source first" = "", proj_type_choices))
     }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
     # Update visibility based on funding action
