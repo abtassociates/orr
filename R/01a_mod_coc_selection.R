@@ -149,6 +149,13 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     })
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
+      ## update versions table to "In progress" when editing begins
+      DBI::dbExecute(DB_CON, 
+        "UPDATE coc_versions SET coc_status = $1, 
+        date_updated = CURRENT_TIMESTAMP, updated_by = $2
+        WHERE coc_version_id = $3", 
+        params = list(7, user_coc$username, user_coc$coc_version_id)
+      )
       nav_control("inventory")
     })
     
