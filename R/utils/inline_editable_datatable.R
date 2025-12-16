@@ -140,6 +140,13 @@ initialize_inline_edit_table_ui <- function(
         "}"  
       ))
     ),
+    callback = JS("
+      $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
+      $(this).css('cursor', 'pointer');
+      $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
+      });"
+        )
+    ) 
   
   # Add any passed in formatting
   for (f in formatting) {
