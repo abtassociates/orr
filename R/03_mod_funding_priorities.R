@@ -176,7 +176,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           # Reshape logic here... for example:
           # dcast(. ~ project_type, value.var = c("beds", "funding", "priority"))
           # This step is highly dependent on your DB schema and `MAIN_PROJECT_TYPES`
-        set(full_data, i = which(full_data$Population == wide_db_data$full_text), j = as.character(wide_db_data$change_text), value = wide_db_data[, ifelse(!is.na(beds), beds, ifelse(!is.na(funding), funding, priority))])
+        for(k in seq_row(wide_db_data)){
+          set(full_data, i = which(full_data$Population == wide_db_data$full_text[k]), j = as.character(wide_db_data$change_text[k]), value = wide_db_data[k, ifelse(!is.na(beds), beds, ifelse(!is.na(funding), funding, priority))])
+          
+        }
           # We can then update the `full_data` table.
           # This is a robust way to update a data.table by joining.
          # full_data[wide_db_data, on = "Population", names(wide_db_data) := mget(paste0("i.", names(wide_db_data)))]
@@ -202,8 +205,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       selected_populations <- if (has_existing_data) {
         # If data exists, select the populations (rows) that have any value
-        rows_to_keep <- data[, rowSums(!is.na(as.data.frame(.SD))) > 0, 
-                             .SDcols = patterns("_Beds$|_Funding$|_Priority$")]
+        # rows_to_keep <- data[, rowSums(!is.na(as.data.frame(.SD))) > 0, 
+        #                      .SDcols = patterns("_Beds$|_Funding$|_Priority$")]
+        rows_to_keep <- data[, (rowSums(!is.na(as.data.frame(.SD))) > 0) | Population %in% c("All Families", "All Individuals", "Single Youth"), 
+             .SDcols = patterns("_Beds$|_Funding$|_Priority$") ]
         data[rows_to_keep, Population]
       } else {
         # <--- THIS IS THE KEY LOGIC FOR THE EMPTY CASE
