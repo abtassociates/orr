@@ -5,8 +5,8 @@ mod_coc_selection_ui <- function(id) {
     card_header(h4("Versions")),
     card_body(
       fillable = FALSE,
-      p('A CoC can have multiple versions of its ORR. Versions can be created to play around or test different combinations of factors and parameters. Multiple users can collaborate on a single or multiple versions.'),
-      p('To collaborate on an existing version, click "Request Access to a CoC". To create your own version, click "Create New Version". To create a copy of an existing version, click "Copy Version".'),
+      p('A CoC can have multiple versions of its ORR. Versions can be created to test different combinations of factors and parameters. To create your own ORR version, click "Create New Version". To create a copy of an existing version, select the version in the table below and click "Copy Version".'),
+      p('Multiple users can work together on the same ORR. To collaborate on an existing ORR version made by another user, click "Request Access to a CoC".'),
       # a "Create" button or link above the table will display so they can create a new CoC Version
       DTOutput(ns('coc_versions_dt'),fill = F) |> shinycssloaders::withSpinner(),
       actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-primary'),
