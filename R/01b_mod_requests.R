@@ -5,7 +5,11 @@ mod_requests_ui <- function(id) {
     #nav_panel(
     #  "Requests",
       card(
-        card_header(h4('Version Access Requests')),
+        #card_header(h4('Version Access Requests')),
+        card_header(h4("Version Access Requests", 
+                       div(style = "float: right;",
+                           actionBttn(ns('refresh_requests_tbl'), label="Refresh", color="primary", size="xs", icon=icon('refresh')))
+        )),
         card_body(
           fillable = FALSE,
           helpText("Please select a row from the table below to update a request."),
@@ -54,6 +58,11 @@ mod_requests_server <- function(id, user_coc) {
     
     observe({
       req(user_coc$auth)
+      cur_requests(all_requests())
+    })
+    
+    observeEvent(input$refresh_requests_tbl, {
+      showNotification("Refreshing Requests table!", type = "message")
       cur_requests(all_requests())
     })
     

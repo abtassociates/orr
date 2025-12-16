@@ -2,7 +2,11 @@ mod_coc_selection_ui <- function(id) {
   ns <- NS(id)
 
   card(id = id,
-    card_header(h4("Versions")),
+    #card_header(h4("Versions"))
+    card_header(h4("Versions", 
+                   div(style = "float: right;",
+                   actionBttn(ns('refresh_versions_tbl'), label="Refresh", color="primary", size="xs", icon=icon('refresh')))
+                )),
     card_body(
       fillable = FALSE,
       p('A CoC can have multiple versions of its ORR. Versions can be created to test different combinations of factors and parameters. To create your own ORR version, click "Create New Version". To create a copy of an existing version, select the version in the table below and click "Copy Version".'),
@@ -34,6 +38,18 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     observeEvent(user_coc$auth, {
       req(user_coc$auth)
+      COC_VERSION_USERS(
+        get_db_query(
+          "SELECT v.*, u.username, u.coc_version_role
+          FROM coc_versions v
+          LEFT JOIN coc_version_users u
+          ON v.coc_version_id = u.coc_version_id"
+        )
+      )
+    })
+    
+    observeEvent(input$refresh_versions_tbl, {
+      showNotification("Refreshing Versions table!", type = "message")
       COC_VERSION_USERS(
         get_db_query(
           "SELECT v.*, u.username, u.coc_version_role
