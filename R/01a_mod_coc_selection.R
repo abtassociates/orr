@@ -154,16 +154,30 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     ## Delete version ---------------
     observeEvent(input$delete_coc_version, {
-      showModal(
-        modalDialog(
-          title = 'Confirm Deletion',
-          helpText("Are you sure you want to delete this CoC version? This action cannot be undone."),
-          footer = tagList(
-            actionButton(ns('confirm_deletion'), label='Confirm', icon = icon('trash'), class='btn-danger'),
-            modalButton(label='Cancel')
+      
+      if(coc_vu()[input$coc_versions_dt_rows_selected, coc_version_role] == "Owner"){
+        
+        showModal(
+          modalDialog(
+            title = 'Confirm Deletion',
+            helpText("Are you sure you want to delete this CoC version? This action cannot be undone."),
+            footer = tagList(
+              actionButton(ns('confirm_deletion'), label='Confirm', icon = icon('trash'), class='btn-danger'),
+              modalButton(label='Cancel')
+            )
           )
         )
-      )
+      } else {
+        showModal(
+          modalDialog(
+            title = 'Deletion Not Authorized',
+            helpText("You cannot delete a CoC Version as an Editor. If you would like to have this CoC version deleted, please reach out to the Owner of this version."),
+            footer = tagList(
+              modalButton(label='OK')
+            )
+          )
+        )
+      }
     })
     
     
