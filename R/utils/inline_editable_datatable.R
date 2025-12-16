@@ -128,9 +128,18 @@ initialize_inline_edit_table_ui <- function(
       searchCols = initial_filter,
       columnDefs = column_defs,
       initComplete = DT::JS(init_js),
-      buttons = ifelse(!is.null(buttons), buttons, NULL)
-    )
-  ) 
+      buttons = ifelse(!is.null(buttons), buttons, NULL),
+      rowCallback = JS(c(
+        "function(row, data){",
+        "  for(var i=0; i<data.length; i++){",
+        "    if(data[i] === null){",
+        "      $('td:eq('+i+')', row).html('NA')",
+        "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
+        "    }",
+        "  }",
+        "}"  
+      ))
+    ),
   
   # Add any passed in formatting
   for (f in formatting) {
