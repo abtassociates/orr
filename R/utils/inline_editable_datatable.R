@@ -128,17 +128,17 @@ initialize_inline_edit_table_ui <- function(
       searchCols = initial_filter,
       columnDefs = column_defs,
       initComplete = DT::JS(init_js),
-      buttons = ifelse(!is.null(buttons), buttons, NULL),
-      rowCallback = JS(c(
-        "function(row, data){",
-        "  for(var i=0; i<data.length; i++){",
-        "    if(data[i] === null){",
-        "      $('td:eq('+i+')', row).html('NA')",
-        "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
-        "    }",
-        "  }",
-        "}"  
-      ))
+      buttons = ifelse(!is.null(buttons), buttons, NULL)#,
+      # rowCallback = JS(c(
+      #   "function(row, data){",
+      #   "  for(var i=0; i<data.length; i++){",
+      #   "    if(data[i] === null){",
+      #   "      $('td:eq('+i+')', row).html('NA')",
+      #   "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
+      #   "    }",
+      #   "  }",
+      #   "}"  
+      # ))
     ),
     callback = JS("
       $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
