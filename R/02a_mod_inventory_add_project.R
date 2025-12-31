@@ -14,7 +14,7 @@ LOOKUP_CHOICES <- list(
 # ===================================================================
 # UI Function (Now with a helper for bed inputs)
 # ===================================================================
-mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_replace = NULL) {
+mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_replace = NULL, orgnames) {
   ns <- NS(id)
   
   title <- switch(form_type,
@@ -56,7 +56,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
         ),
         # Second column  
         div(
-          textInput(ns("organization_name"), "Organization Name*"),
+          selectizeInput(ns("organization_name"), label = "Organization Name*", choices = orgnames, options=list(create=TRUE)), 
           selectInput(ns("funding_action"), "Funding Action*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_action)),
           selectInput(ns("target_population"), "Target Population*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$target_populations)),
         )
@@ -110,6 +110,7 @@ mod_inventory_add_project_server <- function(
     funding_source = "", 
     project_to_replace = NULL, 
     user_coc = NULL,
+    orgnames = NULL,
     parent_session = NULL
 ) {
   moduleServer(id, function(input, output, session) {

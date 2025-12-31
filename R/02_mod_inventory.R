@@ -405,7 +405,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         ## Reallocation -----
         else {
           form_type <- paste0(funding_source, " Reallocation")
-          show_project_modal(form_type, funding_source, info, new_value)
+          show_project_modal(form_type, funding_source, info, new_value, orgnames=orgnames())
         }
       }
       # Update after non-reallocation and non-replace ------
@@ -433,7 +433,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         yhdp_replacement_info$funding_source, 
         yhdp_replacement_info$info, 
         yhdp_replacement_info$new_value,
-        yhdp_replacement_info$project_to_replace
+        yhdp_replacement_info$project_to_replace,
+        orgnames = orgnames()
       )
     })
     
@@ -450,9 +451,15 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       # no need to do inventory_update because we haven't modified the db or datatable yet
     })
     
+    orgnames <- reactive({
+      req(user_coc$coc_version_id)
+      c("Select or add Organization" = "", 
+        sort((get_db_tbl('projects') |> fsubset(coc_version_id == user_coc$coc_version_id))$organization_name |> funique()))
+    })
+    
     # Project modal control -------------
     # A function to show the modal and set up the server logic
-    show_project_modal <- function(form_type = "New", funding_source = "", info = NULL, new_value = NULL, project_to_replace = NULL, observer_id = NULL) {
+    show_project_modal <- function(form_type = "New", funding_source = "", info = NULL, new_value = NULL, project_to_replace = NULL, orgnames = orgnames(), observer_id = NULL) {
       if (is.null(observer_id)) {
         # Generate a unique ID for this observer version
         observer_id <- paste0("modal_obs_", digest::digest(runif(1)))
@@ -474,6 +481,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         form_type = form_type,
         funding_source = funding_source,
         user_coc = user_coc,
+        orgnames = orgnames,
         parent_session = session
       )
 
@@ -506,7 +514,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     # Add additional project handling ----
     observeEvent(input$add_project_btn, {
-      show_project_modal()
+      show_project_modal(form_type = "New", orgnames = orgnames())
     })
     
     # View GIW Data -------
