@@ -464,20 +464,22 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         # Generate a unique ID for this observer version
         observer_id <- paste0("modal_obs_", digest::digest(runif(1)))
       }
-      
-      shiny::invalidateLater(100)
+      print('in show_project_modal')
+      #shiny::invalidateLater(100)
+     
       showModal(
         div(
           id ="add-project-modal",
           mod_inventory_add_project_ui(
             ns("add_project"), 
             form_type = form_type,
-            project_to_replace = project_to_replace
+            project_to_replace = project_to_replace,
+            orgnames = orgnames()
           )
         )
       )
       modal_submission <- mod_inventory_add_project_server(
-        "add_project", 
+        id = "add_project", 
         form_type = form_type,
         funding_source = funding_source,
         user_coc = user_coc,
@@ -487,8 +489,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
 
       # Create the observer and store it
       modal_observers[[observer_id]] <- observeEvent(modal_submission$status, {
-        req(modal_submission$status)
-
+        #req(modal_submission$status)
+        
+        print(paste0('creating modal_observer ',observer_id, ', status = ', modal_submission$status))
+        
         # if they simply add a new project, append it
         if(form_type == "New") {
           inventory_append(modal_submission$project_data)
@@ -501,7 +505,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         }
 
         if(modal_submission$status == "add another") {
-          show_project_modal(form_type, funding_source, info, new_value, project_to_replace)
+          show_project_modal(form_type, funding_source, info, new_value, project_to_replace, orgnames)
         } else {
           # If not adding another, the modal chain is done, destroy this observer
           if (!is.null(modal_observers[[observer_id]])) {
@@ -514,6 +518,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     # Add additional project handling ----
     observeEvent(input$add_project_btn, {
+      print('clicked add_project_btn')
       show_project_modal(form_type = "New", orgnames = orgnames())
     })
     
