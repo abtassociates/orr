@@ -364,13 +364,29 @@ mod_inventory_add_project_server <- function(
 
     # --- If they cancel, regardless of previous submission attempts, disable the iv
     observeEvent(input$cancel, {
-      iv$disable()
+      add_another_flag(FALSE)
       removeModal()
+      iv$disable()
+      modal_submission_outcome <- NULL
     }, ignoreInit = TRUE, once = TRUE)
     
+    observeEvent(input$add_another_link, {
+        print('observed input$add_another_link')
+        add_another_flag(TRUE)
+      # This action sets a flag and then programmatically clicks the main submit button.
+      # This allows us to reuse the validation and submission logic from the submit button observer.
+     
+    }, ignoreInit = TRUE, priority = 2)
+    
+    
     # --- Submission Event ---
-    observeEvent(input$submit, {
+    observeEvent(eventExpr = 
+      c(input$submit, input$add_another_link), {
+        
+      
+      req(isTruthy(input$submit) || isTruthy(input$add_another_link))
       iv$enable()
+      print('observed input$submit')
       
       if (iv$is_valid()) {
         vis_beds <- visible_bed_groups()
@@ -423,16 +439,9 @@ mod_inventory_add_project_server <- function(
         add_another_flag(FALSE)
         showNotification("Please correct the errors before submitting.", type = "error")
       }
-    }, ignoreInit = TRUE, once = TRUE)
+      print(paste0('done with input$submit, add_another_flag=', add_another_flag()))
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
     
-    observeEvent(input$add_another_link, {
-      # This action sets a flag and then programmatically clicks the main submit button.
-      # This allows us to reuse the validation and submission logic from the submit button observer.
-      add_another_flag(TRUE)
-      #browser()
-      shinyjs::click("submit")
-      
-    })
     
     # Return the reactiveVal to the parent module
     return(modal_submission_outcome)
