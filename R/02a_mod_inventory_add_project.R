@@ -125,7 +125,8 @@ mod_inventory_add_project_server <- function(
     # 1. Centralized State Logic (Reactive Expressions)
     # These reactives define the form's state based on user inputs.
     # =================================================================
-
+      #updateSelectInput(session, "organization_name", choices = orgnames)
+    
     # Determine the definitive target population.
     current_target_pop <- reactive({
       if (current_funding_source() == "YHDP") "Yth" 
@@ -167,16 +168,16 @@ mod_inventory_add_project_server <- function(
       if (funding_source == "YHDP") {
         updateSelectInput(session, "funding_action", selected = "New")
       }
-      updateActionLink(session, "add_another_link", label = "Submit and add another reallocation project?")
+      #updateActionLink(session, "add_another_link", label = "Submit and add another reallocation project?")
       shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
       shinyjs::disable("funding_source")
     } else if (form_type == "YHDP Replacement" && !is.null(project_to_replace)) {
       updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
-      updateTextInput(session, "organization_name", value = project_to_replace$`Organization Name`)
+      #updateTextInput(session, "organization_name", value = project_to_replace$`Organization Name`)
       updateSelectInput(session, "funding_action", selected = "Replace")
       updateNumericInput(session, "youth_beds_fam", value = project_to_replace$`Par Youth Beds`)
       updateNumericInput(session, "youth_beds_ind", value = project_to_replace$`Single Youth Beds`)
-      updateActionLink(session, "add_another_link", label = "Submit and add another replacement project?")
+      #updateActionLink(session, "add_another_link", label = "Submit and add another replacement project?")
       shinyjs::disable("funding_source")
     }
     
@@ -232,7 +233,9 @@ mod_inventory_add_project_server <- function(
         (isTruthy(pt) && pt == "SSO - CE") || 
           (tp == "DV" && isTruthy(pt) && pt %in% c("RRH", "TH+RRH"))
       )
-      
+      # if(!is_new_or_expand){
+      #   updateTextInput(session, "grant_number", label = if (fa == "Replace") "Grant Number*" else "Grant Number")
+      # }
       shinyjs::toggle("all_dv_checkbox", condition = show_dv_check)
       if(current_funding_source() == "DV") updateCheckboxInput(session, "all_dv_checkbox", value = TRUE)
       #shinyjs::toggle("target_population_inst", condition = current_funding_source() == "CoC" && !show_dv_check)
@@ -249,7 +252,7 @@ mod_inventory_add_project_server <- function(
 
       updateNumericInput(session, "total_beds_fam", label = if (current_funding_source() == "DV") "DV Family Beds*" else "Total Family Beds*")
       updateNumericInput(session, "total_beds_ind", label = if (current_funding_source() == "DV") "DV Individual Beds*" else "Total Individual Beds*")
-      updateTextInput(session, "grant_number", label = if (fa == "Replace") "Grant Number*" else "Grant Number")
+      #updateTextInput(session, "grant_number", label = if (fa == "Replace") "Grant Number*" else "Grant Number")
     }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
     # Update Target Population Selection
