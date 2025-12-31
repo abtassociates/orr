@@ -13,7 +13,8 @@ mod_inventory_ui <- function(id) {
         max_height = "76vh",
         helpText("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
-        DTOutput(ns("projects_table")),#|> shinycssloaders::withSpinner()
+        htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
+        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
         br(),
         textOutput(ns("projects_table_counts"))
       ),

@@ -50,15 +50,15 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
         layout_columns(  
         div(
           textInput(ns("project_name"), "Project Name*"),
-          selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
-          selectInput(ns("project_type"), "Project Type*", choices = c("Select Funding Source first" = "")), # Choices populated by server
           textInput(ns("grant_number"), "Grant Number") # Visibility controlled by server
+          selectInput(ns("funding_source"), "Funding Source*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_source)),
+          selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select Funding Source first" = "")), # Choices populated by server
         ),
         # Second column  
         div(
           textInput(ns("organization_name"), "Organization Name*"),
-          selectInput(ns("funding_action"), "Funding Action*", choices = c("", LOOKUP_CHOICES$funding_action)),
-          selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations))
+          selectInput(ns("funding_action"), "Funding Action*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_action)),
+          selectInput(ns("target_population"), "Target Population*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$target_populations)),
         )
         ),
         col_widths = c(6,6)
@@ -162,7 +162,7 @@ mod_inventory_add_project_server <- function(
     # Set initial values for reallocation or replacement
     if (grepl("Reallocation", form_type) && funding_source != "") {
       updateSelectInput(session, "funding_source", selected = funding_source)
-      updateSelectInput(session, "funding_action", choices = c("", LOOKUP_CHOICES$reallocation_funding_actions))
+      updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
       if (funding_source == "YHDP") {
         updateSelectInput(session, "funding_action", selected = "New")
       }
