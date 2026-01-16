@@ -258,10 +258,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         options = list(
           dom = 't',
           pageLength = nrow(data_to_display),
-          ordering = FALSE,
+          #ordering = FALSE,
           searching = FALSE,
           info = FALSE
-        )
+        ),
+        callback = JS("$(document).on('mouseenter', 'table.dataTable tbody tr', function() {",
+      paste0("$(this).css('background-color', '",USER_ENTRY_BG_COLOR,"');"),
+      "});
+              $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
+      $(this).css('background-color', 'inherit');
+      });")
       ) %>% formatStyle(
         columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
         `border-right` = "1px solid black"
