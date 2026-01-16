@@ -187,6 +187,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         colnames = colnames,
         cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
         buttons = list(
+          'colvis',
           list(
             extend = 'collection',
             text="Show/Hide Bed Inventory",

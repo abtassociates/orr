@@ -121,14 +121,14 @@ initialize_inline_edit_table_ui <- function(
     rownames = FALSE,
     fillContainer = TRUE,
     options = list(
-      dom = "tB",
+      dom = "Bt",
       paging = FALSE,
       scrollY = "100%",  # Limit table height
       keys = TRUE,
       searchCols = initial_filter,
       columnDefs = column_defs,
       initComplete = DT::JS(init_js),
-      buttons = ifelse(!is.null(buttons), buttons, NULL)#,
+      buttons = buttons
       # rowCallback = JS(c(
       #   "function(row, data){",
       #   "  for(var i=0; i<data.length; i++){",
