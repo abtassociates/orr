@@ -30,7 +30,7 @@ TABS_AFTER_LOGIN <- c(
   "dashboard",
   "inventory",
   "funding_priorities",
-  #"rating",
+  "rating",
   "account"
 )
 TABS_AFTER_COC_SELECTION <- c(
