@@ -554,6 +554,21 @@ SET
     date_created = CURRENT_TIMESTAMP;
 ")
 
+DBI::dbExecute(DB_CON, glue::glue("
+
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_setting_id {id_var_attrs},
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
+  	coc_user VARCHAR(255) REFERENCES users(username),
+    active_tab VARCHAR(20),
+    display_columns TEXT,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username),
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username)
+);
+"))
+
 #######################
 # USER-COC MANAGEMENT
 ######################
