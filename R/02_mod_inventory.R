@@ -119,6 +119,19 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
 
       colnames <- unname(project_variable_labels[names(data)])
       
+      preset_tab_vis <- dbGetQuery(DB_CON, 'SELECT display_columns FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', params = list(
+        user_coc$coc_version_id, user_coc$username
+      ))
+      
+      if(nrow(preset_tab_vis) > 0){
+        tabs_to_show <-  unlist(strsplit(preset_tab_vis$display_columns, split=','))
+        tabs_to_hide <- setdiff(names(data), tabs_to_show)
+      } else {
+        tabs_to_hide <- c('geocode', 'created_by')
+      }
+      tab_inds_to_hide <- match(tabs_to_hide, names(data)) - 1
+      
+      
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
@@ -126,8 +139,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         initial_filter = NULL, #initial_filter,
         column_defs = list(
           list(
-            targets =c(which(names(data) == "created_by") - 1,
-                       which(names(data) == 'geocode') - 1), 
+            targets = tabs_to_hide, 
             className = "hidden",
             visible = FALSE
           )
