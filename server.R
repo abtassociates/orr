@@ -85,4 +85,9 @@ function(input, output, session) {
     nav_select("nav", selected = nav_control())
   })
 
+    onStop( function(){
+      cat("Running onStop")
+      ## record user settings
+      store_user_settings(user_coc, input$nav)}, session = session
+    )
 }
