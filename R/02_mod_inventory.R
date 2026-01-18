@@ -236,6 +236,19 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       return(TRUE)
     }
 
+    observe({
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      req(projects_data())
+      
+      if(is.null(input$projects_table_state$columns)){
+        user_coc$display_cols <- rep(TRUE, 37)
+      } else {
+        user_coc$display_cols <- setNames(sapply(input$projects_table_state$columns, function(x) x$visible), 
+                                          colnames(projects_data()))
+      }
+    })
+    
     # Update projects -----
     ## consolidated update function
     inventory_update <- function(info, value) {
