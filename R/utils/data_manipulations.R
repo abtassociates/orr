@@ -194,3 +194,51 @@ insert_and_return <- function(table, new_dt, return_cols) {
 
   return(results)
 }
+
+## on app exit, update settings for tab and project table
+store_user_settings <- function(user_coc, tab_name){
+  
+  if(!isolate(user_coc$auth))
+    return(NULL)
+  
+  # check if row exists 
+  row_exists <- nrow(
+    dbGetQuery(DB_CON, 
+               'SELECT * FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', 
+               params = list(isolate(user_coc$coc_version_id),
+                             isolate(user_coc$username)))
+  ) > 0
+  
+  if(row_exists){
+    # modify
+    
+    display_cols <- paste0(isolate(names(user_coc$display_cols)[which(isolate(user_coc$display_cols))]), collapse=',')
+    
+    print('row exists in settings - modifying it')
+    DBI::dbExecute(DB_CON, 
+                   "UPDATE user_settings SET active_tab = $1, 
+                   display_columns = $2,
+        date_updated = CURRENT_TIMESTAMP, updated_by = $3
+        WHERE coc_version_id = $4 AND coc_user = $3", 
+                   params = list(isolate(tab_name), 
+                                 display_cols,
+                                 isolate(user_coc$username), 
+                                 isolate(user_coc$coc_version_id))
+    )
+  } else {
+    # add
+    print('row does not exist in settings - creating one')
+    
+    append_df <- data.frame(
+      'coc_version_id' = isolate(user_coc$coc_version_id),
+      'coc_user' = isolate(user_coc$username),
+      'active_tab' = isolate(tab_name),
+      'display_columns' = paste0(isolate(names(user_coc$display_cols)[which(isolate(user_coc$display_cols))]), collapse=','),
+      'created_by' = isolate(user_coc$username),
+      'updated_by' = isolate(user_coc$username)
+    )
+    rownames(append_df) <- NULL
+    
+    dbAppendTable(DB_CON, "user_settings", append_df)
+  }
+}
