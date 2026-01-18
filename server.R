@@ -5,7 +5,9 @@ function(input, output, session) {
     username = NULL,
     auth = FALSE, # is the user authenticated or not
     given_name = NULL, # user's given_name as stored and returned by cognito
-    email = NULL  # user's email as stored and returned by cognito
+    email = NULL,  # user's email as stored and returned by cognito
+    active_tab = NULL, # last active tab
+    display_cols = NULL # which project columns to display
   )
   nav_control <- reactiveVal("about")
 
