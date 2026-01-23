@@ -201,6 +201,9 @@ store_user_settings <- function(user_coc, tab_name){
   if(!isolate(user_coc$auth))
     return(NULL)
   
+  if(is.null(isolate(user_coc$coc_version_id)))
+    return(NULL)
+  
   # check if row exists 
   row_exists <- nrow(
     dbGetQuery(DB_CON, 
