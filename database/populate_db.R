@@ -106,10 +106,10 @@ VALUES
 ('bonus_type', 'DV Bonus', 'orr_service@abtglobal.com'),
 
 -- from priorities
-('priority', 'High', 'orr_service@abtglobal.com'),
-('priority', 'Medium', 'orr_service@abtglobal.com'),
+('priority', 'Unspecified', 'orr_service@abtglobal.com'),
 ('priority', 'Low', 'orr_service@abtglobal.com'),
-('priority', 'Unspecified', 'orr_service@abtglobal.com');
+('priority', 'Medium', 'orr_service@abtglobal.com'),
+('priority', 'High', 'orr_service@abtglobal.com');
 ")
 
 DBI::dbExecute(DB_CON, "
@@ -1302,6 +1302,7 @@ CREATE TABLE IF NOT EXISTS ranking (
     project_id INTEGER REFERENCES projects(project_id),
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     rank SMALLINT,
+    tier VARCHAR(50) NULL,
     coc_funding_recommendation NUMERIC(11, 2),
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),

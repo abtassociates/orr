@@ -36,14 +36,17 @@ TABS_AFTER_LOGIN <- c(
   "inventory",
   "funding_priorities",
   "rating",
+  "ranking",
   "account"
 )
 TABS_AFTER_COC_SELECTION <- c(
   "inventory",
   "funding_priorities",
-  "rating"
+  "rating",
+  "ranking"
 )
 
 TABS_AFTER_PROJECTS_EXIST <- c(
-  "rating"
+  "rating",
+  "ranking"
 )
