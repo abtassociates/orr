@@ -117,7 +117,7 @@ project_variable_labels <- c(
   "is_dedicated_ch_fam" = "Is 100% Dedicated + or CH Fam (Yes/No)",
   "is_dedicated_ch_ind" = "Is 100% Dedicated + or CH Ind (Yes/No)",
   "is_dedicated_dv" = "Is 100% DV (Yes/No)",
-  "amount_other_public_funding" = "Amount of other public funding ",#(federal, state, county, city)",
+  "amount_other_public_funding" = "Amount of other public funding",#(federal, state, county, city)",
   "amount_private_funding" = "Amount of private funding",
   "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
   "vet_bed_inventory" = "Veteran Bed Inventory",
