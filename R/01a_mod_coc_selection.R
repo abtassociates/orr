@@ -57,7 +57,25 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           LEFT JOIN coc_version_users u
           ON v.coc_version_id = u.coc_version_id"
         )
-      )
+    get_all_users_and_versions <- function() {
+        COC_VERSION_USERS(
+          get_db_query(
+            "SELECT v.*, u.username, u.coc_version_role
+            FROM coc_versions v
+            LEFT JOIN coc_version_users u
+            ON v.coc_version_id = u.coc_version_id"
+          )
+        )
+    }
+    
+    observeEvent(user_coc$auth, {
+      req(user_coc$auth)
+      get_all_users_and_versions()
+    })
+    
+    observeEvent(input$refresh_versions_tbl, {
+      showNotification("Refreshing Versions table!", type = "message")
+      get_all_users_and_versions()
     })
     
     project_ids <- reactive({
