@@ -1,5 +1,5 @@
 LOOKUP_CHOICES <- list(
-  funding_action = names(get_labelled_lookups("funding_action")),
+  funding_action = setdiff(names(get_labelled_lookups("funding_action")), "Ignore"),
   reallocation_funding_actions = c("New", "Expand"),
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
   coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
