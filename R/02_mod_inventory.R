@@ -16,7 +16,8 @@ mod_inventory_ui <- function(id) {
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
         br(),
-        textOutput(ns("projects_table_counts"))
+        textOutput(ns("projects_table_counts")),
+        helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       ),
       card_footer(
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
