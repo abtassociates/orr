@@ -403,7 +403,7 @@ mod_inventory_add_project_server <- function(
         add_another_flag(FALSE)
         showNotification("Please correct the errors before submitting.", type = "error")
       }
-    }, ignoreInit = TRUE, once=TRUE)
+    }, ignoreInit = TRUE)
     
     observeEvent(input$add_another_link, {
       # This action sets a flag and then programmatically clicks the main submit button.
@@ -411,7 +411,7 @@ mod_inventory_add_project_server <- function(
       add_another_flag(TRUE)
       browser()
       shinyjs::click("submit")
-    }, ignoreInit = TRUE, once=TRUE)
+    }, ignoreInit = TRUE)
     
     # Return the reactiveVal to the parent module
     return(modal_submission_outcome)
