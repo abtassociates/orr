@@ -302,6 +302,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         ) |>
         add_calculated_fields(TRUE)
       
+      cols <- intersect(names(projects_data()), names(new_row))
+      new_row <- new_row[, cols, with = FALSE]
+      
       projects_data(
         rowbind(projects_data(), new_row, fill = TRUE) |> roworderv(neworder = fnrow(projects_data()) + 1)
       )
