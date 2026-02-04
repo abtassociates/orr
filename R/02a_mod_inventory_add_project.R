@@ -402,6 +402,7 @@ mod_inventory_add_project_server <- function(
         
         modal_submission_outcome$project_data <- new_project_data
         modal_submission_outcome$status <- ifelse(add_another_flag(), "add another", "success")
+        iv$disable()
         removeModal()
       } else {
         add_another_flag(FALSE)
