@@ -104,7 +104,7 @@ initialize_inline_edit_table_ui <- function(
   dt <- datatable(
     data,
     style = "default",
-    extensions = 'Buttons',
+    extensions = c('Buttons', 'KeyTable'),
     colnames = colnames,
     editable = list(
       target = "cell",
@@ -121,14 +121,32 @@ initialize_inline_edit_table_ui <- function(
     rownames = FALSE,
     fillContainer = TRUE,
     options = list(
-      dom = "Bfrtip",
+      dom = "Bt",
+      paging = FALSE,
       scrollY = "100%",  # Limit table height
+      keys = TRUE,
       searchCols = initial_filter,
       columnDefs = column_defs,
       initComplete = DT::JS(init_js),
-      buttons = ifelse(!is.null(buttons), buttons, NULL)
-    )
-  ) 
+      buttons = buttons
+      # rowCallback = JS(c(
+      #   "function(row, data){",
+      #   "  for(var i=0; i<data.length; i++){",
+      #   "    if(data[i] === null){",
+      #   "      $('td:eq('+i+')', row).html('NA')",
+      #   "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
+      #   "    }",
+      #   "  }",
+      #   "}"  
+      # ))
+    ),
+    callback = JS("
+      $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
+      $(this).css('cursor', 'pointer');
+      $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
+      });"
+        )
+    ) 
   
   # Add any passed in formatting
   for (f in formatting) {

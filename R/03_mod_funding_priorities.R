@@ -7,7 +7,7 @@ pop_grp_toggles <- expand.grid(
     pop_txt = ifelse(names(pop) == "Domestic Violence", "DV", names(pop)),
     grp_txt = names(grp)
   ) |>
-  fsubset(!pop_txt %in% c("Not Applicable", "Housing Inventory Count", "General")) |>
+  fsubset(!pop_txt %in% c("Not Applicable", "Human Immunodeficiency Virus", "General")) |>
   setorder(-grp, pop) |>
   fmutate(
     full_text = fcase(
@@ -171,15 +171,18 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         
         # First, map the DB codes back to the `full_text` population name
         wide_db_data <- coc_funding_priorities_from_db |>
-          join(pop_grp_toggles, on = c("target_population" = "pop", "population_group" = "grp"))
+          join(pop_grp_toggles, on = c("target_population" = "pop", "population_group" = "grp")) 
+        wide_db_data <- wide_db_data |> fmutate(change_text = paste0(get_lookup_label(wide_db_data$project_type, 'project_type'), '_', ifelse(!is.na(beds), "Beds", ifelse(!is.na(funding), "Funding", "Priority"))))
           # Reshape logic here... for example:
           # dcast(. ~ project_type, value.var = c("beds", "funding", "priority"))
           # This step is highly dependent on your DB schema and `MAIN_PROJECT_TYPES`
+        for(k in seq_row(wide_db_data)){
+          set(full_data, i = which(full_data$Population == wide_db_data$full_text[k]), j = as.character(wide_db_data$change_text[k]), value = wide_db_data[k, ifelse(!is.na(beds), beds, ifelse(!is.na(funding), funding, priority))])
           
-          # For now, let's assume `wide_db_data` has columns like "Population", "PH_Beds", etc.
+        }
           # We can then update the `full_data` table.
           # This is a robust way to update a data.table by joining.
-          full_data[wide_db_data, on = "Population", names(wide_db_data) := mget(paste0("i.", names(wide_db_data)))]
+         # full_data[wide_db_data, on = "Population", names(wide_db_data) := mget(paste0("i.", names(wide_db_data)))]
       }
 
       # 4. Store the final, merged table in our reactiveVal.
@@ -202,8 +205,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       selected_populations <- if (has_existing_data) {
         # If data exists, select the populations (rows) that have any value
-        rows_to_keep <- data[, rowSums(!is.na(as.data.frame(.SD))) > 0, 
-                             .SDcols = patterns("_Beds$|_Funding$|_Priority$")]
+        # rows_to_keep <- data[, rowSums(!is.na(as.data.frame(.SD))) > 0, 
+        #                      .SDcols = patterns("_Beds$|_Funding$|_Priority$")]
+        rows_to_keep <- data[, (rowSums(!is.na(as.data.frame(.SD))) > 0) | Population %in% c("All Families", "All Individuals", "Single Youth"), 
+             .SDcols = patterns("_Beds$|_Funding$|_Priority$") ]
         data[rows_to_keep, Population]
       } else {
         # <--- THIS IS THE KEY LOGIC FOR THE EMPTY CASE
@@ -253,10 +258,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         options = list(
           dom = 't',
           pageLength = nrow(data_to_display),
-          ordering = FALSE,
+          #ordering = FALSE,
           searching = FALSE,
           info = FALSE
-        )
+        ),
+        callback = JS("$(document).on('mouseenter', 'table.dataTable tbody tr', function() {",
+      paste0("$(this).css('background-color', '",USER_ENTRY_BG_COLOR,"');"),
+      "});
+              $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
+      $(this).css('background-color', 'inherit');
+      });")
       ) %>% formatStyle(
         columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
         `border-right` = "1px solid black"
@@ -303,6 +314,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     })
     
     observe({
+      req(user_coc$coc_version_id)
       # This code runs every 5 seconds (because it depends on the timer)
       auto_save_timer() 
 
@@ -310,13 +322,13 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       if (data_has_changed()) {
         # Isolate the data to prevent reactive loops
         data_to_save <- isolate(priorities_data())
-        long_data <- melt(
+        long_data <-suppressWarnings( melt(
           copy(data_to_save),
           id.vars = "Population",
           measure.vars = patterns("_Beds$|_Funding$|_Priority$"),
           variable.name = "metric", # This will be an integer (1, 2, 3...)
           na.rm = TRUE                        # Still the most important optimization
-        )
+        ))
         
         # If melting results in an empty table (no values entered), stop.
         if (nrow(long_data) == 0) {
@@ -363,7 +375,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
             funding = EXCLUDED.funding,
             priority = EXCLUDED.priority,
             updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-            updated_at = CURRENT_TIMESTAMP;
+            date_updated = CURRENT_TIMESTAMP;
         "
         tryCatch({
           # Execute the query for each row of the long data frame
