@@ -21,6 +21,10 @@ mod_account_ui <- function(id){
     #   value = "sign_up",
     #   tags$a("Create Account", id = "submit_sign_up", href = aws_auth_signup)
     # ),
+    nav_item(
+      value = "user_details",
+      textOutput(ns('username'))
+    ),
     ## link to log out of application
     nav_item(
       value = "sign_out",
@@ -30,5 +34,12 @@ mod_account_ui <- function(id){
 }
 
 mod_account_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
-  moduleServer(id, function(input, output, session) {})
+  moduleServer(id, function(input, output, session) {
+    
+    output$username <- renderText({
+      req(user_coc$auth)
+      paste0('Username: ', user_coc$username)
+    })
+    
+  })
 }

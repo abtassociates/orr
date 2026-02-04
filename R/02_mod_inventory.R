@@ -6,11 +6,18 @@ mod_inventory_ui <- function(id) {
     icon = icon("list-check"),
     value = id,
     card(
+      card_header(h4("Projects to be Reviewed")),
       card_body(
         fillable = FALSE,
         min_height = "60vh",
         max_height = "76vh",
-        DTOutput(ns("projects_table"))#|> shinycssloaders::withSpinner()
+        helpText("To edit or update an existing project, double-click into a cell. 
+                 The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
+        htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
+        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
+        br(),
+        textOutput(ns("projects_table_counts")),
+        helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       ),
       card_footer(
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
@@ -75,7 +82,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         "SELECT * FROM projects WHERE coc_version_id = $1", 
         params = user_coc$coc_version_id
       ) |>
-        fselect(-coc_version_id, -date_created, -date_updated, -updated_by, -amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
+        fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
           project_type = convert_to_factor(., "project_type"),
@@ -120,7 +127,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         initial_filter = initial_filter,
         column_defs = list(
           list(
-            targets =which(names(data) == "created_by") - 1, 
+            targets =c(which(names(data) == "created_by") - 1,
+                       which(names(data) == 'geocode') - 1), 
             className = "hidden",
             visible = FALSE
           )
@@ -180,6 +188,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         colnames = colnames,
         cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
         buttons = list(
+          'colvis',
           list(
             extend = 'collection',
             text="Show/Hide Bed Inventory",
@@ -198,7 +207,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("projects_table"))
+    projects_table_proxy <- dataTableProxy(ns("projects_table"),session = session)
     
     observe({
       req(projects_data())
@@ -271,7 +280,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       append_to_datatable(new_project_data)
       append_to_db(new_project_data)
       
-      showNotification("Project submitted successfully.", type = "message")
+      #showNotification("Project submitted successfully.", type = "message")
     }
     
     append_to_datatable <- function(new_project_data) {
@@ -294,7 +303,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         add_calculated_fields(TRUE)
       
       projects_data(
-        rbind(new_row, copy(projects_data()), fill=TRUE)
+        rowbind(projects_data(), new_row, fill = TRUE) |> roworderv(neworder = fnrow(projects_data()) + 1)
       )
       
       is_new_project(TRUE)
@@ -398,7 +407,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         ## Reallocation -----
         else {
           form_type <- paste0(funding_source, " Reallocation")
-          show_project_modal(form_type, funding_source, info, new_value)
+          show_project_modal(form_type, funding_source, info, new_value, orgnames=orgnames())
         }
       }
       # Update after non-reallocation and non-replace ------
@@ -426,7 +435,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         yhdp_replacement_info$funding_source, 
         yhdp_replacement_info$info, 
         yhdp_replacement_info$new_value,
-        yhdp_replacement_info$project_to_replace
+        yhdp_replacement_info$project_to_replace,
+        orgnames = orgnames()
       )
     })
     
@@ -443,37 +453,49 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       # no need to do inventory_update because we haven't modified the db or datatable yet
     })
     
+    orgnames <- reactive({
+      req(user_coc$coc_version_id)
+      c("Select or add Organization" = "", 
+        c("Select or add Organization" = "", funique(projects_data()$organization_name, sort=TRUE))
+      )
+    })
+    
     # Project modal control -------------
     # A function to show the modal and set up the server logic
-    show_project_modal <- function(form_type = "New", funding_source = "", info = NULL, new_value = NULL, project_to_replace = NULL, observer_id = NULL) {
+    show_project_modal <- function(form_type = "New", funding_source = "", info = NULL, new_value = NULL, project_to_replace = NULL, orgnames = orgnames(), observer_id = NULL) {
       if (is.null(observer_id)) {
         # Generate a unique ID for this observer version
         observer_id <- paste0("modal_obs_", digest::digest(runif(1)))
       }
-      
-      shiny::invalidateLater(100)
+      print('in show_project_modal')
+      #shiny::invalidateLater(100)
+     
       showModal(
         div(
           id ="add-project-modal",
           mod_inventory_add_project_ui(
             ns("add_project"), 
             form_type = form_type,
-            project_to_replace = project_to_replace
+            project_to_replace = project_to_replace,
+            orgnames = orgnames()
           )
         )
       )
       modal_submission <- mod_inventory_add_project_server(
-        "add_project", 
+        id = "add_project", 
         form_type = form_type,
         funding_source = funding_source,
         user_coc = user_coc,
+        orgnames = orgnames,
         parent_session = session
       )
 
       # Create the observer and store it
       modal_observers[[observer_id]] <- observeEvent(modal_submission$status, {
-        req(modal_submission$status)
-
+        #req(modal_submission$status)
+        
+        print(paste0('creating modal_observer ',observer_id, ', status = ', modal_submission$status))
+        
         # if they simply add a new project, append it
         if(form_type == "New") {
           inventory_append(modal_submission$project_data)
@@ -486,7 +508,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         }
 
         if(modal_submission$status == "add another") {
-          show_project_modal(form_type, funding_source, info, new_value, project_to_replace)
+          show_project_modal(form_type, funding_source, info, new_value, project_to_replace, orgnames)
         } else {
           # If not adding another, the modal chain is done, destroy this observer
           if (!is.null(modal_observers[[observer_id]])) {
@@ -499,17 +521,21 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     # Add additional project handling ----
     observeEvent(input$add_project_btn, {
-      show_project_modal()
+      print('clicked add_project_btn')
+      show_project_modal(form_type = "New", orgnames = orgnames())
     })
     
     # View GIW Data -------
     giw_data <- reactive({
+      req(user_coc$auth)
       get_db_tbl("giw")[coc == user_coc$coc]
     })
     
     observeEvent(input$view_giw_btn, {
-      data <- giw_data() |>
-        fselect(-date_created, -date_updated, -created_by, -updated_by)
+      req(isTruthy(giw_data()))
+      
+        data <- giw_data() |>
+          fselect(-date_created, -date_updated, -created_by, -updated_by)
       
       names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
       
@@ -525,6 +551,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
               scrollY = "400px",
               columnDefs = list(
                 list(visible = FALSE, targets = 0)  # 0 = first column (0-based index)
+              ),
+              language = list(
+                zeroRecords = "No GIW data available for this CoC."
               )
             )
           ),
@@ -532,6 +561,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           easyClose = TRUE
         )
       )
+    })
+    
+    output$projects_table_counts <- renderText({
+      req(projects_data())
+      paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
     })
     
   }) # end moduleServer

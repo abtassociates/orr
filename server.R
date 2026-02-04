@@ -52,7 +52,7 @@ function(input, output, session) {
       } else {
         print('user found!')
         # check if user is in allowed user list
-        if (!(str_to_lower(current_user$email) %in% users$username)){
+        if (!(str_to_lower(current_user$email) %in% get_db_tbl('users')$username)){
             print("new user added to allowed list")
             
         } else {

@@ -117,7 +117,7 @@ project_variable_labels <- c(
   "is_dedicated_ch_fam" = "Is 100% Dedicated + or CH Fam (Yes/No)",
   "is_dedicated_ch_ind" = "Is 100% Dedicated + or CH Ind (Yes/No)",
   "is_dedicated_dv" = "Is 100% DV (Yes/No)",
-  "amount_other_public_funding" = "Amount of other public funding (federal, state, county, city)",
+  "amount_other_public_funding" = "Amount of other public funding",#(federal, state, county, city)",
   "amount_private_funding" = "Amount of private funding",
   "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
   "vet_bed_inventory" = "Veteran Bed Inventory",
@@ -147,12 +147,25 @@ giw_variable_labels <- c(
 
 versions_variable_labels <- c(
   "coc" = "CoC Code",
+  "coc_name" = "CoC Name",
   "coc_version_name" = "CoC Version Name",
   "coc_status" = "Status",
   "coc_version_id" = "CoC Version ID",
   "coc_version_role" = "Your Role",
   "updated_by" = "Updated By",
-  "date_updated" = "Date Updated"
+  "date_updated" = "Date Updated",
+  "date_created" = "Date Created"
+)
+
+requests_variable_labels <- c(
+  "coc_version_id" = "coc_version_id",
+  "coc_request_id" = "coc_request_id",
+  "coc" = "CoC Code",
+  "coc_name" = "CoC Name",
+  "coc_version_name" = "CoC Version Name",
+  "request_status" = "Request Status",
+  "created_by" = "Requested By",
+  "date_created" = "Date Requested"
 )
 
 add_user_stamp <- function(x, user_coc, is_new = FALSE) {
