@@ -55,7 +55,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
         div(
           textInput(ns("project_name"), "Project Name*",placeholder = "Please enter a name"),
           selectInput(ns("funding_source"), "Funding Source*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_source)),
-          selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select Funding Source first" = "", LOOKUP_CHOICES$all_project_types)), # Choices populated by server
+          selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$all_project_types)), # Choices populated by server
           textInput(ns("grant_number"), "Grant Number", placeholder = "Please enter if applicable") # Visibility controlled by server
         ),
         # Second column  
