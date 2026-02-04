@@ -372,7 +372,7 @@ mod_inventory_add_project_server <- function(
       removeModal()
       iv$disable()
       modal_submission_outcome <- NULL
-    }, ignoreInit = TRUE, once = TRUE)
+    }, ignoreInit = TRUE)
     
     observeEvent(input$add_another_link, {
         print('observed input$add_another_link')
