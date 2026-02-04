@@ -57,7 +57,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
         # Second column  
         div(
           selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
-          selectInput(ns("project_type"), "Project Type*^", choices = LOOKUP_CHOICES$all_project_types), # Choices populated by server
+          selectInput(ns("project_type"), "Project Type*^", choices = c("", LOOKUP_CHOICES$all_project_types)), # Choices populated by server
           selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations))
         ),
         col_widths = c(6, 6)  # Equal width columns
