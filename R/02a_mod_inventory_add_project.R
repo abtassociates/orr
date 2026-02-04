@@ -1,6 +1,10 @@
 LOOKUP_CHOICES <- list(
   funding_action = names(get_labelled_lookups("funding_action")),
   reallocation_funding_actions = c("New", "Expand"),
+  all_project_types =  DBI::dbGetQuery(
+    DB_CON, 
+    "SELECT value FROM lookups WHERE reference_type = 'project_type'"
+  )$value,
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
   coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
   yhdp_project_types = c("PSH", "RRH", "TH", "TH+RRH", "SSO - CE"), # what about SSO-Host Homes?
@@ -53,7 +57,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
         # Second column  
         div(
           selectInput(ns("funding_source"), "Funding Source*", choices = c("", LOOKUP_CHOICES$funding_source)),
-          selectInput(ns("project_type"), "Project Type*^", choices = c("")), # Choices populated by server
+          selectInput(ns("project_type"), "Project Type*^", choices = LOOKUP_CHOICES$all_project_types), # Choices populated by server
           selectInput(ns("target_population"), "Target Population*", choices = c("", LOOKUP_CHOICES$target_populations))
         ),
         col_widths = c(6, 6)  # Equal width columns
@@ -189,9 +193,9 @@ mod_inventory_add_project_server <- function(
         else if (current_funding_source() == "YHDP") LOOKUP_CHOICES$yhdp_project_types
         else if (current_funding_source() == "DV" && fa == "Reallocate") LOOKUP_CHOICES$dv_reallocation_project_types
         else if (current_funding_source() == "DV") LOOKUP_CHOICES$dv_project_types
-        else c()
+        else LOOKUP_CHOICES$all_project_types
       
-      updateSelectInput(session, "project_type", choices = c("", proj_type_choices))
+      updateSelectInput(session, "project_type", choices = c("", proj_type_choices), selected = input$project_type)
     }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
     # Update visibility based on funding action
@@ -409,7 +413,6 @@ mod_inventory_add_project_server <- function(
       # This action sets a flag and then programmatically clicks the main submit button.
       # This allows us to reuse the validation and submission logic from the submit button observer.
       add_another_flag(TRUE)
-      browser()
       shinyjs::click("submit")
     }, ignoreInit = TRUE)
     
