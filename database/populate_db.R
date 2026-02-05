@@ -4,6 +4,7 @@ library(DBI)
 source("R/utils/get_db_data.R")
 library(data.table)
 library(glue)
+library(collapse)
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
@@ -480,7 +481,7 @@ setnames(giw_data, old = c(
 ))
 
 # only keep the ones where the CoC is in the HIC data
-giw_data <- giw_data %>% fsubset(coc %in% funique(hic_data$hudnum))
+giw_data <- giw_data |> fsubset(coc %in% funique(hic_data$hudnum))
 # Append to database
 DBI::dbAppendTable(DB_CON, "giw", giw_data)
 
@@ -541,7 +542,7 @@ setnames(hud_ard_data, old = c(
 ))
 
 # only keep the ones where the CoC is in the HIC data
-hud_ard_data <- hud_ard_data %>% fsubset(coc %in% funique(hic_data$hudnum))
+hud_ard_data <- hud_ard_data |> fsubset(coc %in% funique(hic_data$hudnum))
 # Append to database
 DBI::dbAppendTable(DB_CON, "hud_ard_report", hud_ard_data)
 
