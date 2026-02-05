@@ -5,7 +5,7 @@ source("R/utils/get_db_data.R")
 library(data.table)
 library(glue)
 
-HIC_DATA_FILEPATH <- here("database/HIC_RawData2025-7.21.25_TEST.csv")
+HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
 HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
 
