@@ -1,4 +1,8 @@
 library(magrittr)
+source("R/utils/get_db_data.R")
+source("R/utils/data_manipulations.R")
+source("R/global_data_prep.R")
+
 if(IN_DEV_MODE) DBI::dbExecute(DB_CON, "PRAGMA foreign_keys = OFF;")
 dbExecute(DB_CON, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
 dbExecute(DB_CON, "DELETE FROM coc_versions WHERE coc_version_id > 4")
