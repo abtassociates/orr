@@ -1,8 +1,10 @@
-if(IN_DEV_MODE) DBI::dbExecute(DB_CON, "PRAGMA foreign_keys = ON;")
+library(magrittr)
+if(IN_DEV_MODE) DBI::dbExecute(DB_CON, "PRAGMA foreign_keys = OFF;")
 dbExecute(DB_CON, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
 dbExecute(DB_CON, "DELETE FROM coc_versions WHERE coc_version_id > 4")
 dbExecute(DB_CON, "DELETE FROM coc_version_requests")
 dbExecute(DB_CON, "DELETE FROM projects WHERE coc_version_id > 4")
+if(IN_DEV_MODE) DBI::dbExecute(DB_CON, "PRAGMA foreign_keys = ON;")
 
 USERS <- get_db_tbl("users")
 main_user <- toString(USERS[1, 1]) # alex.silverman@abtglobal.com
@@ -104,8 +106,8 @@ get_hic_data <- function(coc, coc_version_id) {
       # project_type = convert_to_factor(., "project_type", textToNum = TRUE),
       # target_population = convert_to_factor(., "target_population", textToNum = TRUE),
       created_by = SERVICE_ACCOUNT
-    ) %>%
-    frename(bed_field_mapping) %>%
+    ) |>
+    frename(bed_field_mapping) |>
     get_vars(setdiff(dbListFields(DB_CON, "projects"), "project_id"))
   
   return(project_data)
