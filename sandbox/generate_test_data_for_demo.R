@@ -1,3 +1,4 @@
+if(IN_DEV_MODE) DBI::dbExecute(DB_CON, "PRAGMA foreign_keys = ON;")
 dbExecute(DB_CON, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
 dbExecute(DB_CON, "DELETE FROM coc_versions WHERE coc_version_id > 4")
 dbExecute(DB_CON, "DELETE FROM coc_version_requests")
@@ -109,15 +110,18 @@ get_hic_data <- function(coc, coc_version_id) {
   
   return(project_data)
 }
+
+
+dbAppendTable(DB_CON, "coc_versions", coc_versions)
+
 for (i in 1:nrow(coc_versions)) {
   # Access row data using index i
   current_row <- coc_versions[i, ]
   filtered_data <- get_hic_data(current_row$coc, current_row$coc_version_id)
   filtered_data_db <- factor_vars_db_prep(filtered_data)
-  
+
   DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
 }
 
-dbAppendTable(DB_CON, "coc_versions", coc_versions)
 dbAppendTable(DB_CON, "coc_version_users", coc_version_users)
 dbAppendTable(DB_CON, "coc_version_requests", coc_version_requests)

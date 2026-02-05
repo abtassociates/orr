@@ -21,7 +21,9 @@ ADMIN_USERS <- "
 
 drop_table <- function(tbl) {
 	message(glue::glue("Dropping {tbl}"))
-	DBI::dbExecute(DB_CON, glue::glue("DROP TABLE IF EXISTS {tbl};"))
+  if(IN_DEV_MODE) DBI::dbExecute(DB_CON, "PRAGMA foreign_keys = OFF;")
+  DBI::dbExecute(DB_CON, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(IN_DEV_MODE, '', 'CASCADE')};"))
+	if(IN_DEV_MODE) DBI::dbExecute(DB_CON, "PRAGMA foreign_keys = ON;")
 }
 
 id_var_attrs <- if(IN_DEV_MODE) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
@@ -477,6 +479,8 @@ setnames(giw_data, old = c(
   "total_ara"
 ))
 
+# only keep the ones where the CoC is in the HIC data
+giw_data <- giw_data %>% fsubset(coc %in% funique(hic_data$hudnum))
 # Append to database
 DBI::dbAppendTable(DB_CON, "giw", giw_data)
 
@@ -536,6 +540,8 @@ setnames(hud_ard_data, old = c(
   "coc_planning"
 ))
 
+# only keep the ones where the CoC is in the HIC data
+hud_ard_data <- hud_ard_data %>% fsubset(coc %in% funique(hic_data$hudnum))
 # Append to database
 DBI::dbAppendTable(DB_CON, "hud_ard_report", hud_ard_data)
 
