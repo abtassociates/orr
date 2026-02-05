@@ -1,3 +1,4 @@
+library(stringr)
 HDX_HIC_DATE <- as.Date('2025-07-25')
 
 LOOKUPS <- get_db_tbl("lookups")
