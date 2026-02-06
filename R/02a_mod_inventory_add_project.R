@@ -111,7 +111,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
 mod_inventory_add_project_server <- function(
     id, 
     trigger,
-    form_type = "New", 
+    form_type = NULL, 
     funding_source = "", 
     project_to_replace = NULL, 
     user_coc = NULL,
@@ -141,7 +141,9 @@ mod_inventory_add_project_server <- function(
       updateNumericInput(session, "youth_beds_ind", value = "")
       updateNumericInput(session, "total_beds_fam", label = if (current_funding_source() == "DV") "DV Family Beds*" else "Total Family Beds*", value = "")
       updateNumericInput(session, "total_beds_ind", label = if (current_funding_source() == "DV") "DV Individual Beds*" else "Total Individual Beds*", value ="")
-      updateTextInput(session, "grant_number", label = if (fa == "Replace") "Grant Number*" else "Grant Number", value = "")
+      
+      # browser()
+      # updateTextInput(session, "grant_number", label = ifelse(input$funding_action,"") == "Replace") "Grant Number*" else "Grant Number", value = "")
       updateCheckboxInput(session, "all_dv_checkbox", value = FALSE)
       updateSelectInput(session, "target_population", selected = "tp")
     }
@@ -153,7 +155,7 @@ mod_inventory_add_project_server <- function(
       iv$disable() 
       
       # Logic for 'Replace' or 'Reallocate' prepopulation
-      if (grepl("Reallocation", form_type) && funding_source != "") {
+      if (grepl("Reallocation", form_type()) && funding_source != "") {
         updateSelectInput(session, "funding_source", selected = funding_source)
         updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
         if (funding_source == "YHDP") {
@@ -232,7 +234,7 @@ mod_inventory_add_project_server <- function(
     # }
     
     current_funding_source <- reactive({
-      ifelse(funding_source != "", funding_source,
+      ifelse(funding_source() != "", funding_source(),
              ifelse(!is.null(input$funding_source), input$funding_source, ""))
       
     })
@@ -260,7 +262,7 @@ mod_inventory_add_project_server <- function(
       fa <- input$funding_action
       is_new_or_expand <- fa %in% c("New", "Expand")
       
-      shinyjs::toggle("grant_number", condition = !is_new_or_expand & !grepl("Reallocation", form_type))
+      shinyjs::toggle("grant_number", condition = !is_new_or_expand & !grepl("Reallocation", form_type()))
       # shinyjs::toggleState("funding_source", condition = fa != "Replace" && !grepl("Reallocation", form_type))
       # shinyjs::toggleState("funding_action", condition = fa != "Replace" && !(current_funding_source() == "YHDP" && grepl("Reallocation", form_type)))
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
@@ -293,7 +295,7 @@ mod_inventory_add_project_server <- function(
       shinyjs::toggleState("all_dv_checkbox", condition = show_dv_check && current_funding_source() != "DV")
       
       # Missing organization_name state control
-      shinyjs::toggleState("organization_name", condition = form_type != "YHDP Replacement")
+      shinyjs::toggleState("organization_name", condition = form_type() != "YHDP Replacement")
     }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
     # Update labels based on funding source and action
@@ -419,14 +421,14 @@ mod_inventory_add_project_server <- function(
       iv$disable()
       modal_submission_outcome <- NULL
     }, ignoreInit = TRUE)
-    
-    observeEvent(input$add_another_link, {
-        print('observed input$add_another_link')
-        add_another_flag(TRUE)
-      # This action sets a flag and then programmatically clicks the main submit button.
-      # This allows us to reuse the validation and submission logic from the submit button observer.
-     
-    }, ignoreInit = TRUE, priority = 2)
+    # 
+    # observeEvent(input$add_another_link, {
+    #     print('observed input$add_another_link')
+    #     add_another_flag(TRUE)
+    #   # This action sets a flag and then programmatically clicks the main submit button.
+    #   # This allows us to reuse the validation and submission logic from the submit button observer.
+    #  
+    # }, ignoreInit = TRUE, priority = 2)
     
     
     # --- Submission Event ---
@@ -446,7 +448,7 @@ mod_inventory_add_project_server <- function(
         # Handle YHDP Reallocation special case for total beds
         total_fam <- get_val("total_beds", "fam")
         total_ind <- get_val("total_beds", "ind")
-        if (input$funding_source == "YHDP" && grepl("Reallocation", form_type)) {
+        if (input$funding_source == "YHDP" && grepl("Reallocation", form_type())) {
           total_fam <- get_val("youth_beds", "fam")
           total_ind <- get_val("youth_beds", "ind")
         }
@@ -506,7 +508,7 @@ mod_inventory_add_project_server <- function(
           text = "Please correct the errors before submitting.",
           type = "error"
         )
-        modal_submission_outcome <- NULL
+        # modal_submission_outcome <- NULL
       }
       print(paste0('done with input$submit, add_another_flag=', add_another_flag()))
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
