@@ -195,7 +195,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               column(1,
                      tags$b("Use in rating?"),
                      checkboxInput(
-                       ns(paste0("check_all_", subgroup_name)),
+                       ns(make.names(paste0(group_name, "_check_all_", subgroup_name))),
                        label = NULL,
                        value = all_subgroup_factors_selected
                      )
@@ -276,64 +276,66 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       funding_action_id <- get_lookup_refid(funding_action, "funding_action")
       
       all_possible_subgroups <- get_db_query(
-        "SELECT DISTINCT factor_subgroup 
-          FROM factor_subgroups
-          WHERE funding_action = $1
+        "SELECT sg.factor_subgroup, fg.factor_group
+          FROM factor_subgroups sg
+          RIGHT JOIN factor_groups fg ON fg.factor_group_id = sg.factor_group
+          WHERE fg.funding_action = $1
         ", 
         params = funding_action_id
-      )$factor_subgroup
-      
-      lapply(all_possible_subgroups, function(subgroup) {
-        subgroup_check_all_input <- paste0("check_all_", subgroup)
+      )
+
+      # PARENT -> CHILDREN
+      # observe changes to check-all boxes
+      lapply(seq_len(nrow(all_possible_subgroups)), function(i) {
+        group <- all_possible_subgroups$factor_group[i]
+        subgroup <- all_possible_subgroups$factor_subgroup[i]
+        subgroup_check_all_input <- make.names(paste0(group, "_check_all_", subgroup))
+        
         observeEvent(input[[subgroup_check_all_input]], {
+          new_val <- input[[subgroup_check_all_input]]
+
+          if (is.null(new_val)) return()
           
-          # When triggered by a user click, get the CURRENT state of the data
-          val <- input[[subgroup_check_all_input]]
-          # message(paste0("handling ", subgroup, " check box"))
-          if (is.null(val)) return()
-          # message(paste0(subgroup, " check box is not null!"))
-          
-          stored_val <- subgroup_check_all_values[[subgroup_check_all_input]]
+          stored_val <- isolate(subgroup_check_all_values[[subgroup_check_all_input]])
           is_initialized <- !is.null(stored_val)
           
-          if(!identical(val, stored_val) && is_initialized) {
-            # Find the factor IDs for this specific subgroup from the current data
-            factor_ids_to_update <- c()
-            for (group in selected_factors_data()) {
-              # Check if the clicked subgroup exists in this group for the current filters
-              if (subgroup %in% names(group)) {
-                factor_ids_to_update <- group[[subgroup]]$rating_factor_id
-                break # Found it, no need to check other groups
+          # Only update children if the user clicked (value changed from what we last recorded)
+          if(!identical(new_val, stored_val)) {
+            subgroup_check_all_values[[subgroup_check_all_input]] <- new_val
+            subgroup_factors <- isolate(selected_factors_data())[[group]][[toString(subgroup)]]
+            
+            lapply(subgroup_factors$rating_factor_id, function(factor_id) {
+              checkbox_id <- paste0("select_", factor_id)
+              if (!identical(input[[checkbox_id]], new_val)) {
+                updateCheckboxInput(session, checkbox_id, value = new_val)
               }
-            }
-            # message("updating individual checkboxes")
-            lapply(factor_ids_to_update, function(factor_id) {
-              updateCheckboxInput(session, paste0("select_", factor_id), value = val)
             })
           }
           
-          subgroup_check_all_values[[subgroup_check_all_input]] <- val
         }, ignoreInit = TRUE, ignoreNULL = TRUE)
       })
       
+      # CHILDREN -> PARENT
       # Update subgroup check-all-that-apply boxes based on underlying factor boxes ------
       observe({
-        req(selected_factors_data())
-        
+        data <- selected_factors_data()
+        req(data)
         # This part checks the children and updates the parent "check all" box.
         
         # Loop through only the groups and subgroups currently visible on the UI.
-        for (group in selected_factors_data()) {
-          for (subgroup_name in names(group)) {
+        for (i in seq_along(data)) {
+          group_data <- data[[i]]
+          group_name <- names(data)[i]
+          for (subgroup_name in names(group_data)) {
             
-            subgroup_data <- group[[subgroup_name]]
+            subgroup_data <- group_data[[subgroup_name]]
             factor_ids <- subgroup_data$rating_factor_id
             
             # Read the current values of all child factor checkboxes for this subgroup.
             # The `req(input[[...]])` is crucial to prevent this from running before
             # the child checkboxes are rendered and available in the `input` object.
-            factor_selections <- lapply(factor_ids, function(id) input[[paste0("select_", id)]])
-            if(is.null(unlist(factor_selections))) next
+            factor_selections <- sapply(factor_ids, function(id) input[[paste0("select_", id)]])
+            if (any(sapply(factor_selections, is.null))) next
             
             # message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
             # Determine the new state for the parent "check all" box.
@@ -341,16 +343,16 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
             parent_should_be_checked <- all(unlist(factor_selections))
             
             # Get the ID of the parent checkbox
-            subgroup_check_all_input <- paste0("check_all_", subgroup_name)
-            
+            subgroup_check_all_input <- make.names(paste0(group_name, "_check_all_", subgroup_name))
+
             # Update the parent checkbox ONLY if its state needs to change.
             # This avoids unnecessary updates and potential infinite loops.
-            if (!identical(input[[subgroup_check_all_input]], parent_should_be_checked)) {
-              updateCheckboxInput(session, ns(subgroup_check_all_input), value = parent_should_be_checked)
-              
+            if (!identical(isolate(input[[subgroup_check_all_input]]), parent_should_be_checked)) {
               # CRITICAL: Also update our memory so that this programmatic change
               # doesn't re-trigger the `check_all -> factors` logic above.
               subgroup_check_all_values[[subgroup_check_all_input]] <- parent_should_be_checked
+              
+              updateCheckboxInput(session, subgroup_check_all_input, value = parent_should_be_checked)
             }
           }
         }
