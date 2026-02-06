@@ -139,7 +139,95 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
         if(i != "dv_ard") shinyjs::disable(i)
       })
+      
+      # initialize selected coc_nofo_opportunities
+      db_selected_coc_nofo_opportunities(
+        get_db_query(
+          "SELECT c.coc_nofo_opportunity_id, c.bonus_type,
+            s.coc_nofo_opportunity_id IS NOT NULL AS val, 
+            s.coc_nofo_opportunity_id IS NOT NULL AS new_val,
+            $1 AS coc_version_id
+          FROM coc_nofo_opportunities c
+          LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $2", 
+          params = list(user_coc$coc_version_id, user_coc$coc_version_id)
+        )
+      )
+      
+      # initialize inputs
+      initialize_coc_nofo_opportunity_inputs()
     })
+    
+    # CoC Bonus
+    db_selected_coc_nofo_opportunities <- reactiveVal()
+    
+    observeEvent(
+      c(
+        input$coc_bonus_types_1,
+        input$coc_bonus_types_2,
+        input$dv_bonus_types
+      ), {
+      req(coc_nofo_inputs_initialized())
+        
+      newly_selected <- as.integer(c(
+        input$coc_bonus_types_1,
+        input$coc_bonus_types_2,
+        input$dv_bonus_types
+      ))
+
+      req(!identical(db_selected_coc_nofo_opportunities()[val == 1]$coc_nofo_opportunity_id,  newly_selected))
+      
+      # Create full indicator vector
+      db_selected_coc_nofo_opportunities(
+        db_selected_coc_nofo_opportunities() %>%
+          fmutate(new_val = as.integer(coc_nofo_opportunity_id %in% newly_selected))
+      )
+      
+      # update database
+      update_coc_nofo_opportunities_db()
+    })
+    
+    update_coc_nofo_opportunities_db <- function() {
+      vals <- db_selected_coc_nofo_opportunities()
+
+      #to insert
+      to_insert <- vals |> 
+        fsubset(val == 0 & new_val == 1) |> 
+        fselect(-val, -new_val, -bonus_type) |>
+        add_user_stamp(user_coc, is_new = TRUE)
+      
+      if(fnrow(to_insert) > 0)
+        dbAppendTable(DB_CON, "selected_coc_nofo_opportunities", to_insert)
+      
+      
+      # to delete
+      to_remove <- vals[val == 1 & new_val == 0]$coc_nofo_opportunity_id
+      if (length(to_remove) > 0) {
+        dbExecute(DB_CON, glue::glue_sql("
+              DELETE FROM selected_coc_nofo_opportunities
+              WHERE coc_version_id = {user_coc$coc_version_id} AND coc_nofo_opportunity_id IN ({to_remove*})
+            ", .con = DB_CON))
+      }
+    }
+    
+    coc_nofo_inputs_initialized <- reactiveVal(FALSE)
+    initialize_coc_nofo_opportunity_inputs <- function() {
+      vals <- db_selected_coc_nofo_opportunities()[val == 1]
+      
+      coc_bonus_types <- vals[bonus_type == get_lookup_refid("CoC Bonus", "bonus_type")]
+      updateCheckboxGroupInput(
+        session, "coc_bonus_types_1", selected = coc_bonus_types[coc_nofo_opportunity_id %in% 1:4]$coc_nofo_opportunity_id
+      )
+      updateCheckboxGroupInput(
+        session, "coc_bonus_types_2", selected = coc_bonus_types[coc_nofo_opportunity_id %in% 5:8]$coc_nofo_opportunity_id
+      )
+      
+      dv_bonus_types <- vals[bonus_type == get_lookup_refid("DV Bonus", "bonus_type")]
+      updateCheckboxGroupInput(
+        session, "dv_bonus_types", selected = dv_bonus_types$coc_nofo_opportunity_id
+      )
+      
+      coc_nofo_inputs_initialized(TRUE)
+    }
     
     # Priorities table -----------------
     priorities_data <- reactiveVal(NULL)
