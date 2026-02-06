@@ -90,8 +90,10 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
         
         # Remove deselected items
         if (length(to_remove) > 0) {
-          remove_q <- "DELETE FROM selected_coc_thresholds WHERE coc_version_id = $1 AND threshold_id = ANY($2)"
-          dbExecute(DB_CON, remove_q, params = list(user_coc$coc_version_id, to_remove))
+          dbExecute(DB_CON, glue::glue_sql("
+              DELETE FROM selected_coc_nofo_opportunities
+              WHERE coc_version_id = {user_coc$coc_version_id} AND coc_nofo_opportunity_id IN ({to_remove*})
+            ", .con = DB_CON))
         }
         
         # Update reactive value to reflect saved state
