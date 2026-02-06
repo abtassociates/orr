@@ -76,7 +76,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       req(user_coc$coc_version_id, user_coc$username)
       
       update_data <- thresholds_to_enter() |>
-        add_user_stamp(user_coc) |>
+        add_user_stamp(user_coc, is_new = TRUE) |>
         fmutate(
           met_threshold_new = map2_lgl(type, threshold_id, ~input[[paste0(.x, "_req_", .y)]])
         )
@@ -96,7 +96,6 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           ))
         }
         
-        browser()
         if (nrow(to_upsert) > 0) {
           DBI::dbExecute(DB_CON, "
             INSERT INTO threshold_entries (threshold_entry_id, project_id, threshold_id, met_threshold, created_by)
