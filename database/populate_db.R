@@ -15,7 +15,7 @@ HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
 ADMIN_USERS <- "
   ('alex.silverman@abtglobal.com', 'Alex', 'Silverman', NULL),
   ('marschall.furman@abtglobal.com', 'Marschall', 'Furman', NULL),
-  ('thomas.brittain@abtglobal.com', 'Thomas', 'Brittain', NULL),
+  ('Victoria.Lopez@abtglobal.com', 'Victoria', 'Lopez', NULL),
   ('anthony.appau@abtglobal.com', 'Anthony', 'Appau', NULL),
   ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL)
 "
