@@ -110,6 +110,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
 # ===================================================================
 mod_inventory_add_project_server <- function(
     id, 
+    trigger,
     form_type = "New", 
     funding_source = "", 
     project_to_replace = NULL, 
@@ -129,6 +130,51 @@ mod_inventory_add_project_server <- function(
     # 1. Centralized State Logic (Reactive Expressions)
     # These reactives define the form's state based on user inputs.
     # =================================================================
+    # --- The Pre-population Logic ---
+    
+    reset_form <- function() {
+      updateTextInput(session, "project_name", value = "")
+      updateSelectInput(session, "funding_source", selected = "")
+      updateTextInput(session, "organization_name", value = "")
+      updateSelectInput(session, "funding_action", selected = "")
+      updateNumericInput(session, "youth_beds_fam", value = "")
+      updateNumericInput(session, "youth_beds_ind", value = "")
+      updateNumericInput(session, "total_beds_fam", label = if (current_funding_source() == "DV") "DV Family Beds*" else "Total Family Beds*", value = "")
+      updateNumericInput(session, "total_beds_ind", label = if (current_funding_source() == "DV") "DV Individual Beds*" else "Total Individual Beds*", value ="")
+      updateTextInput(session, "grant_number", label = if (fa == "Replace") "Grant Number*" else "Grant Number", value = "")
+      updateCheckboxInput(session, "all_dv_checkbox", value = FALSE)
+      updateSelectInput(session, "target_population", selected = "tp")
+    }
+    # This fires whenever the 'trigger' is incremented in the parent
+    observeEvent(trigger(), {
+      req(trigger() > 0)
+      
+      # Clear existing validation errors
+      iv$disable() 
+      
+      # Logic for 'Replace' or 'Reallocate' prepopulation
+      if (grepl("Reallocation", form_type) && funding_source != "") {
+        updateSelectInput(session, "funding_source", selected = funding_source)
+        updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
+        if (funding_source == "YHDP") {
+          updateSelectInput(session, "funding_action", selected = "New")
+        }
+        #updateActionLink(session, "add_another_link", label = "Submit and add another reallocation project?")
+        shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
+        shinyjs::disable("funding_source")
+      } else if (form_type() == "YHDP Replacement" && !is.null(project_to_replace())) {
+        updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
+        #updateTextInput(session, "organization_name", value = project_to_replace$`Organization Name`)
+        updateSelectInput(session, "funding_action", selected = "Replace")
+        updateNumericInput(session, "youth_beds_fam", value = project_to_replace$`Par Youth Beds`)
+        updateNumericInput(session, "youth_beds_ind", value = project_to_replace$`Single Youth Beds`)
+        #updateActionLink(session, "add_another_link", label = "Submit and add another replacement project?")
+        shinyjs::disable("funding_source")
+      } else {
+        reset_form()
+      }
+    })
+    
       #updateSelectInput(session, "organization_name", choices = orgnames)
     
     # Determine the definitive target population.
@@ -166,24 +212,24 @@ mod_inventory_add_project_server <- function(
     # =================================================================
     
     # Set initial values for reallocation or replacement
-    if (grepl("Reallocation", form_type) && funding_source != "") {
-      updateSelectInput(session, "funding_source", selected = funding_source)
-      updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
-      if (funding_source == "YHDP") {
-        updateSelectInput(session, "funding_action", selected = "New")
-      }
-      #updateActionLink(session, "add_another_link", label = "Submit and add another reallocation project?")
-      shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
-      shinyjs::disable("funding_source")
-    } else if (form_type == "YHDP Replacement" && !is.null(project_to_replace)) {
-      updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
-      #updateTextInput(session, "organization_name", value = project_to_replace$`Organization Name`)
-      updateSelectInput(session, "funding_action", selected = "Replace")
-      updateNumericInput(session, "youth_beds_fam", value = project_to_replace$`Par Youth Beds`)
-      updateNumericInput(session, "youth_beds_ind", value = project_to_replace$`Single Youth Beds`)
-      #updateActionLink(session, "add_another_link", label = "Submit and add another replacement project?")
-      shinyjs::disable("funding_source")
-    }
+    # if (grepl("Reallocation", form_type) && funding_source != "") {
+    #   updateSelectInput(session, "funding_source", selected = funding_source)
+    #   updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
+    #   if (funding_source == "YHDP") {
+    #     updateSelectInput(session, "funding_action", selected = "New")
+    #   }
+    #   #updateActionLink(session, "add_another_link", label = "Submit and add another reallocation project?")
+    #   shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
+    #   shinyjs::disable("funding_source")
+    # } else if (form_type == "YHDP Replacement" && !is.null(project_to_replace)) {
+    #   updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
+    #   #updateTextInput(session, "organization_name", value = project_to_replace$`Organization Name`)
+    #   updateSelectInput(session, "funding_action", selected = "Replace")
+    #   updateNumericInput(session, "youth_beds_fam", value = project_to_replace$`Par Youth Beds`)
+    #   updateNumericInput(session, "youth_beds_ind", value = project_to_replace$`Single Youth Beds`)
+    #   #updateActionLink(session, "add_another_link", label = "Submit and add another replacement project?")
+    #   shinyjs::disable("funding_source")
+    # }
     
     current_funding_source <- reactive({
       ifelse(funding_source != "", funding_source,
@@ -384,10 +430,7 @@ mod_inventory_add_project_server <- function(
     
     
     # --- Submission Event ---
-    observeEvent(eventExpr = 
-      c(input$submit, input$add_another_link), {
-        
-      
+    observeEvent(c(input$submit, input$add_another_link), {
       req(isTruthy(input$submit) || isTruthy(input$add_another_link))
       iv$enable()
       print('observed input$submit')
@@ -434,10 +477,23 @@ mod_inventory_add_project_server <- function(
           dv_renewal = input$funding_source == "DV" && input$funding_action == "Renew",
           created_by = user_coc$username
         )
-        removeModal()
+        # removeModal()
         modal_submission_outcome$project_data <- new_project_data
-        modal_submission_outcome$status <- ifelse(add_another_flag(), "add another", "success")
-        iv$disable()
+        
+        # Logic for 'Submit and Add Another'
+        if (input$add_another_link > 0) {
+          modal_submission_outcome$status <- "add another"
+          # Manually clear Name/Grant so user knows it's a new entry
+          updateTextInput(session, "project_name", value = "")
+          iv$disable() 
+        } else {
+          modal_submission_outcome$status <- "success"
+          removeModal()
+        }
+        
+        # Flush status so it can be triggered again by the same string
+        shinyjs::delay(100, { modal_submission_outcome$status <- NULL })
+        
         show_alert(
           title = "Success!",
           text = "The project was added successfully!",
