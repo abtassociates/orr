@@ -124,8 +124,7 @@ mod_requests_server <- function(id, user_coc) {
         if(request_status_num == 2){
           
           # Set Status in Requests table
-          DBI::dbExecute(
-            DB_CON,
+          db_execute(
             "UPDATE coc_version_requests 
           SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2
           WHERE coc_request_id = $3", 
@@ -134,8 +133,7 @@ mod_requests_server <- function(id, user_coc) {
           
           # Create version user
           user_role_num <- get_lookup_refid("Editor", "coc_version_role")
-          DBI::dbAppendTable(
-            DB_CON,
+          db_append(
             "coc_version_users",
             data.table(
               coc_version_id = row[["coc_version_id"]],
@@ -149,8 +147,7 @@ mod_requests_server <- function(id, user_coc) {
           )
         } else if(request_status_num == 3){
           # Set Status in Requests table
-          DBI::dbExecute(
-            DB_CON,
+          db_execute(
             "UPDATE coc_version_requests 
           SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2,
               reason_for_rejection = $3

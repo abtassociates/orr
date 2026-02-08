@@ -246,18 +246,15 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
       update_datatable(proj_id, col_name, info$value)
-      update_db(value, col_name, proj_id)
+      update_inventory_db(value, col_name, proj_id)
     }
     
-    update_db <- function(new_value, col_name, proj_id) {
-      DBI::dbExecute(
-        DB_CON,
-        sprintf(
-          "UPDATE projects SET %s = $1 WHERE project_id = $2",
-          DBI::dbQuoteIdentifier(DB_CON, col_name)
-        ), 
-        params = list(as.character(new_value), proj_id)
+    update_inventory_db <- function(new_value, col_name, proj_id) {
+      db_execute(
+        "UPDATE projects SET $1 = $2 WHERE project_id = $3",
+        params = list(col_name, new_value, proj_id)
       )
+      
       message(sprintf("Updated db: project_id=%s, column=%s to '%s'",
                       proj_id, col_name, new_value))
       
@@ -278,7 +275,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     ## consolidated append
     inventory_append <- function(new_project_data) {
       append_to_datatable(new_project_data)
-      append_to_db(new_project_data)
+      append_inventory_to_db(new_project_data)
       
       #showNotification("Project submitted successfully.", type = "message")
     }
@@ -309,7 +306,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       is_new_project(TRUE)
     }
     
-    append_to_db <- function(new_project_data) {
+    append_inventory_to_db <- function(new_project_data) {
       db_data <- new_project_data |>
         fmutate(
           coc_version_id = user_coc$coc_version_id,
@@ -319,7 +316,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
         )
       
-      DBI::dbAppendTable(DB_CON, "projects", db_data)
+      db_append("projects", db_data)
     }
     
     # Main inline-cell edit event -----

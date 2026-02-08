@@ -175,7 +175,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
       ## update versions table to "In progress" when editing begins
-      DBI::dbExecute(DB_CON, 
+      db_execute( 
         "UPDATE coc_versions SET coc_status = $1, 
         date_updated = CURRENT_TIMESTAMP, updated_by = $2
         WHERE coc_version_id = $3", 
@@ -275,7 +275,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         add_user_stamp(user_coc, is_new = TRUE)
       
       # Next, update CoC Version USers in db
-      dbAppendTable(DB_CON, 'coc_version_users', new_version_user)
+      db_append('coc_version_users', new_version_user)
       
       # update reactiveVal
       coc_vu(
@@ -487,12 +487,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         add_user_stamp(user_coc, is_new = TRUE)
       
       # Add row to requests table
-      DBI::dbAppendTable(
-        DB_CON,
-        "coc_version_requests",
-         request_row
-      )
-        
+      db_append("coc_version_requests", request_row)
     }
     
     observeEvent(input$send_direct_request, {
@@ -657,7 +652,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
             date_updated = format(date_updated, "%Y-%m-%d %H:%M:%S")
           )
       
-      DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
+      db_append("projects", filtered_data_db)
       
       shiny::showNotification('New CoC version created!', type='message')
       removeModal()
