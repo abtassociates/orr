@@ -35,7 +35,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
     
     # Fetch all available CoC thresholds
     observe({
-      req(DB_CON)
+      req(DB_POOL)
 
       rv$all_thresholds <- get_db_query(
         "SELECT threshold_id, threshold_text 

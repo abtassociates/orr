@@ -472,20 +472,19 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       # This assumes you have a helper function `poolWithTransaction`.
       # If not, you would use DBI::dbBegin, tryCatch, DBI::dbCommit/dbRollback here.
       tryCatch({
-        DBI::dbWithTransaction(DB_CON, {
+        DBI::dbWithTransaction(DB_POOL, {
           
           # 7. DELETE records that were deselected
           if (length(to_delete_ids) > 0) {
-            dbExecute(DB_CON, glue::glue_sql("
+            dbExecute(DB_POOL, glue::glue_sql("
               DELETE FROM selected_rating_factors
               WHERE coc_version_id = {user_coc$coc_version_id} AND rating_factor_id IN ({to_delete_ids*})
-            ", .con = DB_CON))
+            ", .con = DB_POOL))
           }
           
           # 5. INSERT new records that are now selected
           if (nrow(to_insert) > 0) {
-            dbAppendTable(
-              DB_CON,
+            dbAppendTable(DB_POOL,
               "selected_rating_factors",
               to_insert |> fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
             )

@@ -708,7 +708,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           created_by = SERVICE_ACCOUNT
         ) |>
         frename(bed_field_mapping) |>
-        get_vars(setdiff(dbListFields(DB_CON, "projects"), "project_id"))
+        get_vars(setdiff(dbListFields(DB_POOL, "projects"), "project_id"))
 
       return(project_data)
     }

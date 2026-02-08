@@ -55,7 +55,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           r.project_type = {selected_project()$project_type} AND
           (r.target_population = {selected_project()$target_population} OR ({is.na(selected_project()$target_population)} AND r.target_population = 36)) AND
           (rs.project_id = {selected_project()$project_id} OR rs.project_id IS NULL)
-      ", .con = DB_CON))
+      ", .con = DB_POOL))
     })
     
     # Project Rating Factors UI
