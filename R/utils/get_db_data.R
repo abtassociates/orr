@@ -22,34 +22,67 @@ DB_POOL <- if(IN_DEV_MODE) {
 onStop(function() {
   pool::poolClose(pool)
 })
+
+
+# Get DB data ------------------
+# dbGetQuery returns result set
 get_db_query <- function(sql, params = NULL) {
-  dt <- DBI::dbGetQuery(
-    DB_CON,
-    sql,
-    params = params
-  ) |> qDT() 
-  
-  if("date_created" %in% names(dt)) 
-    dt[, date_created := as.POSIXct(date_created)]
-  
-  if("date_updated" %in% names(dt)) 
-    dt[, date_updated := as.POSIXct(date_updated)]
-  
-  dt
+  tryCatch({
+    dt <- DBI::dbGetQuery(
+      DB_POOL,
+      sql,
+      params = params
+    ) |> qDT()
+    
+    if("date_created" %in% names(dt)) 
+      dt[, date_created := as.POSIXct(date_created)]
+    
+    if("date_updated" %in% names(dt)) 
+      dt[, date_updated := as.POSIXct(date_updated)]
+    
+    return(dt)
+  }, error = function(e) {
+    list(ok = FALSE, error = e$message)
+  })
 }
 
 
 get_db_tbl <- function(tbl_name) {
-  tbl <- dbReadTable(DB_CON, tbl_name) |>
-    qDT()
-  
-  if("date_created" %in% names(tbl)) 
-    tbl[, date_created := as.POSIXct(date_created)]
-  
-  if("date_updated" %in% names(tbl)) 
-    tbl[, date_updated := as.POSIXct(date_updated)]
-  
-  return(tbl)
+  tryCatch({
+    tbl <- dbReadTable(DB_POOL, tbl_name) |> qDT()
+    
+    if("date_created" %in% names(tbl)) 
+      tbl[, date_created := as.POSIXct(date_created)]
+    
+    if("date_updated" %in% names(tbl)) 
+      tbl[, date_updated := as.POSIXct(date_updated)]
+    
+    return(tbl)
+  }, error = function(e) {
+    list(ok = FALSE, error = e$message)
+  })
 }
 
-DB_CON <- get_db_connection()
+
+# Write to db -------------------
+# dbExecute returns rows affected
+db_execute <- function(sql, params) {
+  tryCatch({
+    dbWithTransaction(DB_POOL, {
+      dbExecute(DB_POOL, sql, params = params)
+    }) 
+  }, error = function(e) {
+    list(ok = FALSE, error = e$message)
+  })
+}
+
+db_append <- function(tbl, data) {
+  tryCatch({
+    dbWithTransaction(DB_POOL, {
+      dbAppendTable(DB_POOL, tbl, data)
+    })
+  }, error = function(e) {
+    list(ok = FALSE, error = e$message)
+  })
+}
+
