@@ -1,6 +1,10 @@
 LOOKUP_CHOICES <- list(
   funding_action = setdiff(names(get_labelled_lookups("funding_action")), "Ignore"),
   reallocation_funding_actions = c("New", "Expand"),
+  all_project_types =  DBI::dbGetQuery(
+    DB_CON, 
+    "SELECT value FROM lookups WHERE reference_type = 'project_type'"
+  )$value,
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
   coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
   yhdp_project_types = c("PSH", "RRH", "TH", "TH+RRH", "SSO - CE"), # what about SSO-Host Homes?
@@ -51,7 +55,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
         div(
           textInput(ns("project_name"), "Project Name*",placeholder = "Please enter a name"),
           selectInput(ns("funding_source"), "Funding Source*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_source)),
-          selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select Funding Source first" = "")), # Choices populated by server
+          selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$all_project_types)), # Choices populated by server
           textInput(ns("grant_number"), "Grant Number", placeholder = "Please enter if applicable") # Visibility controlled by server
         ),
         # Second column  
@@ -200,9 +204,9 @@ mod_inventory_add_project_server <- function(
         else if (current_funding_source() == "YHDP") LOOKUP_CHOICES$yhdp_project_types
         else if (current_funding_source() == "DV" && fa == "Reallocate") LOOKUP_CHOICES$dv_reallocation_project_types
         else if (current_funding_source() == "DV") LOOKUP_CHOICES$dv_project_types
-        else c()
+        else LOOKUP_CHOICES$all_project_types
       
-      updateSelectInput(session, "project_type", choices = c("Select Funding Source first" = "", proj_type_choices))
+      updateSelectInput(session, "project_type", choices = c("Select Funding Source first" = "", proj_type_choices), selected = input$project_type)
     }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
     # Update visibility based on funding action
@@ -368,7 +372,7 @@ mod_inventory_add_project_server <- function(
       removeModal()
       iv$disable()
       modal_submission_outcome <- NULL
-    }, ignoreInit = TRUE, once = TRUE)
+    }, ignoreInit = TRUE)
     
     observeEvent(input$add_another_link, {
         print('observed input$add_another_link')
