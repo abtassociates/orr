@@ -118,45 +118,42 @@ mod_requests_server <- function(id, user_coc) {
       request_status_num <- get_lookup_refid(status, "request_status")
       selected_requests <- cur_requests()[input$requests_dt_rows_selected]
       
-      apply(selected_requests, 1, function(row) {
+      update_params <- lapply(seq_row(selected_requests), function(i) {
+        list(
+          request_status_num, 
+          user_coc$username, 
+          selected_requests[i]$coc_request_id,
+          selected_requests[i]$date_updated
+        )
+      })
+      
+      dbWithTransaction(DB_POOL, {
+        DBI::dbExecute(
+          DB_POOL, 
+          glue::glue(
+            "UPDATE coc_version_requests 
+              SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2 
+                {ifelse(status == 'Approved', '', ', reason_for_rejection = $3')}
+              WHERE coc_request_id = $3 AND date_updated = $4"
+          ), 
+          params = update_params
+        )
         
-       
-        if(request_status_num == 2){
-          
-          # Set Status in Requests table
-          DBI::dbExecute(
-            DB_CON,
-            "UPDATE coc_version_requests 
-          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2
-          WHERE coc_request_id = $3", 
-            params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
+        user_role_num <- get_lookup_refid("Editor", "coc_version_role")
+        current_time <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        
+        if(status == 'Approved') {
+          new_users <- data.table(
+            coc_version_id = approved_requests$coc_version_id,
+            username = approved_requests$created_by,
+            coc_version_role = user_role_num,
+            created_by = user_coc$username,
+            date_created = current_time,
+            date_updated = current_time,
+            updated_by = user_coc$username
           )
           
-          # Create version user
-          user_role_num <- get_lookup_refid("Editor", "coc_version_role")
-          DBI::dbAppendTable(
-            DB_CON,
-            "coc_version_users",
-            data.table(
-              coc_version_id = row[["coc_version_id"]],
-              username = row[["created_by"]],
-              coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
-              created_by = user_coc$username,
-              date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-              date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-              updated_by = user_coc$username
-            )
-          )
-        } else if(request_status_num == 3){
-          # Set Status in Requests table
-          DBI::dbExecute(
-            DB_CON,
-            "UPDATE coc_version_requests 
-          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2,
-              reason_for_rejection = $3
-          WHERE coc_request_id = $4", 
-            params = list(request_status_num, user_coc$username, input$rej_reason, row[["coc_request_id"]])
-          )
+          DBI::dbAppendTable(DB_POOL, "coc_version_users", new_users)
         }
       })
         

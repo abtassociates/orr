@@ -171,6 +171,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       current_coc_info <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
       user_coc$coc <- current_coc_info$coc
       user_coc$coc_version_id <- current_coc_info$coc_version_id
+      user_coc$date_updated <- current_coc_info$date_updated
     })
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
@@ -178,8 +179,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       DBI::dbExecute(DB_CON, 
         "UPDATE coc_versions SET coc_status = $1, 
         date_updated = CURRENT_TIMESTAMP, updated_by = $2
-        WHERE coc_version_id = $3", 
-        params = list(7, user_coc$username, user_coc$coc_version_id)
+        WHERE coc_version_id = $3 AND date_updated = $4", 
+        params = list(7, user_coc$username, user_coc$coc_version_id, user_coc$date_updated)
       )
       nav_control("inventory")
     })
