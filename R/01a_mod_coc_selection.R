@@ -34,28 +34,25 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     coc_requested <- reactiveVal(NULL)
     version_requested <- reactiveVal(NULL)
     
-    COC_VERSION_USERS <- reactiveVal(NULL)
-    
-    observeEvent(user_coc$auth, {
-      req(user_coc$auth)
-      COC_VERSION_USERS(
-        get_db_query(
-          "SELECT v.*, u.username, u.coc_version_role
-          FROM coc_versions v
-          LEFT JOIN coc_version_users u
-          ON v.coc_version_id = u.coc_version_id"
-        )
-      )
-    })
-    
     get_all_users_and_versions <- function() {
-      COC_VERSION_USERS(
+      coc_vu(
         get_db_query(
           "SELECT v.*, u.username, u.coc_version_role
             FROM coc_versions v
             LEFT JOIN coc_version_users u
             ON v.coc_version_id = u.coc_version_id"
-        )
+        ) |>
+          fsubset(username == user_coc$username, -c(username, created_by)) |>
+          fmutate(
+            coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
+            coc_status = get_lookup_label(coc_status, 'coc_status')
+          ) |>
+          join(
+            cocs %>% fselect(coc_code, coc_name),
+            how = 'left', 
+            on = c('coc' = 'coc_code')
+          ) |>
+          colorder(coc, coc_name, pos = "after")
       )
     }
     
@@ -83,21 +80,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ####
     # CoC Versions table ------------------
     ####
-    observe({
-      req(user_coc$auth)
-      coc_vu(
-        COC_VERSION_USERS() |>
-          fsubset(username == user_coc$username, -c(username, created_by)) |>
-          fmutate(
-            coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
-            coc_status = get_lookup_label(coc_status, 'coc_status')
-          ) %>% 
-          join(cocs %>% fselect(coc_code, coc_name),
-               how = 'left', on = c('coc' = 'coc_code')) %>% 
-          colorder(coc, coc_name, pos = "after")
-      )
-    })
-    
     coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
     
     observe({
@@ -156,8 +138,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
 
       # If there are any versions NOT associated with the current user, allow them to Request Access
-      if(nrow(COC_VERSION_USERS()) > 0) {
-        shinyjs::toggle(id = 'request_access_direct', condition = COC_VERSION_USERS() |> 
+      if(nrow(coc_vu()) > 0) {
+        shinyjs::toggle(id = 'request_access_direct', condition = coc_vu() |> 
                           fgroup_by(coc) |> 
                           fsummarize(no_version_access = !any(username == user_coc$username)) |> 
                           fsubset(no_version_access) |> 
@@ -331,10 +313,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       # If there’s an version THEY are already associated with (by looking up CoC Versions joined with CoC Version Users where the user is this user),
       # warn them that they already have an ORR for this CoC and that if they wish to modify settings, they can do so within existing ORRs.
       # Show options "Continue" or "Cancel"
-      check_if_already_have <- COC_VERSION_USERS() |>
+      check_if_already_have <- coc_vu() |>
         fsubset(username == user_coc$username & coc == coc_requested())
       
-      check_if_others_have <- COC_VERSION_USERS() |>
+      check_if_others_have <- coc_vu() |>
         fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == owner_role_refid)
       
       removeModal()
@@ -429,7 +411,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # When user clicks the "Request Access to a CoC" button on the dashboard
     # allow user to view versions and request access
     request_access_direct_coc_versions <- reactive({
-      COC_VERSION_USERS() |>
+      coc_vu() |>
         fsubset(username != user_coc$username) |>
         fselect(coc, coc_version_name, username)
     })
@@ -499,7 +481,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       prev_requests <- get_db_tbl('coc_version_requests')
       
-      version_id <- COC_VERSION_USERS() |> 
+      version_id <- coc_vu() |> 
         fsubset(coc == input$request_access_coc_dropdown & 
                 coc_version_name == input$direct_request_coc_versions_cell_clicked$value) |> 
         fselect('coc_version_id') %>% 
@@ -526,7 +508,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # but may not have known about an existing version for the same CoC
     request_access_indirect_coc_versions <- reactive({
       
-      COC_VERSION_USERS() |>
+      coc_vu() |>
         fsubset(username != user_coc$username) |>
         fselect(coc, coc_version_name, username)
     })
@@ -587,7 +569,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       prev_requests <- get_db_tbl('coc_version_requests')
       
-      version_id <- COC_VERSION_USERS() |> 
+      version_id <- coc_vu() |> 
         fsubset(coc == input$request_indirect_access_coc_dropdown & 
                   coc_version_name == input$indirect_request_coc_versions_cell_clicked$value) |> 
         fselect('coc_version_id') %>% 
