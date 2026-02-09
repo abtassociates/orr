@@ -100,12 +100,12 @@ mod_rating_ui <- function(id) {
           mod_alternative_rating_ui(ns("alternative"))
         )
       ) # End method selection
-    ), # End rating panel
+    ) #, # End rating panel
     
-    nav_panel(
-      title = "Rating Summary",
-      mod_rating_summary_ui(ns("summary"))
-    )
+    # nav_panel(
+    #   title = "Rating Summary",
+    #   mod_rating_summary_ui(ns("summary"))
+    # )
   )
 }
 
