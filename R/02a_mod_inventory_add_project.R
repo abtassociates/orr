@@ -135,12 +135,17 @@ mod_inventory_add_project_server <- function(
     reset_form <- function() {
       updateTextInput(session, "project_name", value = "")
       updateSelectInput(session, "funding_source", selected = "")
+      updateSelectInput(session, "project_type", selected = "")
       updateTextInput(session, "organization_name", value = "")
+      updateTextInput(session, "grant_number", value = "")
       updateSelectInput(session, "funding_action", selected = "")
-      updateNumericInput(session, "youth_beds_fam", value = "")
-      updateNumericInput(session, "youth_beds_ind", value = "")
-      updateNumericInput(session, "total_beds_fam", label = if (current_funding_source() == "DV") "DV Family Beds*" else "Total Family Beds*", value = "")
-      updateNumericInput(session, "total_beds_ind", label = if (current_funding_source() == "DV") "DV Individual Beds*" else "Total Individual Beds*", value ="")
+      updateNumericInput(session, "youth_beds_fam", value = NA)
+      updateNumericInput(session, "youth_beds_ind", value = NA)
+      updateNumericInput(session, "total_beds_fam", label = if (current_funding_source() == "DV") "DV Family Beds*" else "Total Family Beds*", value = NA)
+      updateNumericInput(session, "total_beds_ind", label = if (current_funding_source() == "DV") "DV Individual Beds*" else "Total Individual Beds*", value = NA)
+      updateNumericInput(session, "vet_beds_fam", value = NA)
+      updateNumericInput(session, "vet_beds_ind", value = NA)
+      
       
       # browser()
       # updateTextInput(session, "grant_number", label = ifelse(input$funding_action,"") == "Replace") "Grant Number*" else "Grant Number", value = "")
