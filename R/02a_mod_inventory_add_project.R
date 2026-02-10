@@ -482,15 +482,14 @@ mod_inventory_add_project_server <- function(
         # removeModal()
         modal_submission_outcome$project_data <- new_project_data
         
-        # Logic for 'Submit and Add Another'
-        if (input$add_another_link > 0) {
-          modal_submission_outcome$status <- "add another"
-          # Manually clear Name/Grant so user knows it's a new entry
-          updateTextInput(session, "project_name", value = "")
-          iv$disable() 
-        } else {
+        # Prioritize regular submission, as that closes everything out
+        if (input$submit > 0) {
           modal_submission_outcome$status <- "success"
           removeModal()
+        } else {
+          modal_submission_outcome$status <- "add another"
+          reset_form()
+          iv$disable() 
         }
         
         # Flush status so it can be triggered again by the same string
