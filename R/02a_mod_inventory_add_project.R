@@ -51,21 +51,23 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
         # First column
         div(
           style = "padding-right: 5px; margin-right: -5px;",
-        layout_columns(  
-        div(
-          textInput(ns("project_name"), "Project Name*",placeholder = "Please enter a name"),
-          selectInput(ns("funding_source"), "Funding Source*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_source)),
-          selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$all_project_types)), # Choices populated by server
-          textInput(ns("grant_number"), "Grant Number", placeholder = "Please enter if applicable") # Visibility controlled by server
-        ),
-        # Second column  
-        div(
-          selectizeInput(ns("organization_name"), label = "Organization Name*", choices = orgnames, options=list(create=TRUE)), 
-          selectInput(ns("funding_action"), "Funding Action*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_action)),
-          selectInput(ns("target_population"), "Target Population*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$target_populations)),
-        )
-        ),
-        col_widths = c(6,6)
+          layout_columns(
+            textInput(ns("project_name"), "Project Name*",placeholder = "Please enter a name"),
+            selectizeInput(ns("organization_name"), label = "Organization Name*", choices = orgnames, options=list(create=TRUE))
+          ),
+          layout_columns(
+            selectInput(ns("funding_source"), "Funding Source*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_source)),
+            selectInput(ns("funding_action"), "Funding Action*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_action))
+          ),
+          layout_columns(
+            selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$all_project_types)), # Choices populated by server
+            selectInput(ns("target_population"), "Target Population*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$target_populations))
+          ),
+          
+          layout_columns(
+            textInput(ns("grant_number"), "Grant Number", placeholder = "Please enter if applicable"), # Visibility controlled by server
+            div()
+          )
         ),
         div(
           style = "border-left: 1px solid gray; padding-left: 10px; margin-left: -5px;",
