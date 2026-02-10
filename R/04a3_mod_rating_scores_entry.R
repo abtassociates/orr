@@ -44,7 +44,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           r.piping_text, r.project_type, r.target_population, sr.selected_rating_factor_id, 
           fg.factor_group, fsg.factor_subgroup, 
           r.goal, r.max_point_value,
-          rs.rating_score, rs.performance, rs.project_id
+          rs.rating_score, rs.performance, rs.project_id,
+          rs.date_updated
         FROM rating_factors r
         INNER JOIN selected_rating_factors sr ON sr.rating_factor_id = r.rating_factor_id
         JOIN factor_groups fg ON r.factor_group = fg.factor_group_id
@@ -163,5 +164,34 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         open = names(grouped_data)[1] # Open the first group by default
       )
     }) # end render factors
-  })
+    
+    
+    observeEvent(input$save_rating, {
+      all_inputs <- reactiveValuesToList(input)
+      selected_ids <- factors_and_scores_for_project()$selected_rating_factor_id
+      num_selected <- fnrow(factors_and_scores_for_project())
+      
+      # Build vectors of params upfront
+      params <- list(
+        project_ids                 = alloc(selected_project()$project_id, num_selected),
+        selected_rating_factor_ids  = selected_ids,
+        rating_scores               = sapply(selected_ids, \(id) input[[paste0("rating_score_", id)]]),
+        performances                = sapply(selected_ids, \(id) input[[paste0("performance_", id)]]),
+        created_bys                 = alloc(session$user, num_selected),
+        date_updated_checks         = factors_and_scores_for_project()$date_updated
+      )
+      
+      DBI::dbExecute(DB_CON, "
+        INSERT INTO rating_scores (project_id, selected_rating_factor_id, rating_score, performance, created_by)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (project_id, selected_rating_factor_id) DO UPDATE SET
+          rating_score = EXCLUDED.rating_score,
+          performance  = EXCLUDED.performance,
+          date_updated = CURRENT_TIMESTAMP,
+          updated_by   = EXCLUDED.created_by
+        WHERE rating_scores.date_updated = $6",
+        params = params
+      )
+    })
+  }) #end module server
 }
