@@ -174,11 +174,12 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         input$dv_bonus_types
       ))
 
-      req(!identical(db_selected_coc_nofo_opportunities()[val == 1]$coc_nofo_opportunity_id,  newly_selected))
+      selected_opps <- isolate(db_selected_coc_nofo_opportunities())
+      req(!identical(selected_opps[val == 1]$coc_nofo_opportunity_id,  newly_selected))
       
       # Create full indicator vector
       db_selected_coc_nofo_opportunities(
-        db_selected_coc_nofo_opportunities() %>%
+        selected_opps %>%
           fmutate(new_val = as.integer(coc_nofo_opportunity_id %in% newly_selected))
       )
       
@@ -265,7 +266,12 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           # dcast(. ~ project_type, value.var = c("beds", "funding", "priority"))
           # This step is highly dependent on your DB schema and `MAIN_PROJECT_TYPES`
         for(k in seq_row(wide_db_data)){
-          set(full_data, i = which(full_data$Population == wide_db_data$full_text[k]), j = as.character(wide_db_data$change_text[k]), value = wide_db_data[k, ifelse(!is.na(beds), beds, ifelse(!is.na(funding), funding, priority))])
+          set(
+            full_data, 
+            i = which(full_data$Population == wide_db_data$full_text[k]), 
+            j = as.character(wide_db_data$change_text[k]),
+            value = wide_db_data[k, ifelse(!is.na(beds), beds, ifelse(!is.na(funding), funding, priority))]
+          )
           
         }
           # We can then update the `full_data` table.
