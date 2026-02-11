@@ -3,7 +3,7 @@
 # - maintains N reusable connections
 # - loans them out only when needed (fewer db resources)
 # - automatically reconnects dropped connections (better stability, esp. if usage spikes)
-DB_POOL <- if(IN_DEV_MODE) {
+DB_POOL <- if(!IN_DEV_MODE) {
   pool::dbPool(
     drv = RPostgres::Postgres(),
     host = Sys.getenv("AWS_RDS_HOST"),
