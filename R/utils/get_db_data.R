@@ -15,7 +15,7 @@ DB_POOL <- if(!IN_DEV_MODE) {
 } else {
   pool::dbPool(
     drv = RSQLite::SQLite(),
-    here("sandbox/dev_db.sqlite")
+    dbname = here("sandbox/dev_db.sqlite")
   )
 }
 
