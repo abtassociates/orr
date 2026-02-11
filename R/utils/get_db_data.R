@@ -20,7 +20,7 @@ DB_POOL <- if(!IN_DEV_MODE) {
 }
 
 onStop(function() {
-  pool::poolClose(pool)
+  pool::poolClose(DB_POOL)
 })
 
 
