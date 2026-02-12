@@ -183,7 +183,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         rating_scores               = sapply(selected_ids, \(id) input[[paste0("rating_score_", id)]]),
         performances                = sapply(selected_ids, \(id) input[[paste0("performance_", id)]]),
         created_bys                 = alloc(user_coc$username, num_selected),
-        date_updated_checks         = factors_and_scores_for_project()$date_updated
+        date_updated_checks         = format(factors_and_scores_for_project()$date_updated, "%Y-%m-%d %H:%M:%S")
       ) |> unname()
       
       rows_changed <- db_execute("
