@@ -197,8 +197,12 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         WHERE date_updated = $6",
         params = params_list
       )
+
       if(rows_changed == 0) {
-        showNotification("Someone recently edited this data! Refreshing your view...", type = "message")
+        showNotification("Someone recently edited this data! Refreshing your view. Resubmit when you're ready.", type = "message")
+        db_has_changed(TRUE)
+      } else if(rows_changed < num_selected) {
+        showNotification("Someone recently edited one or more rating factors for this project! Refreshing your view. Resubmit when you're ready.", type = "message")
         db_has_changed(TRUE)
       } else {
         db_has_changed(NA)
