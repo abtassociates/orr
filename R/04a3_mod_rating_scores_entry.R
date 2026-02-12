@@ -172,16 +172,15 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       num_selected <- fnrow(factors_and_scores_for_project())
       
       # Build vectors of params upfront
-      params <- list(
+      params_list <- list(
         project_ids                 = alloc(selected_project()$project_id, num_selected),
         selected_rating_factor_ids  = selected_ids,
         rating_scores               = sapply(selected_ids, \(id) input[[paste0("rating_score_", id)]]),
         performances                = sapply(selected_ids, \(id) input[[paste0("performance_", id)]]),
-        created_bys                 = alloc(session$user, num_selected),
+        created_bys                 = alloc(user_coc$username, num_selected),
         date_updated_checks         = factors_and_scores_for_project()$date_updated
-      )
+      ) |> unname()
       
-      browser()
       db_execute("
         INSERT INTO rating_scores (project_id, selected_rating_factor_id, rating_score, performance, created_by)
         VALUES ($1, $2, $3, $4, $5)
@@ -190,8 +189,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           performance  = EXCLUDED.performance,
           date_updated = CURRENT_TIMESTAMP,
           updated_by   = EXCLUDED.created_by
-        WHERE rating_scores.date_updated = $6",
-        params = params
+        WHERE date_updated = $6",
+        params = params_list
       )
       
       showNotification("Saved rating info!", type = "message")

@@ -499,14 +499,11 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               SET goal = $1, max_point_value = $2
               WHERE coc_version_id = $3 AND rating_factor_id = $4
             "
-            params_list <- lapply(seq_row(to_update), function(i) {
-              list(
-                to_update$goal[i],
-                to_update$max_point_value[i],
-                user_coc$coc_version_id,
-                to_update$rating_factor_id[i]
-              )
-            })
+            params_list <- to_update |>
+              fmutate(coc_version_id = user_coc$coc_version_id) |>
+              fselect(goal, max_point_value, coc_version_id, rating_factor_id) |>
+              as.list() |>
+              unname()
             
             dbExecute(p, update_q, params = params_list)
           }

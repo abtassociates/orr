@@ -33,7 +33,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       req(user_coc$coc_version_id)
 
       get_db_query(
-        "SELECT st.selected_threshold_id, t.type, t.threshold_text, t.threshold_id, met_threshold, threshold_entry_id
+        "SELECT st.selected_threshold_id, t.type, t.threshold_text, t.threshold_id, met_threshold, threshold_entry_id, te.date_updated
         FROM thresholds t
         LEFT JOIN selected_coc_thresholds st ON st.threshold_id = t.threshold_id
         LEFT JOIN threshold_entries te ON te.threshold_id = t.threshold_id
@@ -99,22 +99,22 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         }
         
         if (nrow(to_upsert) > 0) {
-          params_list <- lapply(seq_row(to_upsert), function(i) {
-            list(
-              to_upsert$threshold_entry_id[i],
-              selected_project,
-              to_upsert$threshold_id[i],
-              to_upsert$created_by[i],
-              to_upsert$updated_by[i]
-            )
-          })
+          params_list <- to_upsert |> 
+            fmutate(project_id = selected_project) |> 
+            fselect(project_id, threshold_id, created_by, date_updated) |> 
+            as.list() |> 
+            unname()
           
           DBI::dbExecute(
             p, 
-            "INSERT INTO threshold_entries (threshold_entry_id, project_id, threshold_id, met_threshold, created_by)
-            VALUES ($1, $2, $3, 1, $4)
-            ON CONFLICT (threshold_entry_id) 
-            DO UPDATE SET met_threshold = 1, date_updated = CURRENT_TIMESTAMP, updated_by = $5",
+            "INSERT INTO threshold_entries (project_id, threshold_id, met_threshold, created_by)
+            VALUES ($1, $2, 1, $3)
+            ON CONFLICT (project_id, threshold_id) 
+            DO UPDATE SET 
+              met_threshold = 1, 
+              date_updated = CURRENT_TIMESTAMP, 
+              updated_by = EXCLUDED.created_by
+            WHERE date_updated = $4;",
             params = params_list
           )
         }
