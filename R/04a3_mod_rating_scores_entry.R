@@ -63,7 +63,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
             )
           ) AND
           (rs.project_id = {selected_project()$project_id} OR rs.project_id IS NULL)
-      ", .con = DB_CON))
+      ", .con = DB_POOL))
     })
     
     # Project Rating Factors UI

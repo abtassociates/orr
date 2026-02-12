@@ -474,20 +474,19 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       # This assumes you have a helper function `poolWithTransaction`.
       # If not, you would use DBI::dbBegin, tryCatch, DBI::dbCommit/dbRollback here.
       tryCatch({
-        DBI::dbWithTransaction(DB_CON, {
+        DBI::dbWithTransaction(DB_POOL, {
           
           # 7. DELETE records that were deselected
           if (length(to_delete_ids) > 0) {
-            dbExecute(DB_CON, glue::glue_sql("
+            dbExecute(DB_POOL, glue::glue_sql("
               DELETE FROM selected_rating_factors
               WHERE coc_version_id = {user_coc$coc_version_id} AND rating_factor_id IN ({to_delete_ids*})
-            ", .con = DB_CON))
+            ", .con = DB_POOL))
           }
           
           # 5. INSERT new records that are now selected
           if (nrow(to_insert) > 0) {
-            dbAppendTable(
-              DB_CON,
+            dbAppendTable(DB_POOL,
               "selected_rating_factors",
               to_insert |> fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
             )
@@ -500,58 +499,80 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               SET goal = $1, max_point_value = $2
               WHERE coc_version_id = $3 AND rating_factor_id = $4
             "
-            purrr::pwalk(to_update, function(rating_factor_id, goal, max_point_value, ...) {
-              dbExecute(
-                DB_CON,
-                update_q,
-                params = list(goal, max_point_value, user_coc$coc_version_id, rating_factor_id)
+            params_list <- lapply(seq_row(to_update), function(i) {
+              list(
+                to_update$goal[i],
+                to_update$max_point_value[i],
+                user_coc$coc_version_id,
+                to_update$rating_factor_id[i]
               )
             })
+            
+            dbExecute(DB_POOL, update_q, params = params_list)
           }
           
           if (custom_factor_counter() > 0) {
             num_custom_factors <- custom_factor_counter()
             funding_action_id <- get_lookup_refid(funding_action, "funding_action")
             
-            other_factor_group_id <- get_db_query("
-          SELECT factor_group_id 
-          FROM factor_groups
-          WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1
-        ", params = funding_action_id)
+            other_factor_group_id <- DBI::dbGetQuery(DB_POOL, "
+              SELECT factor_group_id 
+              FROM factor_groups
+              WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1
+            ", params = funding_action_id)
+            
+            custom_factors_to_insert <- list()
             
             for (i in 1:num_custom_factors) {
-              # Check if the row still exists in the UI (wasn't removed)
-              # We check the first input; if it's NULL, the row is gone.
               if (!is.null(input[[paste0("custom_pt_", i)]])) {
-
-                # 1. Insert into rating_factors table and get the new ID back
-                new_factor_id <- get_db_query(
-                  "INSERT INTO rating_factors (funding_action, project_type, target_population, rating_factor_text, factor_group) 
-              VALUES ($1, $2, $3, $4, $5) 
-              RETURNING rating_factor_id", # Assuming 'Renew' has ID 3
-                  params = list(
-                    funding_action_id,
-                    input[[paste0("custom_pt_", i)]],
-                    input[[paste0("custom_tp_", i)]],
-                    input[[paste0("custom_text_", i)]],
-                    other_factor_group_id$factor_group_id
-                  )
-                )$rating_factor_id
-                
-                # 2. If it was selected, insert into selected_rating_factors
-                if (isTRUE(input[[paste0("custom_select_", i)]])) {
-                  dbExecute(
-                    DB_CON,
-                    "INSERT INTO selected_rating_factors (coc_version_id, rating_factor_id, goal, max_point_value) 
-                VALUES ($1, $2, $3, $4)",
-                    params = list(
-                      user_coc$coc_version_id,
-                      new_factor_id,
-                      input[[paste0("custom_goal_", i)]],
-                      input[[paste0("custom_points_", i)]]
+                custom_factors_to_insert[[length(custom_factors_to_insert) + 1]] <- list(
+                  funding_action_id,
+                  input[[paste0("custom_pt_", i)]],
+                  input[[paste0("custom_tp_", i)]],
+                  input[[paste0("custom_text_", i)]],
+                  other_factor_group_id$factor_group_id,
+                  is_selected = isTRUE(input[[paste0("custom_select_", i)]]),
+                  goal = input[[paste0("custom_goal_", i)]],
+                  points = input[[paste0("custom_points_", i)]]
+                )
+              }
+            }
+            
+            # Batch insert custom factors
+            if (length(custom_factors_to_insert) > 0) {
+              # Insert all factors and get their IDs back
+              insert_query <- "
+                INSERT INTO rating_factors (funding_action, project_type, target_population, rating_factor_text, factor_group) 
+                VALUES ($1, $2, $3, $4, $5) 
+                RETURNING rating_factor_id
+              "
+              
+              # params come from custom_factors_to_insert above
+              params_factors <- lapply(custom_factors_to_insert, function(x) {
+                x[1:5]
+              })
+              
+              new_factor_ids <- dbGetQuery(DB_POOL, insert_query, params = params_factors)$rating_factor_id
+              
+              # Prepare selected_rating_factors batch insert
+              selections_to_insert <- data.frame()
+              for (i in seq_row(custom_factors_to_insert)) {
+                if (custom_factors_to_insert[[i]]$is_selected) {
+                  selections_to_insert <- rbind(
+                    selections_to_insert,
+                    data.frame(
+                      coc_version_id = user_coc$coc_version_id,
+                      rating_factor_id = new_factor_ids[i],
+                      goal = custom_factors_to_insert[[i]]$goal,
+                      max_point_value = custom_factors_to_insert[[i]]$points
                     )
                   )
                 }
+              }
+              
+              # Batch insert selections
+              if (nrow(selections_to_insert) > 0) {
+                dbAppendTable(DB_POOL, "selected_rating_factors", selections_to_insert)
               }
             }
           }
@@ -607,7 +628,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     
     observeEvent(input$save_factors, {
       save_factors(ns, input)
-      module_returns$customize_rating_criteria <- !module_returns$customize_rating_criteria
+      module_returns$customize_rating_criteria <- TRUE
     }, ignoreInit = TRUE)
   })
 }

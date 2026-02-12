@@ -246,18 +246,15 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
       update_datatable(proj_id, col_name, info$value)
-      update_db(value, col_name, proj_id)
+      update_inventory_db(value, col_name, proj_id)
     }
     
-    update_db <- function(new_value, col_name, proj_id) {
-      DBI::dbExecute(
-        DB_CON,
-        sprintf(
-          "UPDATE projects SET %s = $1 WHERE project_id = $2",
-          DBI::dbQuoteIdentifier(DB_CON, col_name)
-        ), 
-        params = list(as.character(new_value), proj_id)
+    update_inventory_db <- function(new_value, col_name, proj_id) {
+      db_execute(
+        "UPDATE projects SET $1 = $2 WHERE project_id = $3",
+        params = list(col_name, new_value, proj_id)
       )
+      
       message(sprintf("Updated db: project_id=%s, column=%s to '%s'",
                       proj_id, col_name, new_value))
       
@@ -278,7 +275,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     ## consolidated append
     inventory_append <- function(new_project_data) {
       append_to_datatable(new_project_data)
-      append_to_db(new_project_data)
+      append_inventory_to_db(new_project_data)
       
       #showNotification("Project submitted successfully.", type = "message")
     }
@@ -312,7 +309,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       is_new_project(TRUE)
     }
     
-    append_to_db <- function(new_project_data) {
+    append_inventory_to_db <- function(new_project_data) {
       db_data <- new_project_data |>
         fmutate(
           coc_version_id = user_coc$coc_version_id,
@@ -322,7 +319,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
         )
       
-      DBI::dbAppendTable(DB_CON, "projects", db_data)
+      db_append("projects", db_data)
     }
     
     # Main inline-cell edit event -----
@@ -409,8 +406,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         } 
         ## Reallocation -----
         else {
-          form_type <- paste0(funding_source, " Reallocation")
-          show_project_modal(form_type, funding_source, info, new_value, orgnames=orgnames())
+          launch_modal(paste0(funding_source, " Reallocation"), funding_source)
         }
       }
       # Update after non-reallocation and non-replace ------
@@ -430,6 +426,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         ns("projects_table"), info$row - 1, info$col, info$oldValue
       ))
     }
+    
+    
+    modal_trigger <- reactiveVal(0)
+    current_form_type <- reactiveVal("New")
+    current_funding_src <- reactiveVal("")
+    current_proj_to_replace <- reactiveVal(NULL)
     
     ## User wants to replace with multiple projects ----
     observeEvent(input$replace_multiple, {
@@ -464,68 +466,48 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     })
     
     # Project modal control -------------
-    # A function to show the modal and set up the server logic
-    show_project_modal <- function(form_type = "New", funding_source = "", info = NULL, new_value = NULL, project_to_replace = NULL, orgnames = orgnames(), observer_id = NULL) {
-      if (is.null(observer_id)) {
-        # Generate a unique ID for this observer version
-        observer_id <- paste0("modal_obs_", digest::digest(runif(1)))
-      }
-      print('in show_project_modal')
-      #shiny::invalidateLater(100)
-     
-      showModal(
-        div(
-          id ="add-project-modal",
-          mod_inventory_add_project_ui(
-            ns("add_project"), 
-            form_type = form_type,
-            project_to_replace = project_to_replace,
-            orgnames = orgnames()
-          )
-        )
-      )
-      modal_submission <- mod_inventory_add_project_server(
-        id = "add_project", 
-        form_type = form_type,
-        funding_source = funding_source,
-        user_coc = user_coc,
-        orgnames = orgnames,
-        parent_session = session
-      )
-
-      # Create the observer and store it
-      modal_observers[[observer_id]] <- observeEvent(modal_submission$status, {
-        #req(modal_submission$status)
-        
-        print(paste0('creating modal_observer ',observer_id, ', status = ', modal_submission$status))
-        
-        # if they simply add a new project, append it
-        if(form_type == "New") {
-          inventory_append(modal_submission$project_data)
-        } 
-        # If they reallocated or replaced, we need to both update the reallocated/replaced row
-        # AND add the new project
-        else {
-          inventory_update(info, new_value)
-          inventory_append(modal_submission$project_data)
-        }
-
-        if(modal_submission$status == "add another") {
-          show_project_modal(form_type, funding_source, info, new_value, project_to_replace, orgnames)
-        } else {
-          # If not adding another, the modal chain is done, destroy this observer
-          if (!is.null(modal_observers[[observer_id]])) {
-            modal_observers[[observer_id]]$destroy()
-            modal_observers[[observer_id]] <- NULL # Remove from reactiveValues
-          }
-        }
-      }, ignoreNULL = TRUE, once = FALSE) # keep once=FALSE because it might trigger multiple times for "add another"
+    # Adding it once here and managing its status
+    modal_submission <- mod_inventory_add_project_server(
+      id = "add_project",
+      trigger = modal_trigger,
+      form_type = current_form_type,
+      funding_source = current_funding_src,
+      project_to_replace = current_proj_to_replace,
+      user_coc = user_coc,
+      orgnames = orgnames
+    )
+    
+    # 2. Define a single UI launcher
+    launch_modal <- function(type, source = "", replacement = NULL) {
+      current_form_type(type)
+      current_funding_src(source)
+      current_proj_to_replace(replacement)
+      
+      # Increment trigger to tell child server to prepopulate/reset
+      modal_trigger(modal_trigger() + 1) 
+      
+      showModal(mod_inventory_add_project_ui(ns("add_project"), orgnames = orgnames()))
     }
+    
+    # Handle user's add project submission
+    observeEvent(modal_submission$status, {
+      req(modal_submission$status)
+      
+      if(current_form_type() == "New") {
+        inventory_append(modal_submission$project_data)
+      } 
+      # If they reallocated or replaced, we need to both update the reallocated/replaced row
+      # AND add the new project
+      else {
+        inventory_update(info, new_value)
+        inventory_append(modal_submission$project_data)
+      }
+    }, ignoreNULL = TRUE)
     
     # Add additional project handling ----
     observeEvent(input$add_project_btn, {
       print('clicked add_project_btn')
-      show_project_modal(form_type = "New", orgnames = orgnames())
+      launch_modal("New")
     })
     
     # View GIW Data -------

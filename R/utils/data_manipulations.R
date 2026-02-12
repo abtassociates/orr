@@ -175,8 +175,8 @@ add_user_stamp <- function(x, user_coc, is_new = FALSE) {
 }
 
 insert_and_return <- function(table, new_dt, return_cols) {
-  col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, names(new_dt)), collapse = ", ")
-  return_col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, return_cols), collapse = ", ")
+  col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, names(new_dt)), collapse = ", ")
+  return_col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, return_cols), collapse = ", ")
   placeholders <- paste0("$", seq_along(names(new_dt)), collapse = ", ")
 
   sql <- sprintf(
@@ -189,7 +189,7 @@ insert_and_return <- function(table, new_dt, return_cols) {
   
   results <- lapply(1:nrow(new_dt), function(i) {
     row_values <- as.character(unname(new_dt))
-    DBI::dbGetQuery(DB_CON, sql, params = as.list(row_values))
+    DBI::dbGetQuery(DB_POOL, sql, params = as.list(row_values))
   })
 
   return(results)

@@ -32,13 +32,15 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
     thresholds_to_enter <- reactive({
       req(user_coc$coc_version_id)
 
-      get_db_query(glue::glue_sql(
+      get_db_query(
         "SELECT st.selected_threshold_id, t.type, t.threshold_text, t.threshold_id, met_threshold, threshold_entry_id
         FROM thresholds t
         LEFT JOIN selected_coc_thresholds st ON st.threshold_id = t.threshold_id
         LEFT JOIN threshold_entries te ON te.threshold_id = t.threshold_id
-        WHERE st.coc_version_id = {user_coc$coc_version_id} OR t.type = 'HUD'
-      ", .con = DB_CON))
+        WHERE st.coc_version_id = $1 OR t.type = 'HUD'
+        ",
+        params = list(user_coc$coc_version_id)
+      )
     })
     
     load_selected_threshold_inputs <- function(threshold_type) {
@@ -87,28 +89,33 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       to_upsert <- update_data |> 
         fsubset(met_threshold_new)
       
-      DBI::dbWithTransaction(DB_CON, {
+      DBI::dbWithTransaction(DB_POOL, {
         if (nrow(to_delete) > 0) {
-          DBI::dbExecute(DB_CON, glue::glue_sql(
+          DBI::dbExecute(DB_POOL, glue::glue_sql(
             "DELETE FROM threshold_entries 
             WHERE threshold_entry_id IN ({to_delete$threshold_entry_id*})",
-            .con = DB_CON
+            .con = DB_POOL
           ))
         }
         
         if (nrow(to_upsert) > 0) {
-          DBI::dbExecute(DB_CON, "
-            INSERT INTO threshold_entries (threshold_entry_id, project_id, threshold_id, met_threshold, created_by)
+          params_list <- lapply(seq_row(to_upsert), function(i) {
+            list(
+              to_upsert$threshold_entry_id[i],
+              selected_project,
+              to_upsert$threshold_id[i],
+              to_upsert$created_by[i],
+              to_upsert$updated_by[i]
+            )
+          })
+          
+          DBI::dbExecute(
+            DB_POOL, 
+            "INSERT INTO threshold_entries (threshold_entry_id, project_id, threshold_id, met_threshold, created_by)
             VALUES ($1, $2, $3, 1, $4)
             ON CONFLICT (threshold_entry_id) 
             DO UPDATE SET met_threshold = 1, date_updated = CURRENT_TIMESTAMP, updated_by = $5",
-                         params = list(
-                           to_upsert$threshold_entry_id,
-                           rep_len(selected_project, nrow(to_upsert)),
-                           to_upsert$threshold_id,
-                           to_upsert$created_by,
-                           to_upsert$updated_by
-                         )
+            params = params_list
           )
         }
         
