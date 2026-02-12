@@ -447,14 +447,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         ## update reactive ----------
         priorities_data(current_data)
         
-        ## update datatable --------
-        replaceData(
-          priorities_table_proxy, 
-          current_data[Population %in% input$population_toggles], 
-          resetPaging = FALSE, 
-          rownames = FALSE
-        )
-        
         showNotification("Changes saved successfully!", type = "message", duration = 3)
       }, error = function(e) {
         # If an error occurs, do NOT reset the flag, so it will try again.
@@ -462,6 +454,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
         cat("Database save error:", e$message, "\n")
       })
+    }) # end observeEvent
+    
+    observe({
+      req(priorities_data())
+      replaceData(
+        priorities_table_proxy, 
+        priorities_data()[Population %in% input$population_toggles], 
+        resetPaging = FALSE, 
+        rownames = FALSE
+      )
     })
   })
 }
