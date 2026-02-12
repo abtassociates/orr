@@ -204,27 +204,25 @@ store_user_settings <- function(user_coc, tab_name){
   if(is.null(isolate(user_coc$coc_version_id)))
     return(NULL)
   
-  # check if row exists 
-  row_exists <- nrow(
-    dbGetQuery(DB_CON, 
-               'SELECT * FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', 
-               params = list(isolate(user_coc$coc_version_id),
-                             isolate(user_coc$username)))
-  ) > 0
+  if(is.null(isolate(user_coc$display_cols)))
+    return(NULL)
   
-  if(row_exists){
-    # modify
-    
-    display_cols <- paste0(isolate(names(user_coc$display_cols)[which(isolate(user_coc$display_cols))]), collapse=',')
-    
-    print('row exists in settings - modifying it')
+  existing_settings <-  dbGetQuery(DB_CON, 
+                                   'SELECT * FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', 
+                                   params = list(isolate(user_coc$coc_version_id),
+                                                 isolate(user_coc$username)))
+  
+  # check if row exists 
+  disp_existing <- fsubset(existing_settings, grep('disp_', setting_name)) 
+   
+  tab_existing <- fsubset(existing_settings, setting_name == 'active_tab')
+  
+  if(fnrow(tab_existing) > 0){
     DBI::dbExecute(DB_CON, 
-                   "UPDATE user_settings SET active_tab = $1, 
-                   display_columns = $2,
-        date_updated = CURRENT_TIMESTAMP, updated_by = $3
-        WHERE coc_version_id = $4 AND coc_user = $3", 
+                   "UPDATE user_settings SET setting_value = $1, 
+        date_updated = CURRENT_TIMESTAMP, updated_by = $2
+        WHERE coc_version_id = $3 AND coc_user = $2 AND setting_name = 'active_tab'", 
                    params = list(isolate(tab_name), 
-                                 display_cols,
                                  isolate(user_coc$username), 
                                  isolate(user_coc$coc_version_id))
     )
@@ -235,13 +233,67 @@ store_user_settings <- function(user_coc, tab_name){
     append_df <- data.frame(
       'coc_version_id' = isolate(user_coc$coc_version_id),
       'coc_user' = isolate(user_coc$username),
-      'active_tab' = isolate(tab_name),
-      'display_columns' = paste0(isolate(names(user_coc$display_cols)[which(isolate(user_coc$display_cols))]), collapse=','),
+      'setting_name' =  'active_tab',
+      'setting_value' = isolate(tab_name),
       'created_by' = isolate(user_coc$username),
       'updated_by' = isolate(user_coc$username)
     )
     rownames(append_df) <- NULL
     
     dbAppendTable(DB_CON, "user_settings", append_df)
+  }
+  
+  if(fnrow(disp_existing) > 0){
+    # modify
+    
+    current_selection <- isolate(user_coc$display_cols)
+    #current_selection <- isolate(names(user_coc$display_cols)[which(isolate(user_coc$display_cols))])
+    previous_selection <-  dbGetQuery(DB_CON, "SELECT setting_name FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_value = 'hide' AND setting_name LIKE 'disp_%'",
+                                      params = list(isolate(user_coc$coc_version_id),
+                                                    isolate(user_coc$username))) |> unlist(use.names = FALSE)
+   
+    
+    to_add <- setdiff(current_selection, gsub('disp_', '', previous_selection))
+    to_remove <- setdiff(gsub('disp_', '', previous_selection), current_selection)
+    
+    if(length(to_add) > 0){
+      dbAppendTable(DB_CON,
+                    "user_settings",
+                    data.frame(
+                      'coc_version_id' = isolate(user_coc$coc_version_id),
+                      'coc_user' = isolate(user_coc$username),
+                      'setting_name' = to_add,#paste0('disp_', to_add),
+                      'setting_value' = 'hide',
+                      'created_by' = isolate(user_coc$username),
+                      'updated_by' = isolate(user_coc$username)
+                    )
+      )
+    }
+    
+    if(length(to_remove) > 0){
+      sapply(to_remove,
+             function(x){
+               dbExecute(DB_CON, 'DELETE FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3', 
+                         params = list(isolate(user_coc$coc_version_id), isolate(user_coc$username), x))
+             }
+      )
+    }
+    
+  } else {
+    #to_add <- isolate(names(user_coc$display_cols)[which(isolate(user_coc$display_cols))])
+    to_add <- isolate(user_coc$display_cols)
+    if(length(to_add) > 0){
+      dbAppendTable(DB_CON,
+                    "user_settings",
+                    data.frame(
+                      'coc_version_id' = isolate(user_coc$coc_version_id),
+                      'coc_user' = isolate(user_coc$username),
+                      'setting_name' = to_add,#paste0('disp_', to_add),
+                      'setting_value' = 'hide',
+                      'created_by' = isolate(user_coc$username),
+                      'updated_by' = isolate(user_coc$username)
+                    )
+      )
+    }
   }
 }
