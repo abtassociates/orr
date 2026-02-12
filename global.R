@@ -48,3 +48,5 @@ orr_bslib_theme <- bs_theme(
 )
 
 orr_navbar_options <- navbar_options(theme = 'auto', bg = get_brand_color('dark_blue'))
+
+# shiny::runApp(port = 4000, launch.browser = T)

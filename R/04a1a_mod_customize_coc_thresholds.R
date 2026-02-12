@@ -35,7 +35,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
     
     # Fetch all available CoC thresholds
     observe({
-      req(DB_CON)
+      req(DB_POOL)
 
       rv$all_thresholds <- get_db_query(
         "SELECT threshold_id, threshold_text 
@@ -85,15 +85,13 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
             coc_version_id = user_coc$coc_version_id,
           ) %>% 
             add_user_stamp(user_coc, is_new = TRUE)
-          DBI::dbAppendTable(DB_CON, "selected_coc_thresholds", add_df)
+          db_append("selected_coc_thresholds", add_df)
         }
         
         # Remove deselected items
         if (length(to_remove) > 0) {
-          dbExecute(DB_CON, glue::glue_sql("
-              DELETE FROM selected_coc_nofo_opportunities
-              WHERE coc_version_id = {user_coc$coc_version_id} AND coc_nofo_opportunity_id IN ({to_remove*})
-            ", .con = DB_CON))
+          remove_q <- "DELETE FROM selected_coc_thresholds WHERE coc_version_id = $1 AND threshold_id = ANY($2)"
+          db_execute(remove_q, params = list(user_cic$coc_version_id, to_remove))
         }
         
         # Update reactive value to reflect saved state

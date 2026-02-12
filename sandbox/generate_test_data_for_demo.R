@@ -1,7 +1,14 @@
-dbExecute(DB_CON, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
-dbExecute(DB_CON, "DELETE FROM coc_versions WHERE coc_version_id > 4")
-dbExecute(DB_CON, "DELETE FROM coc_version_requests")
-dbExecute(DB_CON, "DELETE FROM projects WHERE coc_version_id > 4")
+library(magrittr)
+source("R/utils/get_db_data.R")
+source("R/utils/data_manipulations.R")
+source("R/global_data_prep.R")
+
+if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+dbExecute(DB_POOL, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
+dbExecute(DB_POOL, "DELETE FROM coc_versions WHERE coc_version_id > 4")
+dbExecute(DB_POOL, "DELETE FROM coc_version_requests")
+dbExecute(DB_POOL, "DELETE FROM projects WHERE coc_version_id > 4")
+if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
 
 USERS <- get_db_tbl("users")
 main_user <- toString(USERS[1, 1]) # alex.silverman@abtglobal.com
@@ -103,21 +110,24 @@ get_hic_data <- function(coc, coc_version_id) {
       # project_type = convert_to_factor(., "project_type", textToNum = TRUE),
       # target_population = convert_to_factor(., "target_population", textToNum = TRUE),
       created_by = SERVICE_ACCOUNT
-    ) %>%
-    frename(bed_field_mapping) %>%
-    get_vars(setdiff(dbListFields(DB_CON, "projects"), "project_id"))
+    ) |>
+    frename(bed_field_mapping) |>
+    get_vars(setdiff(dbListFields(DB_POOL, "projects"), "project_id"))
   
   return(project_data)
 }
+
+
+dbAppendTable(DB_POOL, "coc_versions", coc_versions)
+
 for (i in 1:nrow(coc_versions)) {
   # Access row data using index i
   current_row <- coc_versions[i, ]
   filtered_data <- get_hic_data(current_row$coc, current_row$coc_version_id)
   filtered_data_db <- factor_vars_db_prep(filtered_data)
-  
-  DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
+
+  DBI::dbAppendTable(DB_POOL, "projects", filtered_data_db)
 }
 
-dbAppendTable(DB_CON, "coc_versions", coc_versions)
-dbAppendTable(DB_CON, "coc_version_users", coc_version_users)
-dbAppendTable(DB_CON, "coc_version_requests", coc_version_requests)
+dbAppendTable(DB_POOL, "coc_version_users", coc_version_users)
+dbAppendTable(DB_POOL, "coc_version_requests", coc_version_requests)

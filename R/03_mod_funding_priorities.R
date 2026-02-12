@@ -429,6 +429,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           WHERE date_updated = $7;
         "
       )
+      
       tryCatch({
         DBI::dbExecute(DB_CON,
           sql,
