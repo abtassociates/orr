@@ -1302,7 +1302,10 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+  
+  CONSTRAINT threshold_entries UNIQUE (project_id, threshold_id)
 );
 "))
 
