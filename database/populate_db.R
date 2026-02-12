@@ -1286,7 +1286,9 @@ CREATE TABLE IF NOT EXISTS rating_scores (
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+  CONSTRAINT rating_scores UNIQUE (project_id, selected_rating_factor_id)
 );
 "))
 
