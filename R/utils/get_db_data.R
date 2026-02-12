@@ -68,9 +68,9 @@ get_db_tbl <- function(tbl_name) {
 # dbExecute returns rows affected
 db_execute <- function(sql, params) {
   tryCatch({
-    dbWithTransaction(DB_POOL, {
-      dbExecute(DB_POOL, sql, params = params)
-    }) 
+    pool::poolWithTransaction(DB_POOL, function(p) {
+      dbExecute(p, sql, params = params)
+    })
   }, error = function(e) {
     list(ok = FALSE, error = e$message)
   })
@@ -78,8 +78,8 @@ db_execute <- function(sql, params) {
 
 db_append <- function(tbl, data) {
   tryCatch({
-    dbWithTransaction(DB_POOL, {
-      dbAppendTable(DB_POOL, tbl, data)
+    pool::poolWithTransaction(DB_POOL, function(p) {
+      dbAppendTable(p, tbl, data)
     })
   }, error = function(e) {
     list(ok = FALSE, error = e$message)
