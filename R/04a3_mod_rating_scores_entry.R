@@ -55,8 +55,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           r.funding_action = {get_lookup_refid(funding_action, 'funding_action')} AND
           r.project_type = {selected_project()$project_type} AND
           (
-            {get_lookup_label(selected_project()$target_population, 'target_population') == 'NA'} OR 
             r.target_population = {selected_project()$target_population} OR 
+            (
+              {get_lookup_label(selected_project()$target_population, 'target_population') == 'NA'} AND
+              r.target_population = {get_lookup_refid('General', 'target_population')}
+            ) OR
             (
               {is.na(selected_project()$target_population)} AND 
               r.target_population = {get_lookup_refid('General', 'target_population')}
