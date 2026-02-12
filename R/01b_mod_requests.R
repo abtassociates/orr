@@ -128,8 +128,7 @@ mod_requests_server <- function(id, user_coc) {
       })
       
       dbWithTransaction(DB_POOL, {
-        DBI::dbExecute(
-          DB_POOL, 
+        db_execute(
           glue::glue(
             "UPDATE coc_version_requests 
               SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2 

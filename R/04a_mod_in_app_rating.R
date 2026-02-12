@@ -47,7 +47,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
         "SELECT project_id, organization_name, project_name, project_type, target_population
         FROM projects 
         WHERE coc_version_id = {user_coc$coc_version_id} AND funding_action IN ({funding_action_ids*})",
-        .con=DB_CON
+        .con=DB_POOL
       ))
     })
     
