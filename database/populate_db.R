@@ -547,13 +547,10 @@ hud_ard_data <- hud_ard_data |> fsubset(coc %in% funique(hic_data$hudnum))
 DBI::dbAppendTable(DB_POOL, "hud_ard_report", hud_ard_data)
 
 # Create rest of table ---------------------
-DBI::dbExecute(DB_POOL, "
-  ALTER TABLE hud_ard_report 
-    ADD COLUMN date_created TIMESTAMP,
-    ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
-    ADD COLUMN date_updated TIMESTAMP,
-    ADD COLUMN updated_by VARCHAR(100) REFERENCES users(username)
-")
+DBI::dbExecute(DB_POOL, "ALTER TABLE hud_ard_report ADD COLUMN date_created TIMESTAMP")
+DBI::dbExecute(DB_POOL, "ALTER TABLE hud_ard_report ADD COLUMN created_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(DB_POOL, "ALTER TABLE hud_ard_report ADD COLUMN date_updated TIMESTAMP")
+DBI::dbExecute(DB_POOL, "ALTER TABLE hud_ard_report ADD COLUMN updated_by VARCHAR(100) REFERENCES users(username)")
 
 DBI::dbExecute(DB_POOL, "
 UPDATE hud_ard_report
