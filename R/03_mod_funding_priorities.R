@@ -431,7 +431,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       )
       
       tryCatch({
-        DBI::dbExecute(DB_CON,
+        db_execute(
           sql,
           params = list(
             user_coc$coc_version_id,
