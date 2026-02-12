@@ -2,7 +2,7 @@ LOOKUP_CHOICES <- list(
   funding_action = setdiff(names(get_labelled_lookups("funding_action")), "Ignore"),
   reallocation_funding_actions = c("New", "Expand"),
   all_project_types =  DBI::dbGetQuery(
-    DB_CON, 
+    DB_POOL, 
     "SELECT value FROM lookups WHERE reference_type = 'project_type'"
   )$value,
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
