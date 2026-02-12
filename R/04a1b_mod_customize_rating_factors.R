@@ -474,19 +474,19 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       # This assumes you have a helper function `poolWithTransaction`.
       # If not, you would use DBI::dbBegin, tryCatch, DBI::dbCommit/dbRollback here.
       tryCatch({
-        DBI::dbWithTransaction(DB_POOL, {
+        pool::poolWithTransaction(DB_POOL, function(p) {
           
           # 7. DELETE records that were deselected
           if (length(to_delete_ids) > 0) {
-            dbExecute(DB_POOL, glue::glue_sql("
+            dbExecute(p, glue::glue_sql("
               DELETE FROM selected_rating_factors
               WHERE coc_version_id = {user_coc$coc_version_id} AND rating_factor_id IN ({to_delete_ids*})
-            ", .con = DB_POOL))
+            ", .con = p))
           }
           
           # 5. INSERT new records that are now selected
           if (nrow(to_insert) > 0) {
-            dbAppendTable(DB_POOL,
+            dbAppendTable(p,
               "selected_rating_factors",
               to_insert |> fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
             )
@@ -508,14 +508,14 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               )
             })
             
-            dbExecute(DB_POOL, update_q, params = params_list)
+            dbExecute(p, update_q, params = params_list)
           }
           
           if (custom_factor_counter() > 0) {
             num_custom_factors <- custom_factor_counter()
             funding_action_id <- get_lookup_refid(funding_action, "funding_action")
             
-            other_factor_group_id <- DBI::dbGetQuery(DB_POOL, "
+            other_factor_group_id <- DBI::dbGetQuery(p, "
               SELECT factor_group_id 
               FROM factor_groups
               WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1
@@ -552,7 +552,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
                 x[1:5]
               })
               
-              new_factor_ids <- dbGetQuery(DB_POOL, insert_query, params = params_factors)$rating_factor_id
+              new_factor_ids <- dbGetQuery(p, insert_query, params = params_factors)$rating_factor_id
               
               # Prepare selected_rating_factors batch insert
               selections_to_insert <- data.frame()
@@ -572,11 +572,11 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               
               # Batch insert selections
               if (nrow(selections_to_insert) > 0) {
-                dbAppendTable(DB_POOL, "selected_rating_factors", selections_to_insert)
+                dbAppendTable(p, "selected_rating_factors", selections_to_insert)
               }
             }
           }
-        }) # End dbWithTransaction
+        }) # End pool::poolWithTransaction
         
         removeNotification(ns("saving_msg"))
         showNotification("Criteria saved successfully!")

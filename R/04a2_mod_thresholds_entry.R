@@ -89,12 +89,12 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       to_upsert <- update_data |> 
         fsubset(met_threshold_new)
       
-      DBI::dbWithTransaction(DB_POOL, {
+      pool::poolWithTransaction(DB_POOL, function(p) {
         if (nrow(to_delete) > 0) {
-          DBI::dbExecute(DB_POOL, glue::glue_sql(
+          DBI::dbExecute(p, glue::glue_sql(
             "DELETE FROM threshold_entries 
             WHERE threshold_entry_id IN ({to_delete$threshold_entry_id*})",
-            .con = DB_POOL
+            .con = p
           ))
         }
         
@@ -110,7 +110,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           })
           
           DBI::dbExecute(
-            DB_POOL, 
+            p, 
             "INSERT INTO threshold_entries (threshold_entry_id, project_id, threshold_id, met_threshold, created_by)
             VALUES ($1, $2, $3, 1, $4)
             ON CONFLICT (threshold_entry_id) 

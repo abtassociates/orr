@@ -181,7 +181,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         date_updated_checks         = factors_and_scores_for_project()$date_updated
       )
       
-      DBI::dbExecute(DB_CON, "
+      browser()
+      db_execute("
         INSERT INTO rating_scores (project_id, selected_rating_factor_id, rating_score, performance, created_by)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (project_id, selected_rating_factor_id) DO UPDATE SET
@@ -192,6 +193,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         WHERE rating_scores.date_updated = $6",
         params = params
       )
-    })
+      
+      showNotification("Saved rating info!", type = "message")
+    }) # end save observeEvent
   }) #end module server
 }
