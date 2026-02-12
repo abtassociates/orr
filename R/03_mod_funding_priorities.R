@@ -380,22 +380,19 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         tryCatch({
           # Execute the query for each row of the long data frame
           # Using a prepared statement with `dbExecute` and `params` is safe from SQL injection
-          apply(db_ready_data, 1, function(row) {
-            dbExecute(
-              DB_CON,
-              sql_query,
-              params = list(
-                user_coc$coc_version_id,
-                row[["project_type"]],
-                row[["target_population"]],
-                row[["population_group"]],
-                row[["beds"]],
-                row[["funding"]],
-                row[["priority"]],
-                user_coc$username
-              )
+          params_list <- lapply(seq_row(db_ready_data), function(i) {
+            list(
+              user_coc$coc_version_id,
+              db_ready_data$project_type[i],
+              db_ready_data$target_population[i],
+              db_ready_data$population_group[i],
+              db_ready_data$beds[i],
+              db_ready_data$funding[i],
+              db_ready_data$priority[i],
+              user_coc$username
             )
           })
+          db_execute(sql_query, params = params_list)
           
           # If successful, reset the flag and notify the user
           data_has_changed(FALSE)

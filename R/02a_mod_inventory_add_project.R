@@ -1,10 +1,7 @@
 LOOKUP_CHOICES <- list(
   funding_action = setdiff(names(get_labelled_lookups("funding_action")), "Ignore"),
   reallocation_funding_actions = c("New", "Expand"),
-  all_project_types =  DBI::dbGetQuery(
-    DB_CON, 
-    "SELECT value FROM lookups WHERE reference_type = 'project_type'"
-  )$value,
+  all_project_types = LOOKUPS[reference_type == 'project_type']$value,
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
   coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
   yhdp_project_types = c("PSH", "RRH", "TH", "TH+RRH", "SSO - CE"), # what about SSO-Host Homes?
@@ -12,7 +9,7 @@ LOOKUP_CHOICES <- list(
   dv_reallocation_project_types = c("RRH", "TH+RRH", "SSO - CE"),
   funding_source = c("CoC","YHDP","DV"),
   no_yhdp_funding_source = c("CoC", "DV"),
-  target_populations = names(get_labelled_lookups("target_population"))#c("DV","HIV","Youth", "General") # AS 8/26: What are the right populations here?
+  target_populations = LOOKUPS[reference_type == 'target_population']$value #c("DV","HIV","Youth", "General") # AS 8/26: What are the right populations here?
 )
 
 # ===================================================================
