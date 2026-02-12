@@ -32,10 +32,12 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    db_has_changed <- reactiveVal(NA)
     factors_and_scores_for_project <- reactive({
       req(user_coc$coc_version_id)
       req(selected_project())
       req(module_returns$customize_rating_criteria)
+      req(is.na(db_has_changed()) || db_has_changed())
 
       get_db_query(glue::glue_sql(
       "SELECT r.rating_factor_id, 
@@ -184,7 +186,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         date_updated_checks         = factors_and_scores_for_project()$date_updated
       ) |> unname()
       
-      db_execute("
+      rows_changed <- db_execute("
         INSERT INTO rating_scores (project_id, selected_rating_factor_id, rating_score, performance, created_by)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (project_id, selected_rating_factor_id) DO UPDATE SET
@@ -195,8 +197,13 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         WHERE date_updated = $6",
         params = params_list
       )
-      
-      showNotification("Saved rating info!", type = "message")
+      if(rows_changed == 0) {
+        showNotification("Someone recently edited this data! Refreshing your view...", type = "message")
+        db_has_changed(TRUE)
+      } else {
+        db_has_changed(NA)
+        showNotification("Saved rating info!", type = "message")
+      }
     }) # end save observeEvent
   }) #end module server
 }
