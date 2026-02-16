@@ -1,13 +1,21 @@
-dbExecute(DB_CON, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
-dbExecute(DB_CON, "DELETE FROM coc_versions WHERE coc_version_id > 4")
-dbExecute(DB_CON, "DELETE FROM coc_version_requests")
-dbExecute(DB_CON, "DELETE FROM projects WHERE coc_version_id > 4")
+library(magrittr)
+source("R/utils/get_db_data.R")
+source("R/utils/data_manipulations.R")
+source("R/global_data_prep.R")
 
-main_user <- toString(users[1, 1])
-second_user <- toString(users[3, 1])
+if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+dbExecute(DB_POOL, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
+dbExecute(DB_POOL, "DELETE FROM coc_versions WHERE coc_version_id > 4")
+dbExecute(DB_POOL, "DELETE FROM coc_version_requests")
+dbExecute(DB_POOL, "DELETE FROM projects WHERE coc_version_id > 4")
+if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+
+USERS <- get_db_tbl("users")
+main_user <- toString(USERS[1, 1]) # alex.silverman@abtglobal.com
+second_user <- toString(USERS[3, 1]) # thomas.brittain@abtglobal.com
 
 coc_versions <- data.table(
-  coc_version_id = 10:13,
+  coc_version_id = 10:12,
   coc_version_name = c(
     'AK-500 Main Version',
     'AK-500 Alternative Version',
@@ -51,10 +59,6 @@ coc_version_users <- data.table(
 coc_version_requests <- data.table(
   coc_request_id = 1:2,
   coc_version_id = c(10, 12),  # AK-500 Main and AK-501 Main (where you are Owner)
-  requesting_user = c(
-    second_user,
-    second_user
-  ),
   request_status = c(1, 3),  # Sent, Approved
   reason_for_rejection = NA_integer_,
   created_by = c(
@@ -103,24 +107,27 @@ get_hic_data <- function(coc, coc_version_id) {
     ) %>%
     fmutate(
       funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
-      project_type = convert_to_factor(., "project_type", textToNum = TRUE),
-      target_population = convert_to_factor(., "target_population", textToNum = TRUE),
+      # project_type = convert_to_factor(., "project_type", textToNum = TRUE),
+      # target_population = convert_to_factor(., "target_population", textToNum = TRUE),
       created_by = SERVICE_ACCOUNT
-    ) %>%
-    frename(bed_field_mapping) %>%
-    get_vars(setdiff(dbListFields(DB_CON, "projects"), "project_id"))
+    ) |>
+    frename(bed_field_mapping) |>
+    get_vars(setdiff(dbListFields(DB_POOL, "projects"), "project_id"))
   
   return(project_data)
 }
+
+
+dbAppendTable(DB_POOL, "coc_versions", coc_versions)
+
 for (i in 1:nrow(coc_versions)) {
   # Access row data using index i
   current_row <- coc_versions[i, ]
   filtered_data <- get_hic_data(current_row$coc, current_row$coc_version_id)
   filtered_data_db <- factor_vars_db_prep(filtered_data)
-  
-  DBI::dbAppendTable(DB_CON, "projects", filtered_data_db)
+
+  DBI::dbAppendTable(DB_POOL, "projects", filtered_data_db)
 }
 
-dbAppendTable(DB_CON, "coc_versions", coc_versions)
-dbAppendTable(DB_CON, "coc_version_users", coc_version_users)
-dbAppendTable(DB_CON, "coc_version_requests", coc_version_requests)
+dbAppendTable(DB_POOL, "coc_version_users", coc_version_users)
+dbAppendTable(DB_POOL, "coc_version_requests", coc_version_requests)

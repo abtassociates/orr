@@ -1,5 +1,4 @@
 function(input, output, session) {
-  projects_data <- reactiveVal(NULL)
   user_coc <- reactiveValues(
     coc = NULL,
     coc_version_id = NULL,
@@ -10,16 +9,19 @@ function(input, output, session) {
   )
   nav_control <- reactiveVal("about")
 
+  module_returns <- reactiveValues(customize_rating_criteria = 0)
+  
   observeEvent(user_coc$auth, {
     req(user_coc$auth)
     
     # Once user logs in, load the UI + Server functions of the desired modules
-    lapply(TABS_TO_SHOW, function(t) {
+    lapply(TABS_AFTER_LOGIN, function(t) {
+      print(t)
       # UI
       nav_insert("nav", get(glue::glue("mod_{t}_ui"))(t), select = t == "dashboard")
       
       # Server
-      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc, parent_session = session)
+      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc, session, module_returns)
     })
   })
   
@@ -50,7 +52,7 @@ function(input, output, session) {
       } else {
         print('user found!')
         # check if user is in allowed user list
-        if (!(str_to_lower(current_user$email) %in% users$username)){
+        if (!(str_to_lower(current_user$email) %in% get_db_tbl('users')$username)){
             print("new user added to allowed list")
             
         } else {
@@ -62,7 +64,6 @@ function(input, output, session) {
         hideElement("login_link")
         hideElement("signup_link")
         user_coc$auth <- TRUE
-        user_coc$email <- current_user$email
         user_coc$username <- current_user$email
         user_coc$given_name <- current_user$given_name
         nav_control("dashboard")

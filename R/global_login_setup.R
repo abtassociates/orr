@@ -11,9 +11,10 @@ redirect_uri <- if(IN_DEV_MODE) {
     absolute = TRUE
   )
 } else {
-  "https://orr.abtsites.com"
+  glue::glue("https://orr.abtsites.com/{basename(getwd())}/")
 }
 
+print(redirect_uri)
 ## generate redirect URL
 aws_auth_redirect <-
   paste0(
@@ -129,7 +130,7 @@ retrieve_user_data <- function(user_code){
   #                         add_headers(Authorization = paste("Bearer", token_res$access_token)))
   
   ## transpose so attributes are easier to pull
-  user_attr <- user_information$details$UserAttributes %>% 
+  user_attr <- user_information$details$UserAttributes |>
     tidyr::pivot_wider(names_from='Name',values_from='Value')
   
   return(user_attr)
@@ -137,5 +138,4 @@ retrieve_user_data <- function(user_code){
 
 
 # define a tibble of allowed users (this can also be read from a local file or from a database)
-allowed_users <- data.frame(
-  user_email = users$username)
+# allowed_users <- data.frame(user_email = USERS$username)

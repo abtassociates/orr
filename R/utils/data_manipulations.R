@@ -16,11 +16,11 @@ factor_yesno <- function(v) {
 }
 
 get_labelled_lookups <- function(l, lookup_col = "value") {
-  lookup_info <- lookups[reference_type == l]
+  lookup_info <- LOOKUPS[reference_type == l]
   setNames(lookup_info$reference_id, lookup_info[[lookup_col]])
 }
 get_lookup_label <- function(v, ref_type, lookup_col = "value") {
-  filtered_lookups <- lookups[reference_type == ref_type]
+  filtered_lookups <- LOOKUPS[reference_type == ref_type]
   if(is.character(v)) {
     filtered_lookups[reference_id == v, get(lookup_col)]
   } else {
@@ -29,14 +29,14 @@ get_lookup_label <- function(v, ref_type, lookup_col = "value") {
 }
 
 get_lookup_refid <- function(v, ref_type, lookup_col = "value") {
-  filtered_lookups <- lookups[reference_type == ref_type]
+  filtered_lookups <- LOOKUPS[reference_type == ref_type]
   return(
     filtered_lookups[match(v, get(lookup_col))]$reference_id
   )
 }
 
 convert_to_factor <- function(data, v, textToNum = FALSE, label_col = "value") {
-  lookup_info <- lookups[reference_type == v, .(reference_id, value, value_abbrev, value_long)]
+  lookup_info <- LOOKUPS[reference_type == v, .(reference_id, value, value_abbrev, value_long)]
 
   col_data <- if(!textToNum) {
     data[[v]] 
@@ -117,7 +117,7 @@ project_variable_labels <- c(
   "is_dedicated_ch_fam" = "Is 100% Dedicated + or CH Fam (Yes/No)",
   "is_dedicated_ch_ind" = "Is 100% Dedicated + or CH Ind (Yes/No)",
   "is_dedicated_dv" = "Is 100% DV (Yes/No)",
-  "amount_other_public_funding" = "Amount of other public funding (federal, state, county, city)",
+  "amount_other_public_funding" = "Amount of other public funding",#(federal, state, county, city)",
   "amount_private_funding" = "Amount of private funding",
   "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
   "vet_bed_inventory" = "Veteran Bed Inventory",
@@ -147,23 +147,36 @@ giw_variable_labels <- c(
 
 versions_variable_labels <- c(
   "coc" = "CoC Code",
+  "coc_name" = "CoC Name",
   "coc_version_name" = "CoC Version Name",
   "coc_status" = "Status",
   "coc_version_id" = "CoC Version ID",
   "coc_version_role" = "Your Role",
   "updated_by" = "Updated By",
-  "date_updated" = "Date Updated"
+  "date_updated" = "Date Updated",
+  "date_created" = "Date Created"
+)
+
+requests_variable_labels <- c(
+  "coc_version_id" = "coc_version_id",
+  "coc_request_id" = "coc_request_id",
+  "coc" = "CoC Code",
+  "coc_name" = "CoC Name",
+  "coc_version_name" = "CoC Version Name",
+  "request_status" = "Request Status",
+  "created_by" = "Requested By",
+  "date_created" = "Date Requested"
 )
 
 add_user_stamp <- function(x, user_coc, is_new = FALSE) {
-  x <- x |> fmutate(updated_by = user_coc$email)
-  if(is_new) x <- x |> fmutate(created_by = user_coc$email)
+  x <- x |> fmutate(updated_by = user_coc$username)
+  if(is_new) x <- x |> fmutate(created_by = user_coc$username)
   return(x)
 }
 
 insert_and_return <- function(table, new_dt, return_cols) {
-  col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, names(new_dt)), collapse = ", ")
-  return_col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, return_cols), collapse = ", ")
+  col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, names(new_dt)), collapse = ", ")
+  return_col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, return_cols), collapse = ", ")
   placeholders <- paste0("$", seq_along(names(new_dt)), collapse = ", ")
 
   sql <- sprintf(
@@ -176,7 +189,7 @@ insert_and_return <- function(table, new_dt, return_cols) {
   
   results <- lapply(1:nrow(new_dt), function(i) {
     row_values <- as.character(unname(new_dt))
-    DBI::dbGetQuery(DB_CON, sql, params = as.list(row_values))
+    DBI::dbGetQuery(DB_POOL, sql, params = as.list(row_values))
   })
 
   return(results)
