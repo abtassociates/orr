@@ -22,11 +22,10 @@ jobs:
         uses: 'google-github-actions/run-gemini-cli@v0'
         env:
           # This is the key part: The CLI looks for this specific Env Var name
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
-          # Use GITHUB_TOKEN (built into every repo) instead of an App ID
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          gemini_model: 'gemini-3-flash' # Note: 1.5 is the current version
+          gemini_model: 'gemini-3-flash'
           prompt: |
             /gemini-review
             
