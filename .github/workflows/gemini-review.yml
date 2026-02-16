@@ -31,16 +31,7 @@ jobs:
           # If triggered by pull_request, use the PR head.
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
           fetch-depth: 0 # Important for the CLI to see the git history
-
-      - name: 'List Available Models'
-        shell: bash
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          echo "Checking available models for your API key..."
-          # This lists every model ID valid for your key
-          npx @google/gemini-cli list-models --api_key "$GEMINI_API_KEY"
-                
+    
       - name: 'Gemini Review'
         uses: 'google-github-actions/run-gemini-cli@v0'
         env:
@@ -49,7 +40,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: 'gemini-1.5-flash' # has higher limits (on Free Tier, 1500 requests-per-day (RPD) and 15 requests per minute (RPM))
+          gemini_model: 'gemini-1.5-flash-latest' # has higher limits (on Free Tier, 1500 requests-per-day (RPD) and 15 requests per minute (RPM))
           # gemini_model: 'gemini-flash-latest' # (as of 2/16/26, uses 2.5 flash, 20 RPD and 5 RPM)
           # gemini-model: 'gemini-3.0-flash-preview' #  (as of 2/16/26, 20 RPD and 5 RPM)
           prompt: |
