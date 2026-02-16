@@ -50,7 +50,7 @@ jobs:
           # gemini_model: 'gemini-flash-latest' # (as of 2/16/26, uses 2.5 flash, 20 RPD and 5 RPM)
           # gemini-model: 'gemini-3.0-flash-preview' #  (as of 2/16/26, 20 RPD and 5 RPM)
           prompt: |
-            /gemini-review
+            @gemini-cli /review
             
             # ROLE & CONTEXT
             You are a Lead R Shiny Architect specializing in high-performance data processing with {collapse} and {data.table}.
@@ -152,3 +152,6 @@ jobs:
             - Preserve readability - don't optimize prematurely if data size is small (<10K rows)
             - Respect existing code patterns unless there's a clear improvement
             - Be specific: cite line numbers, function names, variable names from the PR
+
+            # TASK
+            Please execute the /review command now using the rules provided above.
