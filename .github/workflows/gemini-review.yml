@@ -82,16 +82,16 @@ jobs:
             ### Mandatory Chaining/Piping
             **Reject**: `f(g(h(x)))` nested calls
             **Require**: One of these patterns:
-          ```r
-            # R native pipe
-            x |> h() |> g() |> f()
-            
-            # magrittr pipe
-            x %>% h() %>% g() %>% f()
-            
-            # data.table chaining
-            DT[filter][, transform][order(col)]
-          ```
+            ```r
+              # R native pipe
+              x |> h() |> g() |> f()
+              
+              # magrittr pipe
+              x %>% h() %>% g() %>% f()
+              
+              # data.table chaining
+              DT[filter][, transform][order(col)]
+            ```
             
             ### Consistency Rules
             - **Explicit namespacing**: Required for collapse/data.table overlapping functions
