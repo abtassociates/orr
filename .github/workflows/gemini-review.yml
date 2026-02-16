@@ -32,6 +32,15 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
           fetch-depth: 0 # Important for the CLI to see the git history
 
+      - name: 'List Available Models'
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          echo "Checking available models for your API key..."
+          # This lists every model ID valid for your key
+          npx @google/gemini-cli list-models --api_key "$GEMINI_API_KEY"
+                
       - name: 'Gemini Review'
         uses: 'google-github-actions/run-gemini-cli@v0'
         env:
