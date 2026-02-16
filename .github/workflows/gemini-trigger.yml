@@ -1,0 +1,23 @@
+name: '🚀 Gemini Comment Relay'
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  relay:
+    # Only run if someone comments '/gemini-review' on a PR
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/gemini-review')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Trigger Worker on PR Branch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. Get the branch name of the PR where the comment was made
+          PR_URL="${{ github.event.issue.pull_request.url }}"
+          BRANCH_NAME=$(gh api $PR_URL --jq '.head.ref')
+          
+          # 2. Tell GitHub to run the "Worker" workflow using the file ON THAT BRANCH
+          gh workflow run "gemini-reviewer.yml" --ref "$BRANCH_NAME" \
+            -f issue_number=${{ github.event.issue.number }}
