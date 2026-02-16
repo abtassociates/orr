@@ -156,7 +156,7 @@ mod_requests_server <- function(id, user_coc) {
           DBI::dbAppendTable(DB_POOL, "coc_version_users", new_users)
         }
       })
-        
+
       # Update datatable proxy
       cur_requests(
         cur_requests() |> 
