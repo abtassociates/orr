@@ -1,29 +1,40 @@
-name: '🔎 Gemini 3 R-Shiny Reviewer'
+name: '🔎 Gemini R-Shiny Reviewer'
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+
 permissions:
   contents: 'read'
-  id-token: 'write'
   pull-requests: 'write'
+
 jobs:
   review:
     runs-on: 'ubuntu-latest'
     steps:
-      - name: 'App Token'
-        id: 'get_token'
-        uses: 'actions/create-github-app-token@v2'
-        with:
-          app-id: '${{ vars.APP_ID }}'
-          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
       - name: 'Checkout'
-        uses: 'actions/checkout@v4'
-      - name: 'Gemini 3 Review'
-        uses: 'google-github-actions/run-gemini-cli@v0'
+        uses: 'actions/checkout@v4
         with:
-          use_gemini_code_assist: true
-          gemini_model: 'gemini-3-flash'
+          fetch-depth: 0 # Important for the CLI to see the git history
+
+      - name: 'Gemini Review'
+        uses: 'google-github-actions/run-gemini-cli@v0'
+        env:
+          # This is the key part: The CLI looks for this specific Env Var name
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        with:
+          # Use GITHUB_TOKEN (built into every repo) instead of an App ID
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gemini_model: 'gemini-1.5-flash' # Note: 1.5 is the current version
           prompt: |
+            /gemini-review
+            
+            # ROLE & CONTEXT
+            You are a Lead R Shiny Architect specializing in high-performance data processing with {collapse} and {data.table}.
+            Review this PR for an R Shiny application with focus on performance, correctness, and code quality.
+            
+            # ANALYSIS MODE
+            Use deep reasoning mode. Provide specific, actionable feedback with code examples where applicable.d
             /gemini-review
             
             # ROLE & CONTEXT
