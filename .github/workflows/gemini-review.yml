@@ -3,9 +3,12 @@ name: '🔎 Gemini R-Shiny Reviewer'
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  issue_comment:
-    types: [created]
+
   workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'PR number to review'
+        required: true
 
 # Prevent multiple reviews from running on the same PR simultaneously 
 # to protect your Rate Limits (RPM)
@@ -19,22 +22,14 @@ permissions:
 
 jobs:
   review:
-    if: >
-        github.event_name == 'pull_request' || 
-        github.event_name == 'workflow_dispatch' || 
-        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/gemini-review'))
-      
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@v4'
         with:
-          # If it's a comment, get the PR branch. 
-          # If it's a direct PR trigger, get the PR SHA.
-          # Otherwise, use the default.
-          # This ensures that if it's a comment, it gets the PR code. 
-          # If it's a push, it gets the pushed code.
-          ref: ${{ github.event.pull_request.head.sha || github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || github.ref }}
+          # If triggered by dispatch (relay), use the branch head.
+          # If triggered by pull_request, use the PR head.
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
           fetch-depth: 0 # Important for the CLI to see the git history
 
       - name: 'Gemini Review'
