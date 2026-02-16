@@ -13,11 +13,22 @@ permissions:
 
 jobs:
   review:
+    if: >
+        github.event_name == 'pull_request' || 
+        github.event_name == 'workflow_dispatch' || 
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/gemini-review'))
+      
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@v4'
         with:
+          # If it's a comment, get the PR branch. 
+          # If it's a direct PR trigger, get the PR SHA.
+          # Otherwise, use the default.
+          # This ensures that if it's a comment, it gets the PR code. 
+          # If it's a push, it gets the pushed code.
+          ref: ${{ github.event.pull_request.head.sha || github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || github.ref }}
           fetch-depth: 0 # Important for the CLI to see the git history
 
       - name: 'Gemini Review'
