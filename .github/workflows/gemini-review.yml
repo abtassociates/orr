@@ -7,6 +7,12 @@ on:
     types: [created]
   workflow_dispatch:
 
+# Prevent multiple reviews from running on the same PR simultaneously 
+# to protect your Rate Limits (RPM)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: 'read'
   pull-requests: 'write'
@@ -39,10 +45,9 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          # gemini_model: 'gemini-1.5-flash'
-          gemini_model: 'gemini-2.0-flash'
-          # gemini_model: 'gemini-flash-latest' # (uses 2.5 flash as of 2/16/26)
-          # gemini-model: 'gemini-3.0-flash-preview' # will try this when limits reset
+          gemini_model: 'gemini-1.5-flash' # has higher limits (on Free Tier, 1500 requests-per-day (RPD) and 15 requests per minute (RPM))
+          # gemini_model: 'gemini-flash-latest' # (as of 2/16/26, uses 2.5 flash, 20 RPD and 5 RPM)
+          # gemini-model: 'gemini-3.0-flash-preview' #  (as of 2/16/26, 20 RPD and 5 RPM)
           prompt: |
             /gemini-review
             
