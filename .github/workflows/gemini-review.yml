@@ -31,7 +31,13 @@ jobs:
           # If triggered by pull_request, use the PR head.
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
           fetch-depth: 0 # Important for the CLI to see the git history
-    
+
+      - name: 'List All Available Models'
+        shell: bash
+        run: |
+          curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=${{ secrets.GEMINI_API_KEY }}" \
+          | grep '"name": "models/'
+          
       - name: 'Gemini Review'
         uses: 'google-github-actions/run-gemini-cli@v0'
         env:
