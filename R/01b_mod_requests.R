@@ -117,15 +117,16 @@ mod_requests_server <- function(id, user_coc) {
     update_request <- function(status) {
       request_status_num <- get_lookup_refid(status, "request_status")
       selected_requests <- cur_requests()[input$requests_dt_rows_selected]
-      
-      update_params <- lapply(seq_row(selected_requests), function(i) {
-        list(
-          request_status_num, 
-          user_coc$username, 
-          selected_requests[i]$coc_request_id,
-          selected_requests[i]$date_updated
-        )
-      })
+
+      update_params <- selected_requests |>
+        fselect(
+          "request_status_num" = request_status_num,
+          "username" = user_coc$username,
+          coc_request_id,
+          date_updated
+        ) |>
+        as.list() |>
+        unname()
       
       dbWithTransaction(DB_POOL, {
         db_execute(
