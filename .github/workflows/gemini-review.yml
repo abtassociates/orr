@@ -39,7 +39,10 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: 'gemini-flash-latest'
+          # gemini_model: 'gemini-1.5-flash'
+          gemini_model: 'gemini-2.0-flash'
+          # gemini_model: 'gemini-flash-latest' # (uses 2.5 flash as of 2/16/26)
+          # gemini-model: 'gemini-3.0-flash-preview' # will try this when limits reset
           prompt: |
             /gemini-review
             
