@@ -46,7 +46,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: 'gemini-2.0-flash-lite-001' # has higher limits (on Free Tier, 1500 requests-per-day (RPD) and 15 requests per minute (RPM))
+          gemini_model: 'gemini-2.5-flash-lite' # has higher limits (on Free Tier, 1500 requests-per-day (RPD) and 15 requests per minute (RPM))
           # gemini_model: 'gemini-flash-latest' # (as of 2/16/26, uses 2.5 flash, 20 RPD and 5 RPM)
           # gemini-model: 'gemini-3.0-flash-preview' #  (as of 2/16/26, 20 RPD and 5 RPM)
           prompt: |
