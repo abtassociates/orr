@@ -23,7 +23,7 @@ jobs:
         env:
           # This is the key part: The CLI looks for this specific Env Var name
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
         with:
           gemini_model: 'gemini-3-flash'
           prompt: |
