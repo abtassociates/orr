@@ -712,10 +712,14 @@ CREATE TABLE IF NOT EXISTS thresholds (
     threshold_id {id_var_attrs},
     type VARCHAR(3), -- 'CoC' or 'HUD'
     threshold_text TEXT,
+    coc_version_id SMALLINT NULL REFERENCES coc_versions(coc_version_id),  -- only filled out for custom thresholds
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+  
+CONSTRAINT custom_threshold_unique_key UNIQUE (coc_version_id, threshold_text)
 );
 "))
 

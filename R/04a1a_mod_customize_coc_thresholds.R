@@ -16,6 +16,7 @@ mod_customize_coc_thresholds_ui <- function(id) {
       uiOutput(ns("threshold_checkboxes_ui")) |> withSpinner(),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
+        actionButton(ns("add_threshold_btn"), "Add Custom Threshold", icon = icon("plus")),
         actionButton(ns("save_thresholds"), "Save CoC Threshold Selections", icon = icon("save"), class = "btn-primary")
       )
     )
@@ -92,15 +93,78 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
         if (length(to_remove) > 0) {
           remove_q <- "DELETE FROM selected_coc_thresholds WHERE coc_version_id = $1 AND threshold_id = ANY($2)"
           db_execute(remove_q, params = list(user_cic$coc_version_id, to_remove))
+    observeEvent(input$add_threshold_btn, {
+      showModal(
+        modalDialog(
+          title = "Additional Threshold Requirement",
+          textInput(ns("custom_threshold_text"), "Please enter the new requirement text:", ""),
+          footer = tagList(
+            actionButton(ns("submit_custom_threshold"), "Submit"),
+            modalButton("Cancel")
+          )
+        )
+      )
+    })
+    
+    observeEvent(input$submit_custom_threshold, {
+      removeModal()
+      
+      # update thresholds table with new custom factor
+      sql_query <- "
+          INSERT INTO thresholds (type, coc_version_id, threshold_text, created_by)
+          VALUES ('CoC', $1, $2, $3)
+          ON CONFLICT (coc_version_id, threshold_text)
+          DO UPDATE SET
+            type = EXCLUDED.type,
+            coc_version_id = EXCLUDED.coc_version_id,
+            threshold_text = EXCLUDED.threshold_text,
+            updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
+            date_updated = CURRENT_TIMESTAMP
+          WHERE date_updated = $4
+          RETURNING threshold_id;
+        "
+
+      current_date_updated_for_threshold <- all_coc_thresholds()[
+        threshold_text == input$custom_threshold_text
+      ]$threshold_date_updated
+      
+      # 4189f53015d2fbf37310a3b47b8a764f79f1512d
+      params_list <- list(
+        input$custom_threshold_text,
+        user_coc$coc_version_id, 
+        user_coc$username,
+        if(length(current_date_updated_for_threshold) > 0) current_date_updated_for_threshold else NA
+      ) |> unname()
+      
+      tryCatch({
+        new_threshold_id <- DBI::dbGetQuery(DB_POOL, sql_query, params = params_list)$threshold_id
+        if(length(new_threshold_id) == 0) {
+          showNotification("Someone is editing these thresholds!", type = "error", duration = 3)
+          pull_thresholds_trigger(pull_thresholds_trigger() + 1)
+        } else {
+          # update all_coc_thresholds
+          all_coc_thresholds(
+            rbindlist(list(
+              all_coc_thresholds(), 
+              data.table(
+                threshold_id = new_threshold_id,
+                threshold_text = input$custom_threshold_text,
+                selected = TRUE,
+                threshold_date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+                selected_threshold_date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+              )
+            ))
+          )
+
+          showNotification("Saved thresholds successfully!", type = "message", duration = 3)
         }
-        
-        # Update reactive value to reflect saved state
-        rv$selected_coc_thresholds <- current_selection
-        
-        shiny::showNotification("CoC Thresholds saved successfully.", type = "message")
       }, error = function(e) {
-        shiny::showNotification(paste("Error saving thresholds:", e$message), type = "error")
+        showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
+        cat("Database save error:", e$message, "\n")
       })
-    }, ignoreInit = TRUE)
+      
+      
+    }) # end submit custom threhsold
+    
   })
 }
