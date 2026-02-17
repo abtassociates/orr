@@ -314,6 +314,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     output$priorities_table <- renderDT({
       # Require these two things to be ready before rendering
+      req(priorities_data())
       req(input$population_toggles)
       
       # Filter the full dataset based on the selected checkboxes
@@ -351,12 +352,14 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           searching = FALSE,
           info = FALSE
         ),
-        callback = JS("$(document).on('mouseenter', 'table.dataTable tbody tr', function() {",
-      paste0("$(this).css('background-color', '",USER_ENTRY_BG_COLOR,"');"),
-      "});
-              $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
-      $(this).css('background-color', 'inherit');
-      });")
+        callback = JS(
+          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {",
+            paste0("$(this).css('background-color', '",USER_ENTRY_BG_COLOR,"');"),
+          "});
+          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
+            $(this).css('background-color', 'inherit');
+          });
+        ")
       ) %>% 
         formatStyle(
           columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
@@ -369,8 +372,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           digits = 0
         )
     }, server = FALSE)
-    
-    priorities_table_proxy <- dataTableProxy("priorities_table")
     
     # Update priorities data in table and db when cell is edited
     observeEvent(input$priorities_table_cell_edit, {
@@ -455,15 +456,5 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         cat("Database save error:", e$message, "\n")
       })
     }) # end observeEvent
-    
-    observe({
-      req(priorities_data())
-      replaceData(
-        priorities_table_proxy, 
-        priorities_data()[Population %in% input$population_toggles], 
-        resetPaging = FALSE, 
-        rownames = FALSE
-      )
-    })
   })
 }
