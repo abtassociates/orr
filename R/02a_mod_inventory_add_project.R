@@ -1,5 +1,5 @@
 LOOKUP_CHOICES <- list(
-  funding_action = setdiff(names(get_labelled_lookups("funding_action")), "Ignore"),
+  funding_action = LOOKUPS[reference_type == "funding_action" & value != "Ignore"]$value,
   reallocation_funding_actions = c("New", "Expand"),
   all_project_types = LOOKUPS[reference_type == 'project_type']$value,
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
