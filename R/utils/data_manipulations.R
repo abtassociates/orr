@@ -174,6 +174,12 @@ add_user_stamp <- function(x, user_coc, is_new = FALSE) {
   return(x)
 }
 
+add_datetime_stamp <- function(x, is_new = FALSE) {
+  x <- x |> fmutate(date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
+  if(is_new) x <- x |> fmutate(date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
+  return(x)
+}
+
 insert_and_return <- function(table, new_dt, return_cols) {
   col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, names(new_dt)), collapse = ", ")
   return_col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, return_cols), collapse = ", ")
