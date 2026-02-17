@@ -1,157 +1,87 @@
-name: '🔎 Gemini R-Shiny Reviewer'
+name: '🔎 Gemini Review'
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      issue_number:
-        description: 'PR number to review'
-        required: true
+      additional_context:
+        type: 'string'
+        description: 'Any additional context from the request'
+        required: false
 
-# Prevent multiple reviews from running on the same PR simultaneously 
-# to protect your Rate Limits (RPM)
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  group: '${{ github.workflow }}-review-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'
   cancel-in-progress: true
 
-permissions:
-  contents: 'read'
-  pull-requests: 'write'
+defaults:
+  run:
+    shell: 'bash'
 
 jobs:
   review:
     runs-on: 'ubuntu-latest'
+    timeout-minutes: 7
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      issues: 'write'
+      pull-requests: 'write'
     steps:
-      - name: 'Checkout'
-        uses: 'actions/checkout@v4'
-        with:
-          # If triggered by dispatch (relay), use the branch head.
-          # If triggered by pull_request, use the PR head.
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
-          fetch-depth: 0 # Important for the CLI to see the git history
+      - name: 'Checkout repository'
+        uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
 
-      # - name: 'List All Available Models'
-      #  shell: bash
-      #  run: |
-      #    curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=${{ secrets.GEMINI_API_KEY }}" \
-      #    | grep '"name": "models/'
-          
-      - name: 'Gemini Review'
-        uses: 'google-github-actions/run-gemini-cli@v0'
+      - name: 'Run Gemini pull request review'
+        uses: 'google-github-actions/run-gemini-cli@v0' # ratchet:exclude
+        id: 'gemini_pr_review'
         env:
-          # This is the key part: The CLI looks for this specific Env Var name
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+          ISSUE_TITLE: '${{ github.event.pull_request.title || github.event.issue.title }}'
+          ISSUE_BODY: '${{ github.event.pull_request.body || github.event.issue.body }}'
+          PULL_REQUEST_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
+          REPOSITORY: '${{ github.repository }}'
+          ADDITIONAL_CONTEXT: '${{ inputs.additional_context }}'
         with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: 'gemini-2.5-flash-lite' # has higher limits (on Free Tier, 1500 requests-per-day (RPD) and 15 requests per minute (RPM))
-          # gemini_model: 'gemini-flash-latest' # (as of 2/16/26, uses 2.5 flash, 20 RPD and 5 RPM)
-          # gemini-model: 'gemini-3.0-flash-preview' #  (as of 2/16/26, 20 RPD and 5 RPM)
-          prompt: |
-            @gemini-cli /review
-            
-            # ROLE & CONTEXT
-            You are a Lead R Shiny Architect specializing in high-performance data processing with {collapse} and {data.table}.
-            Review this PR for an R Shiny application with focus on performance, correctness, and code quality.
-            
-            # ANALYSIS MODE
-            Use deep reasoning mode. Provide specific, actionable feedback with code examples where applicable.
-            
-            # REVIEW PRIORITIES (in order)
-            
-            ## 1. CRITICAL BUGS & CORRECTNESS
-            
-            ### Reactivity Issues
-            - **Missing req()**: Flag any reactive input used without validation (prevents NULL errors and UI flashing)
-            - **Reactive Source Tracking**: Identify reactive expressions that don't properly isolate or observe dependencies
-            - **Memory Leaks**: Check for observers that aren't destroyed, unbounded reactive loops
-            
-            ### Data Integrity
-            - **Silent Failures**: Flag operations on potentially empty data.tables/data.frames without row count checks
-            - **Type Coercion**: Identify implicit type conversions that could cause bugs
-            - **Namespace Conflicts**: Verify explicit namespacing for ambiguous functions (e.g., `collapse::fsubset` vs `data.table[...]`)
-            
-            ## 2. PERFORMANCE OPTIMIZATION
-            
-            ### Package Selection Hierarchy
-            **Primary Rule: Prefer {collapse} for statistical operations, {data.table} for complex transformations**
-            
-            For each data.table operation, check if a collapse alternative exists:
-            - Aggregations: `DT[, .(sum = sum(x)), by = g]` → `collapse::fsum(x, g)`
-            - Summarization: `DT[, lapply(.SD, mean)]` → `collapse::fmean(DT)`
-            - Subsetting: `DT[condition]` → `collapse::fsubset(DT, condition)` (evaluate case-by-case)
-            - Transformations: `DT[, x := transform(x), by = g]` → `collapse::TRA()` or `fwithin()`
-            
-            **When to suggest collapse:**
-            - Operations on >100K rows where benchmarks show >2x speedup
-            - Simple statistical aggregations (sum, mean, median, sd, var, min, max)
-            - Group-by operations with many groups
-            
-            **When to keep data.table:**
-            - Complex multi-step transformations requiring `:=`
-            - Operations requiring rolling joins, non-equi joins, or complex keys
-            - Cases where readability significantly suffers
-            
-            ### Shiny-Specific Performance
-            - **Render Optimization**: Flag `renderUI()` that could be `update*Input()` instead
-            - **Reactive Efficiency**: Identify reactive expressions recalculating unnecessarily (suggest `reactive()` vs `eventReactive()` vs `observe()`)
-            - **Data Caching**: Check if expensive computations should be memoized or moved to `reactiveValues`
-            - **Unnecessary Copies**: Flag data.table copies where in-place modification (`:=`) would work
-            
-            ## 3. CODE STYLE & MAINTAINABILITY
-            
-            ### Mandatory Chaining/Piping
-            **Reject**: `f(g(h(x)))` nested calls
-            **Require**: One of these patterns:
-            ```r
-              # R native pipe
-              x |> h() |> g() |> f()
-              
-              # magrittr pipe
-              x %>% h() %>% g() %>% f()
-              
-              # data.table chaining
-              DT[filter][, transform][order(col)]
-            ```
-            
-            ### Consistency Rules
-            - **Explicit namespacing**: Required for collapse/data.table overlapping functions
-            - **Assignment operators**: `<-` for objects, `:=` for data.table in-place only
-            - **Naming**: snake_case for functions/variables, PascalCase for modules
-            
-            ## 4. SECURITY & BEST PRACTICES
-            - **Input Validation**: Flag any user input used in code evaluation without sanitization
-            - **SQL Injection**: If querying databases, verify parameterized queries
-            - **File Paths**: Check for path traversal vulnerabilities in file uploads/downloads
-            
-            # OUTPUT FORMAT
-            
-            Structure your review as:
-            
-            ### 🔴 Critical Issues
-            [List bugs, security issues, breaking changes]
-            
-            ### 🟡 Performance Improvements
-            [List optimizations with estimated impact - include code examples]
-            
-            ### 🔵 Code Quality
-            [List style issues, maintainability concerns]
-            
-            ### ✅ Positive Observations
-            [Highlight good patterns to reinforce]
-            
-            For each suggestion:
-            1. Explain WHY (the problem/benefit)
-            2. Show BEFORE/AFTER code snippets
-            3. Quantify impact when possible (e.g., "~3x faster on 1M rows based on collapse benchmarks")
-            
-            # CONSTRAINTS
-            - Only suggest collapse alternatives when performance gain is significant (>50% speedup expected)
-            - Preserve readability - don't optimize prematurely if data size is small (<10K rows)
-            - Respect existing code patterns unless there's a clear improvement
-            - Be specific: cite line numbers, function names, variable names from the PR
-
-            # TASK
-            Please execute the /review command now using the rules provided above.
+          gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
+          gemini_model: 'gemini-2.0-flash-lite'
+          workflow_name: 'gemini-review'
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 25
+              },
+              "telemetry": {
+                "enabled": true,
+                "target": "local",
+                "outfile": ".gemini/telemetry.log"
+              },
+              "mcpServers": {
+                "github": {
+                  "command": "docker",
+                  "args": [
+                    "run",
+                    "-i",
+                    "--rm",
+                    "-e",
+                    "GITHUB_PERSONAL_ACCESS_TOKEN",
+                    "ghcr.io/github/github-mcp-server:v0.27.0"
+                  ],
+                  "includeTools": [
+                    "add_comment_to_pending_review",
+                    "pull_request_read",
+                    "pull_request_review_write"
+                  ],
+                  "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                  }
+                }
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(cat)",
+                  "run_shell_command(echo)",
+                  "run_shell_command(grep)",
+                  "run_shell_command(head)",
+                  "run_shell_command(tail)"
+                ]
+              }
+            }
+          prompt: '/gemini-review'
