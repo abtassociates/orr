@@ -1158,6 +1158,7 @@ drop_table("selected_coc_thresholds")
 drop_table("ranking")
 drop_table("rating_scores")
 drop_table("threshold_entries")
+drop_table("project_evaluations")
 
 ###### INVENTORY #########
 DBI::dbExecute(DB_POOL, glue::glue("
@@ -1206,7 +1207,6 @@ CREATE TABLE IF NOT EXISTS projects (
 "))
 
 ##### FUNDING PRIORITIES ########
-drop_table("coc_funding_priorities")
 DBI::dbExecute(DB_POOL, glue::glue("
 --- Funding Priorities by Project Type and Population
 ---- This is the table of population and project types at the bottom of the Funding Priorities tab
@@ -1285,7 +1285,7 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS rating_scores (
     rating_score_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id),
-    selected_rating_factor_id SMALLINT REFERENCES selected_rating_factors(selected_rating_factor_id),
+    selected_rating_factor_id SMALLINT NULL REFERENCES selected_rating_factors(selected_rating_factor_id), --can be null if they rate outside the app
     rating_score INTEGER,
     performance VARCHAR(5) NULL,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1302,7 +1302,7 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS threshold_entries (
     threshold_entry_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id),
-    threshold_id SMALLINT REFERENCES thresholds(threshold_id),
+    threshold_id SMALLINT NULL REFERENCES thresholds(threshold_id),
     met_threshold BOOLEAN,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
@@ -1311,6 +1311,24 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
     
   
   CONSTRAINT threshold_entries UNIQUE (project_id, threshold_id)
+);
+"))
+
+DBI::dbExecute(DB_POOL, glue::glue("
+--- Project_Evaluations
+CREATE TABLE IF NOT EXISTS project_evaluations (
+    project_evaluation_id INTEGER PRIMARY KEY,
+    project_id INTEGER NOT NULL UNIQUE REFERENCES projects(project_id) ON DELETE CASCADE,
+    method VARCHAR(7) NULL CHECK (method IN ('in_app', 'outside')),
+    met_hud_thresholds BOOLEAN NULL,
+    met_coc_thresholds BOOLEAN NULL,
+
+    weighted_score SMALLINT CHECK (weighted_score >= 0 AND weighted_score <= 100),
+
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username),
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
 "))
 

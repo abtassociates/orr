@@ -6,96 +6,160 @@ mod_alternative_rating_ui <- function(id) {
     "Alternative Rating",
     value = id,
     card(
-      DTOutput(ns("rating_table"))
+      DTOutput(ns("alternative_rating_table")),
+      card_footer(
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary"),
+        actionButton(ns("import_rating"), "Import Rating", icon = icon("upload"))
+      )
     )
   )
 }
 
-mod_alternative_rating_server <- function(id, projects_data) {
+mod_alternative_rating_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    db_has_changed <- reactiveVal(NA)
+    
+    ratable_projects <- reactiveVal(NULL)
+    
+    observe({
+      req(user_coc$coc_version_id)
+      req(is.na(db_has_changed()) || db_has_changed())
+
+      ratable_projects(
+        get_db_query(
+          "SELECT 
+            p.project_id, 
+            p.organization_name, 
+            p.project_name, 
+            p.grant_number, 
+            p.funding_action, 
+            p.project_type, 
+            p.target_population, 
+            pe.met_hud_thresholds,
+            pe.met_coc_thresholds,
+            pe.weighted_score,
+            pe.date_updated
+          FROM projects p
+          LEFT JOIN project_evaluations pe ON p.project_id = pe.project_id
+          LEFT JOIN lookups l ON p.funding_action = l.reference_id
+          WHERE p.coc_version_id = $1 AND p.funding_action IS NOT NULL AND l.value <> 'Ignore'",
+          params = list(user_coc$coc_version_id)
+        ) |>
+          fmutate(
+            met_hud_thresholds = factor_yesno(met_hud_thresholds),
+            met_coc_thresholds = factor_yesno(met_coc_thresholds)
+          )
+      )
+    }) # end observe that updates ratable_projects
+    
     # Alternative Rating table
     output$alternative_rating_table <- renderDT({
-      req(projects_data())
       
-      # Get only projects that can be rated (not "Ignore")
-      ratable_projects <- projects_data() |>
-        fsubset(!is.na(funding_action), funding_action != "Ignore") |>
-        fmutate(
-          Project_ID = row_number(),  # Add Project ID
-          HUD_Threshold = NA_character_,  # Add threshold columns
-          CoC_Threshold = NA_character_,
-          Rating_Score = NA_real_
-        ) |>
-        fselect(
-          Project_ID,
-          Grant_Number,
-          funding_action,
-          project_name,
-          organization_name,
-          Project_Type,
-          Target_Population,
-          HUD_Threshold,
-          CoC_Threshold,
-          Rating_Score
-        )
+      data <- ratable_projects()
       
-      datatable(
-        ratable_projects,
-        editable = list(
-          target = "cell",
-          disable = list(columns = c(0:6)),  # Disable editing for first 7 columns
-          type = list(
-            HUD_Threshold = 'select',
-            CoC_Threshold = 'select'
+      shiny::validate(need(
+        nrow(data) > 0, 
+        "No projects to rate"
+      ))
+      
+      editable_cols <- c("met_hud_thresholds", "met_coc_thresholds", "weighted_score")
+      
+      ## filter out Ignores by default-----
+      initial_filter <- vector("list", ncol(data))
+      initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
+      
+      colnames <- unname(project_variable_labels[names(data)])
+      
+      initialize_inline_edit_table_ui(
+        data,
+        tableID = ns("alternative_rating_table"), 
+        initial_filter = initial_filter,
+        column_defs = list(
+          list(
+            targets =c(which(names(data) %in% c("funding_action", "date_updated")) - 1),
+            className = "hidden",
+            visible = FALSE
+          )
+        ),
+        formatting = list(
+          function(x) formatStyle(
+            x,
+            columns = c("organization_name", "project_name"),
+            `white-space` = "nowrap",
+            `overflow` = "hidden",
+            `max-width` = "400px"
           ),
-          options = list(
-            HUD_Threshold = c("Yes", "No"),
-            CoC_Threshold = c("Yes", "No")
+          function(x) formatStyle(
+            x,
+            columns = editable_cols,
+            backgroundColor = USER_ENTRY_BG_COLOR
           )
         ),
-        options = list(
-          pageLength = 25,
-          scrollX = TRUE,
-          columnDefs = list(
-            list(
-              targets = 7:9,  # Last 3 columns
-              className = 'green-background'
-            )
-          )
-        ),
-        style = 'default'
+        colnames = colnames,
+        cols_to_disable = setdiff(names(data), editable_cols)
       )
     })
     
     # Update alternative rating data when cell is edited
     observeEvent(input$alternative_rating_table_cell_edit, {
       info <- input$alternative_rating_table_cell_edit
-      str(info)
       
-      # Get the current data
-      data <- projects_data()
+      current_data <- ratable_projects()
       
-      # Get the row from the filtered/displayed data
-      edited_row <- info$row + 1
+      current_data[info$row, info$col + 1] <- info$value
       
-      # Update the appropriate column based on what was edited
-      col_idx <- info$col
-      if (col_idx == 7) {  # HUD Threshold
-        data$HUD_Threshold[edited_row] <- info$value
-      } else if (col_idx == 8) {  # CoC Threshold
-        data$CoC_Threshold[edited_row] <- info$value
-      } else if (col_idx == 9) {  # Rating Score
-        # Ensure the rating score is between 0 and 100
-        score <- as.numeric(info$value)
-        if (!is.na(score) && score >= 0 && score <= 100) {
-          data$Rating_Score[edited_row] <- score
-        }
+      ratable_projects(current_data)
+    }, ignoreInit = TRUE) # end alt rating table cell edit
+    
+    ## datatable proxy-----
+    # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
+    # However it doesn't work when adding new rows
+    projects_table_proxy <- dataTableProxy(ns("alternative_rating_table"), session = session)
+    
+    observe({
+      req(ratable_projects())
+      replaceData(projects_table_proxy, ratable_projects(), resetPaging = FALSE)
+    })
+    
+    observeEvent(input$save_rating, {
+      req(ratable_projects())
+      params_list <- ratable_projects() |>
+        fmutate(created_by = user_coc$username) |>
+        fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, date_updated) |>
+        as.list() |>
+        unname()
+      
+      rows_changed <- db_execute("
+        INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
+        VALUES ($1, 'outside', $2, $3, $4)
+        ON CONFLICT (project_id) DO UPDATE SET
+          method = 'outside',
+          met_hud_thresholds = EXCLUDED.met_hud_thresholds,
+          met_coc_thresholds = EXCLUDED.met_coc_thresholds,
+          date_updated = CURRENT_TIMESTAMP,
+          updated_by   = EXCLUDED.created_by
+        WHERE date_updated = $5",
+        params = params_list
+      )
+      
+      browser()
+      if(rows_changed == 0) {
+        showNotification("Someone recently edited this data! Refreshing your view. Resubmit when you're ready.", type = "message")
+        db_has_changed(TRUE)
+      } else if(rows_changed < fnrow(ratable_projects())) {
+        showNotification("Someone recently edited one or more project ratings! Refreshing your view. Resubmit when you're ready.", type = "message")
+        db_has_changed(TRUE)
+      } else {
+        db_has_changed(NA)
+        showNotification("Saved rating info!", type = "message")
       }
+    })
+    
+    observeEvent(input$import_rating, {
       
-      # Update the reactive value
-      projects_data(data)
-    }, ignoreInit = TRUE)
-  })
+    })
+  }) # end module server
 }

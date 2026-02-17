@@ -123,7 +123,10 @@ project_variable_labels <- c(
   "vet_bed_inventory" = "Veteran Bed Inventory",
   "youth_bed_inventory" = "Youth Bed Inventory",
   "created_by" = "Created By",
-  "date_created" = "Date Created"
+  "date_created" = "Date Created",
+  "met_hud_thresholds" = "Met HUD Thresholds",
+  "met_coc_thresholds" = "Met CoC Thresholds",
+  "weighted_score" = "Weighted Rating Score (out of 100)"
 )
 
 giw_variable_labels <- c(
