@@ -216,16 +216,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         add_user_stamp(user_coc, is_new = TRUE)
       
       if(fnrow(to_insert) > 0)
-        dbAppendTable(DB_CON, "selected_coc_nofo_opportunities", to_insert)
+        dbAppendTable(DB_POOL, "selected_coc_nofo_opportunities", to_insert)
       
       
       # to delete
       to_remove <- vals[val == 1 & new_val == 0]$coc_nofo_opportunity_id
       if (length(to_remove) > 0) {
-        dbExecute(DB_CON, glue::glue_sql("
+        dbExecute(DB_POOL, glue::glue_sql("
               DELETE FROM selected_coc_nofo_opportunities
               WHERE coc_version_id = {user_coc$coc_version_id} AND coc_nofo_opportunity_id IN ({to_remove*})
-            ", .con = DB_CON))
+            ", .con = DB_POOL))
       }
     }
     
