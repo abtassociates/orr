@@ -54,3 +54,9 @@ td.disabled {
 .input-col input {
   text-align: center;
 }
+
+
+/* Alternative Rating*/
+#rating-alternative-alternative_rating_table .dt-buttons {
+  display: none;
+}
