@@ -55,6 +55,10 @@ function(input, output, session) {
         if (!(str_to_lower(current_user$email) %in% get_db_tbl('users')$username)){
             print("new user added to allowed list")
             
+            new_user_df <- data.frame(username = current_user$email, firstname = current_user$given_name,
+                                      lastname = current_user$family_name, date_created = Sys.time(),
+                                      created_by = SERVICE_ACCOUNT, date_updated = Sys.time(), updated_by = SERVICE_ACCOUNT)
+            db_append('users', new_user_df)
         } else {
           print("user in allowed list")
           
