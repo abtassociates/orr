@@ -1267,6 +1267,7 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS selected_coc_thresholds (
     selected_threshold_id {id_var_attrs},
     threshold_id SMALLINT REFERENCES thresholds(threshold_id),
+    selected BOOLEAN DEFAULT FALSE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
