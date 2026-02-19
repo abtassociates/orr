@@ -1154,7 +1154,7 @@ drop_table("projects")
 drop_table("coc_funding_priorities")
 drop_table("selected_coc_nofo_opportunities")
 drop_table("selected_rating_factors")
-drop_table("selected_coc_thresholds")
+drop_table("selected_thresholds")
 drop_table("ranking")
 drop_table("rating_scores")
 drop_table("threshold_entries")
@@ -1264,7 +1264,7 @@ CREATE TABLE IF NOT EXISTS selected_rating_factors (
 
 DBI::dbExecute(DB_POOL, glue::glue("
 --- User-Selected Threshold Factors
-CREATE TABLE IF NOT EXISTS selected_coc_thresholds (
+CREATE TABLE IF NOT EXISTS selected_thresholds (
     selected_threshold_id {id_var_attrs},
     threshold_id SMALLINT REFERENCES thresholds(threshold_id),
     selected BOOLEAN DEFAULT FALSE,
@@ -1275,7 +1275,7 @@ CREATE TABLE IF NOT EXISTS selected_coc_thresholds (
     updated_by VARCHAR(100) NULL REFERENCES users(username),
 
 	-- a CoC Profile cannot have more than one of a given selected rating factor
-    CONSTRAINT uq_selected_coc_thresholds_profile UNIQUE (coc_version_id, threshold_id)
+    CONSTRAINT uq_selected_thresholds_profile UNIQUE (coc_version_id, threshold_id)
 );
 "))
 

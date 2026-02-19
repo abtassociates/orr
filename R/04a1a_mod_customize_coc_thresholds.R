@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # 2. CoC Thresholds Sub-Module
 # - This module allows users to select which CoC-specific thresholds apply.
-# - Selections are saved to the `selected_coc_thresholds` table.
+# - Selections are saved to the `selected_thresholds` table.
 #-------------------------------------------------------------------------------
 
 #' @title mod_coc_thresholds_ui
@@ -69,7 +69,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       req(user_coc$coc_version_id, user_coc$username)
       
       sql_query <- "
-          INSERT INTO selected_coc_thresholds (threshold_id, coc_version_id, selected, created_by)
+          INSERT INTO selected_thresholds (threshold_id, coc_version_id, selected, created_by)
           VALUES ($1, $2, $3, $4)
           ON CONFLICT (coc_version_id, threshold_id)
           DO UPDATE SET 
