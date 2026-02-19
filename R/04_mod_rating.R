@@ -3,12 +3,10 @@ mod_rating_ui <- function(id) {
   ns <- NS(id)
   
   # Individual Renewal/Expansion Rating
-  nav_menu(
-    title = "Rating",
-    icon = icon("star"),
-    value = id,
     nav_panel(
-      title = "Rate Projects",
+      title = "Rating",
+      icon = icon("star"),
+      value = id,
       # CARD-METHOD SELECTION HERE
       card_body(
         h5("Choose Your Rating Method"),
@@ -106,7 +104,7 @@ mod_rating_ui <- function(id) {
     #   title = "Rating Summary",
     #   mod_rating_summary_ui(ns("summary"))
     # )
-  )
+  # )
 }
 
 mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
