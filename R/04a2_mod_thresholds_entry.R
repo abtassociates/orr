@@ -9,7 +9,15 @@ mod_thresholds_entry_ui <- function(id) {
       accordion(
         accordion_panel(
           "HUD Requirements",
-          uiOutput(ns("hud_requirements"))
+          checkboxGroupInput(
+            ns("hud_requirements"),
+            label = NULL,
+            choices = setNames(
+              HUD_THRESHOLD_REQUIREMENTS$threshold_id, 
+              HUD_THRESHOLD_REQUIREMENTS$threshold_text
+            ),
+            width = "100%"
+          )
         ),
         accordion_panel(
           "CoC Requirements",
