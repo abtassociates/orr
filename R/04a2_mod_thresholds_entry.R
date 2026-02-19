@@ -9,6 +9,10 @@ mod_thresholds_entry_ui <- function(id) {
       accordion(
         accordion_panel(
           "HUD Requirements",
+          checkboxInput(
+            ns("yes_to_all_hud"),
+            "Met all HUD requirements"
+          ),
           checkboxGroupInput(
             ns("hud_requirements"),
             label = NULL,
@@ -21,7 +25,11 @@ mod_thresholds_entry_ui <- function(id) {
         ),
         accordion_panel(
           "CoC Requirements",
-          uiOutput(ns("coc_requirements"))
+          checkboxInput(
+            ns("yes_to_all_coc"),
+            "Met all CoC requirements"
+          ),
+          uiOutput(ns("coc_requirements_ui"))
         ),
         open = TRUE
       ),
@@ -130,15 +138,33 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         shiny::showNotification('Threshold entries updated!', type='message')
       })
     }, ignoreInit = TRUE)
-    # Automatically set all HUD requirements to Yes when yes_to_all is checked
-    # observeEvent(input$yes_to_all_hud, {
-    #   if(input$yes_to_all_hud) {
-    #     for(i in 1:5) {
-    #       updateSelectInput(session,
-    #                         paste0("hud_req_", i),
-    #                         selected = "Yes")
-    #     }
-    #   }
-    # })
-  })
+    
+    # Toggle HUD/CoC requirements when yes-to-all box is checked/unchecked
+    yes_to_all <- reactiveValues()
+    lapply(c("hud","coc"), function(type) {
+      new_val <- input[[paste0("yes_to_all_", type)]]
+      observeEvent(new_val, {
+        req(new_val)
+        
+        stored_val <- isolate(yes_to_all[[type]])
+        is_initialized <- !is.null(stored_val)
+        
+        # Only update children if the user clicked (value changed from what we last recorded)
+        if(!identical(new_val, stored_val)) {
+          yes_to_all[[type]] <- new_val
+          browser()
+          project_evaluations(
+            project_evaluations() |>
+              fmutate(paste0("met_", type, "_thresholds") := new_Val)
+          )
+          
+          updateCheckboxGroupInput(
+            session,
+            paste0(type, "_requirements"),
+            selected = if(new_Val) thresholds_to_enter()[type == toupper(type)] else NULL
+          )
+        }
+      }, ignoreInit = TRUE)
+    }) # end yes_to_all handler
+  }) # end moduleServer
 }
