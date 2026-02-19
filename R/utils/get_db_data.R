@@ -26,6 +26,15 @@ onStop(function() {
 
 # Get DB data ------------------
 # dbGetQuery returns result set
+convert_timestamps_to_POSIXct <- function(dt) {
+  if("date_created" %in% names(dt)) 
+    dt[, date_created := as.POSIXct(date_created)]
+  
+  if("date_updated" %in% names(dt)) 
+    dt[, date_updated := as.POSIXct(date_updated)]
+  
+  return(dt)
+}
 get_db_query <- function(sql, params = NULL) {
   tryCatch({
     dt <- DBI::dbGetQuery(
@@ -34,11 +43,7 @@ get_db_query <- function(sql, params = NULL) {
       params = params
     ) |> qDT()
     
-    if("date_created" %in% names(dt)) 
-      dt[, date_created := as.POSIXct(date_created)]
-    
-    if("date_updated" %in% names(dt)) 
-      dt[, date_updated := as.POSIXct(date_updated)]
+    convert_timestamps_to_POSIXct(dt)
     
     return(dt)
   }, error = function(e) {
@@ -51,11 +56,7 @@ get_db_tbl <- function(tbl_name) {
   tryCatch({
     tbl <- dbReadTable(DB_POOL, tbl_name) |> qDT()
     
-    if("date_created" %in% names(tbl)) 
-      tbl[, date_created := as.POSIXct(date_created)]
-    
-    if("date_updated" %in% names(tbl)) 
-      tbl[, date_updated := as.POSIXct(date_updated)]
+    convert_timestamps_to_POSIXct(tbl)
     
     return(tbl)
   }, error = function(e) {
