@@ -315,8 +315,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           coc_version_id = user_coc$coc_version_id,
           funding_action = get_lookup_refid(funding_action, "funding_action"),
           project_type = get_lookup_refid(project_type, "project_type"),
-          target_population = get_lookup_refid(target_population, "target_population"),
-          date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+          target_population = get_lookup_refid(target_population, "target_population")
         )
       
       db_append("projects", db_data)

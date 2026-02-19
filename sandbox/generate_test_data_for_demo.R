@@ -28,8 +28,8 @@ coc_versions <- data.table(
     second_user,
     main_user
   ),
-  date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-  date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+  date_created = get_db_timestamp(),
+  date_updated = get_db_timestamp(),
   updated_by = main_user
 )
 
@@ -50,8 +50,8 @@ coc_version_users <- data.table(
     second_user,
     main_user
   ),
-  date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-  date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+  date_created = get_db_timestamp(),
+  date_updated = get_db_timestamp(),
   updated_by = main_user
 )
 

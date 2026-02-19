@@ -462,10 +462,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         #coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
         coc_version_id = version_id,
         request_status = request_status_num,
-        reason_for_rejection = NA,
-        date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-        date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        reason_for_rejection = NA
       ) |>
+        add_datetime_stamp(is_new = TRUE) |>
         add_user_stamp(user_coc, is_new = TRUE)
       
       # Add row to requests table

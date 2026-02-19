@@ -178,8 +178,8 @@ add_user_stamp <- function(x, user_coc, is_new = FALSE) {
 }
 
 add_datetime_stamp <- function(x, is_new = FALSE) {
-  x <- x |> fmutate(date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
-  if(is_new) x <- x |> fmutate(date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
+  x <- x |> fmutate(date_updated = get_db_timestamp())
+  if(is_new) x <- x |> fmutate(date_created = get_db_timestamp())
   return(x)
 }
 
@@ -202,4 +202,8 @@ insert_and_return <- function(table, new_dt, return_cols) {
   })
 
   return(results)
+}
+
+get_db_timestamp <- function() {
+  format(Sys.time(), "%Y-%m-%d %H:%M:%S")
 }

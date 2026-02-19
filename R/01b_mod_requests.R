@@ -140,10 +140,9 @@ mod_requests_server <- function(id, user_coc) {
               username = row[["created_by"]],
               coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
               created_by = user_coc$username,
-              date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-              date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
               updated_by = user_coc$username
-            )
+            ) |>
+              add_datetime_stamp(is_new = TRUE)
           )
         } else if(request_status_num == 3){
           # Set Status in Requests table
