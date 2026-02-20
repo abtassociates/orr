@@ -117,20 +117,42 @@ mod_requests_server <- function(id, user_coc) {
     update_request <- function(status) {
       request_status_num <- get_lookup_refid(status, "request_status")
       selected_requests <- cur_requests()[input$requests_dt_rows_selected]
+
+      update_params <- selected_requests |>
+        fselect(
+          "request_status_num" = request_status_num,
+          "username" = user_coc$username,
+          coc_request_id,
+          date_updated
+        ) |>
+        as.list() |>
+        unname()
       
-      apply(selected_requests, 1, function(row) {
-        
-       
-        if(request_status_num == 2){
-          
-          # Set Status in Requests table
-          db_execute(
+      dbWithTransaction(DB_POOL, {
+        db_execute(
+          glue::glue(
             "UPDATE coc_version_requests 
-          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2
-          WHERE coc_request_id = $3", 
-            params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
+              SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2 
+                {ifelse(status == 'Approved', '', ', reason_for_rejection = $3')}
+              WHERE coc_request_id = $3 AND date_updated = $4"
+          ), 
+          params = update_params
+        )
+        
+        user_role_num <- get_lookup_refid("Editor", "coc_version_role")
+        current_time <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        
+        if(status == 'Approved') {
+          new_users <- data.table(
+            coc_version_id = approved_requests$coc_version_id,
+            username = approved_requests$created_by,
+            coc_version_role = user_role_num,
+            created_by = user_coc$username,
+            date_created = current_time,
+            date_updated = current_time,
+            updated_by = user_coc$username
           )
-          
+
           # Create version user
           user_role_num <- get_lookup_refid("Editor", "coc_version_role")
           db_append(
@@ -155,7 +177,7 @@ mod_requests_server <- function(id, user_coc) {
           )
         }
       })
-        
+
       # Update datatable proxy
       cur_requests(
         cur_requests() |> 
