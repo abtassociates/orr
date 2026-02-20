@@ -12,6 +12,7 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     layout_sidebar(
       # the side bar will be 
       sidebar = sidebar(
+        width = 350,
         id = ns("project_selection_sidebar"),
         selectInput(ns("project_select"), label = "Select Project", choices = NULL),
         uiOutput(ns("project_info_sidebar"))
