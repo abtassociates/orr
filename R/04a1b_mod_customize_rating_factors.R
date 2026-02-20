@@ -286,7 +286,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
 
       # PARENT -> CHILDREN
       # observe changes to check-all boxes
-      lapply(seq_len(nrow(all_possible_subgroups)), function(i) {
+      lapply(seq_row(all_possible_subgroups), function(i) {
         group <- all_possible_subgroups$factor_group[i]
         subgroup <- all_possible_subgroups$factor_subgroup[i]
         subgroup_check_all_input <- make.names(paste0(group, "_check_all_", subgroup))
@@ -619,6 +619,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     handle_check_all_box_functionality(input)
     
     # Observer for the "Add Custom Rating Factor" button
+    # This just adds UI for the user to enter a new factor
+    # It doesn't actually save until they click Save
     observeEvent(input$add_custom_factor, {
       add_custom_factor(ns, input)
     }, ignoreInit = TRUE)
