@@ -183,7 +183,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         rating_scores               = sapply(selected_ids, \(id) input[[paste0("rating_score_", id)]]),
         performances                = sapply(selected_ids, \(id) input[[paste0("performance_", id)]]),
         created_bys                 = alloc(user_coc$username, num_selected),
-        date_updated_checks         = format(factors_and_scores_for_project()$date_updated, "%Y-%m-%d %H:%M:%S")
+        new_date_updated            = alloc(get_db_timestamp(), num_selected),
+        date_updated_checks         = format_timestamp_for_db(factors_and_scores_for_project()$date_updated)
       ) |> unname()
       
       rows_changed <- db_execute("
@@ -192,9 +193,9 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         ON CONFLICT (project_id, selected_rating_factor_id) DO UPDATE SET
           rating_score = EXCLUDED.rating_score,
           performance  = EXCLUDED.performance,
-          date_updated = CURRENT_TIMESTAMP,
+          date_updated = $6,
           updated_by   = EXCLUDED.created_by
-        WHERE date_updated = $6",
+        WHERE date_updated = $7",
         params = params_list
       )
 

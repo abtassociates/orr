@@ -96,47 +96,57 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       update_data <- thresholds_to_enter() |>
         add_user_stamp(user_coc, is_new = TRUE) |>
         fmutate(
-          met_threshold_new = map2_lgl(type, threshold_id, ~input[[paste0(.x, "_req_", .y)]])
+          met_threshold_new = fifelse(type == "CoC", threshold_id %in% input$coc_requirements, threshold_id %in% input$hud_requirements),
+          project_id = selected_project()$project_id, new_date_updated = get_db_timestamp()
         )
       
-      to_delete <- update_data |> 
-        fsubset(!met_threshold_new & fcoalesce(as.logical(met_threshold), FALSE))
-      
-      to_upsert <- update_data |> 
-        fsubset(met_threshold_new)
-      
-      pool::poolWithTransaction(DB_POOL, function(p) {
-        if (nrow(to_delete) > 0) {
-          DBI::dbExecute(p, glue::glue_sql(
-            "DELETE FROM threshold_entries 
-            WHERE threshold_entry_id IN ({to_delete$threshold_entry_id*})",
-            .con = p
-          ))
-        }
+      if (nrow(update_data) > 0) {
+        params_list <- update_data |>
+          fsubset(met_threshold_new != met_threshold) |>
+          fselect(project_id, threshold_id, created_by, new_date_updated, date_updated) |> 
+          as.list() |> 
+          unname()
         
-        if (nrow(to_upsert) > 0) {
-          params_list <- to_upsert |> 
-            fmutate(project_id = selected_project) |> 
-            fselect(project_id, threshold_id, created_by, date_updated) |> 
-            as.list() |> 
-            unname()
+        tryCatch({
           
-          DBI::dbExecute(
-            p, 
+          db_execute(
             "INSERT INTO threshold_entries (project_id, threshold_id, met_threshold, created_by)
             VALUES ($1, $2, 1, $3)
-            ON CONFLICT (project_id, threshold_id) 
-            DO UPDATE SET 
-              met_threshold = 1, 
-              date_updated = CURRENT_TIMESTAMP, 
+            ON CONFLICT (project_id, threshold_id) DO UPDATE SET 
+              met_threshold = EXCLUDED.met_threshold, 
+              date_updated = $4, 
               updated_by = EXCLUDED.created_by
-            WHERE date_updated = $4;",
+            WHERE date_updated = $5;",
             params = params_list
           )
-        }
-        
-        shiny::showNotification('Threshold entries updated!', type='message')
-      })
+          
+          ## update reactive ----------
+          thresholds_to_enter(
+            update_data |> 
+              fmutate(met_threshold = met_threshold_new) |>
+              fselect(-met_threshold_new)
+          )
+          
+          project_evaluations(
+            thresholds_to_enter() |> 
+              pivot(
+                ids = "project_id",
+                values = "met_threshold", 
+                names = "type",
+                how = "wider", 
+                FUN = all
+              ) |>
+              frename(\(x) ifelse(x == "project_id", x, paste0("met_", x, "_thresholds"))),
+          )
+          
+          showNotification("Threshold entires saved successfully!", type = "message", duration = 3)
+        }, error = function(e) {
+          # If an error occurs, do NOT reset the flag, so it will try again.
+          # Notify the user of the failure.
+          showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
+          cat("Database save error:", e$message, "\n")
+        })
+      }
     }, ignoreInit = TRUE)
     
     # Toggle HUD/CoC requirements when yes-to-all box is checked/unchecked

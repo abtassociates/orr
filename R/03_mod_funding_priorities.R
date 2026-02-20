@@ -417,17 +417,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         fselect(date_updated)
       
       # need to drop timezone from R timestamp
-      timestamp_param <- format(round(pulled_date_updated[[1]], 0), "%Y-%m-%d %H:%M:%S")
+      timestamp_param <-  format_timestamp_for_dp(pulled_date_updated[[1]])
       
       sql <- glue::glue(
         "INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, {metric_name}, created_by)
           VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (coc_version_id, project_type, target_population, population_group)
-          DO UPDATE SET 
+          ON CONFLICT (coc_version_id, project_type, target_population, population_group) DO UPDATE SET 
             {metric_name} = EXCLUDED.{metric_name},
             updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-            date_updated = CURRENT_TIMESTAMP
-          WHERE date_updated = $7;
+            date_updated = $7
+          WHERE date_updated = $8;
         "
       )
       
@@ -441,6 +440,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
             changed_data$population_group,
             changed_data[[metric_name]],
             user_coc$username,
+            get_db_timestamp(),
             timestamp_param
           )
         )

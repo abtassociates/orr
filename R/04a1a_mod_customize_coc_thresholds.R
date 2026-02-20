@@ -121,15 +121,11 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       sql_query <- "
           INSERT INTO thresholds (type, coc_version_id, threshold_text, created_by)
           VALUES ('CoC', $1, $2, $3)
-          ON CONFLICT (coc_version_id, threshold_text)
-          DO UPDATE SET
-            type = EXCLUDED.type,
-            coc_version_id = EXCLUDED.coc_version_id,
-            threshold_text = EXCLUDED.threshold_text,
-            updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-            date_updated = CURRENT_TIMESTAMP
-          WHERE date_updated = $4
-          RETURNING threshold_id;
+          ON CONFLICT (coc_version_id, threshold_text) DO UPDATE SET
+            updated_by = EXCLUDED.created_by,
+            date_updated = $4
+          WHERE (thresholds.date_updated = $5 OR ($5 IS NULL AND thresholds.date_updated IS NULL))
+          RETURNING threshold_id, date_updated;
         "
 
       current_date_updated_for_threshold <- all_coc_thresholds()[
@@ -137,39 +133,23 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       ]$threshold_date_updated
       
       # 4189f53015d2fbf37310a3b47b8a764f79f1512d
+      new_timestamp <- get_db_timestamp()
       params_list <- list(
-        input$custom_threshold_text,
         user_coc$coc_version_id, 
+        input$custom_threshold_text,
         user_coc$username,
-        if(length(current_date_updated_for_threshold) > 0) current_date_updated_for_threshold else NA
-      ) |> unname()
+        new_timestamp,
+        if (length(current_date_updated_for_threshold) > 0) current_date_updated_for_threshold else NA
+      )
       
-      tryCatch({
-        new_threshold_id <- DBI::dbGetQuery(DB_POOL, sql_query, params = params_list)$threshold_id
-        if(length(new_threshold_id) == 0) {
-          showNotification("Someone is editing these thresholds!", type = "error", duration = 3)
-          pull_thresholds_trigger(pull_thresholds_trigger() + 1)
-        } else {
-          # update all_coc_thresholds
-          all_coc_thresholds(
-            rbindlist(list(
-              all_coc_thresholds(), 
-              data.table(
-                threshold_id = new_threshold_id,
-                threshold_text = input$custom_threshold_text,
-                selected = TRUE,
-                threshold_date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-                selected_threshold_date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
-              )
-            ))
-          )
-
-          showNotification("Saved thresholds successfully!", type = "message", duration = 3)
+      new_threshold <- tryCatch(
+        DBI::dbGetQuery(DB_POOL, sql_query, params = params_list),
+        error = function(e) {
+          showNotification(paste("Error adding threshold:", e$message), type = "error", duration = 10)
+          cat("Save custom threshold error:", e$message, "\n")
+          NULL
         }
-      }, error = function(e) {
-        showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
-        cat("Database save error:", e$message, "\n")
-      })
+      )
       
       
     }) # end submit custom threhsold

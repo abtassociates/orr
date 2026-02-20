@@ -128,8 +128,8 @@ mod_alternative_rating_server <- function(id, user_coc) {
     observeEvent(input$save_rating, {
       req(ratable_projects())
       params_list <- ratable_projects() |>
-        fmutate(created_by = user_coc$username) |>
-        fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, date_updated) |>
+        fmutate(created_by = user_coc$username, new_date_updated = get_db_timestamp()) |>
+        fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, new_date_updated, date_updated) |>
         as.list() |>
         unname()
       
@@ -137,12 +137,12 @@ mod_alternative_rating_server <- function(id, user_coc) {
         INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
         VALUES ($1, 'outside', $2, $3, $4)
         ON CONFLICT (project_id) DO UPDATE SET
-          method = 'outside',
+          method = EXCLUDED.method,
           met_hud_thresholds = EXCLUDED.met_hud_thresholds,
           met_coc_thresholds = EXCLUDED.met_coc_thresholds,
-          date_updated = CURRENT_TIMESTAMP,
+          date_updated = $5,
           updated_by   = EXCLUDED.created_by
-        WHERE date_updated = $5",
+        WHERE date_updated = $6",
         params = params_list
       )
       

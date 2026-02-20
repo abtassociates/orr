@@ -204,6 +204,10 @@ insert_and_return <- function(table, new_dt, return_cols) {
   return(results)
 }
 
+format_timestamp_for_db <- function(t) {
+  format(lubridate::with_tz(t, "UTC"), "%Y-%m-%d %H:%M:%S")
+}
+
 get_db_timestamp <- function() {
-  format(lubridate::with_tz(Sys.time(), "UTC"), "%Y-%m-%d %H:%M:%S")
+  format_timestamp_for_db(Sys.time())
 }
