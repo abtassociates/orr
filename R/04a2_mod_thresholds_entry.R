@@ -198,7 +198,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           updateCheckboxGroupInput(
             session,
             paste0(ttype, "_requirements"),
-            selected = if(new_val) thresholds_to_enter()[type == ifelse(ttype == "coc", "CoC", "HUD") & selected]$threshold_id else NULL
+            selected = if(new_val) thresholds_to_enter()[type == ifelse(ttype == "coc", "CoC", "HUD")]$threshold_id else NULL
           )
         }
       }, ignoreInit = TRUE)
