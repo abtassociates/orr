@@ -66,7 +66,6 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
     
     observeEvent(c(selected_project(), refresh_trigger()), {
       req(user_coc$coc_version_id)
-      req(selected_project())
       # req(is.na(updating_from_db() || updating_from_db()))
 
       # individual threshold entries
@@ -154,13 +153,13 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       }
     }, ignoreInit = TRUE)
     
-    toggle_yes_to_all <- function(type) {
-      num_thresholds_to_enter <- fnrow(thresholds_to_enter()[type == type])
-      num_thresholds_selected <- length(input[[paste0(type, "_requirements")]])
-      
+    toggle_yes_to_all <- function(ttype) {
+      num_thresholds_to_enter <- fnrow(thresholds_to_enter()[type == ttype])
+      num_thresholds_selected <- length(input[[paste0(ttype, "_requirements")]])
+
       updateCheckboxInput(
         session,
-        paste0("yes_to_all_", type),
+        paste0("yes_to_all_", ttype),
         value = num_thresholds_to_enter == num_thresholds_selected
       )
     }
