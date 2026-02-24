@@ -94,7 +94,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           # Generate the rows for each rating factor in this subgroup
           factor_rows <- purrr::pmap(
             list(
-              subgroup_data$rating_factor_id,
+              subgroup_data$selected_rating_factor_id,
               subgroup_data$rating_factor_text, # Using the longer text here, you can choose
               subgroup_data$goal,
               subgroup_data$performance,
