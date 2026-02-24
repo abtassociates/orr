@@ -153,14 +153,24 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       }
     }, ignoreInit = TRUE)
     
+    stop_yes_to_all_cascade <- reactiveValues()
+    stop_yes_to_all_cascade$HUD <- FALSE
+    stop_yes_to_all_cascade$CoC <- FALSE
+    
     toggle_yes_to_all <- function(ttype) {
-      num_thresholds_to_enter <- fnrow(thresholds_to_enter()[type == ttype])
-      num_thresholds_selected <- length(input[[paste0(ttype, "_requirements")]])
+      if(stop_yes_to_all_cascade[[ttype]]) {
+        stop_yes_to_all_cascade[[ttype]] <- FALSE
+        return()
+      }
+      
+      thresholds_to_select <- thresholds_to_enter()[type == ttype, threshold_id]
+      thresholds_selected <- input[[paste0(ttype, "_requirements")]]
 
+      stop_yes_to_all_cascade[[ttype]] <- TRUE
       updateCheckboxInput(
         session,
         paste0("yes_to_all_", ttype),
-        value = num_thresholds_to_enter == num_thresholds_selected
+        value = setequal(thresholds_to_select, thresholds_selected)
       )
     }
     
@@ -171,6 +181,10 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
     yes_to_all <- reactiveValues()
     lapply(c("HUD","CoC"), function(ttype) {
       observeEvent(input[[paste0("yes_to_all_", ttype)]], {
+        if(stop_yes_to_all_cascade[[ttype]]) {
+          stop_yes_to_all_cascade[[ttype]] <- FALSE
+          req(FALSE)
+        }
         new_val <- input[[paste0("yes_to_all_", ttype)]]
         req(new_val)
         
@@ -181,6 +195,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         if(!identical(new_val, stored_val)) {
           yes_to_all[[ttype]] <- new_val
           
+          stop_yes_to_all_cascade[[ttype]] <- TRUE
           updateCheckboxGroupInput(
             session,
             paste0(ttype, "_requirements"),
