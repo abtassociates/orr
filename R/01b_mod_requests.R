@@ -39,6 +39,7 @@ mod_requests_server <- function(id, user_coc) {
     all_requests <- reactive({
       req(user_coc$auth)
       
+      ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
       user_versions <-  get_db_query(
         "SELECT v.*, u.username, u.coc_version_role
           FROM coc_versions v
@@ -47,6 +48,7 @@ mod_requests_server <- function(id, user_coc) {
       ) |> #COC_VERSION_USERS |>
         fsubset(username == user_coc$username)
       
+      ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
       get_db_tbl('coc_version_requests') |>
         fsubset(created_by == user_coc$username | coc_version_id %in% user_versions$coc_version_id) |>
         join(get_db_tbl('coc_versions') |> fselect(coc_version_id, coc, coc_version_name), how='left') |>
@@ -113,11 +115,13 @@ mod_requests_server <- function(id, user_coc) {
       shinyjs::toggle(id = 'reject_request', condition = length(input$requests_dt_rows_selected) > 0 && has_outstanding_requests)
     })
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Updating DB
     update_request <- function(status) {
       request_status_num <- get_lookup_refid(status, "request_status")
       selected_requests <- cur_requests()[input$requests_dt_rows_selected]
       
+      ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
       apply(selected_requests, 1, function(row) {
         
        
@@ -213,6 +217,7 @@ mod_requests_server <- function(id, user_coc) {
       showNotification('Request rejected.', type = 'warning')
     })
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     filter_requests <- function(status) {
       cur_requests(
         if(status == 'Received'){

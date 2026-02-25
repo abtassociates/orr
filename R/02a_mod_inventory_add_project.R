@@ -137,6 +137,7 @@ mod_inventory_add_project_server <- function(
       else input$target_population
     })
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Determine which bed groups should be visible. This is the core of the display logic.
     visible_bed_groups <- reactive({
       pt <- input$project_type
@@ -166,6 +167,7 @@ mod_inventory_add_project_server <- function(
     })
     
     
+    ## REFACTOR INTO SEPARATE SCRIPT
     reset_form <- function() {
       updateTextInput(session, "project_name", value = "")
       updateSelectInput(session, "funding_source", selected = "")
@@ -189,6 +191,7 @@ mod_inventory_add_project_server <- function(
       # Clear existing validation errors
       iv$disable() 
       
+      ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
       # Logic for 'Replace' or 'Reallocate' prepopulation
       if (grepl("Reallocation", form_type()) && funding_source != "") {
         updateSelectInput(session, "funding_source", selected = funding_source)
@@ -239,6 +242,7 @@ mod_inventory_add_project_server <- function(
       updateNumericInput(session, "total_beds_ind", label = if (current_funding_source() == "DV") "DV Individual Beds*" else "Total Individual Beds*")
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Update bed group visibility
     observeEvent(c(input$project_type, current_target_pop()), {
       vis_beds <- visible_bed_groups()
@@ -246,6 +250,7 @@ mod_inventory_add_project_server <- function(
       lapply(all_bed_groups, function(group) shinyjs::toggle(group, condition = group %in% vis_beds))
     }, ignoreInit = FALSE, ignoreNULL = FALSE)
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Update DV checkbox and related elements
     observeEvent(c(input$funding_action, input$project_type, current_target_pop()), {
       fa <- if(is.null(input$funding_action)) "" else input$funding_action
@@ -299,6 +304,8 @@ mod_inventory_add_project_server <- function(
     # =================================================================
     # Validation & Submission
     # =================================================================
+
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     iv <- shinyvalidate::InputValidator$new()
 
     # Core fields are always required
@@ -323,6 +330,7 @@ mod_inventory_add_project_server <- function(
       youth_beds = c("youth_beds_fam", "youth_beds_ind")
     )
 
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # subset reactive checks if subset field is > total field (e.g., CH In beds <= Total Ind beds)
     sv_lte_reactive <- function(max_val_formula) {
       force(max_val_formula)
@@ -343,10 +351,13 @@ mod_inventory_add_project_server <- function(
         }
       }
     }
+    
     # Loop to create and add all bed validation rules ONCE
     for (group_name in names(bed_groups_to_validate)) {
       # Use local() to capture the current value of 'group_name' for the condition formula
       local({
+        ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
+        
         # 'current_group' is a new variable for each loop iteration
         current_group <- group_name
         
@@ -407,7 +418,9 @@ mod_inventory_add_project_server <- function(
           total_fam <- get_val("youth_beds", "fam")
           total_ind <- get_val("youth_beds", "ind")
         }
-
+        
+        ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
+        
         # Collect data into a clean list
         new_project_data <- data.table(
           project_name = input$project_name,

@@ -55,6 +55,7 @@ function(input, output, session) {
         if (!(str_to_lower(current_user$email) %in% get_db_tbl('users')$username)){
             print("new user added to allowed list")
             
+            ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
             new_user_df <- data.frame(
               username = current_user$email, 
               firstname = current_user$given_name,

@@ -54,6 +54,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       funding_source = NULL
     )
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Add fields only displayed in Inventory
     add_calculated_fields <- function(project_data, is_new = FALSE) {
       project_data <- project_data |>
@@ -77,7 +78,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     # Initialize projects_data ------
     observe({
       req(user_coc$coc_version_id)
-
+      
+      ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
       data <- get_db_query(
         "SELECT * FROM projects WHERE coc_version_id = $1", 
         params = user_coc$coc_version_id
@@ -133,6 +135,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
             visible = FALSE
           )
         ),
+        ## REFACTOR EACH FORMAT INTO SEPARATE FUNCTION
         formatting = list(
           function(x) formatStyle(
             x,
@@ -214,6 +217,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
     })
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Checks whether value is valid
     validity_pre_checks <- function(project_data, funding_source, val) {
       if(val == "Reallocate") {
@@ -237,6 +241,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       return(TRUE)
     }
 
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Update projects -----
     ## consolidated update function
     inventory_update <- function(info, value) {
@@ -249,6 +254,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       update_inventory_db(value, col_name, proj_id)
     }
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     update_inventory_db <- function(new_value, col_name, proj_id) {
       db_execute(
         "UPDATE projects SET $1 = $2 WHERE project_id = $3",
@@ -260,6 +266,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       
     }
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     update_datatable <- function(proj_id, col_name, value) {
       # update the reactiveVal that updates the proxy
       updated_data <- copy(projects_data())[
@@ -271,6 +278,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       projects_data(updated_data)
     }
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Append project -----
     ## consolidated append
     inventory_append <- function(new_project_data) {
@@ -280,6 +288,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       #showNotification("Project submitted successfully.", type = "message")
     }
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     append_to_datatable <- function(new_project_data) {
       new_row <- new_project_data |> 
         fmutate(
@@ -309,6 +318,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       is_new_project(TRUE)
     }
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     append_inventory_to_db <- function(new_project_data) {
       db_data <- new_project_data |>
         fmutate(
@@ -322,6 +332,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       db_append("projects", db_data)
     }
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Main inline-cell edit event -----
     observeEvent(input$projects_table_cell_edit, {
       req(projects_data())
@@ -435,6 +446,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     ## User wants to replace with multiple projects ----
     observeEvent(input$replace_multiple, {
+      ## REFACTOR INTO LIST OF PARAMS
       show_project_modal(
         "YHDP Replacement", 
         yhdp_replacement_info$funding_source, 
@@ -465,6 +477,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       )
     })
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Project modal control -------------
     # Adding it once here and managing its status
     modal_submission <- mod_inventory_add_project_server(
@@ -477,6 +490,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       orgnames = orgnames
     )
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # 2. Define a single UI launcher
     launch_modal <- function(type, source = "", replacement = NULL) {
       current_form_type(type)

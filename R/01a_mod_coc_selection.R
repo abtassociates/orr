@@ -34,6 +34,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     coc_requested <- reactiveVal(NULL)
     version_requested <- reactiveVal(NULL)
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     get_all_users_and_versions <- function() {
       coc_vu(
         get_db_query(
@@ -115,6 +116,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # CoC Version Actions --------------
     ####
     
+    ## REFACTOR INTO SEPARATE FUNCTIONS SCRIPT
     ## Enable/disable actions when row is selected or not
     toggle_navs_on_coc_selection <- function() {
       for(t in TABS_AFTER_COC_SELECTION) {
@@ -239,6 +241,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )
     })
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     create_new_version_for_user <- function(new_version_data) {
       new_version <- new_version_data |>
         fmutate(coc_status = get_lookup_refid("Not Started", "coc_status")) |>
@@ -455,6 +458,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )
     })
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     create_request <- function(cur_coc, version_id) {
       request_status_num <- get_lookup_refid('Sent','request_status')
       
@@ -642,7 +646,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     })
     
     
-    
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     get_hic_data <- function(coc, coc_version_id) {
       bed_field_mapping <- c(
         all_fam_beds = "beds_hh_w_children", 
@@ -656,6 +660,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       coc_data <- get_db_tbl("all_hic_data") |>
         fsubset(hudnum == coc) 
 
+      ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
       project_data <- coc_data %>% # %>% needed for gvr to work
         fmutate(
           mckinneyvento = factor_yesno(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),

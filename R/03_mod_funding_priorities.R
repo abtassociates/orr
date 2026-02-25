@@ -117,6 +117,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       "dv_bonus"
     )
     hud_ard_coc_data <- reactive({
+      ## REFACTOR INTO SEPARATE FUNCTION
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
           tier_2 = estimated * 0.1 + coc_bonus + dv_bonus,
@@ -129,6 +130,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     # CoC Nofo Opportunities ---------------
     coc_nofo_inputs_initialized <- reactiveVal(FALSE)
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     initialize_coc_nofo_opportunity_inputs <- function() {
       vals <- db_selected_coc_nofo_opportunities()[val == 1]
       
@@ -161,6 +163,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # initialize selected coc_nofo_opportunities
       db_selected_coc_nofo_opportunities(
+        ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
         get_db_query(
           "SELECT c.coc_nofo_opportunity_id, c.bonus_type,
             s.coc_nofo_opportunity_id IS NOT NULL AS val, 
@@ -206,6 +209,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       update_coc_nofo_opportunities_db()
     })
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     update_coc_nofo_opportunities_db <- function() {
       vals <- db_selected_coc_nofo_opportunities()
 
@@ -260,6 +264,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         # 8: Chronically Homeless Individuals       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
         # 9:              Veteran Individuals       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
         # 10:                     Single Youth      NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+      
+      ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
       full_data <- coc_funding_priorities_from_db() |>
         # Get full "Population" text (target_pop + pop_grp)
         join(
@@ -300,6 +306,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       update_population_toggles(full_data)
     }, ignoreNULL = TRUE)
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     update_population_toggles <- function(full_data) {
       selected_populations <- full_data %>%
         dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
@@ -373,6 +380,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
     }, server = FALSE)
     
+    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
     # Update priorities data in table and db when cell is edited
     observeEvent(input$priorities_table_cell_edit, {
       info <- input$priorities_table_cell_edit
