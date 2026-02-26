@@ -217,7 +217,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       to_insert <- vals |> 
         fsubset(val == 0 & new_val == 1) |> 
         fselect(-val, -new_val, -bonus_type) |>
-        add_user_stamp(user_coc, is_new = TRUE)
+        add_user_stamp(user_coc$username, is_new = TRUE)
       
       if(fnrow(to_insert) > 0)
         dbAppendTable(DB_POOL, "selected_coc_nofo_opportunities", to_insert)

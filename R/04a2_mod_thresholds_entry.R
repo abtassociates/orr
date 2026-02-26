@@ -78,7 +78,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       req(user_coc$coc_version_id, user_coc$username)
       
       update_data <- thresholds_to_enter() |>
-        add_user_stamp(user_coc) |>
+        add_user_stamp(user_coc$username) |>
         fmutate(
           met_threshold_new = map2_lgl(type, threshold_id, ~input[[paste0(.x, "_req_", .y)]])
         )

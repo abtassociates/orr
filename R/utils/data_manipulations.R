@@ -168,9 +168,9 @@ requests_variable_labels <- c(
   "date_created" = "Date Requested"
 )
 
-add_user_stamp <- function(x, user_coc, is_new = FALSE) {
-  x <- x |> fmutate(updated_by = user_coc$username)
-  if(is_new) x <- x |> fmutate(created_by = user_coc$username)
+add_user_stamp <- function(x, username, is_new = FALSE) {
+  x <- x |> fmutate(updated_by = username)
+  if(is_new) x <- x |> fmutate(created_by = username)
   return(x)
 }
 

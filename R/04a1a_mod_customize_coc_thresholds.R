@@ -84,7 +84,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
             threshold_id = to_add,
             coc_version_id = user_coc$coc_version_id,
           ) %>% 
-            add_user_stamp(user_coc, is_new = TRUE)
+            add_user_stamp(user_coc$username, is_new = TRUE)
           db_append("selected_coc_thresholds", add_df)
         }
         
