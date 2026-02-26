@@ -56,7 +56,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
     
     # updating_from_db <- reactiveVal(NA)
     thresholds_to_enter <- reactiveVal(NULL)
-    project_evaluations <- reactiveVal(NULL)
+    project_evaluation <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(0)
     
     coc_thresholds_to_enter <- reactive({
@@ -66,7 +66,6 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
     
     observeEvent(c(selected_project(), refresh_trigger()), {
       req(user_coc$coc_version_id)
-      # req(is.na(updating_from_db() || updating_from_db()))
 
       # individual threshold entries
       thresholds_to_enter(
@@ -85,13 +84,10 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       )
       
       # project-level evaluations
-      project_evaluations(
-        get_db_query(
-          "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, pe.date_updated 
-          FROM project_evaluations pe
-          LEFT JOIN projects p ON pe.project_id = p.project_id
-          WHERE p.coc_version_id = $1 and pe.project_id = $2",
-          params = list(user_coc$coc_version_id, selected_project()$project_id)
+      project_evaluation(
+        get_project_evaluation(
+          user_coc$coc_version_id, 
+          selected_project()$project_id
         )
       )
 
@@ -111,53 +107,25 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         selected = coc_thresholds_to_enter()[met_threshold == TRUE]$threshold_id
       )
       
-      updateCheckboxInput(
-        session,
-        "yes_to_all_CoC",
-        value = allv(thresholds_to_enter()[type == "CoC"]$met_threshold, TRUE)
-      )
-    })
-    
-    observeEvent(input$save_requirements, {
-      req(user_coc$coc_version_id, user_coc$username)
-      
-      update_data <- thresholds_to_enter() |>
-        add_user_stamp(user_coc, is_new = TRUE) |>
-        fmutate(
-          met_threshold_new = fifelse(type == "CoC", threshold_id %in% input$CoC_requirements, threshold_id %in% input$HUD_requirements),
-          project_id = selected_project()$project_id, new_date_updated = get_db_timestamp()
+      has_coc_thresholds <- fnrow(thresholds_to_enter()[type == "CoC"]) > 0
+      if(has_coc_thresholds) {
+        updateCheckboxInput(
+          session,
+          "yes_to_all_CoC",
+          value = allv(thresholds_to_enter()[type == "CoC"]$met_threshold, TRUE)
         )
-      
-      if (nrow(update_data) > 0) {
-        new_project_evaluations <- thresholds_to_enter() |> 
-          fmutate(project_id = selected_project()$project_id) |>
-          pivot(
-            ids = "project_id",
-            values = "met_threshold", 
-            names = "type",
-            how = "wider", 
-            FUN = all
-          ) |>
-          frename(\(x) ifelse(x == "project_id", x, paste0("met_", x, "_thresholds"))) |>
-          join(
-            project_evaluations() |> fselect(project_id, date_updated), 
-            on = "project_id"
-          )
-        
-        pool::poolWithTransaction(DB_POOL, function(p) {
-          update_threshold_entries_db(p, update_data)
-          update_project_evaluations_db(p, new_project_evaluations, user_coc$username)
-        })
-        
-        refresh_trigger(\(x) x + 1)
+      } else {
+        shinyjs::toggle("yes_to_all_CoC", condition = has_coc_thresholds)
       }
-    }, ignoreInit = TRUE)
+    })
     
     stop_yes_to_all_cascade <- reactiveValues()
     stop_yes_to_all_cascade$HUD <- FALSE
     stop_yes_to_all_cascade$CoC <- FALSE
     
     toggle_yes_to_all <- function(ttype) {
+      req(user_coc$coc_version_id, selected_project())
+
       if(stop_yes_to_all_cascade[[ttype]]) {
         stop_yes_to_all_cascade[[ttype]] <- FALSE
         return()
@@ -174,19 +142,21 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       )
     }
     
-    observeEvent(input$HUD_requirements, toggle_yes_to_all("HUD"))
-    observeEvent(input$CoC_requirements, toggle_yes_to_all("CoC"))
+    observeEvent(input$HUD_requirements, toggle_yes_to_all("HUD"), ignoreNULL = FALSE)
+    observeEvent(input$CoC_requirements, toggle_yes_to_all("CoC"), ignoreNULL = FALSE)
     
     # Toggle HUD/CoC requirements when yes-to-all box is checked/unchecked
     yes_to_all <- reactiveValues()
     lapply(c("HUD","CoC"), function(ttype) {
       observeEvent(input[[paste0("yes_to_all_", ttype)]], {
+        req(user_coc$coc_version_id, selected_project())
+
         if(stop_yes_to_all_cascade[[ttype]]) {
           stop_yes_to_all_cascade[[ttype]] <- FALSE
           req(FALSE)
         }
+        
         new_val <- input[[paste0("yes_to_all_", ttype)]]
-        req(new_val)
         
         stored_val <- isolate(yes_to_all[[ttype]])
         # is_initialized <- !is.null(stored_val)
@@ -196,33 +166,41 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           yes_to_all[[ttype]] <- new_val
           
           stop_yes_to_all_cascade[[ttype]] <- TRUE
+          
           updateCheckboxGroupInput(
             session,
             paste0(ttype, "_requirements"),
-            selected = if(new_val) thresholds_to_enter()[type == ttype]$threshold_id else NULL
+            selected = if(new_val) thresholds_to_enter()[type == ttype]$threshold_id else character(0)
           )
         }
       }, ignoreInit = TRUE)
     }) # end yes_to_all handler
     
-    save_to_db <- function(p, sql, params, tbl_name) {
-      tryCatch({
-        DBI::dbExecute(
-          p,
-          sql,
-          params = params
-        )
-        showNotification(glue::glue("{tbl_name} saved successfully!"), type = "message", duration = 3)
-      }, error = function(e) {
-        # If an error occurs, do NOT reset the flag, so it will try again.
-        # Notify the user of the failure.
-        browser()
-        showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
-        cat("Database save error:", e$message, "\n")
-      })
-                       
+    # --- Saving to db ---------------
+    get_thresholds_to_enter <- function(params) {
+      params$thresholds |>
+        fmutate(
+          created_by = params$username,
+          met_threshold_new = threshold_id %in% c(params$HUD_requirements, params$CoC_requirements),
+          project_id = params$project_id, 
+          new_date_updated = get_db_timestamp()
+        ) |>
+        fsubset(met_threshold_new != met_threshold) |>
+        fselect(project_id, threshold_id, met_threshold, created_by, new_date_updated, date_updated)
     }
-    update_threshold_entries_db <- function(p, update_data) {
+    get_new_project_evaluation <- function(params) {
+      data.table(
+        project_id = params$project_id,
+        met_HUD_thresholds = params$met_all_HUD_requirements,
+        met_CoC_thresholds = params$met_all_CoC_requirements,
+        created_by = params$username, 
+        new_date_updated = get_db_timestamp(),
+        date_updated = params$date_updated
+      ) |>
+        fselect(project_id, met_HUD_thresholds, met_CoC_thresholds, created_by, new_date_updated, date_updated)
+    }
+    
+    update_threshold_entries_db <- function(p, updated_thresholds) {
       save_to_db(
         p, 
         "INSERT INTO threshold_entries (project_id, threshold_id, met_threshold, created_by)
@@ -231,17 +209,13 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
             met_threshold = EXCLUDED.met_threshold, 
             date_updated = $5, 
             updated_by = EXCLUDED.created_by
-          WHERE date_updated = $6;",
-        update_data |>
-          fsubset(met_threshold_new != met_threshold) |>
-          fselect(project_id, threshold_id, met_threshold, created_by, new_date_updated, date_updated) |> 
-          as.list() |> 
-          unname(),
+          WHERE date_updated = $6 OR ($6 IS NULL AND date_updated IS NULL);",
+        updated_thresholds |> format_date_updated_for_db(),
         "threshold_entries"
       )
     }
     
-    update_project_evaluations_db <- function(p, new_project_evaluations, username) {
+    update_project_evaluation_db <- function(p, new_project_evaluation) {
       save_to_db(
         p,
         "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
@@ -252,17 +226,45 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
             met_coc_thresholds = EXCLUDED.met_coc_thresholds,
             date_updated = $5, 
             updated_by = EXCLUDED.created_by
-          WHERE date_updated = $6 OR ($5 IS NULL AND project_evaluations.date_updated IS NULL);",
-        new_project_evaluations |>
-          fmutate(
-            created_by = username, 
-            new_date_updated = get_db_timestamp()
-          ) |>
-          fselect(project_id, met_HUD_thresholds, met_CoC_thresholds, created_by, new_date_updated, date_updated) |>
-          as.list() |> 
-          unname(),
-        "project_evaluations"
+          WHERE date_updated = $6 OR ($6 IS NULL AND date_updated IS NULL);",
+        new_project_evaluation |> format_date_updated_for_db(),
+        "project_evaluation"
       )
     }
+    
+    observeEvent(input$save_requirements, {
+      req(user_coc$coc_version_id, user_coc$username)
+      
+      updated_thresholds <- get_thresholds_to_enter(
+        list(
+          thresholds = thresholds_to_enter(),
+          username = user_coc$username,
+          project_id = selected_project()$project_id,
+          HUD_requirements = input$HUD_requirements,
+          CoC_requirements = input$CoC_requirements
+        )
+      )
+      
+      new_project_evaluation <- get_new_project_evaluation(
+        list(
+          project_id =  selected_project()$project_id,
+          met_all_HUD_requirements = input$yes_to_all_HUD,
+          met_all_CoC_requirements = input$yes_to_all_CoC,
+          username = user_coc$username,
+          date_updated = project_evaluation()$date_updated
+        )
+      )
+      
+      needs_refresh1 <- FALSE
+      needs_refresh2 <- FALSE
+      pool::poolWithTransaction(DB_POOL, function(p) {
+        needs_refresh1 <- update_threshold_entries_db(p, updated_thresholds)
+        needs_refresh2 <- update_project_evaluation_db(p, new_project_evaluation)
+      })
+      
+      if(needs_refresh1 || needs_refresh2)
+        refresh_trigger(\(x) x + 1)
+      
+    }, ignoreInit = TRUE) # end save_requirements
   }) # end moduleServer
 }

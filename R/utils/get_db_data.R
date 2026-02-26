@@ -28,10 +28,10 @@ onStop(function() {
 # dbGetQuery returns result set
 convert_timestamps_to_POSIXct <- function(dt) {
   if("date_created" %in% names(dt)) 
-    dt[, date_created := as.POSIXct(date_created)]
+    dt[, date_created := as.POSIXct(date_created, tz = "UTC")]
   
   if("date_updated" %in% names(dt)) 
-    dt[, date_updated := as.POSIXct(date_updated)]
+    dt[, date_updated := as.POSIXct(date_updated, tz = "UTC")]
   
   return(dt)
 }
@@ -41,9 +41,9 @@ get_db_query <- function(sql, params = NULL) {
       DB_POOL,
       sql,
       params = params
-    ) |> qDT()
-    
-    convert_timestamps_to_POSIXct(dt)
+    ) |> 
+      qDT() |>
+      convert_timestamps_to_POSIXct()
     
     return(dt)
   }, error = function(e) {
@@ -87,3 +87,68 @@ db_append <- function(tbl, data) {
   })
 }
 
+
+
+# --- Specific DB Pulls --------------
+## Requests/CoC Selection --------
+get_coc_versions_for_user <- function(username) {
+  get_db_query(
+    "SELECT v.*, u.username, u.coc_version_role, v.created_by
+      FROM coc_versions v
+      LEFT JOIN coc_version_users u
+      ON v.coc_version_id = u.coc_version_id
+      WHERE u.username = $1
+    ",
+    params = username
+  )
+}
+
+
+## Rating --------------
+get_project_evaluation <- function(coc_version_id, project_id) {
+  get_db_query(
+    "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, pe.date_updated 
+    FROM project_evaluations pe
+    LEFT JOIN projects p ON pe.project_id = p.project_id
+    WHERE p.coc_version_id = $1 and pe.project_id = $2",
+    params = list(coc_version_id, project_id)
+  )
+}
+
+get_rating_factors_and_scores <- function(coc_version_id, selected_project) {
+  target_population <- ifelse(
+    is.na(selected_project$target_population) || 
+      get_lookup_label(selected_project$target_population, 'target_population') == 'NA',
+    get_lookup_refid('General', 'target_population'),
+    selected_project$target_population
+  )
+  
+  get_db_query(
+    "SELECT r.rating_factor_id, 
+      r.rating_factor_text, 
+      CASE WHEN r.rating_factor_text_short IS NOT NULL THEN r.rating_factor_text_short ELSE r.rating_factor_text END AS rating_factor_text_short, 
+      r.piping_text, r.project_type, r.target_population, sr.selected_rating_factor_id, 
+      fg.factor_group, fsg.factor_subgroup, 
+      r.goal, r.max_point_value,
+      rs.rating_score, rs.performance, rs.project_id,
+      rs.date_updated
+    FROM rating_factors r
+    INNER JOIN selected_rating_factors sr ON sr.rating_factor_id = r.rating_factor_id
+    JOIN factor_groups fg ON r.factor_group = fg.factor_group_id
+    LEFT JOIN factor_subgroups fsg ON r.factor_subgroup = fsg.factor_subgroup_id
+    LEFT JOIN rating_scores rs ON rs.selected_rating_factor_id = sr.selected_rating_factor_id
+    WHERE sr.coc_version_id = $1 AND 
+      r.funding_action = $2 AND
+      r.project_type = $3 AND
+      r.target_population = $4 AND
+      (rs.project_id = $5 OR rs.project_id IS NULL)
+    ", 
+    params = list(
+      coc_version_id,
+      selected_project$funding_action,
+      selected_project$project_type,
+      target_population,
+      selected_project$project_id
+    )
+  )
+}

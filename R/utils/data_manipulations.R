@@ -211,3 +211,49 @@ format_timestamp_for_db <- function(t) {
 get_db_timestamp <- function() {
   format_timestamp_for_db(Sys.time())
 }
+
+format_date_updated_for_db <- function(df) {
+  if("date_updated" %in% colnames(df))
+    df <- df |>
+      fmutate(date_updated = format_timestamp_for_db(date_updated))
+  
+  return(df)
+}
+save_to_db <- function(p, sql, params, tbl_name) {
+  tryCatch({
+    rows_changed <- DBI::dbExecute(
+      p,
+      sql,
+      params = paramify(params)
+    )
+    
+    num_rows <- ifelse("list" %in% class(params), length(params[[1]]), fnrow(params))
+    
+    if(rows_changed == 0) {
+      msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
+      needs_refresh <- TRUE
+    } else if(rows_changed < num_rows) {
+      msg <- glue::glue("Someone recently edited one or more {tbl_name} for this project! Refreshing your view. Resubmit when you're ready.")
+      needs_refresh <- TRUE
+    } else {
+      msg <- glue::glue("{tbl_name} saved successfully!")
+      needs_refresh <- FALSE
+    }
+    print(msg)
+    showNotification(msg, type = "message")
+    return(needs_refresh)
+  }, error = function(e) {
+    # If an error occurs, do NOT reset the flag, so it will try again.
+    # Notify the user of the failure.
+    browser()
+    showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
+    cat("Database save error:", e$message, "\n")
+  })
+}
+
+# make sure data are SQL/db ready, i.e. no dfs or named lists
+paramify <- function(p) {
+  p |>
+    as.list() |>
+    unname()
+}

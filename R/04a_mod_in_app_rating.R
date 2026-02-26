@@ -46,7 +46,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
       )
       
       get_db_query(glue::glue_sql(
-        "SELECT project_id, organization_name, project_name, project_type, target_population
+        "SELECT project_id, organization_name, project_name, project_type, target_population, funding_action
         FROM projects 
         WHERE coc_version_id = {user_coc$coc_version_id} AND funding_action IN ({funding_action_ids*})",
         .con=DB_POOL
@@ -56,6 +56,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
     # Get the project to be rated from the dropdown in the sidebar
     selected_project <- reactive({
       req(input$project_select)
+      
       all_projects() |> 
         fsubset(project_id == input$project_select)
     })
@@ -69,7 +70,8 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
       updateSelectInput(
         session, 
         "project_select",
-        choices = setNames(all_projects()$project_id, all_projects()$project_name)
+        choices = setNames(all_projects()$project_id, all_projects()$project_name),
+        selected = character(0)
       )
     })
     
@@ -89,6 +91,6 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
     
     # call the module servers of the subtabs
     mod_thresholds_entry_server("thresholds_entry", user_coc, selected_project, module_returns)
-    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, funding_action, module_returns)
+    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, module_returns)
   })
 }
