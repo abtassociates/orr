@@ -36,13 +36,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     get_all_users_and_versions <- function() {
       coc_vu(
-        get_db_query(
-          "SELECT v.*, u.username, u.coc_version_role
-            FROM coc_versions v
-            LEFT JOIN coc_version_users u
-            ON v.coc_version_id = u.coc_version_id"
-        ) |>
-          fsubset(username == user_coc$username, -created_by) |>
+        get_coc_versions_for_user(user_coc$username) |>
+          fselect(-created_by) |>
           fmutate(
             coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
             coc_status = get_lookup_label(coc_status, 'coc_status')
