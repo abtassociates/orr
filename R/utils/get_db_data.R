@@ -70,11 +70,7 @@ db_execute <- function(sql, params) {
   tryCatch({
     pool::poolWithTransaction(DB_POOL, function(p) {
       dbExecute(p, sql, params = params)
-<<<<<<< hotfix/saving-priorities
     }) 
-=======
-    })
->>>>>>> dev
   }, error = function(e) {
     list(ok = FALSE, error = e$message)
   })
