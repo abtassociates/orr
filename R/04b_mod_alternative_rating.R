@@ -20,46 +20,28 @@ mod_alternative_rating_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    db_has_changed <- reactiveVal(NA)
-    
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
+    refresh_trigger <- reactiveVal(NA)
     
-    observe({
+    observeEvent(c(user_coc$coc_version_id, refresh_trigger()), {
       req(user_coc$coc_version_id)
-      req(is.na(db_has_changed()) || db_has_changed())
-
+      
       ratable_projects(
-        get_db_query(
-          "SELECT 
-            p.project_id, 
-            p.organization_name, 
-            p.project_name, 
-            p.grant_number, 
-            p.funding_action, 
-            p.project_type, 
-            p.target_population, 
-            pe.met_hud_thresholds,
-            pe.met_coc_thresholds,
-            pe.weighted_score,
-            pe.date_updated
-          FROM projects p
-          LEFT JOIN project_evaluations pe ON p.project_id = pe.project_id
-          LEFT JOIN lookups l ON p.funding_action = l.reference_id
-          WHERE p.coc_version_id = $1 AND p.funding_action IS NOT NULL AND l.value <> 'Ignore'",
-          params = list(user_coc$coc_version_id)
-        ) |>
-          fmutate(
-            met_hud_thresholds = factor_yesno(met_hud_thresholds),
-            met_coc_thresholds = factor_yesno(met_coc_thresholds)
-          )
+        get_alternative_rating(
+          user_coc$coc_version_id
+        )
       )
     }) # end observe that updates ratable_projects
     
     # Alternative Rating table
     output$alternative_rating_table <- renderDT({
       
-      data <- ratable_projects()
+      data <- ratable_projects() |>
+        fmutate(
+          met_hud_thresholds = factor_yesno(met_hud_thresholds),
+          met_coc_thresholds = factor_yesno(met_coc_thresholds)
+        )
       
       shiny::validate(need(
         nrow(data) > 0, 
@@ -81,14 +63,14 @@ mod_alternative_rating_server <- function(id, user_coc) {
         var thead = $(this.api().table().header());
         thead.find('th').each(function() {{
           var colName = $(this).text().trim();
-          debugger;
+
           if (colName === 'Met HUD Thresholds') {{
             $(this).html(
               'MET HUD THRESHOLDS<div style=\"margin-top:4px;\">' +
               '<button class=\"btn btn-xs btn-success\" style=\"margin-right:2px;\" ' +
-                'onclick=\"Shiny.setInputValue(\\'{met_hud_input_id}\\', \\'Yes\\', {{priority: \\'event\\'}})\">✓ All</button>' +
+                'onclick=\"Shiny.setInputValue(\\'{met_hud_input_id}\\', \\'1\\', {{priority: \\'event\\'}})\">✓ All</button>' +
               '<button class=\"btn btn-xs btn-danger\" ' +
-                'onclick=\"Shiny.setInputValue(\\'{met_hud_input_id}\\', \\'No\\', {{priority: \\'event\\'}})\">✗ None</button>' +
+                'onclick=\"Shiny.setInputValue(\\'{met_hud_input_id}\\', \\'0\\', {{priority: \\'event\\'}})\">✗ None</button>' +
               '</div>'
             );
           }}
@@ -97,9 +79,9 @@ mod_alternative_rating_server <- function(id, user_coc) {
             $(this).html(
               'MET COC THRESHOLDS<div style=\"margin-top:4px;\">' +
               '<button class=\"btn btn-xs btn-success\" style=\"margin-right:2px;\" ' +
-                'onclick=\"Shiny.setInputValue(\\'{met_coc_input_id}\\', \\'Yes\\', {{priority: \\'event\\'}})\">✓ All</button>' +
+                'onclick=\"Shiny.setInputValue(\\'{met_coc_input_id}\\', \\'1\\', {{priority: \\'event\\'}})\">✓ All</button>' +
               '<button class=\"btn btn-xs btn-danger\" ' +
-                'onclick=\"Shiny.setInputValue(\\'{met_coc_input_id}\\', \\'No\\', {{priority: \\'event\\'}})\">✗ None</button>' +
+                'onclick=\"Shiny.setInputValue(\\'{met_coc_input_id}\\', \\'0\\', {{priority: \\'event\\'}})\">✗ None</button>' +
               '</div>'
             );
           }}
@@ -164,7 +146,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
       req(input$set_met_hud_thresholds)
       
       ratable_projects(
-        copy(ratable_projects())[, met_hud_thresholds := input$set_met_hud_thresholds]
+        copy(ratable_projects())[, met_hud_thresholds := as.integer(input$set_met_hud_thresholds)]
       )
     })
     
@@ -172,22 +154,25 @@ mod_alternative_rating_server <- function(id, user_coc) {
       req(input$set_met_coc_thresholds)
       
       ratable_projects(
-        copy(ratable_projects())[, met_coc_thresholds := input$set_met_coc_thresholds]
+        copy(ratable_projects())[, met_coc_thresholds := as.integer(input$set_met_coc_thresholds)]
       )
     })
     
     
     # Save ----------------------
-    observeEvent(input$save_rating, {
-      req(ratable_projects())
-      params_list <- ratable_projects() |>
-        fmutate(created_by = user_coc$username, new_date_updated = get_db_timestamp()) |>
-        fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, new_date_updated, date_updated) |>
-        as.list() |>
-        unname()
-      
-      rows_changed <- db_execute("
-        INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
+    get_new_project_evaluation <- function(username, ratable_projects) {
+      ratable_projects |>
+        fmutate(
+          created_by = username, 
+          new_date_updated = get_db_timestamp()
+        ) |>
+        fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, new_date_updated, date_updated)
+    }
+    
+    update_project_evaluation_db <- function(p, new_project_evaluation) {
+      save_to_db(
+        p,
+        "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
         VALUES ($1, 'outside', $2, $3, $4)
         ON CONFLICT (project_id) DO UPDATE SET
           method = EXCLUDED.method,
@@ -196,19 +181,20 @@ mod_alternative_rating_server <- function(id, user_coc) {
           date_updated = $5,
           updated_by   = EXCLUDED.created_by
         WHERE date_updated = $6",
-        params = params_list
+        new_project_evaluation |> format_date_updated_for_db(),
+        "project_evaluations"
       )
+    }
+    
+    
+    observeEvent(input$save_rating, {
+      req(ratable_projects())
       
-      if(rows_changed == 0) {
-        showNotification("Someone recently edited this data! Refreshing your view. Resubmit when you're ready.", type = "message")
-        db_has_changed(TRUE)
-      } else if(rows_changed < fnrow(ratable_projects())) {
-        showNotification("Someone recently edited one or more project ratings! Refreshing your view. Resubmit when you're ready.", type = "message")
-        db_has_changed(TRUE)
-      } else {
-        db_has_changed(NA)
-        showNotification("Saved rating info!", type = "message")
-      }
+      new_project_evaluation = get_new_project_evaluation(user_coc$username, ratable_projects())
+      needs_refresh <- update_project_evaluation_db(DB_POOL, new_project_evaluation)
+      
+      if(needs_refresh)
+        refresh_trigger(\(x) x + 1)
     }) # end save_rating
     
     

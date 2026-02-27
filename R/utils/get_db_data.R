@@ -104,7 +104,7 @@ get_coc_versions_for_user <- function(username) {
 }
 
 
-## Rating --------------
+## In-App Rating --------------
 get_project_evaluation <- function(coc_version_id, project_id) {
   get_db_query(
     "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, pe.date_updated 
@@ -150,5 +150,28 @@ get_rating_factors_and_scores <- function(coc_version_id, selected_project) {
       target_population,
       selected_project$project_id
     )
+  )
+}
+
+## Alternative Rating ---------------
+get_alternative_rating <- function(coc_version_id) {
+  get_db_query(
+    "SELECT 
+            p.project_id, 
+            p.organization_name, 
+            p.project_name, 
+            p.grant_number, 
+            p.funding_action, 
+            p.project_type, 
+            p.target_population, 
+            pe.met_hud_thresholds,
+            pe.met_coc_thresholds,
+            pe.weighted_score,
+            pe.date_updated
+          FROM projects p
+          LEFT JOIN project_evaluations pe ON p.project_id = pe.project_id
+          LEFT JOIN lookups l ON p.funding_action = l.reference_id
+          WHERE p.coc_version_id = $1 AND p.funding_action IS NOT NULL AND l.value <> 'Ignore'",
+    params = list(coc_version_id)
   )
 }
