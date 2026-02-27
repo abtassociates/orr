@@ -64,7 +64,10 @@ jobs:
 
       # 2. Add a new step to dump the outputs
       - name: 'View Gemini Usage Metadata'
-        if: always() # Ensures this runs even if the review step fails
+        if: always() 
+        env:
+          # Safely pass the JSON object as an environment variable
+          STEP_OUTPUTS: ${{ toJSON(steps.gemini_review.outputs) }}
         run: |
           echo "Raw Step Outputs:"
-          echo '${{ toJSON(steps.gemini_review.outputs) }}'
+          echo "$STEP_OUTPUTS" | jq .
