@@ -2,7 +2,7 @@ initialize_inline_edit_table_ui <- function(
     data, 
     column_defs = list(), 
     tableID, 
-    initial_filter, 
+    initial_filter = NULL, 
     formatting = list(), 
     colnames=NULL, 
     cols_to_disable = NULL,
