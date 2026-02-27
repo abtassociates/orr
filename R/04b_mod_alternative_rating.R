@@ -74,6 +74,39 @@ mod_alternative_rating_server <- function(id, user_coc) {
       
       colnames <- unname(project_variable_labels[names(data)])
       
+      met_hud_input_id <- ns("set_met_hud_thresholds")
+      met_coc_input_id <- ns("set_met_coc_thresholds")
+      
+      header_cb <- glue::glue("
+        var thead = $(this.api().table().header());
+        thead.find('th').each(function() {{
+          var colName = $(this).text().trim();
+          debugger;
+          if (colName === 'Met HUD Thresholds') {{
+            $(this).html(
+              'MET HUD THRESHOLDS<div style=\"margin-top:4px;\">' +
+              '<button class=\"btn btn-xs btn-success\" style=\"margin-right:2px;\" ' +
+                'onclick=\"Shiny.setInputValue(\\'{met_hud_input_id}\\', \\'Yes\\', {{priority: \\'event\\'}})\">✓ All</button>' +
+              '<button class=\"btn btn-xs btn-danger\" ' +
+                'onclick=\"Shiny.setInputValue(\\'{met_hud_input_id}\\', \\'No\\', {{priority: \\'event\\'}})\">✗ None</button>' +
+              '</div>'
+            );
+          }}
+          
+          if (colName === 'Met CoC Thresholds') {{
+            $(this).html(
+              'MET COC THRESHOLDS<div style=\"margin-top:4px;\">' +
+              '<button class=\"btn btn-xs btn-success\" style=\"margin-right:2px;\" ' +
+                'onclick=\"Shiny.setInputValue(\\'{met_coc_input_id}\\', \\'Yes\\', {{priority: \\'event\\'}})\">✓ All</button>' +
+              '<button class=\"btn btn-xs btn-danger\" ' +
+                'onclick=\"Shiny.setInputValue(\\'{met_coc_input_id}\\', \\'No\\', {{priority: \\'event\\'}})\">✗ None</button>' +
+              '</div>'
+            );
+          }}
+        }});
+      ")
+            
+            
       initialize_inline_edit_table_ui(
         data,
         tableID = "alternative_rating_table",
@@ -100,7 +133,8 @@ mod_alternative_rating_server <- function(id, user_coc) {
           )
         ),
         colnames = colnames,
-        cols_to_disable = setdiff(names(data), editable_cols)
+        cols_to_disable = setdiff(names(data), editable_cols),
+        header_cb = header_cb
       )
     })
     
@@ -118,13 +152,32 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("alternative_rating_table"), session = session)
+    projects_table_proxy <- dataTableProxy(ns("alternative_rating_table"))
     
     observe({
       req(ratable_projects())
       replaceData(projects_table_proxy, ratable_projects(), resetPaging = FALSE)
     })
     
+    # Handle yes-to-all feature for Met HUD/CoC Threshold columns
+    observeEvent(input$set_met_hud_thresholds, {
+      req(input$set_met_hud_thresholds)
+      
+      ratable_projects(
+        copy(ratable_projects())[, met_hud_thresholds := input$set_met_hud_thresholds]
+      )
+    })
+    
+    observeEvent(input$set_met_coc_thresholds, {
+      req(input$set_met_coc_thresholds)
+      
+      ratable_projects(
+        copy(ratable_projects())[, met_coc_thresholds := input$set_met_coc_thresholds]
+      )
+    })
+    
+    
+    # Save ----------------------
     observeEvent(input$save_rating, {
       req(ratable_projects())
       params_list <- ratable_projects() |>
@@ -156,8 +209,10 @@ mod_alternative_rating_server <- function(id, user_coc) {
         db_has_changed(NA)
         showNotification("Saved rating info!", type = "message")
       }
-    })
+    }) # end save_rating
     
+    
+    # Importing --------------------
     observeEvent(input$import_rating, {
       
       # Step 1: Show upload modal
@@ -192,11 +247,12 @@ mod_alternative_rating_server <- function(id, user_coc) {
           )
         )
       )
-    })
+    }) # end import_rating
     
     # Track current step
     current_step <- reactiveVal(1)
     
+    # handle import pop-up button visibility and labeling
     observe({
       req(user_coc$coc_version_id)
       req(input$import_rating)

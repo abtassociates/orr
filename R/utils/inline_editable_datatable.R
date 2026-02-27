@@ -6,7 +6,8 @@ initialize_inline_edit_table_ui <- function(
     formatting = list(), 
     colnames=NULL, 
     cols_to_disable = NULL,
-    buttons = NULL
+    buttons = NULL,
+    header_cb = NULL
 ) {
   # Determine factor/dropdown columns and user-editable columns
   factor_cols <- sapply(data, is.factor)
@@ -94,10 +95,13 @@ initialize_inline_edit_table_ui <- function(
             }
           });
         }
-      });
+      }); /*end double-click*/
+      
+      %s
     }", 
     jsonlite::toJSON(factor_info), 
-    tableID
+    tableID,
+    header_cb
   )
 
   # --- STEP 3: datatable creation ---
