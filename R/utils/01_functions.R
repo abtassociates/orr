@@ -26,13 +26,13 @@ toggle_navs_on_coc_selection <- function(params) {
     if(t %in% c("rating","ranking")) show <- show && length(params$project_ids) > 0
     
     if(show)
-      nav_show("nav", target = t, session = parent_session)
+      nav_show("nav", target = t, session = params$parent_session)
     else
-      nav_hide("nav", target = t, session = parent_session)
+      nav_hide("nav", target = t, session = params$parent_session)
   }
 }
 
-## REFACTOR INTO SEPARATE FUNCTION SCRIPT
+## Add new CoC Version for current user
 create_new_version_for_user <- function(params) {
   
   new_version <- params$new_version_data |>
@@ -76,8 +76,7 @@ create_new_version_for_user <- function(params) {
   return(new_version_user$coc_version_id)
 }
 
-
-## REFACTOR INTO SEPARATE FUNCTION SCRIPT
+## Request CoC Version access from another user, update DB table
 create_request <- function(params) {
   request_status_num <- get_lookup_refid('Sent','request_status')
   

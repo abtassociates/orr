@@ -109,7 +109,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       # toggle Inventory tab if they have any versions selected
       toggle_navs_on_coc_selection(params = list(rows_selected = input$coc_versions_dt_rows_selected,
-                                                 project_ids = project_ids()))
+                                                 project_ids = project_ids(),
+                                                 parent_session = parent_session)
+                                   )
       
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
