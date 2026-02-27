@@ -9,7 +9,7 @@ mod_rating_ui <- function(id) {
       value = id,
       # CARD-METHOD SELECTION HERE
       card_body(
-        h5("Choose Your Rating Method"),
+        # h5("Choose Your Rating Method"),
         
         tags$style(HTML(glue::glue("
           /* Remove hyperlink styling from actionLink */
