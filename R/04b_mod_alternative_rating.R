@@ -6,7 +6,12 @@ mod_alternative_rating_ui <- function(id) {
     "Alternative Rating",
     value = id,
     card(
-      DTOutput(ns("alternative_rating_table")),
+      card_body(
+        fillable = FALSE,
+        min_height = "65vh",
+        max_height = "67vh",
+        DTOutput(ns("alternative_rating_table"))
+      ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary"),
