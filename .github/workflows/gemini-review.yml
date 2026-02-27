@@ -39,6 +39,7 @@ jobs:
       #    | grep '"name": "models/'
           
       - name: 'Gemini Review'
+        id: gemini_review
         uses: 'google-github-actions/run-gemini-cli@v0'
         env:
           # This is the key part: The CLI looks for this specific Env Var name
