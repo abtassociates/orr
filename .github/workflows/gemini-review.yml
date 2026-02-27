@@ -58,16 +58,12 @@ jobs:
           # gemini-model: 'gemini-3.0-flash-preview' #  (as of 2/16/26, 20 RPD and 5 RPM)
           # gemini-model: 'gemini-3-flash-preview'
           # gemini-model: 'gemini-3.0-flash-preview-001'
-          settings: |
-            {
-              "output": {
-                "format": "json"
-              },
-              "extensions": {
-                "allowed": [
-                  "github"
-                ]
-              }
-            }
           prompt: |
             /gemini-review
+
+      # 2. Add a new step to dump the outputs
+      - name: 'View Gemini Usage Metadata'
+        if: always() # Ensures this runs even if the review step fails
+        run: |
+          echo "Raw Step Outputs:"
+          echo '${{ toJSON(steps.gemini_review.outputs) }}'
