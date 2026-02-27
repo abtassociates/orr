@@ -35,24 +35,29 @@ mod_alternative_rating_server <- function(id, user_coc) {
     }) # end observe that updates ratable_projects
     
     # Alternative Rating table
-    output$alternative_rating_table <- renderDT({
-      
-      data <- ratable_projects() |>
+    # 1. Create a helper function to ensure data formatting is identical
+    # for both the initial render and subsequent proxy updates.
+    format_table_data <- function(df) {
+      df %>%
         fmutate(
           met_hud_thresholds = factor_yesno(met_hud_thresholds),
-          met_coc_thresholds = factor_yesno(met_coc_thresholds)
+          met_coc_thresholds = factor_yesno(met_coc_thresholds),
+          project_type = convert_to_factor(., "project_type", textToNum = F),
+          target_population = convert_to_factor(., "target_population", textToNum = F)
         )
-      
+    }
+    
+    output$alternative_rating_table <- renderDT({
+      data <- isolate(ratable_projects())
+
       shiny::validate(need(
         nrow(data) > 0, 
         "No projects to rate"
       ))
       
+      data <- format_table_data(data)
+        
       editable_cols <- c("met_hud_thresholds", "met_coc_thresholds", "weighted_score")
-      
-      ## filter out Ignores by default-----
-      initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
       
       colnames <- unname(project_variable_labels[names(data)])
       
@@ -92,7 +97,6 @@ mod_alternative_rating_server <- function(id, user_coc) {
       initialize_inline_edit_table_ui(
         data,
         tableID = "alternative_rating_table",
-        initial_filter = initial_filter,
         column_defs = list(
           list(
             targets =c(which(names(data) %in% c("funding_action", "date_updated")) - 1),
@@ -134,28 +138,36 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("alternative_rating_table"))
+    projects_table_proxy <- dataTableProxy("alternative_rating_table")
     
     observe({
       req(ratable_projects())
-      replaceData(projects_table_proxy, ratable_projects(), resetPaging = FALSE)
+      
+      formatted_data <- format_table_data(ratable_projects())
+
+      replaceData(projects_table_proxy, formatted_data, resetPaging = FALSE, rownames = FALSE)
     })
     
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns
     observeEvent(input$set_met_hud_thresholds, {
       req(input$set_met_hud_thresholds)
       
-      ratable_projects(
-        copy(ratable_projects())[, met_hud_thresholds := as.integer(input$set_met_hud_thresholds)]
-      )
+      visible_rows <- input$alternative_rating_table_rows_all  # indices of filtered rows
+
+      updated <- copy(ratable_projects())
+      updated[visible_rows, met_hud_thresholds := as.integer(input$set_met_hud_thresholds)]
+
+      ratable_projects(updated)
     })
     
     observeEvent(input$set_met_coc_thresholds, {
       req(input$set_met_coc_thresholds)
       
-      ratable_projects(
-        copy(ratable_projects())[, met_coc_thresholds := as.integer(input$set_met_coc_thresholds)]
-      )
+      visible_rows <- input$alternative_rating_table_rows_all  # indices of filtered rows
+      
+      updated <- copy(ratable_projects())
+      updated[visible_rows, met_coc_thresholds := as.integer(input$set_met_coc_thresholds)]
+      ratable_projects(updated)
     })
     
     
