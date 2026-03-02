@@ -19,19 +19,6 @@ get_all_users_and_versions <- function(params) {
     colorder(coc, coc_name, pos = "after")
 }
 
-## Enable/disable actions when row is selected or not
-toggle_navs_on_coc_selection <- function(params) {
-  for(t in TABS_AFTER_COC_SELECTION) {
-    show <- length(params$rows_selected) > 0
-    if(t %in% c("rating","ranking")) show <- show && length(params$project_ids) > 0
-    
-    if(show)
-      nav_show("nav", target = t, session = params$parent_session)
-    else
-      nav_hide("nav", target = t, session = params$parent_session)
-  }
-}
-
 ## Add new CoC Version for current user
 create_new_version_for_user <- function(params) {
   

@@ -104,13 +104,27 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # CoC Version Actions --------------
     ####
     
+    ## Enable/disable actions when row is selected or not
+    toggle_navs_on_coc_selection <- function(params) {
+      for(t in params$TABS_AFTER_COC_SELECTION) {
+        show <- length(params$rows_selected) > 0
+        if(t %in% c("rating","ranking")) show <- show && length(params$project_ids) > 0
+        
+        if(show)
+          nav_show("nav", target = t, session = params$parent_session)
+        else
+          nav_hide("nav", target = t, session = params$parent_session)
+      }
+    }
+    
     observe({
       req(user_coc$auth)
       
       # toggle Inventory tab if they have any versions selected
       toggle_navs_on_coc_selection(params = list(rows_selected = input$coc_versions_dt_rows_selected,
                                                  project_ids = project_ids(),
-                                                 parent_session = parent_session)
+                                                 parent_session = parent_session,
+                                                 TABS_AFTER_COC_SELECTION = TABS_AFTER_COC_SELECTION)
                                    )
       
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
