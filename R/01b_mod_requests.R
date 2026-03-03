@@ -138,8 +138,8 @@ mod_requests_server <- function(id, user_coc) {
         
         if(status == 'Approved') {
           new_users <- data.table(
-            coc_version_id = approved_requests$coc_version_id,
-            username = approved_requests$created_by,
+            coc_version_id = selected_requests$coc_version_id,
+            username = selected_requests$created_by,
             coc_version_role = user_role_num,
             created_by = user_coc$username,
             date_created = current_time,
@@ -160,7 +160,7 @@ mod_requests_server <- function(id, user_coc) {
             ) |>
               add_datetime_stamp(is_new = TRUE)
           )
-        } else if(request_status_num == 3){
+        } else if(status == "Rejected"){
           # Set Status in Requests table
           db_execute(
             "UPDATE coc_version_requests 
