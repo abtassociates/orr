@@ -417,7 +417,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         fselect(date_updated)
       
       # need to drop timezone from R timestamp
-      timestamp_param <-  format_timestamp_for_dp(pulled_date_updated[[1]])
+      timestamp_param <-  format_timestamp_for_db(pulled_date_updated[[1]])
       
       sql <- glue::glue(
         "INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, {metric_name}, created_by)
