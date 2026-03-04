@@ -8,8 +8,8 @@ get_all_users_and_versions <- function(params) {
   ) |>
     fsubset(username == params$username, -created_by) |>
     fmutate(
-      coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
-      coc_status = get_lookup_label(coc_status, 'coc_status')
+      coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role', LOOKUPS = params$LOOKUPS),
+      coc_status = get_lookup_label(coc_status, 'coc_status', LOOKUPS = params$LOOKUPS)
     ) |>
     join(
       params$coc_tbl %>% fselect(coc_code, coc_name),

@@ -15,11 +15,11 @@ factor_yesno <- function(v) {
   )
 }
 
-get_labelled_lookups <- function(l, lookup_col = "value") {
+get_labelled_lookups <- function(l, lookup_col = "value", LOOKUPS = LOOKUPS) {
   lookup_info <- LOOKUPS[reference_type == l]
   setNames(lookup_info$reference_id, lookup_info[[lookup_col]])
 }
-get_lookup_label <- function(v, ref_type, lookup_col = "value") {
+get_lookup_label <- function(v, ref_type, lookup_col = "value", LOOKUPS = LOOKUPS) {
   filtered_lookups <- LOOKUPS[reference_type == ref_type]
   if(is.character(v)) {
     filtered_lookups[reference_id == v, get(lookup_col)]
@@ -28,14 +28,14 @@ get_lookup_label <- function(v, ref_type, lookup_col = "value") {
   } 
 }
 
-get_lookup_refid <- function(v, ref_type, lookup_col = "value") {
+get_lookup_refid <- function(v, ref_type, lookup_col = "value", LOOKUPS = LOOKUPS) {
   filtered_lookups <- LOOKUPS[reference_type == ref_type]
   return(
     filtered_lookups[match(v, get(lookup_col))]$reference_id
   )
 }
 
-convert_to_factor <- function(data, v, textToNum = FALSE, label_col = "value") {
+convert_to_factor <- function(data, v, textToNum = FALSE, label_col = "value", LOOKUPS = LOOKUPS) {
   lookup_info <- LOOKUPS[reference_type == v, .(reference_id, value, value_abbrev, value_long)]
 
   col_data <- if(!textToNum) {
