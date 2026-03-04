@@ -129,3 +129,66 @@ get_hic_data <- function(params) {
   
   return(project_data)
 }
+
+## Update single request
+update_single_request <- function(row, request_status_num, params) {
+  
+  
+  if(request_status_num == 2){
+    
+    # Set Status in Requests table
+    db_execute(
+      "UPDATE coc_version_requests 
+          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2
+          WHERE coc_request_id = $3", 
+      params = list(request_status_num, params$username, row[["coc_request_id"]])
+    )
+    
+    # Create version user
+    user_role_num <- get_lookup_refid("Editor", "coc_version_role")
+    db_append(
+      "coc_version_users",
+      data.table(
+        coc_version_id = row[["coc_version_id"]],
+        username = row[["created_by"]],
+        coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
+        created_by = params$username,
+        date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+        date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+        updated_by = params$username
+      )
+    )
+  } else if(request_status_num == 3){
+    # Set Status in Requests table
+    db_execute(
+      "UPDATE coc_version_requests 
+          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2,
+              reason_for_rejection = $3
+          WHERE coc_request_id = $4", 
+      params = list(request_status_num, params$username, params$rej_reason, row[["coc_request_id"]])
+    )
+  }
+}
+
+# Updating all requests DB table
+update_requests <- function(params, cur_requests) {
+  request_status_num <- get_lookup_refid(params$status, "request_status")
+  selected_requests <- cur_requests()[params$rows_selected]
+  
+  ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
+  apply(selected_requests, 1, update_single_request, request_status_num = request_status_num, params = params)
+  
+  if(params$update_rv){
+    # Update datatable proxy
+    cur_requests(
+      cur_requests() |> 
+        fmutate(
+          request_status = fifelse(
+            coc_request_id %in% selected_requests$coc_request_id, 
+            params$status, 
+            request_status
+          )
+        )
+    )
+  }
+}

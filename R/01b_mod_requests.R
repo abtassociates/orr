@@ -115,64 +115,7 @@ mod_requests_server <- function(id, user_coc) {
       shinyjs::toggle(id = 'reject_request', condition = length(input$requests_dt_rows_selected) > 0 && has_outstanding_requests)
     })
     
-    ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
-    # Updating DB
-    update_request <- function(status) {
-      request_status_num <- get_lookup_refid(status, "request_status")
-      selected_requests <- cur_requests()[input$requests_dt_rows_selected]
-      
-      ## REFACTOR INTO SEPARATE FUNCTION SCRIPT
-      apply(selected_requests, 1, function(row) {
-        
-       
-        if(request_status_num == 2){
-          
-          # Set Status in Requests table
-          db_execute(
-            "UPDATE coc_version_requests 
-          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2
-          WHERE coc_request_id = $3", 
-            params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
-          )
-          
-          # Create version user
-          user_role_num <- get_lookup_refid("Editor", "coc_version_role")
-          db_append(
-            "coc_version_users",
-            data.table(
-              coc_version_id = row[["coc_version_id"]],
-              username = row[["created_by"]],
-              coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
-              created_by = user_coc$username,
-              date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-              date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-              updated_by = user_coc$username
-            )
-          )
-        } else if(request_status_num == 3){
-          # Set Status in Requests table
-          db_execute(
-            "UPDATE coc_version_requests 
-          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2,
-              reason_for_rejection = $3
-          WHERE coc_request_id = $4", 
-            params = list(request_status_num, user_coc$username, input$rej_reason, row[["coc_request_id"]])
-          )
-        }
-      })
-        
-      # Update datatable proxy
-      cur_requests(
-        cur_requests() |> 
-          fmutate(
-            request_status = fifelse(
-              coc_request_id %in% selected_requests$coc_request_id, 
-              status, 
-              request_status
-            )
-          )
-      )
-    }
+   
     observeEvent(input$approve_request, {
       showModal(
         modalDialog(
@@ -187,7 +130,9 @@ mod_requests_server <- function(id, user_coc) {
     })
     
     observeEvent(input$confirm_approve, {
-      update_request("Approved")
+      update_requests(params = list(status = "Approved",
+                                    rows_selected = input$requests_dt_rows_selected), 
+                      cur_requests())
       removeModal()
       showNotification('Request approved.', type='message') 
     })
@@ -212,7 +157,9 @@ mod_requests_server <- function(id, user_coc) {
     })
     
     observeEvent(input$confirm_reject, {
-      update_request("Rejected")
+      update_requests(params = list(status = "Rejected", 
+                                    rows_selected = input$requests_dt_rows_selected), 
+                      cur_requests())
       removeModal()
       showNotification('Request rejected.', type = 'warning')
     })
