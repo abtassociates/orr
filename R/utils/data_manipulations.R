@@ -218,8 +218,8 @@ store_single_setting <- function(user_coc, existing_settings, setting_nm, settin
     append_df <- data.frame(
       'coc_version_id' = isolate(user_coc$coc_version_id),
       'coc_user' = isolate(user_coc$username),
-      'setting_name' =  setting_name,
-      'setting_value' = isolate(setting_value),
+      'setting_name' =  setting_nm,
+      'setting_value' = isolate(setting_val),
       'created_by' = isolate(user_coc$username),
       'updated_by' = isolate(user_coc$username)
     )
@@ -252,6 +252,11 @@ store_user_settings <- function(user_coc, tab_name){
   if(is.null(isolate(user_coc$settings$rating_method)))
     return(NULL)
   store_single_setting(user_coc, existing_settings, 'rating_method', user_coc$settings$rating_method)
+  
+  if(is.null(isolate(user_coc$settings$rating_tab)))
+    return(NULL)
+  store_single_setting(user_coc, existing_settings, 'rating_tab', user_coc$settings$rating_tab)
+  
   
   # check if row exists 
   disp_existing <- fsubset(existing_settings, grep('disp_', setting_name)) 
