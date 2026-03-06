@@ -14,6 +14,17 @@ mod_inventory_ui <- function(id) {
         helpText("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
+        
+        pickerInput(ns('projects_col_selections'), label = 'Choose Fields to Display',
+                    choices = setNames(names(project_variable_labels), project_variable_labels),
+                    selected = initial_cols_to_show, 
+                    multiple = TRUE, 
+                    
+                    options = pickerOptions(
+                      selectedTextFormat = 'count',
+                      countSelectedText = '{0} Fields Displayed'
+                    )
+        ),
         DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
         br(),
         textOutput(ns("projects_table_counts"))

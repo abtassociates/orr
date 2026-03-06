@@ -122,10 +122,13 @@ project_variable_labels <- c(
   "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
   "vet_bed_inventory" = "Veteran Bed Inventory",
   "youth_bed_inventory" = "Youth Bed Inventory",
-  "created_by" = "Created By",
-  "date_created" = "Date Created"
+  "created_by" = "Created By"#,
+  # "date_created" = "Date Created",
+  # "date_updated" = "Date Updated",
+  # "updated_by" = "Updated By"
 )
 
+ initial_cols_to_show <- setdiff(names(project_variable_labels), c('created_by','date_created','date_updated','updated_by'))
 giw_variable_labels <- c(
   "grant_number" = "Grant Number",
   "coc" = "CoC",
