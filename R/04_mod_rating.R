@@ -113,14 +113,32 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    ## restore previous user setting for rating_method from DB
+    observe({
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'Rate Projects')
+      
+      user_previous_method <- dbGetQuery(DB_CON, 
+                                         "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_method'",
+                                         params = list(user_coc$coc_version_id,
+                                                       user_coc$username)
+      ) |> unlist(use.names = FALSE)
+      
+      if(length(user_previous_method) > 0){
+        shinyjs::click(id = glue::glue('select_{user_previous_method}'))
+      }
+    })
+    
     observeEvent(input$select_in_app, {
       nav_select(id = "method", selected = ns("in_app"))
+      user_coc$settings$rating_method <- 'in_app'
       shinyjs::addClass(id = "select_in_app", class = "card-selected")
       shinyjs::removeClass(id = "select_alternative", class = "card-selected")
     })
     
     observeEvent(input$select_alternative, {
       nav_select(id = "method", selected = ns("alternative"))
+      user_coc$settings$rating_method <- 'alternative'
       shinyjs::addClass(id = "select_alternative", class = "card-selected")
       shinyjs::removeClass(id = "select_in_app", class = "card-selected")
     })
