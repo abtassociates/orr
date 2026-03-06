@@ -198,6 +198,37 @@ insert_and_return <- function(table, new_dt, return_cols) {
   return(results)
 }
 
+store_single_setting <- function(user_coc, existing_settings, setting_nm, setting_val){
+  cur_setting_existing <- fsubset(existing_settings, setting_name == setting_nm)
+  
+  if(fnrow(cur_setting_existing) > 0){
+    # modify
+    DBI::dbExecute(DB_CON, 
+                   glue::glue("UPDATE user_settings SET setting_value = $1, 
+        date_updated = CURRENT_TIMESTAMP, updated_by = $2
+        WHERE coc_version_id = $3 AND coc_user = $2 AND setting_name = '{setting_nm}'"), 
+                   params = list(isolate(setting_val), 
+                                 isolate(user_coc$username), 
+                                 isolate(user_coc$coc_version_id))
+    )
+  } else {
+    # add
+    print('row does not exist in settings - creating one')
+    
+    append_df <- data.frame(
+      'coc_version_id' = isolate(user_coc$coc_version_id),
+      'coc_user' = isolate(user_coc$username),
+      'setting_name' =  setting_name,
+      'setting_value' = isolate(setting_value),
+      'created_by' = isolate(user_coc$username),
+      'updated_by' = isolate(user_coc$username)
+    )
+    rownames(append_df) <- NULL
+    
+    dbAppendTable(DB_CON, "user_settings", append_df)
+  }
+}
+
 ## on app exit, update settings for tab and project table
 store_user_settings <- function(user_coc, tab_name){
   
@@ -215,39 +246,15 @@ store_user_settings <- function(user_coc, tab_name){
                                    params = list(isolate(user_coc$coc_version_id),
                                                  isolate(user_coc$username)))
   
+  store_single_setting(user_coc, existing_settings, 'active_tab', tab_name)
+  
+  ## save rating method to user_settings: in_app vs alternative
+  if(is.null(isolate(user_coc$settings$rating_method)))
+    return(NULL)
+  store_single_setting(user_coc, existing_settings, 'rating_method', user_coc$settings$rating_method)
+  
   # check if row exists 
   disp_existing <- fsubset(existing_settings, grep('disp_', setting_name)) 
-   
-  tab_existing <- fsubset(existing_settings, setting_name == 'active_tab')
-  
-  rating_method_existing <- fsubset(existing_settings, setting_name == 'rating_method')
-  
-  
-  if(fnrow(tab_existing) > 0){
-    DBI::dbExecute(DB_CON, 
-                   "UPDATE user_settings SET setting_value = $1, 
-        date_updated = CURRENT_TIMESTAMP, updated_by = $2
-        WHERE coc_version_id = $3 AND coc_user = $2 AND setting_name = 'active_tab'", 
-                   params = list(isolate(tab_name), 
-                                 isolate(user_coc$username), 
-                                 isolate(user_coc$coc_version_id))
-    )
-  } else {
-    # add
-    print('row does not exist in settings - creating one')
-    
-    append_df <- data.frame(
-      'coc_version_id' = isolate(user_coc$coc_version_id),
-      'coc_user' = isolate(user_coc$username),
-      'setting_name' =  'active_tab',
-      'setting_value' = isolate(tab_name),
-      'created_by' = isolate(user_coc$username),
-      'updated_by' = isolate(user_coc$username)
-    )
-    rownames(append_df) <- NULL
-    
-    dbAppendTable(DB_CON, "user_settings", append_df)
-  }
   
   if(fnrow(disp_existing) > 0){
     # modify
@@ -304,36 +311,5 @@ store_user_settings <- function(user_coc, tab_name){
       )
     }
   }
-  
-  
-  if(is.null(isolate(user_coc$settings$rating_method)))
-    return(NULL)
-  
-  ## save rating method to user_settings: in_app vs alternative
-  if(fnrow(rating_method_existing) > 0){
-    DBI::dbExecute(DB_CON, 
-                   "UPDATE user_settings SET setting_value = $1, 
-        date_updated = CURRENT_TIMESTAMP, updated_by = $2
-        WHERE coc_version_id = $3 AND coc_user = $2 AND setting_name = 'rating_method'", 
-                   params = list(isolate(user_coc$settings$rating_method), 
-                                 isolate(user_coc$username), 
-                                 isolate(user_coc$coc_version_id))
-    )
-  } else {
-    # add row
-    print('row does not exist in settings - creating one')
-    
-    append_df <- data.frame(
-      'coc_version_id' = isolate(user_coc$coc_version_id),
-      'coc_user' = isolate(user_coc$username),
-      'setting_name' =  'rating_method',
-      'setting_value' = isolate(user_coc$settings$rating_method),
-      'created_by' = isolate(user_coc$username),
-      'updated_by' = isolate(user_coc$username)
-    )
-    rownames(append_df) <- NULL
-    
-    dbAppendTable(DB_CON, "user_settings", append_df)
-  }
-  
+
 }
