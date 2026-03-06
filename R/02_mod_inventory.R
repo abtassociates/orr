@@ -296,6 +296,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         if(length(cols_to_show) > 0){
           showCols(projects_table_proxy, show = cols_to_show)
         }
+       
+       user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
     })
     
     # Update projects -----

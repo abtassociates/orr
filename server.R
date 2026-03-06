@@ -7,7 +7,9 @@ function(input, output, session) {
     given_name = NULL, # user's given_name as stored and returned by cognito
     email = NULL,  # user's email as stored and returned by cognito
     active_tab = NULL, # last active tab
-    display_cols = NULL # which project columns to display
+    settings = list(
+      cols_to_hide = NULL, # which project columns to display
+    )
   )
   nav_control <- reactiveVal("about")
 
@@ -88,6 +90,7 @@ function(input, output, session) {
     onStop( function(){
       cat("Running onStop")
       ## record user settings
-      store_user_settings(user_coc, input$nav)}, session = session
+      store_user_settings(user_coc, tab_name = input$nav)
+      }, session = session
     )
 }
