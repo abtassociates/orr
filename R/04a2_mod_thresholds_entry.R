@@ -82,23 +82,28 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         fsubset(type == "CoC" & selected)
     })
     
+    get_all_thresholds_to_enter <- function(coc_version_id, project_id) {
+      get_db_query(
+        "SELECT st.selected_threshold_id, st.selected, t.type, t.threshold_text, t.threshold_id, met_threshold, threshold_entry_id, te.date_updated
+          FROM thresholds t
+          LEFT JOIN selected_thresholds st ON st.threshold_id = t.threshold_id 
+            AND st.coc_version_id = $1
+          LEFT JOIN threshold_entries te ON te.threshold_id = t.threshold_id 
+            AND (te.project_id = $2 OR te.project_id IS NULL) 
+          WHERE st.selected == TRUE",
+        params = list(coc_version_id, project_id)
+      ) |>
+        fmutate(met_threshold = fcoalesce(as.logical(met_threshold), FALSE))
+    }
     observeEvent(c(selected_project(), refresh_trigger()), {
       req(user_coc$coc_version_id)
 
       # individual threshold entries
       thresholds_to_enter(
-        get_db_query(
-          "SELECT st.selected_threshold_id, st.selected, t.type, t.threshold_text, t.threshold_id, met_threshold, threshold_entry_id, te.date_updated
-          FROM thresholds t
-          LEFT JOIN selected_thresholds st ON st.threshold_id = t.threshold_id
-          LEFT JOIN threshold_entries te ON te.threshold_id = t.threshold_id
-          WHERE (st.coc_version_id = $1 OR t.type = 'HUD') AND (te.project_id = $2 OR te.project_id IS NULL)",
-          params = list(
-            user_coc$coc_version_id,
-            selected_project()$project_id
-          )
-        ) |>
-          fmutate(met_threshold = fcoalesce(as.logical(met_threshold), FALSE))
+        get_all_thresholds_to_enter(
+          user_coc$coc_version_id, 
+          selected_project()$project_id
+        )
       )
       
       # project-level evaluations
@@ -204,7 +209,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           new_date_updated = get_db_timestamp()
         ) |>
         fsubset(met_threshold_new != met_threshold) |>
-        fselect(project_id, threshold_id, met_threshold, created_by, new_date_updated, date_updated)
+        fselect(project_id, threshold_id, met_threshold_new, created_by, new_date_updated, date_updated)
     }
     get_new_project_evaluation <- function(params) {
       data.table(
@@ -269,12 +274,13 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           met_all_HUD_requirements = input$yes_to_all_HUD,
           met_all_CoC_requirements = input$yes_to_all_CoC,
           username = user_coc$username,
-          date_updated = project_evaluation()$date_updated
+          date_updated = ifelse(fnrow(project_evaluation()) > 0, project_evaluation()$date_updated, NA)
         )
       )
       
       needs_refresh1 <- FALSE
       needs_refresh2 <- FALSE
+
       pool::poolWithTransaction(DB_POOL, function(p) {
         needs_refresh1 <- update_threshold_entries_db(p, updated_thresholds)
         needs_refresh2 <- update_project_evaluation_db(p, new_project_evaluation)
