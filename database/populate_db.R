@@ -825,7 +825,9 @@ CREATE TABLE IF NOT EXISTS rating_factors (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
-                                   
+"))
+
+DBI::dbExecute(DB_POOL, "
 CREATE UNIQUE INDEX IF NOT EXISTS rating_factors_unique_idx 
 ON rating_factors (
   coc_version_id,
@@ -833,7 +835,7 @@ ON rating_factors (
   COALESCE(target_population, -1),
   rating_factor_text
 );
-"))
+")
 
 message("about to populate rating_Factors")
 DBI::dbExecute(DB_POOL, "
