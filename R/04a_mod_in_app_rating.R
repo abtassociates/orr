@@ -10,6 +10,7 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     br(),
     em(paste0("Rate your ", ptypes, " against your selected criteria")),
     layout_sidebar(
+      style = "min-height: 500px;",
       # the side bar will be 
       sidebar = sidebar(
         width = 350,
@@ -55,7 +56,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
     
     # Get the project to be rated from the dropdown in the sidebar
     selected_project <- reactive({
-      req(input$project_select)
+      if (is.null(input$project_select) || input$project_select == "") return(NULL)
       
       all_projects() |> 
         fsubset(project_id == input$project_select)

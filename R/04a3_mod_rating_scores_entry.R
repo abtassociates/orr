@@ -96,6 +96,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
     
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
+      shiny::validate(need(
+        !is.null(selected_project()),
+        "Select a project in the left-hand sidebar to begin rating"
+      ))
+
       req(nrow(factors_and_scores_for_project()) > 0)
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")

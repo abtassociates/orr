@@ -6,7 +6,13 @@ mod_thresholds_entry_ui <- function(id) {
     "Threshold Entry",
     value = id,
     card(
+      div(
+        id=ns("empty"),
+        class="shiny-output-error shiny-output-error-shiny.silent.error shiny-output-error-validation",
+        "Select a project in the left-hand sidebar to begin rating"
+      ),
       accordion(
+        id = ns("reqs"),
         accordion_panel(
           "HUD Requirements",
           checkboxInput(
@@ -34,17 +40,16 @@ mod_thresholds_entry_ui <- function(id) {
             label = NULL,
             width = "100%"
           )
-          # uiOutput(ns("CoC_requirements_ui"))
         ),
-        open = TRUE
-      ),
+        open = FALSE
+      ), # end accordion
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         div(),
         actionButton(ns("save_requirements"), "Save Thresholds", icon = icon("save"), class="btn-primary")
       )
-    )
-  )
+    ) # end card
+  ) # end nav_panel
 }
 
 mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected_criteria) {
@@ -53,6 +58,19 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
     
     # These are the individual threshold entries
     # These will be aggregated up to the project-level project-evaluations table
+    
+    # Disable accordion interaction until a project is selected
+    observe({
+      project_is_selected <- !is.null(selected_project())
+      shinyjs::toggle(ns("empty"), condition = !project_is_selected)
+      shinyjs::toggleState(selector = glue::glue("#{ns('reqs')} .accordion-button"), condition = project_is_selected)
+      shinyjs::toggleState(ns("save_requirements"), condition = project_is_selected)
+      
+      if(project_is_selected) {
+        bslib::accordion_panel_open("reqs", "HUD Requirements", session = session)
+        bslib::accordion_panel_open("reqs", "CoC Requirements", session = session)
+      }
+    })
     
     # updating_from_db <- reactiveVal(NA)
     thresholds_to_enter <- reactiveVal(NULL)
