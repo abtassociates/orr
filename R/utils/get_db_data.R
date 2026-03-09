@@ -9,7 +9,7 @@ DB_POOL <- if(!IN_DEV_MODE) {
     host = Sys.getenv("AWS_RDS_HOST"),
     port = as.integer(Sys.getenv("AWS_RDS_PORT", "3306")),
     dbname = Sys.getenv(ifelse(basename(getwd()) == "ORR", "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV")),
-    username = Sys.getenv("AWS_RDS_USERNAME"),
+    user = Sys.getenv("AWS_RDS_USERNAME"),
     password = Sys.getenv("AWS_RDS_PASSWORD")
   )
 } else {
