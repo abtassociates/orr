@@ -144,8 +144,8 @@ VALUES
 ('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
-('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
-('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'Veteran', 'Veteran', 'orr_service@abtglobal.com'),
+('target_population', 'Youth', 'Youth', 'orr_service@abtglobal.com'),
 ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
 ")
 

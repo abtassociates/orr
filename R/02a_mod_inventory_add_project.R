@@ -131,7 +131,7 @@ mod_inventory_add_project_server <- function(
     
     # Determine the definitive target population.
     current_target_pop <- reactive({
-      if (current_funding_source() == "YHDP") "Yth" 
+      if (current_funding_source() == "YHDP") "Youth" 
       else if (current_funding_source() == "DV") "DV" 
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
@@ -153,7 +153,7 @@ mod_inventory_add_project_server <- function(
       else if (current_funding_source() == "DV") groups <- c("total_beds") # Will be relabeled to "DV Beds"
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
-        if (tp == "Yth" || tp == "") groups <- c(groups, "youth_beds")
+        if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
         if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
       }
       return(groups)
