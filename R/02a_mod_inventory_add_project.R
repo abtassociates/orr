@@ -77,7 +77,7 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
           
           # -- PSH-specific checkboxes --
           shinyjs::hidden(
-            div(id = ns("ch_checkbox_div"),
+            div(id = ns("ch_checkbox_div"), style='white-space: nowrap;',
                 checkboxInput(ns("targeted_ch_fam"), "100% of family beds targeted to CH", FALSE),
                 checkboxInput(ns("targeted_ch_ind"), "100% of individual beds targeted to CH", FALSE)
             )
