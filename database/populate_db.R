@@ -825,6 +825,14 @@ CREATE TABLE IF NOT EXISTS rating_factors (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
+                                   
+CREATE UNIQUE INDEX IF NOT EXISTS rating_factors_unique_idx 
+ON rating_factors (
+  coc_version_id,
+  COALESCE(project_type, -1),
+  COALESCE(target_population, -1),
+  rating_factor_text
+);
 "))
 
 message("about to populate rating_Factors")
@@ -1249,8 +1257,9 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS selected_rating_factors (
     selected_rating_factor_id {id_var_attrs},
     rating_factor_id SMALLINT REFERENCES rating_factors(rating_factor_id),
-	goal VARCHAR(5) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes'
-	max_point_value NUMERIC(4, 1),
+    goal VARCHAR(5) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes'
+    max_point_value NUMERIC(4, 1),
+    selected BOOLEAN DEFAULT FALSE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),

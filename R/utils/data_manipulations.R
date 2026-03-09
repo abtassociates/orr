@@ -221,14 +221,31 @@ format_date_updated_for_db <- function(df) {
 }
 save_to_db <- function(p, sql, params, tbl_name) {
   tryCatch({
-    rows_changed <- DBI::dbExecute(
-      p,
-      sql,
-      params = paramify(params)
-    )
+    rows_changed <- if(!grepl("RETURNING ", sql)) {
+      DBI::dbExecute(
+        p,
+        sql,
+        params = paramify(params)
+      )
+    } else {
+      DBI::dbGetQuery(
+        p,
+        sql,
+        params = paramify(params)
+      )
+    }
+    
+    if(grepl("RETURNING ", sql)) {
+      if(is.null(rows_changed))
+        msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
+      else
+        msg <- glue::glue("{tbl_name} saved successfully!")
+      print(msg)
+      showNotification(msg, type = "message")
+      return(rows_changed)
+    } 
     
     num_rows <- ifelse("list" %in% class(params), length(params[[1]]), fnrow(params))
-    
     if(rows_changed == 0) {
       msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
       needs_refresh <- TRUE
@@ -245,9 +262,9 @@ save_to_db <- function(p, sql, params, tbl_name) {
   }, error = function(e) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
-    browser()
     showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
     cat("Database save error:", e$message, "\n")
+    stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }
 

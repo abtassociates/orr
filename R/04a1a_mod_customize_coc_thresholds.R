@@ -29,25 +29,33 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    pull_thresholds_trigger <- reactiveVal(0)
+    refresh_trigger <- reactiveVal(0)
     all_coc_thresholds <- reactiveVal()
     updating_from_db <- reactiveVal(FALSE)
+    
+    get_all_coc_thresholds <- function(coc_version_id) {
+      get_db_query(
+        "SELECT t.threshold_id, t.threshold_text, st.selected, t.date_updated AS threshold_date_updated, st.date_updated AS selected_threshold_date_updated
+        FROM thresholds t
+        LEFT JOIN selected_thresholds st ON t.threshold_id = st.threshold_id AND st.coc_version_id = $1
+        WHERE t.type = 'CoC' AND 
+          (t.coc_version_id = $1 OR t.coc_version_id IS NULL)
+        ORDER BY t.threshold_id",
+        params = list(coc_version_id)
+      ) |>
+        fmutate(
+          selected = allNA(selected) | selected
+        )
+    }
     
     # Fetch currently selected thresholds for the active profile
     observe({
       req(user_coc$coc_version_id)
-      req(pull_thresholds_trigger())
-
-      data <- get_db_query(
-        "SELECT t.threshold_id, t.threshold_text, st.selected, t.date_updated AS threshold_date_updated, st.date_updated AS selected_threshold_date_updated
-        FROM thresholds t
-        LEFT JOIN selected_thresholds st ON t.threshold_id = st.threshold_id
-        WHERE type = 'CoC' AND (t.coc_version_id = $1 OR t.coc_version_id IS NULL)
-        ORDER BY t.threshold_id",
-        params = list(user_coc$coc_version_id)
-      )
+      req(refresh_trigger())
       
       updating_from_db(TRUE)
+      
+      data <- get_all_coc_thresholds(user_coc$coc_version_id)
       all_coc_thresholds(data)
       
       updateCheckboxGroupInput(
@@ -77,6 +85,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       )
     })
     
+    # Handle changes to the thresholds shown to the user
     observeEvent(input$threshold_checkboxes, {
       req(!isolate(updating_from_db()))
       req(!is.null(isolate(all_coc_thresholds())))
@@ -92,54 +101,48 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
     }, ignoreNULL = FALSE)
     
     # Save logic for threshold selections
-    save_selected_thresholds <- function() {
-      sql_query <- "
-          INSERT INTO selected_thresholds (threshold_id, coc_version_id, selected, created_by)
+    update_selected_thresholds_db <- function(p, updated_selected_thresholds) {
+      save_to_db(
+        p,
+        "INSERT INTO selected_thresholds (threshold_id, coc_version_id, selected, created_by)
           VALUES ($1, $2, $3, $4)
           ON CONFLICT (coc_version_id, threshold_id) DO UPDATE SET 
             selected = EXCLUDED.selected,
             updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
             date_updated = $5
-          WHERE date_updated = $6
-        "
-
-      timestamp <- get_db_timestamp()
-      params_list <- all_coc_thresholds() |>
-        fmutate(
-          coc_version_id = user_coc$coc_version_id,
-          username = user_coc$username,
-          new_date_updated = timestamp
-        ) |>
-        fselect(threshold_id, coc_version_id, selected, username, new_date_updated, selected_threshold_date_updated) |>
-        as.list() |>
-        unname()
-      
-      tryCatch({
-        z <- db_execute(sql_query, params = params_list)
-
-        if(z == 0) {
-          showNotification("Someone is editing these thresholds!", type = "error", duration = 3)
-          pull_thresholds_trigger(pull_thresholds_trigger() + 1)
-        } else if(z < fnrow(all_coc_thresholds())) {
-          showNotification("Someone was editing one or more of these thresholds!", type = "error", duration = 3)
-          pull_thresholds_trigger(pull_thresholds_trigger() + 1)
-        } else {
-          showNotification("Saved thresholds successfully!", type = "message", duration = 3)
-
-          all_coc_thresholds(
-            all_coc_thresholds() |> fmutate(selected_threshold_date_updated = timestamp)
-          )
-        }
-      }, error = function(e) {
-        browser()
-        showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
-        cat("Select thresholds save error:", e$message, "\n")
-      })
+          WHERE date_updated = $6",
+        updated_selected_thresholds |> format_date_updated_for_db(),
+        "selected_thresholds"
+      )
     }
+    
+    get_updated_selected_thresholds <- function(params) {
+      all_coc_thresholds() |>
+        fmutate(
+          coc_version_id = params$coc_version_id,
+          username = params$username,
+          new_date_updated = get_db_timestamp()
+        ) |>
+        fselect(threshold_id, coc_version_id, selected, username, new_date_updated, selected_threshold_date_updated)
+    }
+    
     observeEvent(input$save_thresholds, {
       req(user_coc$coc_version_id) 
-      save_selected_thresholds()
-    }) # end save_thresholds observeEvent
+      
+      updated_selected_thresholds <- get_updated_selected_thresholds(
+        list(
+          thresholds = all_coc_thresholds(),
+          coc_version_id = user_coc$coc_version_id,
+          username = user_coc$username
+        )
+      )
+      
+      needs_refresh1 <- update_selected_thresholds_db(DB_POOL, updated_selected_thresholds)
+      
+      if(needs_refresh1)
+        refresh_trigger(\(x) x + 1)
+      
+    }, ignoreInit = TRUE) # end save_thresholds observeEvent
     
     observeEvent(input$add_threshold_btn, {
       showModal(
@@ -154,75 +157,56 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       )
     })
     
-    observeEvent(input$submit_custom_threshold, {
-      removeModal()
-      req(nchar(trimws(input$custom_threshold_text)) > 0)
-      
-      # update thresholds table with new custom factor
-      sql_query <- "
-          INSERT INTO thresholds (type, coc_version_id, threshold_text, created_by)
+    update_thresholds_db <- function(p, updated_thresholds) {
+      save_to_db(
+        p,
+        "INSERT INTO thresholds (type, coc_version_id, threshold_text, created_by)
           VALUES ('CoC', $1, $2, $3)
           ON CONFLICT (coc_version_id, threshold_text) DO UPDATE SET
             updated_by = EXCLUDED.created_by,
             date_updated = $4
           WHERE (thresholds.date_updated = $5 OR ($5 IS NULL AND thresholds.date_updated IS NULL))
-          RETURNING threshold_id, date_updated;
-        "
-
-      current_date_updated_for_threshold <- all_coc_thresholds()[
+        RETURNING threshold_id, coc_version_id",
+        updated_thresholds |> format_date_updated_for_db(),
+        "thresholds"
+      )
+    }
+    
+    observeEvent(input$submit_custom_threshold, {
+      removeModal()
+      req(nchar(trimws(input$custom_threshold_text)) > 0)
+      
+      current_date_updated_for_threshold <- all_coc_thresholds()[ 
         threshold_text == input$custom_threshold_text
       ]$threshold_date_updated
-
-      new_timestamp <- get_db_timestamp()
-      params_list <- list(
+      
+      updated_custom_threshold <- list(
         user_coc$coc_version_id, 
         input$custom_threshold_text,
         user_coc$username,
-        new_timestamp,
+        get_db_timestamp(),
         if (length(current_date_updated_for_threshold) > 0) current_date_updated_for_threshold else NA
       )
       
-      new_threshold <- tryCatch(
-        DBI::dbGetQuery(DB_POOL, sql_query, params = params_list),
-        error = function(e) {
-          showNotification(paste("Error adding threshold:", e$message), type = "error", duration = 10)
-          cat("Save custom threshold error:", e$message, "\n")
-          NULL
-        }
-      )
+      # These don't need to be tied together, but it avoids dealing with 2 different conflicts
+      updated_custom_threshold_info <- NULL
+      pool::poolWithTransaction(DB_POOL, function(p) {
+        updated_custom_threshold_info <- update_thresholds_db(p, updated_custom_threshold)
+        
+        updated_selected_thresholds <- updated_custom_threshold_info |>
+          fmutate(
+            selected = TRUE,
+            created_by = user_coc$username,
+            date_updated = get_db_timestamp(),
+            new_date_updated = NA
+          ) |>
+          fselect(threshold_id, coc_version_id, selected, created_by, date_updated, new_date_updated)
+
+        needs_refresh2 <- update_selected_thresholds_db(p, updated_selected_thresholds)
+      })
       
-      req(!is.null(new_threshold))
+      refresh_trigger(\(x) x + 1)
       
-      if(nrow(new_threshold) == 0) {
-        showNotification("Someone is editing these thresholds!", type = "error", duration = 3)
-        pull_thresholds_trigger(isolate(pull_thresholds_trigger()) + 1)
-        return()
-      } 
-      
-      new_row <- data.table(
-        threshold_id = new_threshold$threshold_id,
-        threshold_text = trimws(input$custom_threshold_text),
-        selected = 1,
-        threshold_date_updated = new_threshold$date_updated,
-        selected_threshold_date_updated = new_threshold$date_updated
-      )
-      
-      
-      updated <- rbindlist(list(isolate(all_coc_thresholds()), new_row))
-      all_coc_thresholds(updated)
-      
-      # Update checkbox UI to include new option (pre-checked)
-      updating_from_db(TRUE)
-      updateCheckboxGroupInput(
-        session,
-        inputId = "threshold_checkboxes",
-        choices = setNames(updated$threshold_id, updated$threshold_text),
-        selected = updated[selected == 1L]$threshold_id
-      )
-      isolate(updating_from_db(FALSE))
-      
-      # Auto-save selected_thresholds (includes new threshold + any pending checkbox changes)
-      save_selected_thresholds()
     }) # end submit custom threhsold
     module_returns$selected_thresholds <- input$threshold_checkboxes
   })
