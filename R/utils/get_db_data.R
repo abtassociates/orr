@@ -19,7 +19,7 @@ DB_POOL <- if(!IN_DEV_MODE) {
   )
 }
 
-onStop(function() {
+shiny::onStop(function() {
   pool::poolClose(DB_POOL)
 })
 
