@@ -38,6 +38,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
     value = id,
     layout_sidebar(
       sidebar = sidebar(
+        title = "Filters",
         width = "10%",
         project_and_pop_dropdowns(ns)
       ),
@@ -61,100 +62,63 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    funding_action_id <- get_lookup_refid(funding_action, "funding_action")
+    other_factor_group_id <- get_db_query(
+      "SELECT factor_group_id 
+         FROM factor_groups
+         WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1", 
+      params = funding_action_id
+    )
+    
+    refresh_trigger <- reactiveVal(0)
     # Counter for unique IDs for custom factor rows
     custom_factor_counter <- reactiveVal(0)
     # Store observers for remove buttons to manage them
     custom_factor_observers <- reactiveValues()
     subgroup_check_all_values <- reactiveValues()
 
-    fetch_and_structure_rating_factors <- function(funding_action_type, coc_version_id, selected_target_populations = NULL, selected_project_types = NULL) {
-      # Determine the WHERE clause based on the funding_action_type
-      funding_action_values <- switch(
-        funding_action_type,
-        "Renew" = c("Renew", "Expand"),
-        "New" = c("New"),
-        stop("Invalid funding_action_type provided. Must be 'Renew' or 'New'.")
-      )
+    get_all_coc_factors <- function(coc_version_id) {
+      get_db_query(
+        "SELECT rf.rating_factor_id, rf.funding_action, srf.selected, rf.project_type, rf.target_population, rf.rating_factor_text, COALESCE(srf.goal, rf.goal) AS goal,
+                 COALESCE(srf.max_point_value, rf.max_point_value) AS max_point_value, fg.factor_group, fsg.factor_subgroup, srf.date_updated
+          FROM rating_factors rf
+          JOIN factor_groups fg ON rf.factor_group = fg.factor_group_id
+          LEFT JOIN factor_subgroups fsg ON rf.factor_subgroup = fsg.factor_subgroup_id
+          LEFT JOIN selected_rating_factors srf ON rf.rating_factor_id = srf.rating_factor_id AND srf.coc_version_id = $2
+          WHERE rf.funding_action = $1 AND 
+            (rf.coc_version_id = $2 OR rf.coc_version_id IS NULL)",
+        params = list(funding_action_id, coc_version_id)
+      ) |>
+        fmutate(
+          selected = allNA(selected) | selected
+        )
+    }
+    
+    all_coc_factors <- reactive({
+      req(funding_action, user_coc$coc_version_id)
       
-      # Fetch all possible factors for the given action type
-      # Use glue::glue for easy SQL string interpolation
-      all_factors_q <- "
-        SELECT rf.rating_factor_id, rf.funding_action, rf.project_type, rf.target_population, rf.rating_factor_text, rf.goal AS default_goal,
-               rf.max_point_value AS default_points, fg.factor_group, fsg.factor_subgroup
-        FROM rating_factors rf
-        JOIN factor_groups fg ON rf.factor_group = fg.factor_group_id
-        LEFT JOIN factor_subgroups fsg ON rf.factor_subgroup = fsg.factor_subgroup_id
-        JOIN lookups fa ON rf.funding_action = fa.reference_id
-        WHERE fa.reference_type = 'funding_action' AND fa.value IN ($1)
-      "
+      all_factors <- get_all_coc_factors(user_coc$coc_version_id)
       
-      user_selected_factors <- get
-      all_factors <- get_db_query(all_factors_q, params = list(funding_action_values))
-      if(!is.null(selected_project_types)) all_factors <- all_factors[project_type %in% selected_project_types]
-      if(!is.null(selected_target_populations)) all_factors <- all_factors[target_population %in% selected_target_populations]
+      if(!is.null(input$project_type)) all_factors <- all_factors[project_type %in% input$project_type]
+      if(!is.null(input$target_population)) all_factors <- all_factors[target_population %in% input$target_population]
       
-      # Update rating_factor_text to include project_type and target_population
-      # all_factors <- all_factors |>
-      #   join(
-      #     lookups[reference_type == "project_type", .("project_type_value" = value, reference_id)], 
-      #     on = c("project_type" = "reference_id")
-      #   ) |>
-      #   join(
-      #     lookups[reference_type == "target_population", .("target_population_value" = value, reference_id)], 
-      #     on = c("target_population" = "reference_id")
-      #   )  |>
-      # fmutate(
-      #   rating_factor_text = fifelse(
-      #     !is.na(project_type_value) & !is.na(target_population_value),
-      #     glue::glue("{project_type_value} ({target_population_value}) - {rating_factor_text}"),
-      #     fifelse(
-      #       !is.na(project_type_value),
-      #       glue::glue("{project_type_value} - {rating_factor_text}"),
-      #       fifelse(
-      #         !is.na(target_population_value),
-      #         glue::glue("{target_population_value} - {rating_factor_text}"),
-      #         rating_factor_text
-      #       )
-      #     )
-      #   )
-      # )
+      all_factors
+    })
+    
+    all_coc_factors_structured <- reactive({
+      req(user_coc$coc_version_id)
       
-      selected_factors_q <- "
-        SELECT rating_factor_id, goal, max_point_value
-        FROM selected_rating_factors
-        WHERE coc_version_id = $1
-      "
-      selected_factors <- get_db_query(selected_factors_q, params = list(coc_version_id))
-      
-      # Merge them to get the final state for the UI
-      if (nrow(selected_factors) > 0) {
-        merged_data <- join(
-          all_factors, 
-          selected_factors |> fmutate(selected = TRUE), 
-          on = "rating_factor_id"
-        ) |>
-          fmutate(
-            selected = fcoalesce(selected, FALSE),
-            goal = fcoalesce(goal, default_goal),
-            max_point_value = fcoalesce(as.double(max_point_value), as.double(default_points))
-          )
-      } else {
-        merged_data <- all_factors |>
-          frename(goal = default_goal, max_point_value = default_points) |>
-          fmutate(selected = FALSE)
-      }
-      
-      # Create a nested list: Group -> Subgroup -> Factors
+      all_factors <- all_coc_factors()
       nested_data <- list()
-      unique_groups <- unique(merged_data$factor_group)
+      unique_groups <- unique(all_factors$factor_group)
       
       for (group_name in unique_groups) {
-        group_dt <- merged_data[factor_group == group_name]
+        group_dt <- all_factors[factor_group == group_name]
         nested_data[[group_name]] <- split(group_dt, by = "factor_subgroup")
       }
       
-      return(nested_data)
-    }
+      nested_data
+    })
     
     render_nested_factor_accordion_ui <- function(ns, funding_action = "Renew", data_groups_nested, placeholder_text = "No rating factors found.") {
       if (length(data_groups_nested) == 0) {
@@ -195,7 +159,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               column(1,
                      tags$b("Use in rating?"),
                      checkboxInput(
-                       ns(paste0("check_all_", subgroup_name)),
+                       ns(make.names(paste0(group_name, "_check_all_", subgroup_name))),
                        label = NULL,
                        value = all_subgroup_factors_selected
                      )
@@ -237,103 +201,71 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       )
     }
     
-    # project_and_pop_dropdowns <- function(ns, funding_action) {
-    #   project_type_dropdown <- selectInput(
-    #     inputId = ns("project_type"),
-    #     label = "Select project type",
-    #     choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-    #     multiple = TRUE,
-    #     selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
-    #   )
-    #   
-    #   target_pop_dropdown <- selectInput(
-    #     inputId = ns("target_population"),
-    #     label = "Select special populations",
-    #     choices = get_labelled_lookups("target_population")[c("DV", "General")],
-    #     multiple = TRUE,
-    #     selected = c("DV", "General") # Pre-select all for initial state
-    #   )
-    #   
-    #   dropdowns_to_include <- target_pop_dropdown
-    #   if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
-    #   inner_layout_args <- c(
-    #     # if Renew, each dropdown takes half of this 8-column space. If New, it's just one column taking up the whole space
-    #     width = ifelse(funding_action == "Renew", 1/2, 1),
-    #     dropdowns_to_include
-    #   )
-    #   bslib::layout_column_wrap(
-    #     width = 1/3,
-    #     div(), # left spacer
-    #     do.call(bslib::layout_column_wrap, inner_layout_args),
-    #     div() # right spacer
-    #   )
-    # }
-    # 
     handle_check_all_box_functionality <- function(input) {
       # 1. Fetch ALL possible subgroup names ONCE at the start.
       #    This decouples observer creation from the reactive data flow.
       #    We query the source table directly for this static list.
-      funding_action_id <- get_lookup_refid(funding_action, "funding_action")
-      
       all_possible_subgroups <- get_db_query(
-        "SELECT DISTINCT factor_subgroup 
-          FROM factor_subgroups
-          WHERE funding_action = $1
+        "SELECT sg.factor_subgroup, fg.factor_group
+          FROM factor_subgroups sg
+          RIGHT JOIN factor_groups fg ON fg.factor_group_id = sg.factor_group
+          WHERE fg.funding_action = $1
         ", 
         params = funding_action_id
-      )$factor_subgroup
-      
-      lapply(all_possible_subgroups, function(subgroup) {
-        subgroup_check_all_input <- paste0("check_all_", subgroup)
+      )
+
+      # PARENT -> CHILDREN
+      # observe changes to check-all boxes
+      lapply(seq_row(all_possible_subgroups), function(i) {
+        group <- all_possible_subgroups$factor_group[i]
+        subgroup <- all_possible_subgroups$factor_subgroup[i]
+        subgroup_check_all_input <- make.names(paste0(group, "_check_all_", subgroup))
+        
         observeEvent(input[[subgroup_check_all_input]], {
+          new_val <- input[[subgroup_check_all_input]]
+
+          if (is.null(new_val)) return()
           
-          # When triggered by a user click, get the CURRENT state of the data
-          val <- input[[subgroup_check_all_input]]
-          # message(paste0("handling ", subgroup, " check box"))
-          if (is.null(val)) return()
-          # message(paste0(subgroup, " check box is not null!"))
-          
-          stored_val <- subgroup_check_all_values[[subgroup_check_all_input]]
+          stored_val <- isolate(subgroup_check_all_values[[subgroup_check_all_input]])
           is_initialized <- !is.null(stored_val)
           
-          if(!identical(val, stored_val) && is_initialized) {
-            # Find the factor IDs for this specific subgroup from the current data
-            factor_ids_to_update <- c()
-            for (group in selected_factors_data()) {
-              # Check if the clicked subgroup exists in this group for the current filters
-              if (subgroup %in% names(group)) {
-                factor_ids_to_update <- group[[subgroup]]$rating_factor_id
-                break # Found it, no need to check other groups
+          # Only update children if the user clicked (value changed from what we last recorded)
+          if(!identical(new_val, stored_val)) {
+            subgroup_check_all_values[[subgroup_check_all_input]] <- new_val
+            subgroup_factors <- isolate(all_coc_factors())[[group]][[toString(subgroup)]]
+            
+            lapply(subgroup_factors$rating_factor_id, function(factor_id) {
+              checkbox_id <- paste0("select_", factor_id)
+              if (!identical(input[[checkbox_id]], new_val)) {
+                updateCheckboxInput(session, checkbox_id, value = new_val)
               }
-            }
-            # message("updating individual checkboxes")
-            lapply(factor_ids_to_update, function(factor_id) {
-              updateCheckboxInput(session, paste0("select_", factor_id), value = val)
             })
           }
           
-          subgroup_check_all_values[[subgroup_check_all_input]] <- val
         }, ignoreInit = TRUE, ignoreNULL = TRUE)
       })
       
+      # CHILDREN -> PARENT
       # Update subgroup check-all-that-apply boxes based on underlying factor boxes ------
       observe({
-        req(selected_factors_data())
-        
+        data <- all_coc_factors_structured()
+        req(data)
         # This part checks the children and updates the parent "check all" box.
         
         # Loop through only the groups and subgroups currently visible on the UI.
-        for (group in selected_factors_data()) {
-          for (subgroup_name in names(group)) {
+        for (i in seq_along(data)) {
+          group_data <- data[[i]]
+          group_name <- names(data)[i]
+          for (subgroup_name in names(group_data)) {
             
-            subgroup_data <- group[[subgroup_name]]
+            subgroup_data <- group_data[[subgroup_name]]
             factor_ids <- subgroup_data$rating_factor_id
             
             # Read the current values of all child factor checkboxes for this subgroup.
             # The `req(input[[...]])` is crucial to prevent this from running before
             # the child checkboxes are rendered and available in the `input` object.
-            factor_selections <- lapply(factor_ids, function(id) input[[paste0("select_", id)]])
-            if(is.null(unlist(factor_selections))) next
+            factor_selections <- sapply(factor_ids, function(id) input[[paste0("select_", id)]])
+            if (any(sapply(factor_selections, is.null))) next
             
             # message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
             # Determine the new state for the parent "check all" box.
@@ -341,22 +273,21 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
             parent_should_be_checked <- all(unlist(factor_selections))
             
             # Get the ID of the parent checkbox
-            subgroup_check_all_input <- paste0("check_all_", subgroup_name)
-            
+            subgroup_check_all_input <- make.names(paste0(group_name, "_check_all_", subgroup_name))
+
             # Update the parent checkbox ONLY if its state needs to change.
             # This avoids unnecessary updates and potential infinite loops.
-            if (!identical(input[[subgroup_check_all_input]], parent_should_be_checked)) {
-              updateCheckboxInput(session, ns(subgroup_check_all_input), value = parent_should_be_checked)
-              
+            if (!identical(isolate(input[[subgroup_check_all_input]]), parent_should_be_checked)) {
               # CRITICAL: Also update our memory so that this programmatic change
               # doesn't re-trigger the `check_all -> factors` logic above.
               subgroup_check_all_values[[subgroup_check_all_input]] <- parent_should_be_checked
+              
+              updateCheckboxInput(session, subgroup_check_all_input, value = parent_should_be_checked)
             }
           }
         }
       })
     }
-    
     
     # Function to generate the UI for a single custom factor row
     create_custom_factor_row_ui <- function(ns, row_id, funding_action) {
@@ -400,7 +331,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       )
     }
     
-    add_custom_factor <- function(ns, input) {
+    add_custom_factor_ui <- function(ns, input) {
       # Increment counter
       current_id <- custom_factor_counter() + 1
       custom_factor_counter(current_id)
@@ -430,164 +361,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       }, ignoreInit = TRUE, once = TRUE) # `once = TRUE` is crucial
     }
     
-    save_factors <- function(ns, input) {
-      # 1. Get all factor IDs that were rendered on the UI.
-      all_ids <- rbindlist(
-        unlist(selected_factors_data(), recursive = FALSE), 
-        use.names = TRUE, 
-        fill = TRUE
-      )$rating_factor_id
-      
-      # Give user immediate feedback
-      showNotification(
-        "Saving criteria...", 
-        duration = NULL, 
-        id = ns("saving_msg"),
-        type = "message"
-      )
-      
-      # 2. Collect the current state from the UI into a data.table
-      ui_state <- purrr::map_df(all_ids, function(id) {
-        data.table(
-          rating_factor_id = id,
-          is_selected = isTRUE(input[[paste0("select_", id)]]),
-          goal = as.character(input[[paste0("goal_", id)]]),
-          max_point_value = as.numeric(input[[paste0("points_", id)]])
-        )
-      })
-      
-      # 3. Get the current state from the database
-      db_factors <- get_db_query(
-        "SELECT rating_factor_id FROM selected_rating_factors WHERE coc_version_id = $1",
-        params = list(user_coc$coc_version_id)
-      )
-      db_ids <- if(nrow(db_factors) > 0) db_factors$rating_factor_id else integer(0)
-      
-      # 4. Determine what needs to be inserted, updated, or deleted
-      to_insert <- ui_state[is_selected & !(rating_factor_id %in% db_ids)]
-      to_update <- ui_state[is_selected & rating_factor_id %in% db_ids]
-      to_delete_ids <- ui_state[!is_selected & rating_factor_id %in% db_ids, rating_factor_id]
-      
-      # 8. Wrap all database operations in a transaction for atomicity
-      # This assumes you have a helper function `poolWithTransaction`.
-      # If not, you would use DBI::dbBegin, tryCatch, DBI::dbCommit/dbRollback here.
-      tryCatch({
-        DBI::dbWithTransaction(DB_CON, {
-          
-          # 7. DELETE records that were deselected
-          if (length(to_delete_ids) > 0) {
-            dbExecute(DB_CON, glue::glue_sql("
-              DELETE FROM selected_rating_factors
-              WHERE coc_version_id = {user_coc$coc_version_id} AND rating_factor_id IN ({to_delete_ids*})
-            ", .con = DB_CON))
-          }
-          
-          # 5. INSERT new records that are now selected
-          if (nrow(to_insert) > 0) {
-            dbAppendTable(
-              DB_CON,
-              "selected_rating_factors",
-              to_insert |> fmutate(coc_version_id = user_coc$coc_version_id, is_selected = NULL)
-            )
-          }
-          
-          # 6. UPDATE existing records
-          if (nrow(to_update) > 0) {
-            update_q <- "
-              UPDATE selected_rating_factors
-              SET goal = $1, max_point_value = $2
-              WHERE coc_version_id = $3 AND rating_factor_id = $4
-            "
-            purrr::pwalk(to_update, function(rating_factor_id, goal, max_point_value, ...) {
-              dbExecute(
-                DB_CON,
-                update_q,
-                params = list(goal, max_point_value, user_coc$coc_version_id, rating_factor_id)
-              )
-            })
-          }
-          
-          if (custom_factor_counter() > 0) {
-            num_custom_factors <- custom_factor_counter()
-            funding_action_id <- get_lookup_refid(funding_action, "funding_action")
-            
-            other_factor_group_id <- get_db_query("
-          SELECT factor_group_id 
-          FROM factor_groups
-          WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1
-        ", params = funding_action_id)
-            
-            for (i in 1:num_custom_factors) {
-              # Check if the row still exists in the UI (wasn't removed)
-              # We check the first input; if it's NULL, the row is gone.
-              if (!is.null(input[[paste0("custom_pt_", i)]])) {
-
-                # 1. Insert into rating_factors table and get the new ID back
-                new_factor_id <- get_db_query(
-                  "INSERT INTO rating_factors (funding_action, project_type, target_population, rating_factor_text, factor_group) 
-              VALUES ($1, $2, $3, $4, $5) 
-              RETURNING rating_factor_id", # Assuming 'Renew' has ID 3
-                  params = list(
-                    funding_action_id,
-                    input[[paste0("custom_pt_", i)]],
-                    input[[paste0("custom_tp_", i)]],
-                    input[[paste0("custom_text_", i)]],
-                    other_factor_group_id$factor_group_id
-                  )
-                )$rating_factor_id
-                
-                # 2. If it was selected, insert into selected_rating_factors
-                if (isTRUE(input[[paste0("custom_select_", i)]])) {
-                  dbExecute(
-                    DB_CON,
-                    "INSERT INTO selected_rating_factors (coc_version_id, rating_factor_id, goal, max_point_value) 
-                VALUES ($1, $2, $3, $4)",
-                    params = list(
-                      user_coc$coc_version_id,
-                      new_factor_id,
-                      input[[paste0("custom_goal_", i)]],
-                      input[[paste0("custom_points_", i)]]
-                    )
-                  )
-                }
-              }
-            }
-          }
-        }) # End dbWithTransaction
-        
-        removeNotification(ns("saving_msg"))
-        showNotification("Criteria saved successfully!")
-        
-        custom_factor_counter(0)
-      }, error = function(e) {
-        # Log the error for debugging
-        removeNotification(ns("saving_msg"))
-        showNotification(
-          paste("Error saving criteria:", e$message),
-          type = "error",
-          duration = 10 # Keep error message on screen longer
-        )
-        cat("Database save error:", e$message, "\n")
-        # Return the error object or FALSE
-        e
-      }) 
-    }
-    
-    
-    selected_factors_data <- reactive({
-      req(user_coc$coc_version_id)
-
-      fetch_and_structure_rating_factors(
-        funding_action, 
-        user_coc$coc_version_id, 
-        selected_target_populations = input$target_population,
-        selected_project_types = input$project_type
-      )
-    })
-    
     output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
-      data_groups_nested <- selected_factors_data()
-
+      data_groups_nested <- all_coc_factors_structured()
+      
       render_nested_factor_accordion_ui(
         ns = ns,
         funding_action = funding_action,
@@ -599,13 +375,94 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     handle_check_all_box_functionality(input)
     
     # Observer for the "Add Custom Rating Factor" button
+    # This just adds UI for the user to enter a new factor
+    # It doesn't actually save until they click Save
     observeEvent(input$add_custom_factor, {
-      add_custom_factor(ns, input)
+      add_custom_factor_ui(ns, input)
     }, ignoreInit = TRUE)
     
+    insert_custom_factor_to_db <- function(p, custom_factor_data) {
+      save_to_db(
+        p, 
+        "INSERT INTO rating_factors (funding_action, coc_version_id, project_type, target_population, rating_factor_text, factor_group_id, goal, max_point_value, created_by)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          ON CONFLICT (coc_version_id, COALESCE(project_type, -1), COALESCE(target_population, -1), rating_factor_text) DO NOTHING
+        RETURNING rating_factor_id, selected, goal, max_point_value, date_updated;",
+        custom_factor_data,
+        "rating_factors"
+      )
+    }
+    
+    update_selected_rating_factors_db <- function(p, updated_selected_rating_factors) {
+      save_to_db(
+        p, 
+        "INSERT INTO selected_rating_factors (rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT (coc_version_id, rating_factor_id) DO UPDATE SET
+            selected = EXCLUDED.selected,
+            goal = EXCLUDED.goal,
+            max_point_value = EXCLUDED.max_point_value,
+            date_updated = $7, 
+            updated_by = EXCLUDED.created_by
+          WHERE date_updated = $8 OR ($8 IS NULL AND date_updated IS NULL);",
+        updated_selected_rating_factors |> format_date_updated_for_db(),
+        "selected_rating_factors"
+      )
+    }
+
     observeEvent(input$save_factors, {
-      save_factors(ns, input)
-      module_returns$customize_rating_criteria <- !module_returns$customize_rating_criteria
+      timestamp <- get_db_timestamp()
+      updated_selected_rating_factors <- rbindlist(lapply(all_coc_factors()$rating_factor_id, function(id) {
+        data.table(
+          rating_factor_id = id,
+          coc_version_id = user_coc$coc_version_id,
+          selected = isTRUE(input[[paste0("select_", id)]]),
+          goal = as.character(input[[paste0("goal_", id)]]),
+          max_point_value = as.numeric(input[[paste0("points_", id)]]),
+          created_by = user_coc$username,
+          new_date_updated = timestamp,
+          date_updated = all_coc_factors()[rating_factor_id == id]$date_updated
+        )
+      }))
+      
+      if(custom_factor_counter() > 0) {
+        custom_factor_data <- rbindlist(lapply(seq(custom_factor_counter()), function(i) {
+          data.table(
+            funding_action = funding_action_id,
+            coc_version_id = user_coc$coc_version_id,
+            project_type = input[[paste0("custom_pt_", i)]],
+            target_population = input[[paste0("custom_tp_", i)]],
+            rating_factor_text = input[[paste0("custom_text_", i)]],
+            factor_group_id = other_factor_group_id$factor_group_id,
+            selected = isTRUE(input[[paste0("custom_select_", i)]]),
+            goal = input[[paste0("custom_goal_", i)]],
+            max_point_value = input[[paste0("custom_points_", i)]],
+            username = user_coc$username
+          )
+        }))
+      }
+      
+      inserted_custom_factor_info <- NULL
+      needs_refresh2 <- FALSE
+      pool::poolWithTransaction(DB_POOL, function(p) {
+        if(custom_factor_counter() > 0) {
+          inserted_custom_factor_info <- insert_custom_factor_to_db(p, custom_factor_data)
+        
+          updated_selected_rating_factors |>
+            rbind(
+              inserted_custom_factor_info |>
+                fmutate(new_date_updated = date_updated),
+              fill = TRUE
+            )
+        }
+        
+        needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)
+      })
+      
+      if(is.null(inserted_custom_factor_info) || needs_refresh2)
+        refresh_trigger(\(x) x + 1)
+      
+      module_returns$customize_rating_criteria <- TRUE
     }, ignoreInit = TRUE)
   })
 }

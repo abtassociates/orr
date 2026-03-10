@@ -9,3 +9,9 @@ logs
 *.sqlite
 *.Rproj
 *.csv
+
+# gemini-cli settings
+.gemini/
+
+# GitHub App credentials
+gha-creds-*.json

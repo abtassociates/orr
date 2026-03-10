@@ -104,9 +104,7 @@ mod_funding_priorities_ui <- function(id) {
 mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    data_has_changed <- reactiveVal(FALSE)
-    auto_save_timer <- reactiveTimer(5000)
-
+    
     # HUD ARD Data------------------
     ard_field_names <- c(
       "total_ard",
@@ -129,6 +127,27 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         frename(estimated = "total_ard")
     })
     
+    # CoC Nofo Opportunities ---------------
+    coc_nofo_inputs_initialized <- reactiveVal(FALSE)
+    initialize_coc_nofo_opportunity_inputs <- function() {
+      vals <- db_selected_coc_nofo_opportunities()[val == 1]
+      
+      coc_bonus_types <- vals[bonus_type == get_lookup_refid("CoC Bonus", "bonus_type")]
+      updateCheckboxGroupInput(
+        session, "coc_bonus_types_1", selected = coc_bonus_types[coc_nofo_opportunity_id %in% 1:4]$coc_nofo_opportunity_id
+      )
+      updateCheckboxGroupInput(
+        session, "coc_bonus_types_2", selected = coc_bonus_types[coc_nofo_opportunity_id %in% 5:8]$coc_nofo_opportunity_id
+      )
+      
+      dv_bonus_types <- vals[bonus_type == get_lookup_refid("DV Bonus", "bonus_type")]
+      updateCheckboxGroupInput(
+        session, "dv_bonus_types", selected = dv_bonus_types$coc_nofo_opportunity_id
+      )
+      
+      coc_nofo_inputs_initialized(TRUE)
+    }
+    
     observe({
       req(user_coc$coc)
       lapply(ard_field_names, function(i) {
@@ -139,96 +158,167 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
         if(i != "dv_ard") shinyjs::disable(i)
       })
+      
+      # initialize selected coc_nofo_opportunities
+      db_selected_coc_nofo_opportunities(
+        get_db_query(
+          "SELECT c.coc_nofo_opportunity_id, c.bonus_type,
+            s.coc_nofo_opportunity_id IS NOT NULL AS val, 
+            s.coc_nofo_opportunity_id IS NOT NULL AS new_val,
+            $1 AS coc_version_id
+          FROM coc_nofo_opportunities c
+          LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $2", 
+          params = list(user_coc$coc_version_id, user_coc$coc_version_id)
+        )
+      )
+      
+      # initialize inputs
+      initialize_coc_nofo_opportunity_inputs()
     })
+    
+    # CoC Bonus
+    db_selected_coc_nofo_opportunities <- reactiveVal()
+    
+    observeEvent(
+      c(
+        input$coc_bonus_types_1,
+        input$coc_bonus_types_2,
+        input$dv_bonus_types
+      ), {
+      req(coc_nofo_inputs_initialized())
+        
+      newly_selected <- as.integer(c(
+        input$coc_bonus_types_1,
+        input$coc_bonus_types_2,
+        input$dv_bonus_types
+      ))
+
+      selected_opps <- isolate(db_selected_coc_nofo_opportunities())
+      req(!identical(selected_opps[val == 1]$coc_nofo_opportunity_id,  newly_selected))
+      
+      # Create full indicator vector
+      db_selected_coc_nofo_opportunities(
+        selected_opps %>%
+          fmutate(new_val = as.integer(coc_nofo_opportunity_id %in% newly_selected))
+      )
+      
+      # update database
+      update_coc_nofo_opportunities_db()
+    })
+    
+    update_coc_nofo_opportunities_db <- function() {
+      vals <- db_selected_coc_nofo_opportunities()
+
+      #to insert
+      to_insert <- vals |> 
+        fsubset(val == 0 & new_val == 1) |> 
+        fselect(-val, -new_val, -bonus_type) |>
+        add_user_stamp(user_coc, is_new = TRUE)
+      
+      if(fnrow(to_insert) > 0)
+        dbAppendTable(DB_POOL, "selected_coc_nofo_opportunities", to_insert)
+      
+      
+      # to delete
+      to_remove <- vals[val == 1 & new_val == 0]$coc_nofo_opportunity_id
+      if (length(to_remove) > 0) {
+        dbExecute(DB_POOL, glue::glue_sql("
+              DELETE FROM selected_coc_nofo_opportunities
+              WHERE coc_version_id = {user_coc$coc_version_id} AND coc_nofo_opportunity_id IN ({to_remove*})
+            ", .con = DB_POOL))
+      }
+    }
     
     # Priorities table -----------------
     priorities_data <- reactiveVal(NULL)
     
-    observe({
+    # Get db data
+    coc_funding_priorities_from_db <- reactive({
       req(user_coc$coc_version_id)
-      
-      # 1. Create the full, empty data structure for ALL possible populations.
-      full_data <- pop_grp_toggles[, .(Population = full_text)]
-      for(pt in MAIN_PROJECT_TYPES) {
-        full_data[[paste0(pt, "_Beds")]] <- NA_real_
-        full_data[[paste0(pt, "_Funding")]] <- NA_real_
-        full_data[[paste0(pt, "_Priority")]] <- NA_character_
-      }
-      
-      # 2. Fetch existing priorities from the DB
-      coc_funding_priorities_from_db <- get_db_query(
+      get_db_query(
         "SELECT * 
-         FROM coc_funding_priorities 
-         WHERE coc_version_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
+           FROM coc_funding_priorities 
+           WHERE coc_version_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
         params = list(user_coc$coc_version_id)
       )
+    })
+    
+    
+    # initialize datatable using db data
+    observeEvent(coc_funding_priorities_from_db(), {
       
-      # 3. If data exists in the DB, merge it into our full data template.
-      if (nrow(coc_funding_priorities_from_db) > 0) {
-        # You'll need to reshape your DB data from long to wide to match `full_data`.
-        # This is a conceptual example using dcast from data.table.
-        # Your column names (`project_type`, `beds`, etc.) might differ.
-        
-        # First, map the DB codes back to the `full_text` population name
-        wide_db_data <- coc_funding_priorities_from_db |>
-          join(pop_grp_toggles, on = c("target_population" = "pop", "population_group" = "grp")) 
-        wide_db_data <- wide_db_data |> fmutate(change_text = paste0(get_lookup_label(wide_db_data$project_type, 'project_type'), '_', ifelse(!is.na(beds), "Beds", ifelse(!is.na(funding), "Funding", "Priority"))))
-          # Reshape logic here... for example:
-          # dcast(. ~ project_type, value.var = c("beds", "funding", "priority"))
-          # This step is highly dependent on your DB schema and `MAIN_PROJECT_TYPES`
-        for(k in seq_row(wide_db_data)){
-          set(full_data, i = which(full_data$Population == wide_db_data$full_text[k]), j = as.character(wide_db_data$change_text[k]), value = wide_db_data[k, ifelse(!is.na(beds), beds, ifelse(!is.na(funding), funding, priority))])
-          
-        }
-          # We can then update the `full_data` table.
-          # This is a robust way to update a data.table by joining.
-         # full_data[wide_db_data, on = "Population", names(wide_db_data) := mget(paste0("i.", names(wide_db_data)))]
-      }
-
-      # 4. Store the final, merged table in our reactiveVal.
-      #    If no data was in the DB, this is just the empty template.
+       # 1. Need to get this into app-ready data structure, e.g.
+        #                           Population PSH_Beds PSH_Funding PSH_Priority RRH_Beds RRH_Funding RRH_Priority TH_Beds TH_Funding TH_Priority TH+RRH_Beds TH+RRH_Funding TH+RRH_Priority
+        #                               <char>    <num>       <num>       <char>    <num>       <num>       <char>   <num>      <num>      <char>       <num>          <num>          <char>
+        # 1:                     All Families       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 2:                      DV Families       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 3:    Chronically Homeless Families       NA          NA         <NA>       10          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 4:                 Veteran Families       NA        5000         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 5:                  Parenting Youth       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 6:                  All Individuals       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 7:                   DV Individuals       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 8: Chronically Homeless Individuals       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 9:              Veteran Individuals       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+        # 10:                     Single Youth      NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
+      full_data <- coc_funding_priorities_from_db() |>
+        # Get full "Population" text (target_pop + pop_grp)
+        join(
+          pop_grp_toggles |> fselect(Population = full_text, pop, grp),
+          on = c("target_population" = "pop", "population_group" = "grp"),
+          how = "right"
+        ) |>
+        fselect(Population, project_type, beds, funding, priority) |>
+        # For each Population, get all main project types, still in long format
+        join(
+          expand.grid(
+            Population = pop_grp_toggles$full_text,
+            project_type = LOOKUPS[reference_type == "project_type" & value %in% MAIN_PROJECT_TYPES]$reference_id
+          ),
+          how = "right"
+        ) |>
+        # convert project type number to label
+        fmutate(
+          project_type = get_lookup_label(project_type, 'project_type')
+        ) |>
+        # pivot to app data structure
+        pivot(
+          ids = "Population",
+          how="wider",
+          names = "project_type",
+          transpose = "names"
+        ) |>
+        colorderv(
+          paste0("^", gsub("+", "\\+", MAIN_PROJECT_TYPES, fixed = TRUE), "_"), 
+          regex=TRUE, 
+          pos="end"
+        )
+      
+      # save to reactive
       priorities_data(full_data)
       
-    }) # This observer only needs to run once. Consider adding `once = TRUE`.
+      # set initial Population toggles
+      update_population_toggles(full_data)
+    }, ignoreNULL = TRUE)
     
-    observe({
-      # Wait until priorities_data() is populated.
-      req(priorities_data())
-      
-      data <- priorities_data()
-      
-      # Check if any data exists across any of the editable columns
-      # This checks if we started from a truly blank slate
-      has_existing_data <- any(
-        !is.na(data[, .SD, .SDcols = patterns("_Beds$|_Funding$|_Priority$")])
-      )
-      
-      selected_populations <- if (has_existing_data) {
-        # If data exists, select the populations (rows) that have any value
-        # rows_to_keep <- data[, rowSums(!is.na(as.data.frame(.SD))) > 0, 
-        #                      .SDcols = patterns("_Beds$|_Funding$|_Priority$")]
-        rows_to_keep <- data[, (rowSums(!is.na(as.data.frame(.SD))) > 0) | Population %in% c("All Families", "All Individuals", "Single Youth"), 
-             .SDcols = patterns("_Beds$|_Funding$|_Priority$") ]
-        data[rows_to_keep, Population]
-      } else {
-        # <--- THIS IS THE KEY LOGIC FOR THE EMPTY CASE
-        # If no data exists, apply the hardcoded default
-        c("All Families", "All Individuals", "Single Youth")
-      }
+    update_population_toggles <- function(full_data) {
+      selected_populations <- full_data %>%
+        dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
       
       updateCheckboxGroupInput(
         session,
         "population_toggles",
-        selected = selected_populations
+        selected = selected_populations$Population
       )
-    })
+    }
+    
     
     output$priorities_table <- renderDT({
       # Require these two things to be ready before rendering
-      req(priorities_data(), input$population_toggles)
+      req(priorities_data())
+      req(input$population_toggles)
       
       # Filter the full dataset based on the selected checkboxes
-      data_to_display <- priorities_data()[Population %in% input$population_toggles]
+      data_to_display <- isolate(priorities_data()[Population %in% input$population_toggles])
 
       # Create the header structure
       datatable(
@@ -262,151 +352,109 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           searching = FALSE,
           info = FALSE
         ),
-        callback = JS("$(document).on('mouseenter', 'table.dataTable tbody tr', function() {",
-      paste0("$(this).css('background-color', '",USER_ENTRY_BG_COLOR,"');"),
-      "});
-              $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
-      $(this).css('background-color', 'inherit');
-      });")
-      ) %>% formatStyle(
-        columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
-        `border-right` = "1px solid black"
-      )
+        callback = JS(
+          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {",
+            paste0("$(this).css('background-color', '",USER_ENTRY_BG_COLOR,"');"),
+          "});
+          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
+            $(this).css('background-color', 'inherit');
+          });
+        ")
+      ) %>% 
+        formatStyle(
+          columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
+          `border-right` = "1px solid black"
+        ) %>%
+        formatCurrency(
+          columns = seq(3, ncol(data_to_display), by = 3),
+          currency = "$", 
+          mark = ",",
+          digits = 0
+        )
     }, server = FALSE)
     
-    # Toggle which target population + population group is to be prioritized
-    # default is All Families, All Individuals, and Single Youth
-    # priorities_data <- reactiveVal(
-    #   data.table(
-    #     Population = pop_grp_toggles,
-    #     Enabled = TRUE,  # New column to track enabled/disabled state
-    #     stringsAsFactors = FALSE
-    #   )
-    # )
-    
-    # priorities_table_proxy <- dataTableProxy(ns("priorities_table"))
-    # observeEvent(input$population_toggles, {
-    #   req(user_coc$coc)
-    #   browser()
-    #   replaceData(priorities_table_proxy, priorities_data())
-    # }, ignoreInit = TRUE)
-    
-    # Update priorities data when cell is edited
+    # Update priorities data in table and db when cell is edited
     observeEvent(input$priorities_table_cell_edit, {
       info <- input$priorities_table_cell_edit
+      
+      # Update the full dataset 
       current_data <- priorities_data()
       
-      # Update the value
       # Get the population name from the row that was displayed
       # This is trickier because the view is filtered. We need to map the
       # viewed row index back to the full data index.
-      displayed_data <- current_data[Population %in% isolate(input$population_toggles)]
+      displayed_data <- current_data[Population %in% input$population_toggles]
       population_to_update <- displayed_data[info$row, Population]
       full_data_row_index <- which(current_data$Population == population_to_update)
       
-      # Update the value in the full dataset
-      # The column index is correct as is.
-      current_data[full_data_row_index, info$col + 1] <- info$value
-
-      # Save the updated data back to the reactiveVal
-      priorities_data(current_data)
-      data_has_changed(TRUE)
-    })
-    
-    observe({
-      req(user_coc$coc_version_id)
-      # This code runs every 5 seconds (because it depends on the timer)
-      auto_save_timer() 
-
-      # Only proceed if data has actually changed
-      if (data_has_changed()) {
-        # Isolate the data to prevent reactive loops
-        data_to_save <- isolate(priorities_data())
-        long_data <-suppressWarnings( melt(
-          copy(data_to_save),
-          id.vars = "Population",
-          measure.vars = patterns("_Beds$|_Funding$|_Priority$"),
-          variable.name = "metric", # This will be an integer (1, 2, 3...)
-          na.rm = TRUE                        # Still the most important optimization
-        ))
-        
-        # If melting results in an empty table (no values entered), stop.
-        if (nrow(long_data) == 0) {
-          data_has_changed(FALSE)
-          return()
-        }
-        
-        # Step 2: SPLIT the 'variable' column into project_type and metric.
-        long_data[, c("project_type", "metric") := tstrsplit(metric, "_", fixed = TRUE)]
-        
-        # Step 3: DCAST to pivot the 'metric' values into new columns.
-        # This is the key step you were missing. It creates the 'beds', 'funding',
-        # and 'priority' columns.
-        db_ready_data <- dcast(
-          long_data,
-          Population + project_type ~ tolower(metric), # formula: rows ~ columns_to_create
-          value.var = "value"
+      # Update the value in the full dataset, so we can update the reactive and datatable proxy
+      # The column index needs + 1 because datatable is 0 indexed
+      current_data[full_data_row_index, (info$col + 1) := info$value]
+      
+      ## Update database -------------
+      changed_data <- current_data[full_data_row_index, c(1, info$col + 1), with=FALSE] |>
+        tidyr::pivot_longer(
+          cols = -Population,
+          names_to = c("project_type", ".value"), # ".value" tells it to keep the second part as column headers
+          names_sep = "_"
+        ) |>
+        join(
+          pop_grp_toggles,
+          on = c("Population" = "full_text")
+        ) |>
+        frename(pop = target_population, grp = population_group) |>
+        fmutate(project_type = get_lookup_refid(project_type, ref_type = "project_type"))
+      
+      # bed, funding, or priority
+      metric_name <- names(changed_data)[3]
+      
+      pulled_date_updated <- changed_data |> # date_updated
+        join(
+          coc_funding_priorities_from_db(),
+          on = c("project_type", "target_population", "population_group"),
+          how = "left"
+        ) |>
+        fselect(date_updated)
+      
+      # need to drop timezone from R timestamp
+      timestamp_param <-  format_timestamp_for_db(pulled_date_updated[[1]])
+      
+      sql <- glue::glue(
+        "INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, {metric_name}, created_by)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT (coc_version_id, project_type, target_population, population_group) DO UPDATE SET 
+            {metric_name} = EXCLUDED.{metric_name},
+            updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
+            date_updated = $7
+          WHERE date_updated = $8;
+        "
+      )
+      
+      tryCatch({
+        db_execute(
+          sql,
+          params = list(
+            user_coc$coc_version_id,
+            changed_data$project_type,
+            changed_data$target_population,
+            changed_data$population_group,
+            changed_data[[metric_name]],
+            user_coc$username,
+            get_db_timestamp(),
+            timestamp_param
+          )
         )
         
-        # Step 4: JOIN and ADD METADATA using a final chain.
-        # This part is cleaner when chained after the main reshaping is done.
-        db_ready_data <- db_ready_data[
-          pop_grp_toggles, on = c(Population = "full_text"), # Join to get DB population codes
-          `:=`(target_population = i.pop, population_group = i.grp)
-        ][, `:=`( # Add metadata columns for the query
-          coc_version_id = user_coc$coc_version_id,
-          created_by = user_coc$username,
-          updated_by = user_coc$username,
-          project_type = get_lookup_refid(project_type, "project_type")
-        )]
-
-        # Ensure final data types are correct before sending to the database.
-        db_ready_data[, beds := ifelse("beds" %in% names(db_ready_data), as.integer(beds), NA)]
-        db_ready_data[, funding := ifelse("funding" %in% names(db_ready_data), as.integer(funding), NA)]
-        db_ready_data[, priority := ifelse("priority" %in% names(db_ready_data), as.integer(priority), NA)]
-
-        # The "UPSERT" query
-        sql_query <- "
-          INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, beds, funding, priority, created_by)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          ON CONFLICT (coc_version_id, project_type, target_population, population_group)
-          DO UPDATE SET 
-            beds = EXCLUDED.beds,
-            funding = EXCLUDED.funding,
-            priority = EXCLUDED.priority,
-            updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-            date_updated = CURRENT_TIMESTAMP;
-        "
-        tryCatch({
-          # Execute the query for each row of the long data frame
-          # Using a prepared statement with `dbExecute` and `params` is safe from SQL injection
-          apply(db_ready_data, 1, function(row) {
-            dbExecute(
-              DB_CON,
-              sql_query,
-              params = list(
-                user_coc$coc_version_id,
-                row[["project_type"]],
-                row[["target_population"]],
-                row[["population_group"]],
-                row[["beds"]],
-                row[["funding"]],
-                row[["priority"]],
-                user_coc$username
-              )
-            )
-          })
-          
-          # If successful, reset the flag and notify the user
-          data_has_changed(FALSE)
-          showNotification("Changes saved successfully!", type = "message", duration = 3)
-        }, error = function(e) {
-          # If an error occurs, do NOT reset the flag, so it will try again.
-          # Notify the user of the failure.
-          showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
-          cat("Database save error:", e$message, "\n")
-        })
-      }
-    })
+        ## update reactive ----------
+        priorities_data(current_data)
+        
+        showNotification("Changes saved successfully!", type = "message", duration = 3)
+      }, error = function(e) {
+        # If an error occurs, do NOT reset the flag, so it will try again.
+        # Notify the user of the failure.
+        showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
+        cat("Database save error:", e$message, "\n")
+      })
+    }) # end observeEvent
   })
 }

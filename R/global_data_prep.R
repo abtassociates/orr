@@ -1,3 +1,4 @@
+library(stringr)
 HDX_HIC_DATE <- as.Date('2025-07-25')
 
 LOOKUPS <- get_db_tbl("lookups")
@@ -42,3 +43,6 @@ TABS_AFTER_COC_SELECTION <- c(
 TABS_AFTER_PROJECTS_EXIST <- c(
   "rating"
 )
+
+HUD_THRESHOLD_REQUIREMENTS <- get_db_tbl("thresholds") |> 
+  fsubset(type == "HUD")

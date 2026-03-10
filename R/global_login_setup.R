@@ -11,7 +11,7 @@ redirect_uri <- if(IN_DEV_MODE) {
     absolute = TRUE
   )
 } else {
-  glue::glue("https://orr.abtsites.com/{basename(getwd())}")
+  glue::glue("https://orr.abtsites.com/{basename(getwd())}/")
 }
 
 print(redirect_uri)

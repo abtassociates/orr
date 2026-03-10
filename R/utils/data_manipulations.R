@@ -117,15 +117,18 @@ project_variable_labels <- c(
   "is_dedicated_ch_fam" = "Is 100% Dedicated + or CH Fam (Yes/No)",
   "is_dedicated_ch_ind" = "Is 100% Dedicated + or CH Ind (Yes/No)",
   "is_dedicated_dv" = "Is 100% DV (Yes/No)",
-  "amount_other_public_funding" = "Amount of other public funding ",#(federal, state, county, city)",
+  "amount_other_public_funding" = "Amount of other public funding",#(federal, state, county, city)",
   "amount_private_funding" = "Amount of private funding",
   "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
   "vet_bed_inventory" = "Veteran Bed Inventory",
   "youth_bed_inventory" = "Youth Bed Inventory",
-  "created_by" = "Created By"#,
+  "created_by" = "Created By",
   # "date_created" = "Date Created",
   # "date_updated" = "Date Updated",
   # "updated_by" = "Updated By"
+  "met_hud_thresholds" = "Met HUD Thresholds",
+  "met_coc_thresholds" = "Met CoC Thresholds",
+  "weighted_score" = "Weighted Rating Score (out of 100)"
 )
 
  initial_cols_to_show <- setdiff(names(project_variable_labels), c('created_by','date_created','date_updated','updated_by'))
@@ -177,9 +180,15 @@ add_user_stamp <- function(x, user_coc, is_new = FALSE) {
   return(x)
 }
 
+add_datetime_stamp <- function(x, is_new = FALSE) {
+  x <- x |> fmutate(date_updated = get_db_timestamp())
+  if(is_new) x <- x |> fmutate(date_created = get_db_timestamp())
+  return(x)
+}
+
 insert_and_return <- function(table, new_dt, return_cols) {
-  col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, names(new_dt)), collapse = ", ")
-  return_col_list <- paste(DBI::dbQuoteIdentifier(DB_CON, return_cols), collapse = ", ")
+  col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, names(new_dt)), collapse = ", ")
+  return_col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, return_cols), collapse = ", ")
   placeholders <- paste0("$", seq_along(names(new_dt)), collapse = ", ")
 
   sql <- sprintf(
@@ -192,7 +201,7 @@ insert_and_return <- function(table, new_dt, return_cols) {
   
   results <- lapply(1:nrow(new_dt), function(i) {
     row_values <- as.character(unname(new_dt))
-    DBI::dbGetQuery(DB_CON, sql, params = as.list(row_values))
+    DBI::dbGetQuery(DB_POOL, sql, params = as.list(row_values))
   })
 
   return(results)
@@ -317,4 +326,75 @@ store_user_settings <- function(user_coc, tab_name){
     }
   }
 
+}
+
+format_timestamp_for_db <- function(t) {
+  format(lubridate::with_tz(t, "UTC"), "%Y-%m-%d %H:%M:%S")
+}
+
+get_db_timestamp <- function() {
+  format_timestamp_for_db(Sys.time())
+}
+
+format_date_updated_for_db <- function(df) {
+  if("date_updated" %in% colnames(df))
+    df <- df |>
+      fmutate(date_updated = format_timestamp_for_db(date_updated))
+  
+  return(df)
+}
+save_to_db <- function(p, sql, params, tbl_name) {
+  tryCatch({
+    rows_changed <- if(!grepl("RETURNING ", sql)) {
+      DBI::dbExecute(
+        p,
+        sql,
+        params = paramify(params)
+      )
+    } else {
+      DBI::dbGetQuery(
+        p,
+        sql,
+        params = paramify(params)
+      )
+    }
+    
+    if(grepl("RETURNING ", sql)) {
+      if(is.null(rows_changed))
+        msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
+      else
+        msg <- glue::glue("{tbl_name} saved successfully!")
+      print(msg)
+      showNotification(msg, type = "message")
+      return(rows_changed)
+    } 
+    
+    num_rows <- ifelse("list" %in% class(params), length(params[[1]]), fnrow(params))
+    if(rows_changed == 0) {
+      msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
+      needs_refresh <- TRUE
+    } else if(rows_changed < num_rows) {
+      msg <- glue::glue("Someone recently edited one or more {tbl_name} for this project! Refreshing your view. Resubmit when you're ready.")
+      needs_refresh <- TRUE
+    } else {
+      msg <- glue::glue("{tbl_name} saved successfully!")
+      needs_refresh <- FALSE
+    }
+    print(msg)
+    showNotification(msg, type = "message")
+    return(needs_refresh)
+  }, error = function(e) {
+    # If an error occurs, do NOT reset the flag, so it will try again.
+    # Notify the user of the failure.
+    showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
+    cat("Database save error:", e$message, "\n")
+    stop(e) # rethrow error so the transaction can catch it and roll back
+  })
+}
+
+# make sure data are SQL/db ready, i.e. no dfs or named lists
+paramify <- function(p) {
+  p |>
+    as.list() |>
+    unname()
 }

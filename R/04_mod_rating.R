@@ -3,15 +3,13 @@ mod_rating_ui <- function(id) {
   ns <- NS(id)
   
   # Individual Renewal/Expansion Rating
-  nav_menu(
-    title = "Rating",
-    icon = icon("star"),
-    value = id,
     nav_panel(
-      title = "Rate Projects",
+      title = "Rating",
+      icon = icon("star"),
+      value = id,
       # CARD-METHOD SELECTION HERE
       card_body(
-        h5("Choose Your Rating Method"),
+        # h5("Choose Your Rating Method"),
         
         tags$style(HTML(glue::glue("
           /* Remove hyperlink styling from actionLink */
@@ -100,13 +98,13 @@ mod_rating_ui <- function(id) {
           mod_alternative_rating_ui(ns("alternative"))
         )
       ) # End method selection
-    ), # End rating panel
+    ) #, # End rating panel
     
-    nav_panel(
-      title = "Rating Summary",
-      mod_rating_summary_ui(ns("summary"))
-    )
-  )
+    # nav_panel(
+    #   title = "Rating Summary",
+    #   mod_rating_summary_ui(ns("summary"))
+    # )
+  # )
 }
 
 mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
@@ -178,6 +176,6 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
     mod_in_app_rating_server("renew", user_coc, "Renew", module_returns)
     mod_in_app_rating_server("new", user_coc, "New", module_returns)
     mod_rating_summary_server("rating_summary")
-    mod_alternative_rating_server("alternative")
+    mod_alternative_rating_server("alternative", user_coc)
   })
 }

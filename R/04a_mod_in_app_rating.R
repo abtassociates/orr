@@ -10,8 +10,10 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     br(),
     em(paste0("Rate your ", ptypes, " against your selected criteria")),
     layout_sidebar(
+      style = "min-height: 500px;",
       # the side bar will be 
       sidebar = sidebar(
+        width = 350,
         id = ns("project_selection_sidebar"),
         selectInput(ns("project_select"), label = "Select Project", choices = NULL),
         uiOutput(ns("project_info_sidebar"))
@@ -38,22 +40,24 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
     
     # Get all projects for the CoC and the current funding action
     all_projects <- reactive({
+      req(user_coc$coc_version_id)
       funding_action_ids <- get_lookup_refid(
         ifelse(funding_action == "Renew", c("Renew","Expand"), "New"),
         "funding_action"
       )
       
       get_db_query(glue::glue_sql(
-        "SELECT project_id, organization_name, project_name, project_type, target_population
+        "SELECT project_id, organization_name, project_name, project_type, target_population, funding_action
         FROM projects 
         WHERE coc_version_id = {user_coc$coc_version_id} AND funding_action IN ({funding_action_ids*})",
-        .con=DB_CON
+        .con=DB_POOL
       ))
     })
     
     # Get the project to be rated from the dropdown in the sidebar
     selected_project <- reactive({
-      req(input$project_select)
+      if (is.null(input$project_select) || input$project_select == "") return(NULL)
+      
       all_projects() |> 
         fsubset(project_id == input$project_select)
     })
@@ -67,7 +71,8 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
       updateSelectInput(
         session, 
         "project_select",
-        choices = setNames(all_projects()$project_id, all_projects()$project_name)
+        choices = setNames(all_projects()$project_id, all_projects()$project_name),
+        selected = character(0)
       )
     })
     
@@ -86,7 +91,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
     })
     
     # call the module servers of the subtabs
-    mod_thresholds_entry_server("thresholds_entry", user_coc, input$project_select, module_returns)
-    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, funding_action, module_returns)
+    mod_thresholds_entry_server("thresholds_entry", user_coc, selected_project, module_returns)
+    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, module_returns)
   })
 }
