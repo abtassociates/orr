@@ -116,7 +116,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
       req(user_coc$auth)
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'Rate Projects')
       
-      user_previous_method <- dbGetQuery(DB_CON, 
+      user_previous_method <- get_db_query(
                                          "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_method'",
                                          params = list(user_coc$coc_version_id,
                                                        user_coc$username)
@@ -128,7 +128,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
       
       ## set up subtabs if using in-app rating method
       if(user_previous_method == 'in_app'){
-        user_previous_tab <- dbGetQuery(DB_CON,
+        user_previous_tab <- get_db_query(
                                            "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_tab'",
                                            params = list(user_coc$coc_version_id,
                                                          user_coc$username)

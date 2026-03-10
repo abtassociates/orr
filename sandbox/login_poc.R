@@ -46,7 +46,7 @@ initialize_db <- function() {
   dbExecute(DB_CON, query)
   
   # Create default admin user if no users exist
-  user_count <- dbGetQuery(DB_CON, "SELECT COUNT(*) as count FROM users")$count
+  user_count <- get_db_query("SELECT COUNT(*) as count FROM users")$count
   if (user_count == 0) {
     admin_password <- digest("admin123", algo = "sha256")
     dbExecute(con, "INSERT INTO users (user, password, admin, start, expire) VALUES ($1, $2, TRUE, CURRENT_DATE, CURRENT_DATE + INTERVAL '1 year')", 
@@ -63,7 +63,7 @@ auth_fun <- function(user, password) {
   
   # Query user from database
   query <- "SELECT * FROM users WHERE user = $1 AND password = $2"
-  result <- dbGetQuery(DB_CON, query, list(user, hashed_password))
+  result <- get_db_query(query, list(user, hashed_password))
   
   dbDisconnect(con)
   
@@ -89,7 +89,7 @@ auth_fun <- function(user, password) {
 # Function to create new user
 create_user <- function(username, password, admin = FALSE) {
   # Check if user already exists
-  existing_user <- dbGetQuery(DB_CON, "SELECT COUNT(*) as count FROM users WHERE user = $1", list(username))$count
+  existing_user <- get_db_query("SELECT COUNT(*) as count FROM users WHERE user = $1", list(username))$count
   
   if (existing_user > 0) {
     dbDisconnect(con)
@@ -325,7 +325,7 @@ server <- function(input, output, session) {
   # User info display
   output$user_info <- renderUI({
     if (values$authenticated) {
-      user_info <- dbGetQuery(DB_CON, "SELECT * FROM users WHERE user = $1", list(values$current_user))
+      user_info <- get_db_query("SELECT * FROM users WHERE user = $1", list(values$current_user))
       dbDisconnect(con)
       
       if (nrow(user_info) > 0) {

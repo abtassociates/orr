@@ -119,8 +119,7 @@ mod_requests_server <- function(id, user_coc) {
           coc_request_id,
           date_updated
         ) |>
-        as.list() |>
-        unname()
+       paramify()
       
       dbWithTransaction(DB_POOL, {
         db_execute(

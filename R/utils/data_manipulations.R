@@ -201,7 +201,7 @@ insert_and_return <- function(table, new_dt, return_cols) {
   
   results <- lapply(1:nrow(new_dt), function(i) {
     row_values <- as.character(unname(new_dt))
-    DBI::dbGetQuery(DB_POOL, sql, params = as.list(row_values))
+    get_db_query(sql, params = as.list(row_values))
   })
 
   return(results)
@@ -212,7 +212,7 @@ store_single_setting <- function(user_coc, existing_settings, setting_nm, settin
   
   if(fnrow(cur_setting_existing) > 0){
     # modify
-    DBI::dbExecute(DB_CON, 
+    db_execute(
                    glue::glue("UPDATE user_settings SET setting_value = $1, 
         date_updated = CURRENT_TIMESTAMP, updated_by = $2
         WHERE coc_version_id = $3 AND coc_user = $2 AND setting_name = '{setting_nm}'"), 
@@ -234,7 +234,7 @@ store_single_setting <- function(user_coc, existing_settings, setting_nm, settin
     )
     rownames(append_df) <- NULL
     
-    dbAppendTable(DB_CON, "user_settings", append_df)
+    db_append("user_settings", append_df)
   }
 }
 
@@ -250,7 +250,7 @@ store_user_settings <- function(user_coc, tab_name){
   if(is.null(isolate(user_coc$settings$cols_to_hide)))
     return(NULL)
   
-  existing_settings <-  dbGetQuery(DB_CON, 
+  existing_settings <-  get_db_query(
                                    'SELECT * FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', 
                                    params = list(isolate(user_coc$coc_version_id),
                                                  isolate(user_coc$username)))
@@ -274,7 +274,7 @@ store_user_settings <- function(user_coc, tab_name){
     # modify
     
     current_selection <- isolate(user_coc$settings$cols_to_hide)
-    previous_selection <-  dbGetQuery(DB_CON, "SELECT setting_name FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_value = 'hide' AND setting_name LIKE 'disp_%'",
+    previous_selection <-  get_db_query("SELECT setting_name FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_value = 'hide' AND setting_name LIKE 'disp_%'",
                                       params = list(isolate(user_coc$coc_version_id),
                                                     isolate(user_coc$username))) |> unlist(use.names = FALSE)
    
@@ -284,8 +284,7 @@ store_user_settings <- function(user_coc, tab_name){
 
     if(length(to_add) > 0){
       to_add <- paste0('disp_', to_add)
-      dbAppendTable(DB_CON,
-                    "user_settings",
+      db_append("user_settings",
                     data.frame(
                       'coc_version_id' = isolate(user_coc$coc_version_id),
                       'coc_user' = isolate(user_coc$username),
@@ -302,8 +301,10 @@ store_user_settings <- function(user_coc, tab_name){
       
       sapply(to_remove,
              function(x){
-               dbExecute(DB_CON, 'DELETE FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3', 
-                         params = list(isolate(user_coc$coc_version_id), isolate(user_coc$username), x))
+                        db_execute(
+                         'DELETE FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3', 
+                         params = list(isolate(user_coc$coc_version_id), isolate(user_coc$username), x)
+                         )
              }
       )
     }
@@ -312,7 +313,7 @@ store_user_settings <- function(user_coc, tab_name){
     to_add <- isolate(user_coc$settings$cols_to_hide)
     if(length(to_add) > 0){
       to_add <- paste0('disp_', to_add)
-      dbAppendTable(DB_CON,
+                  db_append(
                     "user_settings",
                     data.frame(
                       'coc_version_id' = isolate(user_coc$coc_version_id),

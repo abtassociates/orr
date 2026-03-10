@@ -118,7 +118,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initial_cols_to_hide <- setdiff(names(projects_data()), initial_cols_to_show )
       
       # retrieve user columns from user-settings table
-      user_previous_hidden <- dbGetQuery(DB_CON, 
+      user_previous_hidden <- get_db_query(
                                          "SELECT setting_name FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_value = 'hide' AND setting_name LIKE 'disp_%'",
                                          params = list(user_coc$coc_version_id,
                                                        user_coc$username)
