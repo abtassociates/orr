@@ -1304,7 +1304,7 @@ CREATE TABLE IF NOT EXISTS rating_scores (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username),
     
-  CONSTRAINT rating_scores UNIQUE (project_id, selected_rating_factor_id)
+  CONSTRAINT uq_rating_scores_profile UNIQUE (project_id, selected_rating_factor_id)
 );
 "))
 
@@ -1321,7 +1321,7 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
     updated_by VARCHAR(100) NULL REFERENCES users(username),
     
   
-  CONSTRAINT threshold_entries UNIQUE (project_id, threshold_id)
+  CONSTRAINT uq_threshold_entries_profile UNIQUE (project_id, threshold_id)
 );
 "))
 
