@@ -8,7 +8,7 @@ library(collapse)
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
-HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
+HUD_ARD_DATA_FILEPATH <- here("database/fy24_hud_ard_data.csv")
 
 # Ideally, this get dynamically populated with data from Cognito
 # But not a huge deal since this won't be run after we're live
@@ -508,7 +508,10 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 	coc VARCHAR(6) REFERENCES cocs(coc_code),
     coc_number_and_name TEXT,
     pprn INTEGER,
-    estimated INTEGER,
+    estimated_ard INTEGER,
+    dv_ard INTEGER,
+    yhdp_ard INTEGER,
+    fprn INTEGER,
     tier_1 INTEGER,
     coc_bonus INTEGER NULL,
     dv_bonus INTEGER,
@@ -522,10 +525,13 @@ hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH, encoding="Latin-1")
 
 # Rename columns to match SQL table
 setnames(hud_ard_data, old = c(
-  "CoCName",
+  "CoC",
   "CoC Number and Name",
   "PPRN",
   "Estimated ARD",
+  "DV Estimated ARD",
+  "YHDP Estimated ARD",
+  "FPRN",
   "Tier 1",
   "CoC Bonus",
   "DV Bonus",
@@ -534,7 +540,10 @@ setnames(hud_ard_data, old = c(
   "coc",
   "coc_number_and_name",
   "pprn",
-  "estimated",
+  "estimated_ard",
+  "dv_ard",
+  "yhdp_ard",
+  "fprn",
   "tier_1",
   "coc_bonus",
   "dv_bonus",
