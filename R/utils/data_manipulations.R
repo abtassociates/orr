@@ -270,6 +270,9 @@ store_user_settings <- function(user_coc, tab_name){
     return(NULL)
   store_single_setting(user_coc, existing_settings, 'rating_tab', user_coc$settings$rating_tab)
   
+  if(is.null(isolate(user_coc$settings$rating_subtab)))
+    return(NULL)
+  store_single_setting(user_coc, existing_settings, 'rating_subtab', user_coc$settings$rating_subtab)
   
   # check if row exists 
   disp_existing <- fsubset(existing_settings, grep('disp_', setting_name)) 
