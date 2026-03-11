@@ -114,7 +114,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
     ## restore previous user setting for rating_method from DB
     observe({
       req(user_coc$auth)
-      req(!is.null(user_coc$coc_version_id) & nav_control() == 'Rate Projects')
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
       
       user_previous_method <- get_db_query(
                                          "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_method'",
