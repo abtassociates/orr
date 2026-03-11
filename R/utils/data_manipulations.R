@@ -212,6 +212,10 @@ insert_and_return <- function(table, new_dt, return_cols) {
 }
 
 store_single_setting <- function(user_coc, existing_settings, setting_nm, setting_val){
+  
+  if(is.null(isolate(setting_val)))
+    return(NULL)
+  
   cur_setting_existing <- fsubset(existing_settings, setting_name == setting_nm)
   
   if(fnrow(cur_setting_existing) > 0){
@@ -259,20 +263,17 @@ store_user_settings <- function(user_coc, tab_name){
                                    params = list(isolate(user_coc$coc_version_id),
                                                  isolate(user_coc$username)))
   
+  
+  settings_to_save <- c('rating_method','rating_tab','rating_subtab')
+  
+  ## save ratings navigation user settings
+  lapply(settings_to_save, 
+         function(x){
+           store_single_setting(user_coc, existing_settings, x, user_coc$settings[[x]])
+         })
+  
   store_single_setting(user_coc, existing_settings, 'active_tab', tab_name)
   
-  ## save rating method to user_settings: in_app vs alternative
-  if(is.null(isolate(user_coc$settings$rating_method)))
-    return(NULL)
-  store_single_setting(user_coc, existing_settings, 'rating_method', user_coc$settings$rating_method)
-  
-  if(is.null(isolate(user_coc$settings$rating_tab)))
-    return(NULL)
-  store_single_setting(user_coc, existing_settings, 'rating_tab', user_coc$settings$rating_tab)
-  
-  if(is.null(isolate(user_coc$settings$rating_subtab)))
-    return(NULL)
-  store_single_setting(user_coc, existing_settings, 'rating_subtab', user_coc$settings$rating_subtab)
   
   # check if row exists 
   disp_existing <- fsubset(existing_settings, grep('disp_', setting_name)) 
