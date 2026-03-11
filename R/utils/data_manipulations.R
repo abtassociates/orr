@@ -131,7 +131,11 @@ project_variable_labels <- c(
   "weighted_score" = "Weighted Rating Score (out of 100)"
 )
 
- initial_cols_to_show <- setdiff(names(project_variable_labels), c('created_by','date_created','date_updated','updated_by'))
+inventory_variable_labels <- project_variable_labels[!(names(project_variable_labels) %in% c('met_hud_thresholds', 'met_coc_thresholds', 'weighted_score'))]
+
+initial_cols_to_show <- setdiff(names(inventory_variable_labels), c('created_by','date_created','date_updated','updated_by'))
+                                                                  
+
 giw_variable_labels <- c(
   "grant_number" = "Grant Number",
   "coc" = "CoC",
@@ -250,7 +254,7 @@ store_user_settings <- function(user_coc, tab_name){
   if(is.null(isolate(user_coc$settings$cols_to_hide)))
     return(NULL)
   
-  existing_settings <-  get_db_query(
+  existing_settings <-  dbGetQuery(DB_POOL,
                                    'SELECT * FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', 
                                    params = list(isolate(user_coc$coc_version_id),
                                                  isolate(user_coc$username)))

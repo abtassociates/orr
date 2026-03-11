@@ -16,7 +16,7 @@ mod_inventory_ui <- function(id) {
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
         pickerInput(ns('projects_col_selections'), label = 'Choose Fields to Display',
-                    choices = setNames(names(project_variable_labels), project_variable_labels),
+                    choices = setNames(names(inventory_variable_labels), inventory_variable_labels),
                     selected = initial_cols_to_show, 
                     multiple = TRUE, 
                     
@@ -157,7 +157,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
-      colnames <- unname(project_variable_labels[names(data)])
+      colnames <- unname(inventory_variable_labels[names(data)])
       
       ## initially, only hide pre-specified columns; later, will hide user settings-based ones
       initial_cols_to_hide <- setdiff(names(data), initial_cols_to_show )
