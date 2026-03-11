@@ -97,10 +97,11 @@ function(input, output, session) {
     nav_select("nav", selected = nav_control())
   })
 
-    onStop( function(){
+    shiny::onStop( function(){
       cat("Running onStop")
       ## record user settings
       store_user_settings(user_coc, tab_name = input$nav)
+      pool::poolClose(DB_POOL)
       }, session = session
     )
 }

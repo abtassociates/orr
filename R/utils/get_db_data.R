@@ -19,10 +19,6 @@ DB_POOL <- if(!IN_DEV_MODE) {
   )
 }
 
-shiny::onStop(function() {
-  pool::poolClose(DB_POOL)
-})
-
 
 # Get DB data ------------------
 # dbGetQuery returns result set
