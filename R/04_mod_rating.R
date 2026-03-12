@@ -174,58 +174,12 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
       shinyjs::removeClass(id = "select_in_app", class = "card-selected")
     })
     
-    ## Rating tabs
+    ## Update rating_tab user setting
     observeEvent(input$rating_tabs, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
       user_coc$settings$rating_tab <- gsub('rating-', '', input$rating_tabs)
     }, ignoreInit = TRUE)
     
-    ## Rating filter selections
-    
-      # Renewal rating factors
-        # renew - selected project type to filter factors
-        observeEvent(input$`customize_criteria-renewal_rating_factors-project_type`, {
-          req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-          user_coc$settings$rating_renew_project_type <- input$`customize_criteria-renewal_rating_factors-project_type`
-
-        }, ignoreInit = TRUE)
-
-        # renew - selected special population to filter factors
-        observeEvent(input$`customize_criteria-renewal_rating_factors-target_population`, {
-          req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-          user_coc$settings$rating_renew_target_pop <- input$`customize_criteria-renewal_rating_factors-target_population`
-
-        }, ignoreInit = TRUE)
-
-        # renew - which groups and subgroups of factors they've collapsed/expanded
-
-      # New rating factors
-
-        # new - selected special population to filter factors
-        observeEvent(input$`customize_criteria-new_rating_factors-target_population`, {
-          req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-          user_coc$settings$rating_new_target_pop <- input$`customize_criteria-new_rating_factors-target_population`
-
-        }, ignoreInit = TRUE)
-
-        # new - which groups and subgroups of factors they've collapsed/expanded
-
-      # Rate renew projects
-        # selected project
-        observeEvent(input$`renew-project_select`, {
-          req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-          user_coc$settings$rating_renew_project <- input$`renew-project_select`
-
-        }, ignoreInit = TRUE)
-
-      # Rate new projects
-        # selected project
-        observeEvent(input$`new-project_select`, {
-          req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-          user_coc$settings$rating_new_project <- input$`new-project_select`
-
-        }, ignoreInit = TRUE)
-        
     # observe({
     #   req(module_returns$rating_criteria)
     #   

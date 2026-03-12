@@ -40,6 +40,12 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
       toggle_sidebar(id = "project_selection_sidebar", open = input$main_contents != ns("rating_factors"))
     }, ignoreInit = TRUE)
     
+    # Store selected project in user setting
+    observeEvent(input$project_select, {
+      req(user_coc$coc_version_id & nav_control() == 'rating')
+      user_coc$settings[[glue::glue('rating_{id}_project_selected')]] <- input$project_select
+    }, ignoreInit = TRUE)
+    
     # Get all projects for the CoC and the current funding action
     all_projects <- reactive({
       req(user_coc$coc_version_id)

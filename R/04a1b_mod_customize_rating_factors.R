@@ -56,7 +56,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
 
 #' @title mod_new_factors_server
 #' @noRd
-mod_customize_rating_factors_server <- function(id, user_coc, funding_action, module_returns) {
+mod_customize_rating_factors_server <- function(id, user_coc, funding_action, nav_control, module_returns) {
   # The server logic here is identical in structure to the renewal/expansion module,
   # differing only by the `funding_action` filter ('New').
   moduleServer(id, function(input, output, session) {
@@ -379,6 +379,17 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     # It doesn't actually save until they click Save
     observeEvent(input$add_custom_factor, {
       add_custom_factor_ui(ns, input)
+    }, ignoreInit = TRUE)
+    
+    ## store user settings for project type and target population
+    observeEvent(input$project_type, {
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
+      user_coc$settings[[glue::glue('rating_{id}_project_type')]] <- input$project_type
+    }, ignoreInit = TRUE)
+    
+    observeEvent(input$target_population, {
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
+      user_coc$settings[[glue::glue('rating_{id}_target_population')]] <- input$target_population
     }, ignoreInit = TRUE)
     
     insert_custom_factor_to_db <- function(p, custom_factor_data) {
