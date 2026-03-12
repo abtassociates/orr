@@ -27,14 +27,16 @@ mod_in_app_rating_ui <- function(id, funding_action) {
   )
 }
 
-mod_in_app_rating_server <- function(id, user_coc, funding_action, module_returns) {
+mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, module_returns) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     # Collapse sidebar when user is on Customize Rating Criteria tab, since it's
     # not useful there
     observeEvent(input$main_contents, {
-      req(user_coc$coc_version_id)
+      req(user_coc$coc_version_id & nav_control() == 'rating')
+      
+      user_coc$settings$rating_subtab <- gsub(glue::glue('rating-{id}-'), '', input$main_contents)
       toggle_sidebar(id = "project_selection_sidebar", open = input$main_contents != ns("rating_factors"))
     }, ignoreInit = TRUE)
     

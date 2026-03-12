@@ -180,29 +180,6 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
       user_coc$settings$rating_tab <- gsub('rating-', '', input$rating_tabs)
     }, ignoreInit = TRUE)
     
-    ## Rating subtabs
-    observeEvent(input$`customize_criteria-rating_criteria_subtabs`, {
-      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_subtab <- gsub('rating-customize_criteria-', '', input$`customize_criteria-rating_criteria_subtabs`)
-    }, ignoreInit = TRUE)
-    
-    observeEvent(input$`customize_criteria-rating_factors_subtabs`, {
-      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_subtab <- gsub('rating-customize_criteria-', '', input$`customize_criteria-rating_factors_subtabs`)
-      
-    }, ignoreInit = TRUE)
-    
-    observeEvent(input$`renew-main_contents`, {
-      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_subtab <- gsub('rating-renew-', '', input$`renew-main_contents`)
-    }, ignoreInit = TRUE)
-    
-    observeEvent(input$`new-main_contents`, {
-      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_subtab <- gsub('rating-new-', '', input$`new-main_contents`)
-                     
-    }, ignoreInit = TRUE)
-    
     ## Rating filter selections
     
       # Renewal rating factors
@@ -262,8 +239,8 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
     # })
     
     mod_customize_criteria_server("customize_criteria", user_coc, nav_control, parent_session, module_returns)
-    mod_in_app_rating_server("renew", user_coc, "Renew", module_returns)
-    mod_in_app_rating_server("new", user_coc, "New", module_returns)
+    mod_in_app_rating_server("renew", user_coc, "Renew", nav_control, module_returns)
+    mod_in_app_rating_server("new", user_coc, "New", nav_control, module_returns)
     mod_rating_summary_server("rating_summary")
     mod_alternative_rating_server("alternative", user_coc)
   })
