@@ -54,3 +54,8 @@ td.disabled {
 .input-col input {
   text-align: center;
 }
+
+/* Set color of DT KeyTable cell outline */
+table.dataTable tbody th.focus, table.dataTable tbody td.focus {
+  outline: 2px solid var(--brand-dark_blue) !important;
+}
