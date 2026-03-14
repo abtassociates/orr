@@ -23,7 +23,10 @@ library(httr2)
 library(jsonlite)
 library(shinyWidgets)
 
-IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
+IN_RSTUDIO <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]])
+IN_DEV_MODE <- IN_RSTUDIO && !isTRUE(getOption("shiny.testmode"))
+IN_PROD_APP <- basename(getwd()) == "ORR" && !IN_RSTUDIO
+USE_DEV_POSTGRES_DB <- TRUE
 
 set.seed(123)
 set_collapse(na.rm = TRUE, verbose = FALSE, sort = FALSE)

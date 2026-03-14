@@ -3,7 +3,7 @@ source("R/utils/get_db_data.R")
 source("R/utils/data_manipulations.R")
 source("R/global_data_prep.R")
 
-if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+if(IN_DEV_MODE && !USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
 dbExecute(DB_POOL, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
 dbExecute(DB_POOL, "DELETE FROM coc_versions WHERE coc_version_id > 4")
 dbExecute(DB_POOL, "DELETE FROM coc_version_requests")
@@ -12,7 +12,7 @@ dbExecute(DB_POOL, "DELETE FROM thresholds WHERE coc_version_id > 4")
 dbExecute(DB_POOL, "DELETE FROM selected_thresholds")
 dbExecute(DB_POOL, "DELETE FROM selected_rating_factors")
 dbExecute(DB_POOL, "DELETE FROM rating_factors WHERE coc_version_id > 4")
-if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+if(IN_DEV_MODE && !USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
 
 USERS <- get_db_tbl("users")
 main_user <- toString(USERS[1, 1]) # alex.silverman@abtglobal.com
