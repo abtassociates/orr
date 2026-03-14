@@ -1,4 +1,5 @@
-IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
+populate_db <- function(add_demo_data = FALSE, USE_DEV_POSTGRES_DB=FALSE) {
+
 library(here)
 library(DBI)
 source("R/utils/get_db_data.R")
@@ -23,12 +24,12 @@ ADMIN_USERS <- "
 
 drop_table <- function(tbl) {
 	message(glue::glue("Dropping {tbl}"))
-  if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
-  DBI::dbExecute(DB_POOL, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(IN_DEV_MODE, '', 'CASCADE')};"))
-	if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+  if(!USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+  DBI::dbExecute(DB_POOL, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(!USE_DEV_POSTGRES_DB, '', 'CASCADE')};"))
+	if(!USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
 }
 
-id_var_attrs <- if(IN_DEV_MODE) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
+id_var_attrs <- if(!USE_DEV_POSTGRES_DB) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
 
 # create users and All HIC Data ---------------------
 ############################
@@ -1260,7 +1261,7 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS selected_rating_factors (
     selected_rating_factor_id {id_var_attrs},
     rating_factor_id SMALLINT REFERENCES rating_factors(rating_factor_id),
-    goal VARCHAR(5) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes'
+    goal VARCHAR(100) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes'
     max_point_value NUMERIC(4, 1),
     selected BOOLEAN DEFAULT FALSE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
@@ -1411,3 +1412,7 @@ DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_projec
 DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_references_type ON lookups (reference_type);")
 
 message("Done populating the db!")
+
+if(add_demo_data)
+  source(here("sandbox/generate_test_data_for_demo.R"))
+}
