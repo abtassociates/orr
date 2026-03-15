@@ -142,12 +142,12 @@ VALUES
 ('project_type', 'ES', 'Emergency Shelter', 'orr_service@abtglobal.com'),
 
 -- from target_populations
-('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
-('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
+('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
 ('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
 ('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
 ")
 
