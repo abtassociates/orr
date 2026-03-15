@@ -30,6 +30,18 @@ mod_funding_priorities_ui <- function(id) {
     setNames(coc_nofo_opportunity_id, full_text)
   ]
   
+  funding_input <- function(id, label) {
+    shinyWidgets::autonumericInput(
+      ns(id), 
+      label, 
+      value = "0",
+      currencySymbol = "$", 
+      currencySymbolPlacement = "p", 
+      decimalPlaces = 0, 
+      style="font-size:1em;"
+    )
+  }
+  
   # Funding Ceilings + Priorities
   nav_panel(
     "Funding Ceilings + Priorities",
@@ -40,14 +52,14 @@ mod_funding_priorities_ui <- function(id) {
       card_header("General Funding Information"),
       layout_columns(
         col_widths = c(3, 3, 3, 3),
-        shinyWidgets::autonumericInput(ns("total_ard"), "Annual Renewal Demand (ARD)", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
-        shinyWidgets::autonumericInput(ns("coc_bonus"), "CoC Bonus", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
-        shinyWidgets::autonumericInput(ns("tier_1"), "Tier 1", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
-        shinyWidgets::autonumericInput(ns("adjusted_ard"), "Adjusted ARD", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
-        shinyWidgets::autonumericInput(ns("yhdp_ard"), "YHDP ARD", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
-        shinyWidgets::autonumericInput(ns("tier_2"), "Tier 2", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
-        shinyWidgets::autonumericInput(ns("dv_bonus"), "DV Bonus", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0),
-        shinyWidgets::autonumericInput(ns("dv_ard"), "DV ARD", value = "0", currencySymbol = "$", currencySymbolPlacement = "p", decimalPlaces = 0)
+        funding_input("total_ard", "Annual Renewal Demand (ARD)"),
+        funding_input("coc_bonus", "CoC Bonus"),
+        funding_input("tier_1", "Tier 1"),
+        funding_input("adjusted_ard", "Adjusted ARD"),
+        funding_input("yhdp_ard", "YHDP ARD"),
+        funding_input("tier_2", "Tier 2"),
+        funding_input("dv_bonus", "DV Bonus"),
+        funding_input("dv_ard", "DV ARD")
       )
     ),
     card(
