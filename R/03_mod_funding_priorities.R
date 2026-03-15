@@ -98,7 +98,10 @@ mod_funding_priorities_ui <- function(id) {
             choices = pop_grp_toggles$full_text
           )
         ),
-        helpText("Double-click a cell to edit"),
+        div(
+          id = ns("priorities_help"),
+          helpText("Double-click a cell to edit")
+        ),
         DTOutput(ns("priorities_table"))
       )
     )
