@@ -109,9 +109,8 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
           ON CONFLICT (coc_version_id, threshold_id) DO UPDATE SET 
             selected = EXCLUDED.selected,
             updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-            date_updated = $5
-          WHERE date_updated = $6",
-        updated_selected_thresholds |> format_date_updated_for_db(),
+        " |> add_optimistic_locking(),
+        updated_selected_thresholds,
         "selected_thresholds"
       )
     }
@@ -120,10 +119,9 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       all_coc_thresholds() |>
         fmutate(
           coc_version_id = params$coc_version_id,
-          username = params$username,
-          new_date_updated = get_db_timestamp()
+          username = params$username
         ) |>
-        fselect(threshold_id, coc_version_id, selected, username, new_date_updated, selected_threshold_date_updated)
+        fselect(threshold_id, coc_version_id, selected, username, selected_threshold_date_updated)
     }
     
     observeEvent(input$save_thresholds, {
@@ -163,11 +161,11 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
         "INSERT INTO thresholds (type, coc_version_id, threshold_text, created_by)
           VALUES ('CoC', $1, $2, $3)
           ON CONFLICT (coc_version_id, threshold_text) DO UPDATE SET
-            updated_by = EXCLUDED.created_by,
-            date_updated = $4
-          WHERE (thresholds.date_updated = $5 OR ($5 IS NULL AND thresholds.date_updated IS NULL))
-        RETURNING threshold_id, coc_version_id",
-        updated_thresholds |> format_date_updated_for_db(),
+            updated_by = EXCLUDED.created_by
+        " |> 
+          add_optimistic_locking() |>
+          cat("\nRETURNING threshold_id, coc_version_id"),
+        updated_thresholds(),
         "thresholds"
       )
     }
@@ -184,7 +182,6 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
         user_coc$coc_version_id, 
         input$custom_threshold_text,
         user_coc$username,
-        get_db_timestamp(),
         if (length(current_date_updated_for_threshold) > 0) current_date_updated_for_threshold else NA
       )
       
@@ -196,11 +193,9 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
         updated_selected_thresholds <- updated_custom_threshold_info |>
           fmutate(
             selected = TRUE,
-            created_by = user_coc$username,
-            date_updated = get_db_timestamp(),
-            new_date_updated = NA
+            created_by = user_coc$username
           ) |>
-          fselect(threshold_id, coc_version_id, selected, created_by, date_updated, new_date_updated)
+          fselect(threshold_id, coc_version_id, selected, created_by, date_updated)
 
         needs_refresh2 <- update_selected_thresholds_db(p, updated_selected_thresholds)
       })

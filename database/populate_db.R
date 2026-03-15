@@ -1247,11 +1247,14 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS selected_coc_nofo_opportunities (
     selected_coc_nofo_opportunity_id {id_var_attrs},
     coc_nofo_opportunity_id SMALLINT REFERENCES coc_nofo_opportunities(coc_nofo_opportunity_id),
+    selected BOOLEAN DEFAULT FALSE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+    CONSTRAINT coc_nofo_opportunities_unique_key UNIQUE (coc_version_id, coc_nofo_opportunity_id)
 );
 "))
 

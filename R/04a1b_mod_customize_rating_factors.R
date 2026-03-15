@@ -402,10 +402,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
             selected = EXCLUDED.selected,
             goal = EXCLUDED.goal,
             max_point_value = EXCLUDED.max_point_value,
-            date_updated = $7, 
             updated_by = EXCLUDED.created_by
-          WHERE date_updated = $8 OR ($8 IS NULL AND date_updated IS NULL);",
-        updated_selected_rating_factors |> format_date_updated_for_db(),
+        " |> add_optimistic_locking(),
+        updated_selected_rating_factors,
         "selected_rating_factors"
       )
     }
@@ -450,8 +449,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
         
           updated_selected_rating_factors |>
             rbind(
-              inserted_custom_factor_info |>
-                fmutate(new_date_updated = date_updated),
+              inserted_custom_factor_info,
               fill = TRUE
             )
         }

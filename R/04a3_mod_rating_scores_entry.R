@@ -221,15 +221,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         ON CONFLICT (project_id, selected_rating_factor_id) DO UPDATE SET
           rating_score = EXCLUDED.rating_score,
           performance  = EXCLUDED.performance,
-          date_updated = $6,
           updated_by   = EXCLUDED.created_by
-        WHERE date_updated = $7",
-        updated_rating_scores |> format_date_updated_for_db(),
+        "  |> add_optimistic_locking(),
+        updated_rating_scores,
         "rating_scores"
       )
     }
     
-    update_project_evaluation_db <- function(p, new_project_evaluation) {
+    update_project_evaluation_db <- function(p, updated_project_evaluation) {
       save_to_db(
         p,
         "INSERT INTO project_evaluations (project_id, method, weighted_score, created_by)
@@ -237,20 +236,18 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
           ON CONFLICT (project_id) DO UPDATE SET 
             method = EXCLUDED.method,
             weighted_score = EXCLUDED.weighted_score,
-            date_updated = $4, 
             updated_by = EXCLUDED.created_by
-          WHERE date_updated = $5 OR ($5 IS NULL AND project_evaluations.date_updated IS NULL);",
-        new_project_evaluation |> format_date_updated_for_db(),
+        " |> add_optimistic_locking(),
+        updated_project_evaluation,
         "project_evaluations"
       )
     }
     
-    get_new_project_evaluation <- function(params) {
+    get_updated_project_evaluation <- function(params) {
       data.table(
         project_id = params$project_id,
         weighted_score = params$weighted_score,
         created_by = params$username,
-        new_date_updated  = get_db_timestamp(),
         date_updated = params$date_updated
       )
     }
@@ -267,8 +264,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         rating_scores               = sapply(selected_ids, \(id) input[[paste0("rating_score_", id)]]),
         performances                = sapply(selected_ids, \(id) input[[paste0("performance_", id)]]),
         created_bys                 = alloc(user_coc$username, num_selected),
-        new_date_updated            = alloc(get_db_timestamp(), num_selected),
-        date_updated       = df$date_updated
+        date_updated                = df$date_updated
       )
       
       
@@ -276,7 +272,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       numerator <- fsum(entered_scores())
       denominator <- fsum(df$max_point_value)
       
-      new_project_evaluation <- get_new_project_evaluation(
+      updated_project_evaluation <- get_updated_project_evaluation(
         list(
           project_id =  selected_project()$project_id,
           weighted_score = round(100 * numerator/denominator, 0),
@@ -289,7 +285,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       needs_refresh2 <- FALSE
       pool::poolWithTransaction(DB_POOL, function(p) {
         needs_refresh1 <- update_rating_scores_db(p, updated_rating_scores)
-        needs_refresh2 <- update_project_evaluation_db(p, new_project_evaluation)
+        needs_refresh2 <- update_project_evaluation_db(p, updated_project_evaluation)
       })
 
       if(needs_refresh1 || needs_refresh2)

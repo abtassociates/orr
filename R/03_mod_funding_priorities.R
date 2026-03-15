@@ -79,8 +79,12 @@ mod_funding_priorities_ui <- function(id) {
             choices = dv_bonus_opportunities
           )
         )
+      ),
+      card_footer(
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        actionButton(ns("save_opportunities"), "Save CoC Nofo Opportunities", icon = icon("save"), class="btn-primary")
       )
-    ),
+    ), # end coc nofo opportunities card
     card(
       card_header("Funding Ceilings and Priorities by Project Type and Population"),
       fill = FALSE,
@@ -104,8 +108,14 @@ mod_funding_priorities_ui <- function(id) {
 mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    refresh_trigger <- reactiveValues(
+      coc_nofo_opportunities = 0,
+      coc_funding_priorities = 0
+    )
+    coc_nofo_opportunities <- reactiveVal()
+    coc_funding_priorities <- reactiveVal()
     
-    # HUD ARD Data------------------
+    # Populate Funding Info -----------
     ard_field_names <- c(
       "total_ard",
       "tier_1",
@@ -116,6 +126,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       "coc_bonus",
       "dv_bonus"
     )
+    
     hud_ard_coc_data <- reactive({
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
@@ -127,29 +138,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         frename(estimated = "total_ard")
     })
     
-    # CoC Nofo Opportunities ---------------
-    coc_nofo_inputs_initialized <- reactiveVal(FALSE)
-    initialize_coc_nofo_opportunity_inputs <- function() {
-      vals <- db_selected_coc_nofo_opportunities()[val == 1]
-      
-      coc_bonus_types <- vals[bonus_type == get_lookup_refid("CoC Bonus", "bonus_type")]
-      updateCheckboxGroupInput(
-        session, "coc_bonus_types_1", selected = coc_bonus_types[coc_nofo_opportunity_id %in% 1:4]$coc_nofo_opportunity_id
-      )
-      updateCheckboxGroupInput(
-        session, "coc_bonus_types_2", selected = coc_bonus_types[coc_nofo_opportunity_id %in% 5:8]$coc_nofo_opportunity_id
-      )
-      
-      dv_bonus_types <- vals[bonus_type == get_lookup_refid("DV Bonus", "bonus_type")]
-      updateCheckboxGroupInput(
-        session, "dv_bonus_types", selected = dv_bonus_types$coc_nofo_opportunity_id
-      )
-      
-      coc_nofo_inputs_initialized(TRUE)
-    }
-    
-    observe({
-      req(user_coc$coc)
+    observeEvent(user_coc$coc, {
       lapply(ard_field_names, function(i) {
         updateAutonumericInput(
           session, 
@@ -158,96 +147,18 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
         if(i != "dv_ard") shinyjs::disable(i)
       })
-      
-      # initialize selected coc_nofo_opportunities
-      db_selected_coc_nofo_opportunities(
-        get_db_query(
-          "SELECT c.coc_nofo_opportunity_id, c.bonus_type,
-            s.coc_nofo_opportunity_id IS NOT NULL AS val, 
-            s.coc_nofo_opportunity_id IS NOT NULL AS new_val,
-            $1 AS coc_version_id
-          FROM coc_nofo_opportunities c
-          LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $2", 
-          params = list(user_coc$coc_version_id, user_coc$coc_version_id)
-        )
-      )
-      
-      # initialize inputs
-      initialize_coc_nofo_opportunity_inputs()
     })
     
-    # CoC Bonus
-    db_selected_coc_nofo_opportunities <- reactiveVal()
     
-    observeEvent(
-      c(
-        input$coc_bonus_types_1,
-        input$coc_bonus_types_2,
-        input$dv_bonus_types
-      ), {
-      req(coc_nofo_inputs_initialized())
-        
-      newly_selected <- as.integer(c(
-        input$coc_bonus_types_1,
-        input$coc_bonus_types_2,
-        input$dv_bonus_types
-      ))
-
-      selected_opps <- isolate(db_selected_coc_nofo_opportunities())
-      req(!identical(selected_opps[val == 1]$coc_nofo_opportunity_id,  newly_selected))
-      
-      # Create full indicator vector
-      db_selected_coc_nofo_opportunities(
-        selected_opps %>%
-          fmutate(new_val = as.integer(coc_nofo_opportunity_id %in% newly_selected))
-      )
-      
-      # update database
-      update_coc_nofo_opportunities_db()
-    })
-    
-    update_coc_nofo_opportunities_db <- function() {
-      vals <- db_selected_coc_nofo_opportunities()
-
-      #to insert
-      to_insert <- vals |> 
-        fsubset(val == 0 & new_val == 1) |> 
-        fselect(-val, -new_val, -bonus_type) |>
-        add_user_stamp(user_coc, is_new = TRUE)
-      
-      if(fnrow(to_insert) > 0)
-        dbAppendTable(DB_POOL, "selected_coc_nofo_opportunities", to_insert)
-      
-      
-      # to delete
-      to_remove <- vals[val == 1 & new_val == 0]$coc_nofo_opportunity_id
-      if (length(to_remove) > 0) {
-        dbExecute(DB_POOL, glue::glue_sql("
-              DELETE FROM selected_coc_nofo_opportunities
-              WHERE coc_version_id = {user_coc$coc_version_id} AND coc_nofo_opportunity_id IN ({to_remove*})
-            ", .con = DB_POOL))
-      }
-    }
-    
-    # Priorities table -----------------
-    priorities_data <- reactiveVal(NULL)
-    
-    # Get db data
-    coc_funding_priorities_from_db <- reactive({
-      req(user_coc$coc_version_id)
+    # Priorities ------------
+    get_coc_funding_priorities <- function(coc_version_id) {
       get_db_query(
         "SELECT * 
            FROM coc_funding_priorities 
            WHERE coc_version_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
-        params = list(user_coc$coc_version_id)
-      )
-    })
-    
-    
-    # initialize datatable using db data
-    observeEvent(coc_funding_priorities_from_db(), {
-      
-       # 1. Need to get this into app-ready data structure, e.g.
+        params = list(coc_version_id)
+      ) |>
+        # 1. Need to get this into app-ready data structure, e.g.
         #                           Population PSH_Beds PSH_Funding PSH_Priority RRH_Beds RRH_Funding RRH_Priority TH_Beds TH_Funding TH_Priority TH+RRH_Beds TH+RRH_Funding TH+RRH_Priority
         #                               <char>    <num>       <num>       <char>    <num>       <num>       <char>   <num>      <num>      <char>       <num>          <num>          <char>
         # 1:                     All Families       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
@@ -260,7 +171,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         # 8: Chronically Homeless Individuals       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
         # 9:              Veteran Individuals       NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
         # 10:                     Single Youth      NA          NA         <NA>       NA          NA         <NA>      NA         NA        <NA>          NA             NA            <NA>
-      full_data <- coc_funding_priorities_from_db() |>
+        
         # Get full "Population" text (target_pop + pop_grp)
         join(
           pop_grp_toggles |> fselect(Population = full_text, pop, grp),
@@ -292,16 +203,19 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           regex=TRUE, 
           pos="end"
         )
-      
-      # save to reactive
-      priorities_data(full_data)
-      
-      # set initial Population toggles
-      update_population_toggles(full_data)
-    }, ignoreNULL = TRUE)
+    }
     
-    update_population_toggles <- function(full_data) {
-      selected_populations <- full_data %>%
+    observeEvent(c(
+      user_coc$coc_version_id, 
+      refresh_trigger$coc_funding_priorities
+    ), {
+      ## Store priorities --------
+      coc_funding_priorities(
+        get_coc_funding_priorities(user_coc$coc_version_id)
+      )
+      
+      ## Population toggles --------
+      selected_populations <- coc_funding_priorities() %>%
         dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
       
       updateCheckboxGroupInput(
@@ -309,16 +223,65 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         "population_toggles",
         selected = selected_populations$Population
       )
-    }
+    })
+    
+    ## CoC NOFO Opportunities ------
+    observeEvent(c(
+      user_coc$coc_version_id, 
+      refresh_trigger$coc_nofo_opportunities
+    ), {
+      coc_nofo_opportunities(
+        get_db_query(
+          "SELECT c.coc_nofo_opportunity_id, c.bonus_type, s.selected, s.date_updated
+          FROM coc_nofo_opportunities c
+          LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $1", 
+          params = list(user_coc$coc_version_id)
+        )
+      )
+      
+      selected_coc_nofo_opportunities <- coc_nofo_opportunities()[selected == 1]
+      
+      coc_bonus_types <- selected_coc_nofo_opportunities |>
+        fsubset(bonus_type == get_lookup_refid("CoC Bonus", "bonus_type"))
+      
+      updateCheckboxGroupInput(
+        session, 
+        "coc_bonus_types_1", 
+        selected = coc_bonus_types[coc_nofo_opportunity_id %in% 1:4]$coc_nofo_opportunity_id
+      )
+      updateCheckboxGroupInput(
+        session, 
+        "coc_bonus_types_2", 
+        selected = coc_bonus_types[coc_nofo_opportunity_id %in% 5:8]$coc_nofo_opportunity_id
+      )
+      
+      dv_bonus_types <- selected_coc_nofo_opportunities |>
+        fsubset(bonus_type == get_lookup_refid("DV Bonus", "bonus_type"))
+      
+      updateCheckboxGroupInput(
+        session, 
+        "dv_bonus_types", 
+        selected = dv_bonus_types$coc_nofo_opportunity_id
+      )
+    })
     
     
+    # Priorities section -----------------
     output$priorities_table <- renderDT({
       # Require these two things to be ready before rendering
-      req(priorities_data())
-      req(input$population_toggles)
+      req(coc_funding_priorities())
+      
+      show_priorities_row <- length(input$population_toggles) > 0
+      
+      shinyjs::toggle("priorities_help", condition = show_priorities_row)
+      
+      shiny::validate(need(
+        show_priorities_row == TRUE,
+        "Click population in the left-hand sidebar to enter priorities for that population"
+      ))
       
       # Filter the full dataset based on the selected checkboxes
-      data_to_display <- isolate(priorities_data()[Population %in% input$population_toggles])
+      data_to_display <- isolate(coc_funding_priorities()[Population %in% input$population_toggles])
 
       # Create the header structure
       datatable(
@@ -373,12 +336,20 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
     }, server = FALSE)
     
+    priorities_table_proxy <- dataTableProxy(ns("priorities_table"),session = session)
+    
+    observe({
+      req(coc_funding_priorities())
+      replaceData(priorities_table_proxy, coc_funding_priorities(), resetPaging = FALSE)
+    })
+    
+    
     # Update priorities data in table and db when cell is edited
     observeEvent(input$priorities_table_cell_edit, {
       info <- input$priorities_table_cell_edit
       
       # Update the full dataset 
-      current_data <- priorities_data()
+      current_data <- coc_funding_priorities()
       
       # Get the population name from the row that was displayed
       # This is trickier because the view is filtered. We need to map the
@@ -407,54 +378,95 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # bed, funding, or priority
       metric_name <- names(changed_data)[3]
+      updated_coc_funding_priorities <- list(
+        user_coc$coc_version_id,
+        changed_data$project_type,
+        changed_data$target_population,
+        changed_data$population_group,
+        changed_data[[metric_name]],
+        user_coc$username,
+        date_updated = changed_data$date_updated
+      )
       
-      pulled_date_updated <- changed_data |> # date_updated
-        join(
-          coc_funding_priorities_from_db(),
-          on = c("project_type", "target_population", "population_group"),
-          how = "left"
+      needs_refresh <- update_coc_funding_priorities_db(DB_POOL, metric_name, updated_coc_funding_priorities)
+      if(needs_refresh)
+        refresh_trigger$coc_funding_priorities <- refresh_trigger$coc_funding_priorities + 1
+      
+      coc_funding_priorities(current_data)
+    }) # end observeEvent
+    
+    
+    
+    # Saving Data ---------------
+    ## Get data to save -------------
+    get_updated_coc_nofo_opportunities <- function(params) {
+      params$coc_nofo_opportunities |>
+        fmutate(
+          coc_version_id = params$coc_version_id,
+          selected_new = coc_nofo_opportunity_id %in% params$nofo_opportunity_ids,
+          created_by = params$created_by
         ) |>
-        fselect(date_updated)
-      
-      # need to drop timezone from R timestamp
-      timestamp_param <-  format_timestamp_for_db(pulled_date_updated[[1]])
-      
-      sql <- glue::glue(
-        "INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, {metric_name}, created_by)
+        fsubset(selected_new != fcoalesce(selected, FALSE)) |>
+        fselect(coc_version_id, coc_nofo_opportunity_id, selected_new, created_by, date_updated)
+    }
+    
+    ## Save to db -------------
+    update_coc_nofo_opportunities_db <- function(p, updated_coc_nofo_opportunities) {
+      save_to_db(
+        p,
+        "INSERT INTO selected_coc_nofo_opportunities (coc_version_id, coc_nofo_opportunity_id, selected, created_by)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO UPDATE SET
+            selected = EXCLUDED.selected,
+            updated_by = EXCLUDED.created_by
+          " |> add_optimistic_locking(),
+        updated_coc_nofo_opportunities,
+        "selected_coc_nofo_opportunities"
+      )
+    }
+    
+    update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding_priorities) {
+      save_to_db(
+        p,
+        glue::glue("INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, {metric_name}, created_by)
           VALUES ($1, $2, $3, $4, $5, $6)
           ON CONFLICT (coc_version_id, project_type, target_population, population_group) DO UPDATE SET 
             {metric_name} = EXCLUDED.{metric_name},
             updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-            date_updated = $7
-          WHERE date_updated = $8;
-        "
+          ") |> add_optimistic_locking(),
+        updated_coc_funding_priorities,
+        "coc_funding_priorities"
+      )
+    }
+    
+    
+    ## Handle save -----------
+    observeEvent(input$save_opportunities, {
+      req(user_coc$coc_version_id, user_coc$username)
+      
+      updated_coc_nofo_opportunities <- get_updated_coc_nofo_opportunities(
+        params = list(
+          coc_nofo_opportunities = coc_nofo_opportunities(),
+          coc_version_id = user_coc$coc_version_id,
+          nofo_opportunity_ids = as.integer(c(
+            input$coc_bonus_types_1,
+            input$coc_bonus_types_2,
+            input$dv_bonus_types
+          )),
+          created_by = user_coc$username
+        )
       )
       
-      tryCatch({
-        db_execute(
-          sql,
-          params = list(
-            user_coc$coc_version_id,
-            changed_data$project_type,
-            changed_data$target_population,
-            changed_data$population_group,
-            changed_data[[metric_name]],
-            user_coc$username,
-            get_db_timestamp(),
-            timestamp_param
-          )
-        )
-        
-        ## update reactive ----------
-        priorities_data(current_data)
-        
-        showNotification("Changes saved successfully!", type = "message", duration = 3)
-      }, error = function(e) {
-        # If an error occurs, do NOT reset the flag, so it will try again.
-        # Notify the user of the failure.
-        showNotification(paste("Error saving data:", e$message), type = "error", duration = 10)
-        cat("Database save error:", e$message, "\n")
-      })
-    }) # end observeEvent
+      # update database
+      needs_refresh <- FALSE
+      needs_refresh <- update_coc_nofo_opportunities_db(
+        DB_POOL, 
+        updated_coc_nofo_opportunities
+      )
+      
+      if(needs_refresh)
+        refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
+    })
+    
   })
 }
