@@ -2,7 +2,7 @@ populate_db <- function(add_demo_data = FALSE, USE_DEV_POSTGRES_DB=FALSE) {
 
 library(here)
 library(DBI)
-source("R/utils/get_db_data.R")
+source("R/utils/get_db_data.R", local=TRUE)
 library(data.table)
 library(glue)
 library(collapse)
@@ -1417,5 +1417,5 @@ DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_references_type ON looku
 message("Done populating the db!")
 
 if(add_demo_data)
-  source(here("sandbox/generate_test_data_for_demo.R"))
+  source(here("sandbox/generate_test_data_for_demo.R"), local=TRUE)
 }
