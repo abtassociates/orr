@@ -1,14 +1,14 @@
 # Create connection to RDS Postgres instance for testing purposes
 if(IN_RSTUDIO && USE_DEV_POSTGRES_DB) {
   # Only open tunnel if port 5432 isn't already in use
-  port_in_use <- system("ss -tlnp | grep 5432", intern = TRUE)
+  port_in_use <- system("ss -tulnp | grep ':5432'")
   
-  if (length(port_in_use) == 0) {
+  if (port_in_use == 1) {
     
     tunnel <- sys::exec_background(
       "ssh",
       args = c(
-        "-i", Sys.getnev("AWS_SSH_KEY"),
+        "-i", Sys.getenv("AWS_SSH_KEY"),
         "-L", paste(Sys.getenv("AWS_RDS_PORT"), Sys.getenv("AWS_RDS_HOST"), Sys.getenv("AWS_RDS_PORT"), sep=":"),
         "-N", "-o", "StrictHostKeyChecking=no",
         Sys.getenv("AWS_SSH_USER")
