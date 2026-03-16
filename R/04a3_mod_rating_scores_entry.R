@@ -44,7 +44,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         get_lookup_refid('General', 'target_population'),
         selected_project$target_population
       )
-      browser()
+      
       get_db_query(
         "SELECT r.rating_factor_id, 
           r.rating_factor_text, 
