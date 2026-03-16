@@ -18,7 +18,7 @@ get_all_coc_factors <- function(coc_version_id) {
     )
 }
 
-get_other_factor_group_id <-function(funding_action_id) {
+get_other_factor_group_id <- function(funding_action_id) {
   get_db_query(
     "SELECT factor_group_id 
          FROM factor_groups
