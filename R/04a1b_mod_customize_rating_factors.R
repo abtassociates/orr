@@ -75,7 +75,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     all_coc_factors <- reactive({
       req(funding_action, user_coc$coc_version_id)
       
-      all_factors <- get_all_coc_factors(user_coc$coc_version_id)
+      all_factors <- get_all_coc_factors(funding_action_id, user_coc$coc_version_id)
       
       if(!is.null(input$project_type)) all_factors <- all_factors[project_type %in% input$project_type]
       if(!is.null(input$target_population)) all_factors <- all_factors[target_population %in% input$target_population]
