@@ -229,6 +229,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       user_coc$coc_version_id, 
       refresh_trigger$coc_funding_priorities
     ), {
+      req(user_coc$coc_version_id)
+      
       ## Store priorities --------
       coc_funding_priorities(
         get_coc_funding_priorities(user_coc$coc_version_id)
@@ -254,6 +256,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       user_coc$coc_version_id, 
       refresh_trigger$coc_nofo_opportunities
     ), {
+      req(user_coc$coc_version_id)
+      
       coc_nofo_opportunities(
         get_db_query(
           "SELECT c.coc_nofo_opportunity_id, c.bonus_type, s.selected, s.date_updated
@@ -417,7 +421,12 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         date_updated = changed_data$date_updated
       )
       
-      needs_refresh <- update_coc_funding_priorities_db(DB_POOL, metric_name, updated_coc_funding_priorities)
+      needs_refresh <- update_coc_funding_priorities_db(
+        DB_POOL, 
+        metric_name, 
+        updated_coc_funding_priorities
+      )
+      
       if(needs_refresh)
         refresh_trigger$coc_funding_priorities <- refresh_trigger$coc_funding_priorities + 1
       

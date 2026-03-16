@@ -212,13 +212,6 @@ get_db_timestamp <- function() {
   format_timestamp_for_db(Sys.time())
 }
 
-format_date_updated_for_db <- function(df) {
-  if("date_updated" %in% colnames(df))
-    df <- df |>
-      fmutate(date_updated = format_timestamp_for_db(date_updated))
-  
-  return(df)
-}
 save_to_db <- function(p, sql, params, tbl_name) {
   tryCatch({
     rows_changed <- if(!grepl("RETURNING ", sql)) {
