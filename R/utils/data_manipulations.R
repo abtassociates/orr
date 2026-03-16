@@ -407,3 +407,23 @@ paramify <- function(p) {
     as.list() |>
     unname()
 }
+
+# Dynamically add the optimistic locking SQL code. This makes future updates easier
+add_optimistic_locking <- function(sql) {
+  # 1. Extract table name from "INSERT INTO tbl_name ("
+  tbl_name <- regmatches(sql, regexpr("(?<=INSERT INTO )\\w+", sql, perl = TRUE))
+  
+  # 2. Count how many $N placeholders are already in the SQL
+  existing_params <- regmatches(sql, gregexpr("\\$\\d+", sql, perl = TRUE))[[1]]
+  n <- length(unique(existing_params))
+  
+  # 3. Append date_updated and WHERE clause
+  sql_with_locking <- glue::glue(
+    "{trimws(sql, which = 'right')},\n",
+    "            date_updated = CURRENT_TIMESTAMP",
+    "          WHERE {tbl_name}.date_updated = ${n + 1} ",
+    "OR (${n + 1} IS NULL AND {tbl_name}.date_updated IS NULL);"
+  )
+  
+  sql_with_locking
+}

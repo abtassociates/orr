@@ -3,23 +3,47 @@ source("R/utils/get_db_data.R")
 source("R/utils/data_manipulations.R")
 source("R/global_data_prep.R")
 
-if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
-dbExecute(DB_POOL, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
-dbExecute(DB_POOL, "DELETE FROM coc_versions WHERE coc_version_id > 4")
-dbExecute(DB_POOL, "DELETE FROM coc_version_requests")
-dbExecute(DB_POOL, "DELETE FROM projects WHERE coc_version_id > 4")
-dbExecute(DB_POOL, "DELETE FROM thresholds WHERE coc_version_id > 4")
-dbExecute(DB_POOL, "DELETE FROM selected_thresholds")
-dbExecute(DB_POOL, "DELETE FROM selected_rating_factors")
-dbExecute(DB_POOL, "DELETE FROM rating_factors WHERE coc_version_id > 4")
-if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+print(glue::glue("In generate test data for demo, USE_DEV_POSTGRES_DB = {USE_DEV_POSTGRES_DB}"))
+
+delete_test_data <- function(tbl, anchorid) {
+  print(glue::glue("deleting from {tbl}"))
+  dbExecute(
+    DB_POOL, 
+    glue::glue(
+      "DELETE FROM {tbl} 
+      WHERE {anchorid} < 0"
+    )
+  )
+}
+
+if(IN_DEV_MODE && !USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+tbls_to_clear <- c(
+  "coc_version_requests" = "coc_version_id",
+  "coc_version_users" = "coc_version_id",
+  "thresholds" = "coc_version_id",
+  "selected_thresholds" = "coc_version_id",
+  "selected_rating_factors" = "coc_version_id",
+  "rating_factors" = "coc_version_id",
+  "rating_scores" = "project_id",
+  "threshold_entries" = "project_id",
+  "project_evaluations" = "project_id",
+  "projects" = "coc_version_id",
+  "coc_versions" = "coc_version_id"
+)
+lapply(names(tbls_to_clear), function(t) {
+  delete_test_data(t, tbls_to_clear[[t]])
+})
+
+if(IN_DEV_MODE && !USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+
+print("done deleting")
 
 USERS <- get_db_tbl("users")
 main_user <- toString(USERS[1, 1]) # alex.silverman@abtglobal.com
 second_user <- toString(USERS[3, 1]) # thomas.brittain@abtglobal.com
 
 coc_versions <- data.table(
-  coc_version_id = 10:12,
+  coc_version_id = -3:-1,
   coc_version_name = c(
     'AK-500 Main Version',
     'AK-500 Alternative Version',
@@ -40,7 +64,7 @@ coc_versions <- data.table(
 # CoC Version Users (many-to-many relationship)
 coc_version_users <- data.table(
   coc_version_user_id = 5:8,
-  coc_version_id = c(10, 11, 11, 12),
+  coc_version_id = c(-3, -2, -2, -1),
   username = c(
     main_user,
     second_user,
@@ -62,7 +86,7 @@ coc_version_users <- data.table(
 # CoC Version Requests (requests to versions where you are Owner)
 coc_version_requests <- data.table(
   coc_request_id = 1:2,
-  coc_version_id = c(10, 12),  # AK-500 Main and AK-501 Main (where you are Owner)
+  coc_version_id = c(-3, -1),  # AK-500 Main and AK-501 Main (where you are Owner)
   request_status = c(1, 3),  # Sent, Approved
   reason_for_rejection = NA_integer_,
   created_by = c(
@@ -124,10 +148,20 @@ get_hic_data <- function(coc, coc_version_id) {
 
 dbAppendTable(DB_POOL, "coc_versions", coc_versions)
 
+total_projects <- 0
 for (i in 1:nrow(coc_versions)) {
   # Access row data using index i
   current_row <- coc_versions[i, ]
   filtered_data <- get_hic_data(current_row$coc, current_row$coc_version_id)
+  num_projects <- fnrow(filtered_data)
+
+  filtered_data <- filtered_data |>
+    fmutate(project_id = -1*
+      if(total_projects == 0) seq(1, num_projects) else seq(total_projects + 1, total_projects + num_projects)
+    )
+  
+  total_projects <- total_projects + num_projects
+
   filtered_data_db <- factor_vars_db_prep(filtered_data)
 
   DBI::dbAppendTable(DB_POOL, "projects", filtered_data_db)
@@ -135,3 +169,4 @@ for (i in 1:nrow(coc_versions)) {
 
 dbAppendTable(DB_POOL, "coc_version_users", coc_version_users)
 dbAppendTable(DB_POOL, "coc_version_requests", coc_version_requests)
+print("done generating demo data")

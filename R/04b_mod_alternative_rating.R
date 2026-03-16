@@ -177,16 +177,15 @@ mod_alternative_rating_server <- function(id, user_coc) {
     
     
     # Save ----------------------
-    get_new_project_evaluation <- function(username, ratable_projects) {
+    get_updated_project_evaluations <- function(username, ratable_projects) {
       ratable_projects |>
         fmutate(
-          created_by = username, 
-          new_date_updated = get_db_timestamp()
+          created_by = username
         ) |>
-        fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, new_date_updated, date_updated)
+        fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, date_updated)
     }
     
-    update_project_evaluation_db <- function(p, new_project_evaluation) {
+    update_project_evaluations_db <- function(p, updated_project_evaluation) {
       save_to_db(
         p,
         "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
@@ -195,10 +194,9 @@ mod_alternative_rating_server <- function(id, user_coc) {
           method = EXCLUDED.method,
           met_hud_thresholds = EXCLUDED.met_hud_thresholds,
           met_coc_thresholds = EXCLUDED.met_coc_thresholds,
-          date_updated = $5,
           updated_by   = EXCLUDED.created_by
-        WHERE date_updated = $6",
-        new_project_evaluation |> format_date_updated_for_db(),
+        " |> add_optimistic_locking(),
+        updated_project_evaluation,
         "project_evaluations"
       )
     }
@@ -207,8 +205,8 @@ mod_alternative_rating_server <- function(id, user_coc) {
     observeEvent(input$save_rating, {
       req(ratable_projects())
       
-      new_project_evaluation = get_new_project_evaluation(user_coc$username, ratable_projects())
-      needs_refresh <- update_project_evaluation_db(DB_POOL, new_project_evaluation)
+      updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
+      needs_refresh <- update_project_evaluations_db(DB_POOL, updated_project_evaluations)
       
       if(needs_refresh)
         refresh_trigger(\(x) x + 1)

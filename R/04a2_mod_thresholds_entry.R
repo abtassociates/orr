@@ -205,22 +205,20 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         fmutate(
           created_by = params$username,
           met_threshold_new = threshold_id %in% c(params$HUD_requirements, params$CoC_requirements),
-          project_id = params$project_id, 
-          new_date_updated = get_db_timestamp()
+          project_id = params$project_id
         ) |>
         fsubset(met_threshold_new != met_threshold) |>
-        fselect(project_id, threshold_id, met_threshold_new, created_by, new_date_updated, date_updated)
+        fselect(project_id, threshold_id, met_threshold_new, created_by, date_updated)
     }
-    get_new_project_evaluation <- function(params) {
+    get_updated_project_evaluation <- function(params) {
       data.table(
         project_id = params$project_id,
         met_HUD_thresholds = params$met_all_HUD_requirements,
         met_CoC_thresholds = params$met_all_CoC_requirements,
-        created_by = params$username, 
-        new_date_updated = get_db_timestamp(),
+        created_by = params$username,
         date_updated = params$date_updated
       ) |>
-        fselect(project_id, met_HUD_thresholds, met_CoC_thresholds, created_by, new_date_updated, date_updated)
+        fselect(project_id, met_HUD_thresholds, met_CoC_thresholds, created_by, date_updated)
     }
     
     update_threshold_entries_db <- function(p, updated_thresholds) {
@@ -230,15 +228,14 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           VALUES ($1, $2, $3, $4)
           ON CONFLICT (project_id, threshold_id) DO UPDATE SET 
             met_threshold = EXCLUDED.met_threshold, 
-            date_updated = $5, 
             updated_by = EXCLUDED.created_by
-          WHERE date_updated = $6 OR ($6 IS NULL AND date_updated IS NULL);",
-        updated_thresholds |> format_date_updated_for_db(),
+        " |> add_optimistic_locking(),
+        updated_thresholds,
         "threshold_entries"
       )
     }
     
-    update_project_evaluation_db <- function(p, new_project_evaluation) {
+    update_project_evaluation_db <- function(p, updated_project_evaluation) {
       save_to_db(
         p,
         "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
@@ -247,10 +244,9 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
             method = EXCLUDED.method,
             met_hud_thresholds = EXCLUDED.met_hud_thresholds, 
             met_coc_thresholds = EXCLUDED.met_coc_thresholds,
-            date_updated = $5, 
             updated_by = EXCLUDED.created_by
-          WHERE date_updated = $6 OR ($6 IS NULL AND date_updated IS NULL);",
-        new_project_evaluation |> format_date_updated_for_db(),
+        " |> add_optimistic_locking(),
+        updated_project_evaluation,
         "project_evaluation"
       )
     }
@@ -268,13 +264,13 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         )
       )
       
-      new_project_evaluation <- get_new_project_evaluation(
+      updated_project_evaluation <- get_updated_project_evaluation(
         list(
           project_id =  selected_project()$project_id,
           met_all_HUD_requirements = input$yes_to_all_HUD,
           met_all_CoC_requirements = input$yes_to_all_CoC,
           username = user_coc$username,
-          date_updated = ifelse(fnrow(project_evaluation()) > 0, project_evaluation()$date_updated, NA)
+          date_updated = project_evaluation()$date_updated
         )
       )
       
@@ -283,7 +279,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
 
       pool::poolWithTransaction(DB_POOL, function(p) {
         needs_refresh1 <- update_threshold_entries_db(p, updated_thresholds)
-        needs_refresh2 <- update_project_evaluation_db(p, new_project_evaluation)
+        needs_refresh2 <- update_project_evaluation_db(p, updated_project_evaluation)
       })
       
       if(needs_refresh1 || needs_refresh2)
