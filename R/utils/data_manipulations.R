@@ -282,7 +282,7 @@ add_optimistic_locking <- function(sql) {
     "{trimws(sql, which = 'right')},\n",
     "            date_updated = CURRENT_TIMESTAMP",
     "          WHERE {tbl_name}.date_updated = ${n + 1} ",
-    "OR (${n + 1} IS NULL AND {tbl_name}.date_updated IS NULL);"
+    "OR (${n + 1} IS NULL AND {tbl_name}.date_updated IS NULL)"
   )
   
   sql_with_locking

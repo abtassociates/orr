@@ -90,7 +90,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
             AND st.coc_version_id = $1
           LEFT JOIN threshold_entries te ON te.threshold_id = t.threshold_id 
             AND (te.project_id = $2 OR te.project_id IS NULL) 
-          WHERE st.selected == TRUE",
+          WHERE st.selected",
         params = list(coc_version_id, project_id)
       ) |>
         fmutate(met_threshold = fcoalesce(as.logical(met_threshold), FALSE))

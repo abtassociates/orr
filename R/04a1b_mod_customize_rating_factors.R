@@ -90,7 +90,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
         params = list(funding_action_id, coc_version_id)
       ) |>
         fmutate(
-          selected = allNA(selected) | selected
+          # Either all are selected by default (i.e. if none are selected, 
+          # we assume it's first time or user shouldn't be able to deselect all)
+          # or default individual boxes to FALSE
+          selected = allNA(selected) | fcoalesce(selected, FALSE)
         )
     }
     
@@ -308,16 +311,14 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               inputId = pt_input_id,
               label = NULL,
               choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-              multiple = TRUE,
-              selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
+              multiple = FALSE
             ) else NULL
           ),
           column(1, selectInput(
             inputId = tp_input_id,
             label = NULL,
-            choices = get_labelled_lookups("target_population")[c("DV", "General")],
-            multiple = TRUE,
-            selected = c("DV", "General") # Pre-select all for initial state
+            choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
+            multiple = FALSE
           )),
           column(7, textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text")),
           column(1, textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal")),
@@ -384,10 +385,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     insert_custom_factor_to_db <- function(p, custom_factor_data) {
       save_to_db(
         p, 
-        "INSERT INTO rating_factors (funding_action, coc_version_id, project_type, target_population, rating_factor_text, factor_group_id, goal, max_point_value, created_by)
+        "INSERT INTO rating_factors (funding_action, coc_version_id, project_type, target_population, rating_factor_text, factor_group, goal, max_point_value, created_by)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           ON CONFLICT (coc_version_id, COALESCE(project_type, -1), COALESCE(target_population, -1), rating_factor_text) DO NOTHING
-        RETURNING rating_factor_id, selected, goal, max_point_value, date_updated;",
+        RETURNING rating_factor_id;",
         custom_factor_data,
         "rating_factors"
       )
@@ -410,7 +411,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     }
 
     observeEvent(input$save_factors, {
-      timestamp <- get_db_timestamp()
       updated_selected_rating_factors <- rbindlist(lapply(all_coc_factors()$rating_factor_id, function(id) {
         data.table(
           rating_factor_id = id,
@@ -419,7 +419,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
           goal = as.character(input[[paste0("goal_", id)]]),
           max_point_value = as.numeric(input[[paste0("points_", id)]]),
           created_by = user_coc$username,
-          new_date_updated = timestamp,
           date_updated = all_coc_factors()[rating_factor_id == id]$date_updated
         )
       }))
@@ -445,13 +444,20 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       needs_refresh2 <- FALSE
       pool::poolWithTransaction(DB_POOL, function(p) {
         if(custom_factor_counter() > 0) {
-          inserted_custom_factor_info <- insert_custom_factor_to_db(p, custom_factor_data)
-        
-          updated_selected_rating_factors |>
+          # insert new factor into DB, return rating_factor_id
+          inserted_custom_factor_info <- insert_custom_factor_to_db(
+            p, 
+            custom_factor_data |> fselect(-selected)
+          )
+         
+          # add the newly created rating factor ID to the set of selected factors (it's auto-selected)
+         updated_selected_rating_factors <- updated_selected_rating_factors |>
             rbind(
-              inserted_custom_factor_info,
+              custom_factor_data |> 
+                cbind(inserted_custom_factor_info),
               fill = TRUE
-            )
+            ) |>
+           fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, date_updated)
         }
         
         needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)

@@ -158,14 +158,15 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
     update_thresholds_db <- function(p, updated_thresholds) {
       save_to_db(
         p,
-        "INSERT INTO thresholds (type, coc_version_id, threshold_text, created_by)
-          VALUES ('CoC', $1, $2, $3)
-          ON CONFLICT (coc_version_id, threshold_text) DO UPDATE SET
-            updated_by = EXCLUDED.created_by
-        " |> 
-          add_optimistic_locking() |>
-          cat("\nRETURNING threshold_id, coc_version_id"),
-        updated_thresholds(),
+        paste0(
+          "INSERT INTO thresholds (type, coc_version_id, threshold_text, created_by)
+            VALUES ('CoC', $1, $2, $3)
+            ON CONFLICT (coc_version_id, threshold_text) DO UPDATE SET
+              updated_by = EXCLUDED.created_by
+          " |> add_optimistic_locking(),
+          "\nRETURNING threshold_id, coc_version_id, date_updated"
+        ),
+        updated_thresholds,
         "thresholds"
       )
     }
