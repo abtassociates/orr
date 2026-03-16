@@ -197,10 +197,11 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
             project_type = LOOKUPS[reference_type == "project_type" & value %in% MAIN_PROJECT_TYPES]$reference_id
           ),
           how = "right"
-        ) |>
+        ) %>%
         # convert project type number to label
         fmutate(
-          project_type = get_lookup_label(project_type, 'project_type')
+          project_type = get_lookup_label(project_type, 'project_type'),
+          priority = convert_to_factor(., "priority")
         ) |>
         # pivot to app data structure
         pivot(
@@ -294,14 +295,27 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         "Click population in the left-hand sidebar to enter priorities for that population"
       ))
       
-      # Create the header structure
-      datatable(
-        # Filter the full dataset based on the selected checkboxes
-        formatted_coc_funding_priorities() |>
-          fsubset(Population %in% input$population_toggles),
-        selection = 'none',
-        style = 'default',
-        rownames = FALSE,
+      data <- formatted_coc_funding_priorities() |>
+        fsubset(Population %in% input$population_toggles)
+      
+      initialize_inline_edit_table_ui(
+        data = data,
+        tableID = ns("priorities_table"),
+        formatting = list(
+          function(x) formatStyle(
+            x,
+            columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
+            `border-right` = "1px solid black"
+          ),
+          function(x) formatCurrency(
+            x,
+            columns = seq(3, ncol(data), by = 3),
+            currency = "$", 
+            mark = ",",
+            digits = 0
+          )
+        ), 
+        cols_to_disable = "Population",
         container = tags$table(
           tags$thead(
             tags$tr(
@@ -317,36 +331,21 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
             )
           )
         ),
-        editable = list(
-          target = 'cell',
-          disable = list(columns = c(0))
-        ),
         options = list(
           dom = 't',
-          pageLength = 7,
-          #ordering = FALSE,
           searching = FALSE,
           info = FALSE
         ),
-        callback = JS(
-          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {",
-            paste0("$(this).css('background-color', '",USER_ENTRY_BG_COLOR,"');"),
-          "});
-          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
+        filter = 'none',
+        callback_js = glue::glue(
+          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
+            $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
+          }});
+          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
             $(this).css('background-color', 'inherit');
-          });
+          }});
         ")
-      ) %>% 
-        formatStyle(
-          columns = seq(4, ncol(formatted_coc_funding_priorities()), by = 3),  # Priority columns (every 3rd column starting from 3)
-          `border-right` = "1px solid black"
-        ) %>%
-        formatCurrency(
-          columns = seq(3, ncol(formatted_coc_funding_priorities()), by = 3),
-          currency = "$", 
-          mark = ",",
-          digits = 0
-        )
+      ) #end initialize_data_Table
     }, server = FALSE)
     
     priorities_table_proxy <- dataTableProxy(ns("priorities_table"),session = session)
@@ -370,6 +369,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       displayed_data <- current_data[Population %in% input$population_toggles]
       population_to_update <- displayed_data[info$row, Population]
       full_data_row_index <- which(current_data$Population == population_to_update)
+      
+      # only proceed if they changed anything:
+      old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE]
+      req(old_val != info$value)
       
       # Update the value in the full dataset, so we can update the reactive and datatable proxy
       # The column index needs + 1 because datatable is 0 indexed

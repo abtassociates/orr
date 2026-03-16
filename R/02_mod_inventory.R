@@ -115,7 +115,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
-      colnames <- unname(project_variable_labels[names(data)])
+      colnames <- unname(variable_labels[names(data)])
       
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
@@ -197,7 +197,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
               jsonlite::toJSON(grep("Bed", colnames) - 1)
             ))
           )
-        )
+        ),
+        callback_js = "
+          $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
+            $(this).css('cursor', 'pointer');
+            $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
+          });"
       )
     })
     

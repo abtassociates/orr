@@ -1,25 +1,15 @@
-initialize_inline_edit_table_ui <- function(
-    data, 
-    column_defs = list(), 
-    tableID, 
-    initial_filter = NULL, 
-    formatting = list(), 
-    colnames=NULL, 
-    cols_to_disable = NULL,
-    buttons = NULL,
-    header_cb = NULL
-) {
+get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
   # Determine factor/dropdown columns and user-editable columns
   factor_cols <- sapply(data, is.factor)
   
   # --- STEP 1: Prepare information for JavaScript ---
-  # factor_info is a named list of each factor variable and its levels/choices
+  # factor_levels is a named list of each factor variable and its levels/choices
   # and will be converted to a JSON object and passed to the datatable callback.
   factor_names <- names(factor_cols)[factor_cols]
-  factor_info <- lapply(data[, ..factor_names], levels)
+  factor_levels <- lapply(data[, ..factor_names], levels)
   if(!is.null(colnames)) 
-    names(factor_info) <- toupper(project_variable_labels[match(names(factor_info), names(project_variable_labels))])
-
+    names(factor_levels) <- toupper(variable_labels[match(names(factor_levels), names(project_variable_labels))])
+  
   # column_defs adds classname for easier management
   column_defs[[length(column_defs) + 1]] <- list(
     targets = match(factor_names, names(data)) - 1,  # Vector of all indices
@@ -31,12 +21,59 @@ initialize_inline_edit_table_ui <- function(
     className = 'disabled dt-right'
   )
   
-  # --- STEP 2: initComplete JS ---
-  init_js <- sprintf("
+  return(
+    list(
+      factor_levels = factor_levels,
+      column_defs = column_defs
+    )
+  )
+}
+
+get_init_js <- function(factor_levels, tableID, header_cb) {
+  sprintf("
     function(settings, json) {
       var table = this.api();
       var factorInfo = %s;
       var tableID = '%s';
+      
+      // Build a map of column index -> compound column name from double header
+      // Row 0 = top header (group), Row 1 = bottom header (sub-column)
+      function getCompoundColName(colIndex) {
+        var $thead = $(table.table().header());
+        var headerRows = $thead.find('tr');
+        
+        if (headerRows.length < 2) {
+          return $(headerRows[0]).find('th').eq(colIndex).text().trim();
+        }
+        
+        // Count how many top-row cells have rowspan > 1 (they occupy a slot in
+        // colIndex space but do NOT appear as a <th> in the second row)
+        var topCells = $(headerRows[0]).find('th');
+        var rowspanOffset = 0;
+        var colCursor = 0;
+        var groupName = '';
+        
+        topCells.each(function() {
+          var span = parseInt($(this).attr('colspan') || 1);
+          var rowspan = parseInt($(this).attr('rowspan') || 1);
+          
+          if (colIndex >= colCursor && colIndex < colCursor + span) {
+            groupName = $(this).text().trim();
+            return false; // break
+          }
+          
+          if (rowspan > 1) rowspanOffset += span; // these won't appear in row 2
+          colCursor += span;
+        });
+        
+        // The bottom row's <th> list is shorter by rowspanOffset columns
+        var bottomRowIndex = colIndex - rowspanOffset;
+        var subName = $(headerRows[1]).find('th').eq(bottomRowIndex).text().trim();
+        
+        return groupName && groupName !== subName
+          ? groupName.toUpperCase() + '_' + subName.toLowerCase()
+          : subName.toLowerCase();
+      }
       
       // Function to set cell value
       function setCellText(cell, val) {
@@ -45,12 +82,15 @@ initialize_inline_edit_table_ui <- function(
       }
       
       table.on('dblclick', 'td.factor-edit-cell', function(e) {
+        e.stopImmediatePropagation();
+      
         var $td = $(this);
         if ($td.find('select').length) return; // already editing
-
+debugger;
         var cell = table.cell(this);
         var colIndex = cell.index().column;
-        var colName = table.column(colIndex).header().innerText;
+        var colName = getCompoundColName(colIndex);
+        // var colName = table.column(colIndex).header().innerText;
         
         if (factorInfo[colName]) {
           var choices = factorInfo[colName];
@@ -63,7 +103,7 @@ initialize_inline_edit_table_ui <- function(
             if (value == currentVal) $opt.prop('selected', true);
             $select.append($opt);
           });
-  
+  debugger;
           // Add the dropdown to the cell
           $td.empty().append($select);
           $select.focus();
@@ -74,7 +114,7 @@ initialize_inline_edit_table_ui <- function(
           // 3. trigger a cell_edit event on the server, which will:
               // 1. update the underlying datatable data (so that the new value will be preserved in sorting and filtering)
               // 2. update the database
-          $select.on('change blur', function(e) {
+          $select.off('change blur').on('change blur', function(e) {
             setCellText(cell, this.value); // Update cell text
             cell.data(this.value); // Update cell data
             Shiny.setInputValue(tableID + '_cell_edit', { // Trigger cell_edit server event
@@ -87,6 +127,7 @@ initialize_inline_edit_table_ui <- function(
           });
           
           $('input').on('keydown', function(e) {
+          //$select.off('keydown').on('keydown', function(e) {
           debugger;
             if (e.key === 'Escape') {
               setCellText(cell, currentVal); // On escape, revert to old value
@@ -99,11 +140,62 @@ initialize_inline_edit_table_ui <- function(
       
       %s
     }", 
-    jsonlite::toJSON(factor_info), 
+    jsonlite::toJSON(factor_levels), 
     tableID,
-    header_cb
+    header_cb %||% ""
   )
-
+}
+initialize_inline_edit_table_ui <- function(
+    data, 
+    column_defs = list(), 
+    tableID, 
+    initial_filter = NULL, 
+    formatting = list(), 
+    colnames=NULL, 
+    cols_to_disable = NULL,
+    buttons = NULL,
+    header_cb = NULL,
+    options = list(),
+    filter = "top",
+    escape = FALSE,
+    selection = "none",
+    rownames = FALSE,
+    fillContainer = TRUE,
+    callback_js = NULL,
+    ...
+) {
+  # --- STEP 1: handle factors as dropdowns ---
+  # get the factor levels and add classes to column defs
+  factor_info <- get_factor_info(data, column_defs, colnames, cols_to_disable)
+  factor_levels <- factor_info$factor_levels
+  column_defs <- factor_info$column_defs
+  
+  # use js to show the dropdowns
+  init_js <- get_init_js(factor_info$factor_levels, tableID, header_cb)
+  
+  # --- STEP 1: handle user-specified options ---
+  default_options <- list(
+    dom = "Bt",
+    paging = FALSE,
+    scrollY = "100%",  # Limit table height
+    keys = TRUE,
+    searchCols = initial_filter,
+    columnDefs = column_defs,
+    initComplete = DT::JS(init_js),
+    buttons = buttons
+    # rowCallback = JS(c(
+    #   "function(row, data){",
+    #   "  for(var i=0; i<data.length; i++){",
+    #   "    if(data[i] === null){",
+    #   "      $('td:eq('+i+')', row).html('NA')",
+    #   "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
+    #   "    }",
+    #   "  }",
+    #   "}"  
+    # ))
+  )
+  final_options <- modifyList(default_options, options)
+  
   # --- STEP 3: datatable creation ---
   dt <- datatable(
     data,
@@ -119,38 +211,15 @@ initialize_inline_edit_table_ui <- function(
         ) - 1
       )
     ),
-    filter = "top",
-    escape = FALSE,
-    selection = "none",
-    rownames = FALSE,
-    fillContainer = TRUE,
-    options = list(
-      dom = "Bt",
-      paging = FALSE,
-      scrollY = "100%",  # Limit table height
-      keys = TRUE,
-      searchCols = initial_filter,
-      columnDefs = column_defs,
-      initComplete = DT::JS(init_js),
-      buttons = buttons
-      # rowCallback = JS(c(
-      #   "function(row, data){",
-      #   "  for(var i=0; i<data.length; i++){",
-      #   "    if(data[i] === null){",
-      #   "      $('td:eq('+i+')', row).html('NA')",
-      #   "        .css({'color': 'rgb(151,151,151)', 'font-style': 'italic'});",
-      #   "    }",
-      #   "  }",
-      #   "}"  
-      # ))
-    ),
-    callback = JS("
-      $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
-      $(this).css('cursor', 'pointer');
-      $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
-      });"
-        )
-    ) 
+    options = final_options,
+    filter = filter,
+    escape = escape,
+    selection = selection,
+    rownames = rownames,
+    fillContainer = fillContainer,
+    callback = JS(callback_js),
+    ...
+  ) # end datatable 
   
   # Add any passed in formatting
   for (f in formatting) {

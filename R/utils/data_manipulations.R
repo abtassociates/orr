@@ -85,7 +85,8 @@ factor_vars_db_prep <- function(data) {
   return(do.call(fmutate, c(list(data), mutate_expressions)))
 }
 
-project_variable_labels <- c(
+# Indicates how to display certain varibales in a more readable way
+variable_labels <- c(
   "project_id" = "Project ID",
   "organization_name" = "Organization Name",
   "project_name" = "Project Name",

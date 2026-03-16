@@ -64,7 +64,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
         
       editable_cols <- c("met_hud_thresholds", "met_coc_thresholds", "weighted_score")
       
-      colnames <- unname(project_variable_labels[names(data)])
+      colnames <- unname(variable_labels[names(data)])
       
       met_hud_input_id <- ns("set_met_hud_thresholds")
       met_coc_input_id <- ns("set_met_coc_thresholds")
