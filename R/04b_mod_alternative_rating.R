@@ -29,6 +29,30 @@ mod_alternative_rating_server <- function(id, user_coc) {
     rv_uploaded <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
     
+    
+    ## Get project evaluation info for all projects to be entered
+    get_alternative_rating <- function(coc_version_id) {
+      get_db_query(
+        "SELECT 
+            p.project_id, 
+            p.organization_name, 
+            p.project_name, 
+            p.grant_number, 
+            p.funding_action, 
+            p.project_type, 
+            p.target_population, 
+            pe.met_hud_thresholds,
+            pe.met_coc_thresholds,
+            pe.weighted_score,
+            pe.date_updated
+          FROM projects p
+          LEFT JOIN project_evaluations pe ON p.project_id = pe.project_id
+          LEFT JOIN lookups l ON p.funding_action = l.reference_id
+          WHERE p.coc_version_id = $1 AND p.funding_action IS NOT NULL AND l.value <> 'Ignore'",
+        params = list(coc_version_id)
+      )
+    }
+    
     observeEvent(c(user_coc$coc_version_id, refresh_trigger()), {
       req(user_coc$coc_version_id)
       
