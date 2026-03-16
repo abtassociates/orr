@@ -46,12 +46,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, module_return
         "funding_action"
       )
       
-      get_db_query(glue::glue_sql(
-        "SELECT project_id, organization_name, project_name, project_type, target_population, funding_action
-        FROM projects 
-        WHERE coc_version_id = {user_coc$coc_version_id} AND funding_action IN ({funding_action_ids*})",
-        .con=DB_POOL
-      ))
+      get_projects_by_funding_action(user_coc$coc_version_id, funding_action_ids)
     })
     
     # Get the project to be rated from the dropdown in the sidebar

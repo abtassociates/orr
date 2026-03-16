@@ -64,10 +64,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     project_ids <- reactive({
       req(user_coc$coc_version_id)
 
-      get_db_query(
-        "SELECT project_id FROM projects WHERE coc_version_id = $1", 
-        params = user_coc$coc_version_id
-      )$project_id
+      get_coc_projects(user_coc$coc_version_id)$project_id
     })
     
     owner_role_refid <- get_lookup_refid("Owner", "coc_version_role")

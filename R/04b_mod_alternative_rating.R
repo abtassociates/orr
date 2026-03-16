@@ -315,7 +315,8 @@ mod_alternative_rating_server <- function(id, user_coc) {
         )
         
         # Pull valid projects
-        valid_projects <- get_db_query("SELECT project_id, organization_name, project_name FROM projects")
+        valid_projects <- get_coc_projects(user_coc$coc_version_id) |>
+          fselect(project_id, organization_name, project_name)
         
         if ("project_id" %in% names(imported)) {
           validate(

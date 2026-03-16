@@ -8,3 +8,12 @@ get_project_evaluation <- function(coc_version_id, project_id) {
     params = list(coc_version_id, project_id)
   )
 }
+
+get_projects_by_funding_action <- function(coc_version_id, funding_action_ids) {
+  get_db_query(glue::glue_sql(
+    "SELECT project_id, organization_name, project_name, project_type, target_population, funding_action
+          FROM projects 
+          WHERE coc_version_id = {coc_version_id} AND funding_action IN ({funding_action_ids*})",
+    .con=DB_POOL
+  ))
+}

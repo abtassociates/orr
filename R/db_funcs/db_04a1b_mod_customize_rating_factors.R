@@ -18,6 +18,26 @@ get_all_coc_factors <- function(coc_version_id) {
     )
 }
 
+get_other_factor_group_id <-function(funding_action_id) {
+  get_db_query(
+    "SELECT factor_group_id 
+         FROM factor_groups
+         WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1", 
+    params = funding_action_id
+  )$factor_group_id
+}
+
+get_subgroups_by_funding_action <- function(funding_action_id) {
+  get_db_query(
+    "SELECT sg.factor_subgroup, fg.factor_group
+            FROM factor_subgroups sg
+            RIGHT JOIN factor_groups fg ON fg.factor_group_id = sg.factor_group
+            WHERE fg.funding_action = $1
+          ", 
+    params = funding_action_id
+  )
+}
+
 insert_custom_factor_to_db <- function(p, custom_factor_data) {
   save_to_db(
     p, 

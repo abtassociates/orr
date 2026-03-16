@@ -63,12 +63,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
     ns <- session$ns
     
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
-    other_factor_group_id <- get_db_query(
-      "SELECT factor_group_id 
-         FROM factor_groups
-         WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1", 
-      params = funding_action_id
-    )
+    other_factor_group_id <- get_other_factor_group_id(funding_action_id)
     
     refresh_trigger <- reactiveVal(0)
     # Counter for unique IDs for custom factor rows
@@ -188,14 +183,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
       # 1. Fetch ALL possible subgroup names ONCE at the start.
       #    This decouples observer creation from the reactive data flow.
       #    We query the source table directly for this static list.
-      all_possible_subgroups <- get_db_query(
-        "SELECT sg.factor_subgroup, fg.factor_group
-          FROM factor_subgroups sg
-          RIGHT JOIN factor_groups fg ON fg.factor_group_id = sg.factor_group
-          WHERE fg.funding_action = $1
-        ", 
-        params = funding_action_id
-      )
+      all_possible_subgroups <- get_subgroups_by_funding_action(funding_action_id)
 
       # PARENT -> CHILDREN
       # observe changes to check-all boxes
@@ -383,7 +371,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
             project_type = input[[paste0("custom_pt_", i)]],
             target_population = input[[paste0("custom_tp_", i)]],
             rating_factor_text = input[[paste0("custom_text_", i)]],
-            factor_group_id = other_factor_group_id$factor_group_id,
+            factor_group_id = other_factor_group_id,
             selected = isTRUE(input[[paste0("custom_select_", i)]]),
             goal = input[[paste0("custom_goal_", i)]],
             max_point_value = input[[paste0("custom_points_", i)]],
