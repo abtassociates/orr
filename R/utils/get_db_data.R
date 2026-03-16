@@ -60,6 +60,17 @@ convert_timestamps_to_POSIXct <- function(dt) {
   
   return(dt)
 }
+
+convert_timestamps_to_char <- function(dt) {
+  if("date_created" %in% names(dt)) 
+    dt[, date_created := as.character(date_created, tz = "UTC")]
+  
+  if("date_updated" %in% names(dt)) 
+    dt[, date_updated := as.character(date_updated, tz = "UTC")]
+  
+  return(dt)
+}
+
 get_db_query <- function(sql, params = NULL) {
   tryCatch({
     dt <- DBI::dbGetQuery(
@@ -68,7 +79,7 @@ get_db_query <- function(sql, params = NULL) {
       params = params
     ) |> 
       qDT() |>
-      convert_timestamps_to_POSIXct()
+      convert_timestamps_to_char()
     
     return(dt)
   }, error = function(e) {
@@ -81,7 +92,7 @@ get_db_tbl <- function(tbl_name) {
   tryCatch({
     tbl <- dbReadTable(DB_POOL, tbl_name) |> qDT()
     
-    convert_timestamps_to_POSIXct(tbl)
+    convert_timestamps_to_char(tbl)
     
     return(tbl)
   }, error = function(e) {
