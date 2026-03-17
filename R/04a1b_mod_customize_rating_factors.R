@@ -123,9 +123,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
                 column(1, checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected)),
                 if(funding_action == "Renew") column(1, p(get_lookup_label(project_type, ref_type = "project_type"))),
                 if(funding_action == "Renew") column(1, p(get_lookup_label(target_population, ref_type = "target_population"))),
-                column(ifelse(funding_action == "Renew", 7, 9), p(text)),
-                column(1, textInput(ns(paste0("goal_", id)), label = NULL, value = goal)),
-                column(1, numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1))
+                column(ifelse(funding_action == "Renew", 5, 7), p(text)),
+                column(2, textInput(ns(paste0("goal_", id)), label = NULL, value = goal)),
+                column(2, numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1))
               )
             }
           )
@@ -144,9 +144,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               ),
               if(funding_action == "Renew") column(1, tags$b("Project Type")),
               if(funding_action == "Renew") column(1, tags$b("Target Population", style="word-wrap: normal;")),
-              column(ifelse(funding_action == "Renew", 7, 9), tags$b("Rating Factor")),
-              column(1, tags$b("Factor/Goal", style="word-wrap: normal;")),
-              column(1, tags$b("Max Point Value"))
+              column(ifelse(funding_action == "Renew", 5, 7), tags$b("Rating Factor")),
+              column(2, tags$b("Factor/\nGoal", style="word-wrap: normal;")),
+              column(2, tags$b("Max Point Value"))
             ),
             hr(),
             factor_rows,
