@@ -1,8 +1,13 @@
-populate_db <- function(add_demo_data = basename(getwd()) != "ORR", USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
-
+populate_db <- function(
+    add_demo_data = basename(getwd()) != "ORR", 
+    USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
+) {
 library(here)
 library(DBI)
-source("R/utils/get_db_data.R", local=TRUE)
+
+files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
+  
 library(data.table)
 library(glue)
 library(collapse)

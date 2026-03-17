@@ -25,7 +25,6 @@ library(shinyWidgets)
 
 # ENVIRONMENT DETECTION -----------
 IN_DEV_MODE <- Sys.getenv("RSTUDIO") == "1" && !isTRUE(getOption("shiny.testmode"))
-IN_PROD_APP <- function() Sys.getenv("RSTUDIO") != "1" && basename(getwd()) == "ORR"
 
 # CODE OPTIONS --------------
 set.seed(123)
