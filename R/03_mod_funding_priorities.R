@@ -107,7 +107,8 @@ mod_funding_priorities_ui <- function(id) {
           checkboxGroupInput(
             ns("population_toggles"),
             label = "Enable/Disable Populations",
-            choices = pop_grp_toggles$full_text
+            choices = pop_grp_toggles$full_text,
+            selected =  c("General Families", "General Individuals", "Single Youth")
           )
         ),
         div(
@@ -239,7 +240,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       updateCheckboxGroupInput(
         session,
         "population_toggles",
-        selected = selected_populations$Population
+        selected = if(fnrow(selected_populations) > 0) selected_populations$Population else input$population_toggles
       )
     })
     
@@ -283,7 +284,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     # Priorities section -----------------
     output$priorities_table <- renderDT({
-      # Require these two things to be ready before rendering
       req(coc_funding_priorities())
       
       show_priorities_row <- length(input$population_toggles) > 0
@@ -371,8 +371,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       full_data_row_index <- which(current_data$Population == population_to_update)
       
       # only proceed if they changed anything:
-      old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE]
-      req(old_val != info$value)
+      old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE][[1]]
+      req(!identical(old_val, info$value))
       
       # Update the value in the full dataset, so we can update the reactive and datatable proxy
       # The column index needs + 1 because datatable is 0 indexed
