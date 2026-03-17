@@ -1,4 +1,4 @@
-populate_db <- function(add_demo_data = basename(getwd()) != "ORR", USE_SQLITE = TRUE) {
+populate_db <- function(add_demo_data = basename(getwd()) != "ORR", USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
 
 library(here)
 library(DBI)

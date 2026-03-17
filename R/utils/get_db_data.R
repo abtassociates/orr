@@ -1,13 +1,8 @@
-set_up_db_connection <- function(IN_PROD_APP = FALSE, USE_SQLITE = TRUE) {
-  if(Sys.getenv("RSTUDIO") == "1" && !USE_SQLITE)
-    set_up_tunnel()
-  
-  if(IN_PROD_APP) {
-    return(get_postgres_db(IN_PROD_APP = TRUE))
-  } else if(Sys.getenv("RSTUDIO") != "1" || !USE_SQLITE){
-    return(get_postgres_db(IN_PROD_APP = FALSE))
-  } else {
+set_up_db_connection <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
+  if(Sys.getenv("RSTUDIO") == "1" && USE_SQLITE) {
     return(get_sqlite_db())
+  } else {
+    return(get_postgres_db())
   }
 }
 
@@ -40,13 +35,12 @@ set_up_tunnel <- function() {
 # - maintains N reusable connections
 # - loans them out only when needed (fewer db resources)
 # - automatically reconnects dropped connections (better stability, esp. if usage spikes)
-get_postgres_db <- function(IN_PROD_APP = FALSE) {
-  IN_PROD_APP <- IN_PROD_APP && !IN_DEV_MODE
+get_postgres_db <- function() {
   pool::dbPool(
     drv = RPostgres::Postgres(),
     host = ifelse(Sys.getenv("RSTUDIO") == "1", "localhost", Sys.getenv("AWS_RDS_HOST")),
     port = as.integer(Sys.getenv("AWS_RDS_PORT", "3306")),
-    dbname = Sys.getenv(ifelse(IN_PROD_APP, "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV")),
+    dbname = Sys.getenv(ifelse(IN_PROD_APP(), "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV")),
     user = Sys.getenv("AWS_RDS_USERNAME"),
     password = Sys.getenv("AWS_RDS_PASSWORD")
   )
@@ -60,7 +54,7 @@ get_sqlite_db <- function() {
 }
 # Get a dev version that persists beyond the app 
 shiny::onStop(function() {
-  if(IN_PROD_APP)
+  if(IN_PROD_APP())
     pool::poolClose(DB_POOL)
 })
 

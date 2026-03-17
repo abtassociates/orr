@@ -25,7 +25,7 @@ library(shinyWidgets)
 
 # ENVIRONMENT DETECTION -----------
 IN_DEV_MODE <- Sys.getenv("RSTUDIO") == "1" && !isTRUE(getOption("shiny.testmode"))
-IN_PROD_APP <- !Sys.getenv("RSTUDIO") == "1" && basename(getwd()) == "ORR"
+IN_PROD_APP <- function() Sys.getenv("RSTUDIO") != "1" && basename(getwd()) == "ORR"
 
 # CODE OPTIONS --------------
 set.seed(123)
@@ -58,7 +58,7 @@ lapply(files, source)
 
 # SET UP DB CONNECTION -----------------
 USE_SQLITE <- TRUE
-DB_POOL <- set_up_db_connection(IN_PROD_APP, USE_SQLITE)
+DB_POOL <- set_up_db_connection()
 
 # PREP GLOBAL DATA ---------------
 source(here("R/global_data_prep.R"))
