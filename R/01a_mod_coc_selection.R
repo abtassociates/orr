@@ -252,6 +252,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       # Next, update CoC Version USers in db
       db_append('coc_version_users', new_version_user)
       
+      # Generate initial set of selected thresholds and factors
+      generate_data_for_new_coc_version(new_version_user$coc_version_id)
+      
       # update reactiveVal
       coc_vu(
         rbind(

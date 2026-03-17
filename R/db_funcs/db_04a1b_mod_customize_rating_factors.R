@@ -9,13 +9,7 @@ get_all_coc_factors <- function(funding_action_id, coc_version_id) {
           WHERE rf.funding_action = $1 AND 
             (rf.coc_version_id = $2 OR rf.coc_version_id IS NULL)",
     params = list(funding_action_id, coc_version_id)
-  ) |>
-    fmutate(
-      # Either all are selected by default (i.e. if none are selected, 
-      # we assume it's first time or user shouldn't be able to deselect all)
-      # or default individual boxes to FALSE
-      selected = allNA(selected) | fcoalesce(selected, FALSE)
-    )
+  )
 }
 
 get_other_factor_group_id <- function(funding_action_id) {

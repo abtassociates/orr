@@ -7,10 +7,7 @@ get_all_coc_thresholds <- function(coc_version_id) {
           (t.coc_version_id = $1 OR t.coc_version_id IS NULL)
         ORDER BY t.threshold_id",
     params = list(coc_version_id)
-  ) |>
-    fmutate(
-      selected = allNA(selected) | selected
-    )
+  )
 }
 
 update_thresholds_db <- function(p, updated_thresholds) {

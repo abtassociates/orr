@@ -1,7 +1,11 @@
 library(magrittr)
-source("R/utils/get_db_data.R")
-source("R/utils/data_manipulations.R")
+files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
+
+files <- list.files(here("R/db_funcs"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
 source("R/global_data_prep.R")
+
 
 print(glue::glue("In generate test data for demo, USE_DEV_POSTGRES_DB = {USE_DEV_POSTGRES_DB}"))
 
@@ -23,6 +27,7 @@ tbls_to_clear <- c(
   "thresholds" = "coc_version_id",
   "selected_thresholds" = "coc_version_id",
   "selected_rating_factors" = "coc_version_id",
+  "selected_coc_nofo_opportunities" = "coc_version_id",
   "rating_factors" = "coc_version_id",
   "rating_scores" = "project_id",
   "threshold_entries" = "project_id",
@@ -169,4 +174,10 @@ for (i in 1:nrow(coc_versions)) {
 
 dbAppendTable(DB_POOL, "coc_version_users", coc_version_users)
 dbAppendTable(DB_POOL, "coc_version_requests", coc_version_requests)
+
+print("selecting thresholds, factors, and nofo opportunities")
+lapply(c(-3, -2, -1), function(coc_version_id) {
+  generate_data_for_new_coc_version(coc_version_id)
+})
+
 print("done generating demo data")
