@@ -1,4 +1,4 @@
-populate_db <- function(add_demo_data = FALSE, USE_DEV_POSTGRES_DB=FALSE) {
+populate_db <- function(add_demo_data = FALSE, USE_SQLITE = TRUE) {
 
 library(here)
 library(DBI)
@@ -6,6 +6,8 @@ source("R/utils/get_db_data.R", local=TRUE)
 library(data.table)
 library(glue)
 library(collapse)
+
+USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
@@ -24,12 +26,12 @@ ADMIN_USERS <- "
 
 drop_table <- function(tbl) {
 	message(glue::glue("Dropping {tbl}"))
-  if(!USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
-  DBI::dbExecute(DB_POOL, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(!USE_DEV_POSTGRES_DB, '', 'CASCADE')};"))
-	if(!USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+  if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+  DBI::dbExecute(DB_POOL, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(USE_SQLITE, '', 'CASCADE')};"))
+	if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
 }
 
-id_var_attrs <- if(!USE_DEV_POSTGRES_DB) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
+id_var_attrs <- if(USE_SQLITE) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
 
 # create users and All HIC Data ---------------------
 ############################
@@ -1416,6 +1418,6 @@ DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_references_type ON looku
 
 message("Done populating the db!")
 
-if(add_demo_data)
+if(Sys.getenv("RSTUDIO") == "1" || add_demo_data)
   source(here("sandbox/generate_test_data_for_demo.R"), local=TRUE)
 }

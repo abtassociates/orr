@@ -57,8 +57,8 @@ lapply(files, source)
 
 
 # SET UP DB CONNECTION -----------------
-USE_DEV_POSTGRES_DB <- FALSE
-DB_POOL <- set_up_db_connection(IN_PROD_APP, USE_DEV_POSTGRES_DB)
+USE_SQLITE <- TRUE
+DB_POOL <- set_up_db_connection(IN_PROD_APP, USE_SQLITE)
 
 # PREP GLOBAL DATA ---------------
 source(here("R/global_data_prep.R"))

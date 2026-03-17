@@ -7,7 +7,7 @@ lapply(files, source)
 source("R/global_data_prep.R")
 
 
-print(glue::glue("In generate test data for demo, USE_DEV_POSTGRES_DB = {USE_DEV_POSTGRES_DB}"))
+print(glue::glue("In generate test data for demo, USE_SQLITE = {USE_SQLITE}"))
 
 delete_test_data <- function(tbl, anchorid) {
   print(glue::glue("deleting from {tbl}"))
@@ -20,7 +20,7 @@ delete_test_data <- function(tbl, anchorid) {
   )
 }
 
-if(IN_DEV_MODE && !USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
 tbls_to_clear <- c(
   "coc_version_requests" = "coc_version_id",
   "coc_version_users" = "coc_version_id",
@@ -39,7 +39,7 @@ lapply(names(tbls_to_clear), function(t) {
   delete_test_data(t, tbls_to_clear[[t]])
 })
 
-if(IN_DEV_MODE && !USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
 
 print("done deleting")
 
