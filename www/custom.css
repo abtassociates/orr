@@ -60,3 +60,10 @@ td.disabled {
 #rating-alternative-alternative_rating_table .dt-buttons {
   display: none;
 }
+
+/* Fix In-App Rating Sidebar */
+#rating-renew-project_selection_sidebar, #rating-new-project_selection_sidebar {
+  position: sticky; 
+  top: 0; 
+  height: 100vh;
+}
