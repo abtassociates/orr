@@ -1333,7 +1333,7 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
 DBI::dbExecute(DB_POOL, glue::glue("
 --- Project_Evaluations
 CREATE TABLE IF NOT EXISTS project_evaluations (
-    project_evaluation_id INTEGER PRIMARY KEY,
+    project_evaluation_id {id_var_attrs},
     project_id INTEGER NOT NULL UNIQUE REFERENCES projects(project_id) ON DELETE CASCADE,
     method VARCHAR(7) NULL CHECK (method IN ('in_app', 'outside')),
     met_hud_thresholds BOOLEAN NULL,
