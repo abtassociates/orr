@@ -20,18 +20,18 @@ get_rating_factors_and_scores <- function(coc_version_id, selected_project) {
     INNER JOIN selected_rating_factors sr ON sr.rating_factor_id = r.rating_factor_id AND sr.coc_version_id = $1
     JOIN factor_groups fg ON r.factor_group = fg.factor_group_id
     LEFT JOIN factor_subgroups fsg ON r.factor_subgroup = fsg.factor_subgroup_id
-    LEFT JOIN rating_scores rs ON rs.selected_rating_factor_id = sr.selected_rating_factor_id AND (rs.project_id = $5 OR rs.project_id IS NULL)
+    LEFT JOIN rating_scores rs ON rs.selected_rating_factor_id = sr.selected_rating_factor_id AND (rs.project_id = $2 OR rs.project_id IS NULL)
     WHERE 
-      r.funding_action = $2 AND
-      r.project_type = $3 AND
-      (r.target_population = $4 OR r.target_population IS NULL)
+      r.funding_action = $3 AND
+      (r.project_type = $4 OR r.project_type IS NULL) AND
+      (r.target_population = $5 OR r.target_population IS NULL)
     ", 
     params = list(
       coc_version_id,
+      selected_project$project_id,
       selected_project$funding_action,
       selected_project$project_type,
-      target_population,
-      selected_project$project_id
+      target_population
     )
   )
 }
