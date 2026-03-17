@@ -1,10 +1,22 @@
+set_up_db_connection <- function(IN_PROD_APP, USE_DEV_POSTGRES_DB) {
+  if(Sys.getenv("RSTUDIO") == "1" && USE_DEV_POSTGRES_DB)
+    set_up_tunnel()
+  
+  if(IN_PROD_APP) {
+    return(get_postgres_db(IN_PROD_APP = TRUE))
+  } else if(USE_DEV_POSTGRES_DB) {
+    return(get_postgres_db(IN_PROD_APP = FALSE))
+  } else {
+    return(get_sqlite_db())
+  }
+}
+
 # Create connection to RDS Postgres instance for testing purposes
-if(IN_RSTUDIO && USE_DEV_POSTGRES_DB) {
+set_up_tunnel <- function() {
   # Only open tunnel if port 5432 isn't already in use
   port_in_use <- system("ss -tulnp | grep ':5432'")
   
   if (port_in_use == 1) {
-    
     tunnel <- sys::exec_background(
       "ssh",
       args = c(
@@ -28,24 +40,27 @@ if(IN_RSTUDIO && USE_DEV_POSTGRES_DB) {
 # - maintains N reusable connections
 # - loans them out only when needed (fewer db resources)
 # - automatically reconnects dropped connections (better stability, esp. if usage spikes)
-DB_POOL <- if(IN_PROD_APP || USE_DEV_POSTGRES_DB) {
+get_postgres_db <- function(IN_PROD_APP) {
   pool::dbPool(
     drv = RPostgres::Postgres(),
-    host = ifelse(IN_RSTUDIO, "localhost", Sys.getenv("AWS_RDS_HOST")),
+    host = ifelse(Sys.getenv("RSTUDIO") == "1", "localhost", Sys.getenv("AWS_RDS_HOST")),
     port = as.integer(Sys.getenv("AWS_RDS_PORT", "3306")),
     dbname = Sys.getenv(ifelse(IN_PROD_APP, "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV")),
     user = Sys.getenv("AWS_RDS_USERNAME"),
     password = Sys.getenv("AWS_RDS_PASSWORD")
   )
-} else {
+} 
+
+get_sqlite_db <- function() {
   pool::dbPool(
     drv = RSQLite::SQLite(),
     dbname = here("sandbox/dev_db.sqlite")
   )
 }
-
+# Get a dev version that persists beyond the app 
 shiny::onStop(function() {
-  pool::poolClose(DB_POOL)
+  if(IN_PROD_APP)
+    pool::poolClose(DB_POOL)
 })
 
 
@@ -60,10 +75,10 @@ convert_timestamps_to_char <- function(dt) {
 }
 
 # Get DB data ------------------
-get_db_query <- function(sql, params = NULL) {
+get_db_query <- function(sql, params = NULL, p = DB_POOL) {
   tryCatch({
     dt <- DBI::dbGetQuery(
-      DB_POOL,
+      p,
       sql,
       params = params
     ) |> 
@@ -77,9 +92,9 @@ get_db_query <- function(sql, params = NULL) {
 }
 
 
-get_db_tbl <- function(tbl_name) {
+get_db_tbl <- function(tbl_name, p = DB_POOL) {
   tryCatch({
-    tbl <- dbReadTable(DB_POOL, tbl_name) |> qDT()
+    tbl <- dbReadTable(p, tbl_name) |> qDT()
     
     convert_timestamps_to_char(tbl)
     
