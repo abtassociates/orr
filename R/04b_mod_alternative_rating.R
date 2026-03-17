@@ -191,7 +191,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
       needs_refresh <- update_project_evaluations_db(DB_POOL, updated_project_evaluations)
       
-      if(needs_refresh)
+      # if(needs_refresh)
         refresh_trigger(\(x) x + 1)
     }) # end save_rating
     

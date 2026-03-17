@@ -108,7 +108,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       
       needs_refresh1 <- update_selected_thresholds_db(DB_POOL, updated_selected_thresholds)
       
-      if(needs_refresh1)
+      # if(needs_refresh1)
         refresh_trigger(\(x) x + 1)
       
     }, ignoreInit = TRUE) # end save_thresholds observeEvent

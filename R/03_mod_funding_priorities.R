@@ -416,7 +416,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         updated_coc_funding_priorities
       )
       
-      if(needs_refresh)
+      # if(needs_refresh)
         refresh_trigger$coc_funding_priorities <- refresh_trigger$coc_funding_priorities + 1
       
       formatted_coc_funding_priorities(current_data)
@@ -461,7 +461,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         updated_coc_nofo_opportunities
       )
       
-      if(needs_refresh)
+      # if(needs_refresh)
         refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
     })
     

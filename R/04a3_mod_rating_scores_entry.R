@@ -259,7 +259,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         needs_refresh2 <- update_rating_score_project_evaluation_db(p, updated_project_evaluation)
       })
 
-      if(needs_refresh1 || needs_refresh2)
+      # if(needs_refresh1 || needs_refresh2)
         refresh_trigger(\(x) x + 1)
     })
   }) #end module server

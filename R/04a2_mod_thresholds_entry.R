@@ -244,7 +244,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         needs_refresh2 <- update_threshold_project_evaluation_db(p, updated_project_evaluation)
       })
       
-      if(needs_refresh1 || needs_refresh2)
+      # if(needs_refresh1 || needs_refresh2)
         refresh_trigger(\(x) x + 1)
       
     }, ignoreInit = TRUE) # end save_requirements

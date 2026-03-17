@@ -403,7 +403,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
         needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)
       })
       
-      if(is.null(inserted_custom_factor_info) || needs_refresh2)
+      # if(is.null(inserted_custom_factor_info) || needs_refresh2)
         refresh_trigger(\(x) x + 1)
       
       module_returns$customize_rating_criteria <- TRUE
