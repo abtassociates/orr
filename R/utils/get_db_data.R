@@ -4,7 +4,7 @@ set_up_db_connection <- function(IN_PROD_APP, USE_DEV_POSTGRES_DB) {
   
   if(IN_PROD_APP) {
     return(get_postgres_db(IN_PROD_APP = TRUE))
-  } else if(USE_DEV_POSTGRES_DB) {
+  } else if(!Sys.getenv("RSTUDIO") == "1" || USE_DEV_POSTGRES_DB){
     return(get_postgres_db(IN_PROD_APP = FALSE))
   } else {
     return(get_sqlite_db())
