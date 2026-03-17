@@ -20,11 +20,11 @@ update_coc_nofo_opportunities_db <- function(p, updated_coc_nofo_opportunities) 
   save_to_db(
     p,
     "INSERT INTO selected_coc_nofo_opportunities (coc_version_id, coc_nofo_opportunity_id, selected, created_by)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO UPDATE SET
-            selected = EXCLUDED.selected,
-            updated_by = EXCLUDED.created_by
-          " |> add_optimistic_locking(),
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO UPDATE SET
+      selected = EXCLUDED.selected,
+      updated_by = EXCLUDED.created_by
+    " |> add_optimistic_locking(),
     updated_coc_nofo_opportunities,
     "selected_coc_nofo_opportunities"
   )
@@ -33,12 +33,13 @@ update_coc_nofo_opportunities_db <- function(p, updated_coc_nofo_opportunities) 
 update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding_priorities) {
   save_to_db(
     p,
-    glue::glue("INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, {metric_name}, created_by)
-          VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (coc_version_id, project_type, target_population, population_group) DO UPDATE SET 
-            {metric_name} = EXCLUDED.{metric_name},
-            updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-          ") |> add_optimistic_locking(),
+    glue::glue(
+    "INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, {metric_name}, created_by)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (coc_version_id, project_type, target_population, population_group) DO UPDATE SET 
+      {metric_name} = EXCLUDED.{metric_name},
+      updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
+    ") |> add_optimistic_locking(),
     updated_coc_funding_priorities,
     "coc_funding_priorities"
   )
