@@ -4,11 +4,12 @@ lapply(files, source)
 
 files <- list.files(here("R/db_funcs"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
+
+DB_POOL <- set_up_db_connection()
+
 source("R/global_data_prep.R", local=TRUE)
 
 print(glue::glue("In generate test data for demo, USE_SQLITE = {USE_SQLITE}"))
-
-DB_POOL <- set_up_db_connection()
 
 delete_test_data <- function(tbl, anchorid) {
   print(glue::glue("deleting from {tbl}"))
