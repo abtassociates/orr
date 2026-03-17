@@ -175,7 +175,7 @@ for (i in 1:nrow(coc_versions)) {
 dbAppendTable(DB_POOL, "coc_version_users", coc_version_users)
 dbAppendTable(DB_POOL, "coc_version_requests", coc_version_requests)
 
-print("selecting thresholds, factors, and nofo opportunities")
+print("Adding selected thresholds, factors, and nofo opportunities for test coc_versions")
 lapply(c(-3, -2, -1), function(coc_version_id) {
   generate_data_for_new_coc_version(coc_version_id)
 })
