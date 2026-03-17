@@ -4,7 +4,7 @@ lapply(files, source)
 
 files <- list.files(here("R/db_funcs"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
-source("R/global_data_prep.R")
+source("R/global_data_prep.R", local=TRUE)
 
 print(glue::glue("In generate test data for demo, USE_SQLITE = {USE_SQLITE}"))
 
