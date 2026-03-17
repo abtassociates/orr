@@ -7,6 +7,7 @@ library(data.table)
 library(glue)
 library(collapse)
 
+DB_POOL <- set_up_db_connection()
 USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
