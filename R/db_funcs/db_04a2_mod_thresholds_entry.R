@@ -27,7 +27,7 @@ update_threshold_entries_db <- function(p, updated_thresholds) {
   )
 }
 
-update_project_evaluation_db <- function(p, updated_project_evaluation) {
+update_threshold_project_evaluation_db <- function(p, updated_project_evaluation) {
   save_to_db(
     p,
     "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)

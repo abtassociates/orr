@@ -52,7 +52,7 @@ update_rating_scores_db <- function(p, updated_rating_scores) {
   )
 }
 
-update_project_evaluation_db <- function(p, updated_project_evaluation) {
+update_rating_score_project_evaluation_db <- function(p, updated_project_evaluation) {
   save_to_db(
     p,
     "INSERT INTO project_evaluations (project_id, method, weighted_score, created_by)

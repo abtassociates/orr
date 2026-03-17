@@ -101,6 +101,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         )
       )
 
+      # Initialize threshold selections
       updateCheckboxGroupInput(
         session,
         "HUD_requirements",
@@ -194,7 +195,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           met_threshold_new = threshold_id %in% c(params$HUD_requirements, params$CoC_requirements),
           project_id = params$project_id
         ) |>
-        fsubset(met_threshold_new != met_threshold) |>
+        fsubset(met_threshold_new != fcoalesce(as.logical(met_threshold), FALSE)) |>
         fselect(project_id, threshold_id, met_threshold_new, created_by, date_updated)
     }
     get_updated_project_evaluation <- function(params) {
@@ -227,7 +228,11 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           met_all_HUD_requirements = input$yes_to_all_HUD,
           met_all_CoC_requirements = input$yes_to_all_CoC,
           username = user_coc$username,
-          date_updated = project_evaluation()$date_updated
+          date_updated = ifelse(
+            is_empty(project_evaluation()$date_updated), 
+            NA, 
+            project_evaluation()$date_updated
+          )
         )
       )
       
@@ -236,7 +241,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
 
       pool::poolWithTransaction(DB_POOL, function(p) {
         needs_refresh1 <- update_threshold_entries_db(p, updated_thresholds)
-        needs_refresh2 <- update_project_evaluation_db(p, updated_project_evaluation)
+        needs_refresh2 <- update_threshold_project_evaluation_db(p, updated_project_evaluation)
       })
       
       if(needs_refresh1 || needs_refresh2)
