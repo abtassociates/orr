@@ -1425,5 +1425,6 @@ DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_references_type ON looku
 message("Done populating the db!")
 
 if(Sys.getenv("RSTUDIO") == "1" || add_demo_data)
+  source(here("R/global_data_prep.R"), local=TRUE)
   source(here("sandbox/generate_test_data_for_demo.R"), local=TRUE)
 }
