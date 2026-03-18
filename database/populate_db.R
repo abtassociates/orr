@@ -4,16 +4,17 @@ populate_db <- function(
 ) {
 library(here)
 library(DBI)
-
-files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
-lapply(files, source)
-  
 library(data.table)
 library(glue)
 library(collapse)
-
-DB_POOL <- set_up_db_connection()
+  
+files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
+  
 USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
+
+DB_POOL <- set_up_db_connection(USE_SQLITE)
+set_db_pool(DB_POOL)
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
