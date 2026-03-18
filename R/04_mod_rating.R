@@ -115,7 +115,8 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
     observe({
       req(user_coc$auth)
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      
+      user_coc$settings$rating_tab <- gsub('rating-', '', input$rating_tabs)
+        
       user_previous_method <- get_db_query(
                                          "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_method'",
                                          params = list(user_coc$coc_version_id,
@@ -124,36 +125,37 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
       
       if(length(user_previous_method) > 0){
         shinyjs::click(id = glue::glue('select_{user_previous_method}'))
-      }
       
-      ## set up subtabs if using in-app rating method
-      if(user_previous_method == 'in_app'){
-        user_previous_tab <- get_db_query(
-                                           "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_tab'",
-                                           params = list(user_coc$coc_version_id,
-                                                         user_coc$username)
-                                          )|> unlist(use.names = FALSE)
-        if(length(user_previous_tab) > 0){
-          
-          nav_select(id = 'rating_tabs', selected = glue::glue('rating-{user_previous_tab}'))
-          
-          user_previous_subtab <- get_db_query(
-                                    "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_subtab'",
-                                    params = list(user_coc$coc_version_id,
-                                                  user_coc$username)
-                                  ) |> unlist(use.names = FALSE)
-          
-          if(length(user_previous_subtab) > 0){
-            if(user_previous_tab == 'customize_criteria'){
-              nav_select(id = 'customize_criteria-rating_criteria_subtabs', selected = glue::glue('rating-customize_criteria-{user_previous_subtab}'))
-            } else if (user_previous_tab == 'renew'){
-              nav_select(id = 'renew-main_contents', selected = glue::glue('rating-renew-{user_previous_subtab}'))
-            } else if(user_previous_tab == 'new'){
-              nav_select(id = 'new-main_contents', selected = glue::glue('rating-new-{user_previous_subtab}'))
-              
+      
+        ## set up subtabs if using in-app rating method
+        if(user_previous_method == 'in_app'){
+          user_previous_tab <- get_db_query(
+                                             "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_tab'",
+                                             params = list(user_coc$coc_version_id,
+                                                           user_coc$username)
+                                            )|> unlist(use.names = FALSE)
+          if(length(user_previous_tab) > 0){
+            
+            nav_select(id = 'rating_tabs', selected = glue::glue('rating-{user_previous_tab}'))
+            
+            user_previous_subtab <- get_db_query(
+                                      "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_subtab'",
+                                      params = list(user_coc$coc_version_id,
+                                                    user_coc$username)
+                                    ) |> unlist(use.names = FALSE)
+            
+            if(length(user_previous_subtab) > 0){
+              if(user_previous_tab == 'customize_criteria'){
+                nav_select(id = 'customize_criteria-rating_criteria_subtabs', selected = glue::glue('rating-customize_criteria-{user_previous_subtab}'))
+              } else if (user_previous_tab == 'renew'){
+                nav_select(id = 'renew-main_contents', selected = glue::glue('rating-renew-{user_previous_subtab}'))
+              } else if(user_previous_tab == 'new'){
+                nav_select(id = 'new-main_contents', selected = glue::glue('rating-new-{user_previous_subtab}'))
+                
+              }
             }
+            
           }
-          
         }
       }
       
