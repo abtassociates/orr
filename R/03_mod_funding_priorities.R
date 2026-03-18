@@ -365,8 +365,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
               $(e.target).trigger('blur');
             }
           });
-        ", 
-        has_double_header = TRUE)
+        "), 
+        has_double_header = TRUE
       ) %>% 
         formatStyle(
           columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
