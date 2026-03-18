@@ -16,7 +16,7 @@ generate_selected_thresholds_for_coc <- function(coc_version_id) {
     fmutate(coc_version_id = coc_version_id)
   
   DBI::dbExecute(
-    DB_POOL,
+    get_db_pool(),
     "INSERT INTO selected_thresholds (threshold_id, selected, coc_version_id)
     VALUES ($1, TRUE, $2)
     ON CONFLICT (coc_version_id, threshold_id) DO NOTHING;",
@@ -29,7 +29,7 @@ generate_selected_rating_factors_for_coc <- function(coc_version_id) {
     fmutate(coc_version_id = coc_version_id)
   
   DBI::dbExecute(
-    DB_POOL,
+    get_db_pool(),
     "INSERT INTO selected_rating_factors (rating_factor_id, selected, coc_version_id)
     VALUES ($1, TRUE, $2)
     ON CONFLICT (coc_version_id, rating_factor_id) DO NOTHING;",
@@ -42,7 +42,7 @@ generate_selected_coc_nofo_opportunities <- function(coc_version_id) {
     fmutate(coc_version_id = coc_version_id)
   
   DBI::dbExecute(
-    DB_POOL,
+    get_db_pool(),
     "INSERT INTO selected_coc_nofo_opportunities (coc_nofo_opportunity_id, selected, coc_version_id)
     VALUES ($1, TRUE, $2)
     ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO NOTHING;",
