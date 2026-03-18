@@ -98,6 +98,23 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       nested_data
     })
     
+    get_col_widths <- function(funding_action) {
+      if(funding_action == "Renew")
+        breakpoints(
+          sm = c(1, 1, 1, 5, 2, 2),
+          md = c(1, 1, 1, 5, 2, 2),
+          lg = c(1, 1, 1, 5, 2, 2),
+          xl = c(1, 1, 1, 7, 1, 1)
+        )
+      else
+        breakpoints(
+          sm = c(1, 7, 2, 2),
+          md = c(1, 7, 2, 2),
+          lg = c(1, 7, 2, 2),
+          xl = c(1, 9, 1, 1)
+        )
+    }
+    
     render_nested_factor_accordion_ui <- function(ns, funding_action = "Renew", data_groups_nested, placeholder_text = "No rating factors found.") {
       if (length(data_groups_nested) == 0) {
         return(p(placeholder_text))
@@ -119,13 +136,14 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               subgroup_data$max_point_value, 
               subgroup_data$selected
             ), function(id, project_type, target_population, text, goal, points, selected) {
-              fluidRow(
-                column(1, checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected)),
-                if(funding_action == "Renew") column(1, p(get_lookup_label(project_type, ref_type = "project_type"))),
-                if(funding_action == "Renew") column(1, p(get_lookup_label(target_population, ref_type = "target_population"))),
-                column(ifelse(funding_action == "Renew", 5, 7), p(text)),
-                column(2, textInput(ns(paste0("goal_", id)), label = NULL, value = goal)),
-                column(2, numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1))
+              layout_columns(
+                col_widths = get_col_widths(funding_action),
+                checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
+                if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")),
+                if(funding_action == "Renew") div(get_lookup_label(target_population, ref_type = "target_population")),
+                div(text),
+                textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
+                numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1)
               )
             }
           )
@@ -133,20 +151,21 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           all_subgroup_factors_selected <- nrow(subgroup_data) == nrow(subgroup_data[selected == TRUE])
           bslib::accordion_panel(
             title = ifelse(subgroup_name == "NA", "", subgroup_name),
-            fluidRow(
-              column(1,
-                     tags$b("Use in rating?"),
-                     checkboxInput(
-                       ns(make.names(paste0(group_name, "_check_all_", subgroup_name))),
-                       label = NULL,
-                       value = all_subgroup_factors_selected
-                     )
+            layout_columns(
+              col_widths = get_col_widths(funding_action),
+              list(
+                tags$b("Use in rating?"),
+                checkboxInput(
+                  ns(make.names(paste0(group_name, "_check_all_", subgroup_name))),
+                  label = NULL,
+                  value = all_subgroup_factors_selected
+                )
               ),
-              if(funding_action == "Renew") column(1, tags$b("Project Type")),
-              if(funding_action == "Renew") column(1, tags$b("Target Population", style="word-wrap: normal;")),
-              column(ifelse(funding_action == "Renew", 5, 7), tags$b("Rating Factor")),
-              column(2, tags$b("Factor/\nGoal", style="word-wrap: normal;")),
-              column(2, tags$b("Max Point Value"))
+              if(funding_action == "Renew") tags$b("Project Type"),
+              if(funding_action == "Renew") tags$b("Target Population", style="word-wrap: normal;"),
+              tags$b("Rating Factor"),
+              tags$b("Factor/\nGoal", style="word-wrap: normal;"),
+              tags$b("Max Point Value")
             ),
             hr(),
             factor_rows,
@@ -268,33 +287,32 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       # Define the namespaced input IDs
       pt_input_id <- ns(paste0("custom_pt_", row_id))
       tp_input_id <- ns(paste0("custom_tp_", row_id))
-      
+
       div(
         id = row_div_id,
-        fluidRow(
-          style = "padding-top: 10px; border-top: 1px solid #eee;",
-          column(1, checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE)),
-          column(1, if(funding_action == "Renew") 
+        layout_columns(
+          col_widths = get_col_widths(funding_action),
+          # style = "padding-top: 10px; border-top: 1px solid #eee;",
+          checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE),
+          if(funding_action == "Renew") 
             selectInput(
               inputId = pt_input_id,
               label = NULL,
               choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
               multiple = FALSE
-            ) else NULL
-          ),
-          column(1, selectInput(
-            inputId = tp_input_id,
-            label = NULL,
-            choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
-            multiple = FALSE
-          )),
-          column(7, textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text")),
-          column(1, textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal")),
-          column(1, 
-                 div(style="display:flex; align-items:center; gap:5px;",
-                     numericInput(ns(paste0("custom_points_", row_id)), label = NULL, value = 0, step = 1),
-                     actionButton(ns(paste0("remove_custom_", row_id)), "", icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
-                 )
+            ),
+          if(funding_action == "Renew") 
+            selectInput(
+              inputId = tp_input_id,
+              label = NULL,
+              choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
+              multiple = FALSE
+            ),
+          textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
+          textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
+          div(style="display:flex; align-items:center; gap:5px;",
+              numericInput(ns(paste0("custom_points_", row_id)), label = NULL, value = 0, step = 1),
+              actionButton(ns(paste0("remove_custom_", row_id)), "", icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
           )
         )
       )
