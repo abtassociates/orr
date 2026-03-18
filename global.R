@@ -56,8 +56,9 @@ lapply(files, source)
 
 
 # SET UP DB CONNECTION -----------------
-USE_SQLITE <- TRUE
 DB_POOL <- set_up_db_connection()
+set_db_pool(DB_POOL)
+
 
 # PREP GLOBAL DATA ---------------
 source(here("R/global_data_prep.R"))
