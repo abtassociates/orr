@@ -64,9 +64,3 @@ get_sqlite_db <- function() {
     dbname = here("sandbox/dev_db.sqlite")
   )
 }
-
-# Get a dev version that persists beyond the app 
-shiny::onStop(function() {
-  if(IN_PROD_APP())
-    pool::poolClose(get_db_pool())
-})
