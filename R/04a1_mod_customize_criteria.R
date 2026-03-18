@@ -36,6 +36,14 @@ mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_sess
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    observe({
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
+      
+      if(is.null(user_coc$settings$rating_subtab)){
+        user_coc$settings$rating_subtab <- gsub('rating-customize_criteria-', '', input$rating_criteria_subtabs)
+      }
+    })
+    
     observeEvent(input$rating_criteria_subtabs, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
       user_coc$settings$rating_subtab <- gsub('rating-customize_criteria-', '', input$rating_criteria_subtabs)
