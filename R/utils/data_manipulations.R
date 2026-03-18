@@ -132,7 +132,7 @@ variable_labels <- c(
   "weighted_score" = "Weighted Rating Score (out of 100)"
 )
 
-inventory_variable_labels <- project_variable_labels[!(names(project_variable_labels) %in% c('met_hud_thresholds', 'met_coc_thresholds', 'weighted_score'))]
+inventory_variable_labels <- variable_labels[!(names(variable_labels) %in% c('met_hud_thresholds', 'met_coc_thresholds', 'weighted_score'))]
 
 initial_cols_to_show <- setdiff(names(inventory_variable_labels), c('created_by','date_created','date_updated','updated_by'))
                                                                   
