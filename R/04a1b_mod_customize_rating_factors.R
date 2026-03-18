@@ -108,10 +108,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
         )
       else
         breakpoints(
-          sm = c(1, 7, 2, 2),
-          md = c(1, 7, 2, 2),
-          lg = c(1, 7, 2, 2),
-          xl = c(1, 9, 1, 1)
+          sm = c(1, 1, 6, 2, 2),
+          md = c(1, 1, 6, 2, 2),
+          lg = c(1, 1, 6, 2, 2),
+          xl = c(1, 1, 8, 1, 1)
         )
     }
     
@@ -140,7 +140,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
                 col_widths = get_col_widths(funding_action),
                 checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
                 if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")),
-                if(funding_action == "Renew") div(get_lookup_label(target_population, ref_type = "target_population")),
+                div(get_lookup_label(target_population, ref_type = "target_population")),
                 div(text),
                 textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
                 numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1)
@@ -162,7 +162,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
                 )
               ),
               if(funding_action == "Renew") tags$b("Project Type"),
-              if(funding_action == "Renew") tags$b("Target Population", style="word-wrap: normal;"),
+              tags$b("Target Population", style="word-wrap: normal;"),
               tags$b("Rating Factor"),
               tags$b("Factor/\nGoal", style="word-wrap: normal;"),
               tags$b("Max Point Value")
@@ -292,7 +292,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
         id = row_div_id,
         layout_columns(
           col_widths = get_col_widths(funding_action),
-          # style = "padding-top: 10px; border-top: 1px solid #eee;",
           checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE),
           if(funding_action == "Renew") 
             selectInput(
@@ -301,13 +300,12 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
               choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
               multiple = FALSE
             ),
-          if(funding_action == "Renew") 
-            selectInput(
-              inputId = tp_input_id,
-              label = NULL,
-              choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
-              multiple = FALSE
-            ),
+          selectInput(
+            inputId = tp_input_id,
+            label = NULL,
+            choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
+            multiple = FALSE
+          ),
           textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
           textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
           div(style="display:flex; align-items:center; gap:5px;",
