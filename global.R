@@ -51,7 +51,7 @@ orr_navbar_options <- navbar_options(theme = 'auto', bg = get_brand_color('dark_
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
 
-files <- list.files(here("R/db_funcs"), pattern = "\\.R$", full.names = TRUE)
+files <- list.files(here("R/app_db_funcs"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
 
 
