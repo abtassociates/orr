@@ -39,6 +39,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
     layout_sidebar(
       sidebar = sidebar(
         title = "Filters",
+        id = ns("sidebar"),
         width = "10%",
         project_and_pop_dropdowns(ns)
       ),
