@@ -106,6 +106,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
       
+      col_widths <- c(5, 2, 2, 1, 2)
       # Create a main accordion panel for each group
       accordion_items_group <- purrr::map(names(grouped_data), function(group_name) {
         group_dt <- grouped_data[[group_name]]
@@ -132,12 +133,13 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
             ),
             function(id, text, goal, performance, rating_score, max_points) {
               # This is a single data row
-              fluidRow(
+              layout_columns(
+                col_widths = col_widths,
                 # We can add a class for CSS styling, e.g., for indentation
-                column(5, p(text)),
-                column(2, p(goal)),
-                column(2, class = "input-col", textInput(ns(paste0("performance_", id)), label = NULL, value = performance)),
-                column(1, class = "input-col", numericInput(
+                p(text),
+                p(goal),
+                div(class = "input-col", textInput(ns(paste0("performance_", id)), label = NULL, value = performance)),
+                div(class = "input-col", numericInput(
                   ns(paste0("rating_score_", id)), 
                   label = NULL, 
                   value = rating_score,
@@ -145,7 +147,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
                   max = max_points
                 )) |>
                   tagAppendAttributes(class = 'score-input', `data-group` = group_id),
-                column(2, p(paste("out of", max_points)))
+                p(paste("out of", max_points))
               )
             }
           )
@@ -154,9 +156,10 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
           # The subgroup header is just a simple div or row
           tagList(
             if (subgroup_name != "NA") {
-              fluidRow(
-                column(12, h5(subgroup_name, class = "subgroup-header"))
-              )
+              h5(subgroup_name, class = "subgroup-header")
+              # fluidRow(
+              #   column(12, h5(subgroup_name, class = "subgroup-header"))
+              # )
             },
             factor_rows
           )
@@ -166,26 +169,25 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         bslib::accordion_panel(
           title = group_name,
           # The single header row for the "table"
-          fluidRow(
+          layout_columns(
             class = "rating-table-header",
-            column(5, strong("RATING FACTOR")),
-            column(2, strong("PERFORMANCE GOAL")),
-            column(2, strong("PERFORMANCE")),
-            column(1, strong("POINTS AWARDED")),
-            column(2, strong("MAX POINT VALUE"))
+            col_widths = col_widths,
+            strong("RATING FACTOR"),
+            strong("PERFORMANCE GOAL"),
+            strong("PERFORMANCE"),
+            strong("POINTS AWARDED"),
+            strong("MAX POINT VALUE")
           ),
           hr(),
           # Add the content we generated above
           !!!table_content,
           # Add the subtotal row at the end of the group
           hr(),
-          fluidRow(
-            column(5, strong(paste0(group_name, " Subtotal"))),
-            column(2), # empty placeholder
-            column(2), # empty placeholder
-            # column(1, strong(sum(group_dt$rating_score, na.rm = TRUE)), style="text-align:center"), # Example calculation
-            column(1, style = "text-align:center;", class = "subtotal-column", strong(class = "subtotal-display", `data-subtotal-for` = group_id, "0")),
-            column(2, strong(paste("out of", sum(group_dt$max_point_value, na.rm = TRUE)))) # Example
+          layout_columns(
+            col_widths = c(5, -2, -2, 1, 2),
+            strong(paste0(group_name, " Subtotal")),
+            div(style = "text-align:center;", class = "subtotal-column", strong(class = "subtotal-display", `data-subtotal-for` = group_id, "0")),
+            div(strong(paste("out of", sum(group_dt$max_point_value, na.rm = TRUE)))) # Example
           )
         )
       })
