@@ -85,7 +85,8 @@ factor_vars_db_prep <- function(data) {
   return(do.call(fmutate, c(list(data), mutate_expressions)))
 }
 
-project_variable_labels <- c(
+# Indicates how to display certain varibales in a more readable way
+variable_labels <- c(
   "project_id" = "Project ID",
   "organization_name" = "Organization Name",
   "project_name" = "Project Name",
@@ -123,7 +124,10 @@ project_variable_labels <- c(
   "vet_bed_inventory" = "Veteran Bed Inventory",
   "youth_bed_inventory" = "Youth Bed Inventory",
   "created_by" = "Created By",
-  "date_created" = "Date Created"
+  "date_created" = "Date Created",
+  "met_hud_thresholds" = "Met HUD Thresholds",
+  "met_coc_thresholds" = "Met CoC Thresholds",
+  "weighted_score" = "Weighted Rating Score (out of 100)"
 )
 
 giw_variable_labels <- c(
@@ -174,6 +178,12 @@ add_user_stamp <- function(x, user_coc, is_new = FALSE) {
   return(x)
 }
 
+add_datetime_stamp <- function(x, is_new = FALSE) {
+  x <- x |> fmutate(date_updated = get_db_timestamp())
+  if(is_new) x <- x |> fmutate(date_created = get_db_timestamp())
+  return(x)
+}
+
 insert_and_return <- function(table, new_dt, return_cols) {
   col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, names(new_dt)), collapse = ", ")
   return_col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, return_cols), collapse = ", ")
@@ -193,4 +203,88 @@ insert_and_return <- function(table, new_dt, return_cols) {
   })
 
   return(results)
+}
+
+format_timestamp_for_db <- function(t) {
+  format(lubridate::with_tz(t, "UTC"), "%Y-%m-%d %H:%M:%S")
+}
+
+get_db_timestamp <- function() {
+  format_timestamp_for_db(Sys.time())
+}
+
+save_to_db <- function(p, sql, params, tbl_name) {
+  tryCatch({
+    rows_changed <- if(!grepl("RETURNING ", sql)) {
+      DBI::dbExecute(
+        p,
+        sql,
+        params = paramify(params)
+      )
+    } else {
+      DBI::dbGetQuery(
+        p,
+        sql,
+        params = paramify(params)
+      )
+    }
+    
+    if(grepl("RETURNING ", sql)) {
+      if(is.null(rows_changed))
+        msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
+      else
+        msg <- glue::glue("{tbl_name} saved successfully!")
+      print(msg)
+      showNotification(msg, type = "message")
+      return(rows_changed)
+    } 
+    
+    num_rows <- ifelse("list" %in% class(params), length(params[[1]]), fnrow(params))
+    if(rows_changed == 0) {
+      msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
+      needs_refresh <- TRUE
+    } else if(rows_changed < num_rows) {
+      msg <- glue::glue("Someone recently edited one or more {tbl_name} for this project! Refreshing your view. Resubmit when you're ready.")
+      needs_refresh <- TRUE
+    } else {
+      msg <- glue::glue("{tbl_name} saved successfully!")
+      needs_refresh <- FALSE
+    }
+    print(msg)
+    showNotification(msg, type = "message")
+    return(needs_refresh)
+  }, error = function(e) {
+    # If an error occurs, do NOT reset the flag, so it will try again.
+    # Notify the user of the failure.
+    showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
+    cat("Database save error:", e$message, "\n")
+    stop(e) # rethrow error so the transaction can catch it and roll back
+  })
+}
+
+# make sure data are SQL/db ready, i.e. no dfs or named lists
+paramify <- function(p) {
+  p |>
+    as.list() |>
+    unname()
+}
+
+# Dynamically add the optimistic locking SQL code. This makes future updates easier
+add_optimistic_locking <- function(sql) {
+  # 1. Extract table name from "INSERT INTO tbl_name ("
+  tbl_name <- regmatches(sql, regexpr("(?<=INSERT INTO )\\w+", sql, perl = TRUE))
+  
+  # 2. Count how many $N placeholders are already in the SQL
+  existing_params <- regmatches(sql, gregexpr("\\$\\d+", sql, perl = TRUE))[[1]]
+  n <- length(unique(existing_params))
+  
+  # 3. Append date_updated and WHERE clause
+  sql_with_locking <- glue::glue(
+    "{trimws(sql, which = 'right')},\n",
+    "            date_updated = CURRENT_TIMESTAMP",
+    "          WHERE {tbl_name}.date_updated = ${n + 1} ",
+    "OR (${n + 1} IS NULL AND {tbl_name}.date_updated IS NULL)"
+  )
+  
+  sql_with_locking
 }

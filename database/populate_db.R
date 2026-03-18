@@ -1,10 +1,20 @@
-IN_DEV_MODE <- grepl("ad.abt.local|ANEPRRDSH-04", Sys.info()[["nodename"]]) & !isTRUE(getOption("shiny.testmode"))
+populate_db <- function(
+    add_demo_data = basename(getwd()) != "ORR", 
+    USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
+) {
 library(here)
 library(DBI)
-source("R/utils/get_db_data.R")
 library(data.table)
 library(glue)
 library(collapse)
+  
+files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
+  
+USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
+
+DB_POOL <- set_up_db_connection(USE_SQLITE)
+set_db_pool(DB_POOL)
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
@@ -17,17 +27,18 @@ ADMIN_USERS <- "
   ('marschall.furman@abtglobal.com', 'Marschall', 'Furman', NULL),
   ('Victoria.Lopez@abtglobal.com', 'Victoria', 'Lopez', NULL),
   ('anthony.appau@abtglobal.com', 'Anthony', 'Appau', NULL),
-  ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL)
+  ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL),
+  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL)
 "
 
 drop_table <- function(tbl) {
 	message(glue::glue("Dropping {tbl}"))
-  if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
-  DBI::dbExecute(DB_POOL, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(IN_DEV_MODE, '', 'CASCADE')};"))
-	if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+  if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+  DBI::dbExecute(DB_POOL, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(USE_SQLITE, '', 'CASCADE')};"))
+	if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
 }
 
-id_var_attrs <- if(IN_DEV_MODE) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
+id_var_attrs <- if(USE_SQLITE) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
 
 # create users and All HIC Data ---------------------
 ############################
@@ -140,12 +151,12 @@ VALUES
 ('project_type', 'ES', 'Emergency Shelter', 'orr_service@abtglobal.com'),
 
 -- from target_populations
-('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
-('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
+('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
 ('target_population', 'Veteran', 'Veteran', 'orr_service@abtglobal.com'),
 ('target_population', 'Youth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
 ")
 
@@ -556,13 +567,10 @@ hud_ard_data <- hud_ard_data |> fsubset(coc %in% funique(hic_data$hudnum))
 DBI::dbAppendTable(DB_POOL, "hud_ard_report", hud_ard_data)
 
 # Create rest of table ---------------------
-DBI::dbExecute(DB_POOL, "
-  ALTER TABLE hud_ard_report 
-    ADD COLUMN date_created TIMESTAMP,
-    ADD COLUMN created_by VARCHAR(100) REFERENCES users(username),
-    ADD COLUMN date_updated TIMESTAMP,
-    ADD COLUMN updated_by VARCHAR(100) REFERENCES users(username)
-")
+DBI::dbExecute(DB_POOL, "ALTER TABLE hud_ard_report ADD COLUMN date_created TIMESTAMP")
+DBI::dbExecute(DB_POOL, "ALTER TABLE hud_ard_report ADD COLUMN created_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(DB_POOL, "ALTER TABLE hud_ard_report ADD COLUMN date_updated TIMESTAMP")
+DBI::dbExecute(DB_POOL, "ALTER TABLE hud_ard_report ADD COLUMN updated_by VARCHAR(100) REFERENCES users(username)")
 
 DBI::dbExecute(DB_POOL, "
 UPDATE hud_ard_report
@@ -724,10 +732,14 @@ CREATE TABLE IF NOT EXISTS thresholds (
     threshold_id {id_var_attrs},
     type VARCHAR(3), -- 'CoC' or 'HUD'
     threshold_text TEXT,
+    coc_version_id SMALLINT NULL REFERENCES coc_versions(coc_version_id),  -- only filled out for custom thresholds
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+  
+CONSTRAINT custom_threshold_unique_key UNIQUE (coc_version_id, threshold_text)
 );
 "))
 
@@ -834,6 +846,16 @@ CREATE TABLE IF NOT EXISTS rating_factors (
     updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
 "))
+
+DBI::dbExecute(DB_POOL, "
+CREATE UNIQUE INDEX IF NOT EXISTS rating_factors_unique_idx 
+ON rating_factors (
+  coc_version_id,
+  COALESCE(project_type, -1),
+  COALESCE(target_population, -1),
+  rating_factor_text
+);
+")
 
 message("about to populate rating_Factors")
 DBI::dbExecute(DB_POOL, "
@@ -1072,8 +1094,8 @@ VALUES
 ('A. Describe plan for rapid implementation of the program, documenting how the project will be ready to begin housing the first program participant. Provide a detailed schedule of proposed activities for 60 days, 120 days, and 180 days after grant award.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_timeliness_new), NULL, NULL, 10, 'orr_service@abtglobal.com'),
 
 -- Financial (factor_group = fg_financial_new)
-('A. Project is cost-effective when projected cost per person served is compared to CoC average within project type.', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
-('A. Project is cost-effective when projected cost per person served is compared to CoC average within project type.', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
+('A. Project is cost-effective when projected cost per person served is compared to CoC average within project type.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
+('A. Project is cost-effective when projected cost per person served is compared to CoC average within project type.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
 ('B1. Organization''s most recent audit: Found no exceptions to standard practices', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
 ('B1. Organization''s most recent audit: Found no exceptions to standard practices', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
 ('B2. Organization''s most recent audit: Identified agency as ''low risk''', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
@@ -1162,10 +1184,11 @@ drop_table("projects")
 drop_table("coc_funding_priorities")
 drop_table("selected_coc_nofo_opportunities")
 drop_table("selected_rating_factors")
-drop_table("selected_coc_thresholds")
+drop_table("selected_thresholds")
 drop_table("ranking")
 drop_table("rating_scores")
 drop_table("threshold_entries")
+drop_table("project_evaluations")
 
 ###### INVENTORY #########
 DBI::dbExecute(DB_POOL, glue::glue("
@@ -1214,7 +1237,6 @@ CREATE TABLE IF NOT EXISTS projects (
 "))
 
 ##### FUNDING PRIORITIES ########
-drop_table("coc_funding_priorities")
 DBI::dbExecute(DB_POOL, glue::glue("
 --- Funding Priorities by Project Type and Population
 ---- This is the table of population and project types at the bottom of the Funding Priorities tab
@@ -1243,11 +1265,14 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS selected_coc_nofo_opportunities (
     selected_coc_nofo_opportunity_id {id_var_attrs},
     coc_nofo_opportunity_id SMALLINT REFERENCES coc_nofo_opportunities(coc_nofo_opportunity_id),
+    selected BOOLEAN DEFAULT FALSE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+    CONSTRAINT coc_nofo_opportunities_unique_key UNIQUE (coc_version_id, coc_nofo_opportunity_id)
 );
 "))
 
@@ -1257,8 +1282,9 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS selected_rating_factors (
     selected_rating_factor_id {id_var_attrs},
     rating_factor_id SMALLINT REFERENCES rating_factors(rating_factor_id),
-	goal VARCHAR(5) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes'
-	max_point_value NUMERIC(4, 1),
+    goal VARCHAR(100) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes'
+    max_point_value NUMERIC(4, 1),
+    selected BOOLEAN DEFAULT FALSE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
@@ -1272,9 +1298,10 @@ CREATE TABLE IF NOT EXISTS selected_rating_factors (
 
 DBI::dbExecute(DB_POOL, glue::glue("
 --- User-Selected Threshold Factors
-CREATE TABLE IF NOT EXISTS selected_coc_thresholds (
+CREATE TABLE IF NOT EXISTS selected_thresholds (
     selected_threshold_id {id_var_attrs},
     threshold_id SMALLINT REFERENCES thresholds(threshold_id),
+    selected BOOLEAN DEFAULT FALSE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
@@ -1282,7 +1309,7 @@ CREATE TABLE IF NOT EXISTS selected_coc_thresholds (
     updated_by VARCHAR(100) NULL REFERENCES users(username),
 
 	-- a CoC Profile cannot have more than one of a given selected rating factor
-    CONSTRAINT uq_selected_coc_thresholds_profile UNIQUE (coc_version_id, threshold_id)
+    CONSTRAINT uq_selected_thresholds_profile UNIQUE (coc_version_id, threshold_id)
 );
 "))
 
@@ -1292,13 +1319,15 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS rating_scores (
     rating_score_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id),
-    selected_rating_factor_id SMALLINT REFERENCES selected_rating_factors(selected_rating_factor_id),
+    selected_rating_factor_id SMALLINT NULL REFERENCES selected_rating_factors(selected_rating_factor_id), --can be null if they rate outside the app
     rating_score INTEGER,
     performance VARCHAR(5) NULL,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+  CONSTRAINT uq_rating_scores_profile UNIQUE (project_id, selected_rating_factor_id)
 );
 "))
 
@@ -1307,9 +1336,30 @@ DBI::dbExecute(DB_POOL, glue::glue("
 CREATE TABLE IF NOT EXISTS threshold_entries (
     threshold_entry_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id),
-    threshold_id SMALLINT REFERENCES thresholds(threshold_id),
+    threshold_id SMALLINT NULL REFERENCES thresholds(threshold_id),
     met_threshold BOOLEAN,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username),
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+  
+  CONSTRAINT uq_threshold_entries_profile UNIQUE (project_id, threshold_id)
+);
+"))
+
+DBI::dbExecute(DB_POOL, glue::glue("
+--- Project_Evaluations
+CREATE TABLE IF NOT EXISTS project_evaluations (
+    project_evaluation_id {id_var_attrs},
+    project_id INTEGER NOT NULL UNIQUE REFERENCES projects(project_id) ON DELETE CASCADE,
+    method VARCHAR(7) NULL CHECK (method IN ('in_app', 'outside')),
+    met_hud_thresholds BOOLEAN NULL,
+    met_coc_thresholds BOOLEAN NULL,
+
+    weighted_score SMALLINT CHECK (weighted_score >= 0 AND weighted_score <= 100),
+
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username)
@@ -1336,50 +1386,54 @@ CREATE TABLE IF NOT EXISTS ranking (
 # CREATE INDEXES
 ###############
 # -- Add an index on the reference_type for efficient lookups (e.g., getting all project types)
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_cocs_state ON cocs(state);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_giw_coc ON giw(coc);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_hud_ard_report_coc ON hud_ard_report(coc);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_all_hic_data_hudnum ON all_hic_data(hudnum);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_all_hic_data_project_type ON all_hic_data(project_type);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_coc ON coc_versions(coc);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_coc_status ON coc_versions(coc_status);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_versions_created_by ON coc_versions(created_by);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_version_id ON coc_version_requests(coc_version_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_status ON coc_version_requests(request_status);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_users_username ON coc_version_users(username);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_version_users_role ON coc_version_users(coc_version_role);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_cocs_state ON cocs(state);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_giw_coc ON giw(coc);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_hud_ard_report_coc ON hud_ard_report(coc);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_all_hic_data_hudnum ON all_hic_data(hudnum);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_all_hic_data_project_type ON all_hic_data(project_type);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_versions_coc ON coc_versions(coc);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_versions_coc_status ON coc_versions(coc_status);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_versions_created_by ON coc_versions(created_by);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_version_id ON coc_version_requests(coc_version_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_version_requests_status ON coc_version_requests(request_status);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_version_users_username ON coc_version_users(username);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_version_users_role ON coc_version_users(coc_version_role);")
 
 # -- Definition / 'Hardcoded' Tables
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_factor_groups_funding_action ON factor_groups(funding_action);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_factor_subgroups_factor_group ON factor_subgroups(factor_group);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_factor_subgroups_funding_action ON factor_subgroups(funding_action);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_funding_action ON rating_factors(funding_action);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_project_type ON rating_factors(project_type);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_target_population ON rating_factors(target_population);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_factor_group ON rating_factors(factor_group);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_factors_factor_subgroup ON rating_factors(factor_subgroup);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_bonus_type ON coc_nofo_opportunities(bonus_type);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_funding_action ON coc_nofo_opportunities(funding_action);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_project_type ON coc_nofo_opportunities(project_type);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_factor_groups_funding_action ON factor_groups(funding_action);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_factor_subgroups_factor_group ON factor_subgroups(factor_group);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_factor_subgroups_funding_action ON factor_subgroups(funding_action);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_rating_factors_funding_action ON rating_factors(funding_action);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_rating_factors_project_type ON rating_factors(project_type);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_rating_factors_target_population ON rating_factors(target_population);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_rating_factors_factor_group ON rating_factors(factor_group);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_rating_factors_factor_subgroup ON rating_factors(factor_subgroup);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_bonus_type ON coc_nofo_opportunities(bonus_type);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_funding_action ON coc_nofo_opportunities(funding_action);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_nofo_opportunities_project_type ON coc_nofo_opportunities(project_type);")
 
 # -- User-Entered Data Tables
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_projects_coc_version_id ON projects(coc_version_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_projects_project_type ON projects(project_type);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_projects_target_population ON projects(target_population);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_projects_funding_action ON projects(funding_action);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_funding_priorities_coc_version_id ON coc_funding_priorities(coc_version_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_coc_funding_priorities_project_type ON coc_funding_priorities(project_type);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_selected_coc_nofo_opportunities_coc_version_id ON selected_coc_nofo_opportunities(coc_version_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_id ON rating_scores(project_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_selected_rating_factor_id ON rating_scores(selected_rating_factor_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_id ON threshold_entries(project_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_threshold_id ON threshold_entries(threshold_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_ranking_project_id ON ranking(project_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_ranking_coc_version_id ON ranking(coc_version_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_projects_coc_version_id ON projects(coc_version_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_projects_project_type ON projects(project_type);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_projects_target_population ON projects(target_population);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_projects_funding_action ON projects(funding_action);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_funding_priorities_coc_version_id ON coc_funding_priorities(coc_version_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_coc_funding_priorities_project_type ON coc_funding_priorities(project_type);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_selected_coc_nofo_opportunities_coc_version_id ON selected_coc_nofo_opportunities(coc_version_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_id ON rating_scores(project_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_rating_scores_selected_rating_factor_id ON rating_scores(selected_rating_factor_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_id ON threshold_entries(project_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_threshold_id ON threshold_entries(threshold_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_ranking_project_id ON ranking(project_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_ranking_coc_version_id ON ranking(coc_version_id);")
 
 #-- Composite Indexes for High-Frequency Lookups
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_factor ON rating_scores(project_id, selected_rating_factor_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_threshold ON threshold_entries(project_id, threshold_id);")
-DBI::dbExecute(DB_CON, "CREATE INDEX IF NOT EXISTS idx_references_type ON lookups (reference_type);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_rating_scores_project_factor ON rating_scores(project_id, selected_rating_factor_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_threshold ON threshold_entries(project_id, threshold_id);")
+DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_references_type ON lookups (reference_type);")
 
 message("Done populating the db!")
+
+if(Sys.getenv("RSTUDIO") == "1" || add_demo_data)
+  source(here("sandbox/generate_test_data_for_demo.R"), local=TRUE)
+}

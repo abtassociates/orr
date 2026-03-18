@@ -78,10 +78,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     observe({
       req(user_coc$coc_version_id)
 
-      data <- get_db_query(
-        "SELECT * FROM projects WHERE coc_version_id = $1", 
-        params = user_coc$coc_version_id
-      ) |>
+      data <- get_coc_projects(user_coc$coc_version_id) |>
         fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
@@ -118,7 +115,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
-      colnames <- unname(project_variable_labels[names(data)])
+      colnames <- unname(variable_labels[names(data)])
       
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
@@ -200,7 +197,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
               jsonlite::toJSON(grep("Bed", colnames) - 1)
             ))
           )
-        )
+        ),
+        callback_js = "
+          $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
+            $(this).css('cursor', 'pointer');
+            $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
+          });"
       )
     })
     
@@ -315,8 +317,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           coc_version_id = user_coc$coc_version_id,
           funding_action = get_lookup_refid(funding_action, "funding_action"),
           project_type = get_lookup_refid(project_type, "project_type"),
-          target_population = get_lookup_refid(target_population, "target_population"),
-          date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+          target_population = get_lookup_refid(target_population, "target_population")
         )
       
       db_append("projects", db_data)

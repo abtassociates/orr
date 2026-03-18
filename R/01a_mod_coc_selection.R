@@ -36,13 +36,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     get_all_users_and_versions <- function() {
       coc_vu(
-        get_db_query(
-          "SELECT v.*, u.username, u.coc_version_role
-            FROM coc_versions v
-            LEFT JOIN coc_version_users u
-            ON v.coc_version_id = u.coc_version_id"
-        ) |>
-          fsubset(username == user_coc$username, -created_by) |>
+        get_coc_versions_for_user(user_coc$username) |>
+          fselect(-created_by) |>
           fmutate(
             coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
             coc_status = get_lookup_label(coc_status, 'coc_status')
@@ -69,10 +64,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     project_ids <- reactive({
       req(user_coc$coc_version_id)
 
-      get_db_query(
-        "SELECT project_id FROM projects WHERE coc_version_id = $1", 
-        params = user_coc$coc_version_id
-      )$project_id
+      get_coc_projects(user_coc$coc_version_id)$project_id
     })
     
     owner_role_refid <- get_lookup_refid("Owner", "coc_version_role")
@@ -153,6 +145,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       current_coc_info <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
       user_coc$coc <- current_coc_info$coc
       user_coc$coc_version_id <- current_coc_info$coc_version_id
+      user_coc$date_updated <- current_coc_info$date_updated
     })
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
@@ -160,8 +153,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       db_execute( 
         "UPDATE coc_versions SET coc_status = $1, 
         date_updated = CURRENT_TIMESTAMP, updated_by = $2
-        WHERE coc_version_id = $3", 
-        params = list(7, user_coc$username, user_coc$coc_version_id)
+        WHERE coc_version_id = $3 AND date_updated = $4", 
+        params = list(7, user_coc$username, user_coc$coc_version_id, user_coc$date_updated)
       )
       nav_control("inventory")
     })
@@ -258,6 +251,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       # Next, update CoC Version USers in db
       db_append('coc_version_users', new_version_user)
+      
+      # Generate initial set of selected thresholds and factors
+      generate_data_for_new_coc_version(new_version_user$coc_version_id)
       
       # update reactiveVal
       coc_vu(
@@ -462,10 +458,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         #coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
         coc_version_id = version_id,
         request_status = request_status_num,
-        reason_for_rejection = NA,
-        date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-        date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        reason_for_rejection = NA
       ) |>
+        add_datetime_stamp(is_new = TRUE) |>
         add_user_stamp(user_coc, is_new = TRUE)
       
       # Add row to requests table
