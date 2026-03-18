@@ -7,6 +7,8 @@ page_navbar(
   theme = orr_bslib_theme,
   navbar_options = orr_navbar_options,
   
+  includeCSS(here("www/custom.css")),
+  
   header = tagList(
     ## css, idle management, and dimension management --------
     tags$head(

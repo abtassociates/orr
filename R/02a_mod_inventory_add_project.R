@@ -391,7 +391,7 @@ mod_inventory_add_project_server <- function(
       req(isTruthy(input$submit) || isTruthy(input$add_another_link))
       iv$enable()
       print('observed input$submit')
-      browser()
+      
       if (iv$is_valid()) {
         vis_beds <- visible_bed_groups()
         

@@ -102,6 +102,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       ))
 
       req(nrow(factors_and_scores_for_project()) > 0)
+      
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
       
@@ -213,36 +214,6 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       shinyjs::toggleState("save_rating", condition = iv$is_valid())
     })
     
-    update_rating_scores_db <- function(p, updated_rating_scores) {
-      save_to_db(
-        p,
-        "INSERT INTO rating_scores (project_id, selected_rating_factor_id, rating_score, performance, created_by)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (project_id, selected_rating_factor_id) DO UPDATE SET
-          rating_score = EXCLUDED.rating_score,
-          performance  = EXCLUDED.performance,
-          updated_by   = EXCLUDED.created_by
-        "  |> add_optimistic_locking(),
-        updated_rating_scores,
-        "rating_scores"
-      )
-    }
-    
-    update_project_evaluation_db <- function(p, updated_project_evaluation) {
-      save_to_db(
-        p,
-        "INSERT INTO project_evaluations (project_id, method, weighted_score, created_by)
-          VALUES ($1, 'in_app', $2, $3)
-          ON CONFLICT (project_id) DO UPDATE SET 
-            method = EXCLUDED.method,
-            weighted_score = EXCLUDED.weighted_score,
-            updated_by = EXCLUDED.created_by
-        " |> add_optimistic_locking(),
-        updated_project_evaluation,
-        "project_evaluations"
-      )
-    }
-    
     get_updated_project_evaluation <- function(params) {
       data.table(
         project_id = params$project_id,
@@ -285,10 +256,10 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       needs_refresh2 <- FALSE
       pool::poolWithTransaction(DB_POOL, function(p) {
         needs_refresh1 <- update_rating_scores_db(p, updated_rating_scores)
-        needs_refresh2 <- update_project_evaluation_db(p, updated_project_evaluation)
+        needs_refresh2 <- update_rating_score_project_evaluation_db(p, updated_project_evaluation)
       })
 
-      if(needs_refresh1 || needs_refresh2)
+      # if(needs_refresh1 || needs_refresh2)
         refresh_trigger(\(x) x + 1)
     })
   }) #end module server

@@ -82,19 +82,6 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         fsubset(type == "CoC" & selected)
     })
     
-    get_all_thresholds_to_enter <- function(coc_version_id, project_id) {
-      get_db_query(
-        "SELECT st.selected_threshold_id, st.selected, t.type, t.threshold_text, t.threshold_id, met_threshold, threshold_entry_id, te.date_updated
-          FROM thresholds t
-          LEFT JOIN selected_thresholds st ON st.threshold_id = t.threshold_id 
-            AND st.coc_version_id = $1
-          LEFT JOIN threshold_entries te ON te.threshold_id = t.threshold_id 
-            AND (te.project_id = $2 OR te.project_id IS NULL) 
-          WHERE st.selected == TRUE",
-        params = list(coc_version_id, project_id)
-      ) |>
-        fmutate(met_threshold = fcoalesce(as.logical(met_threshold), FALSE))
-    }
     observeEvent(c(selected_project(), refresh_trigger()), {
       req(user_coc$coc_version_id)
 
@@ -114,6 +101,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         )
       )
 
+      # Initialize threshold selections
       updateCheckboxGroupInput(
         session,
         "HUD_requirements",
@@ -207,7 +195,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           met_threshold_new = threshold_id %in% c(params$HUD_requirements, params$CoC_requirements),
           project_id = params$project_id
         ) |>
-        fsubset(met_threshold_new != met_threshold) |>
+        fsubset(met_threshold_new != fcoalesce(as.logical(met_threshold), FALSE)) |>
         fselect(project_id, threshold_id, met_threshold_new, created_by, date_updated)
     }
     get_updated_project_evaluation <- function(params) {
@@ -219,36 +207,6 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         date_updated = params$date_updated
       ) |>
         fselect(project_id, met_HUD_thresholds, met_CoC_thresholds, created_by, date_updated)
-    }
-    
-    update_threshold_entries_db <- function(p, updated_thresholds) {
-      save_to_db(
-        p, 
-        "INSERT INTO threshold_entries (project_id, threshold_id, met_threshold, created_by)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (project_id, threshold_id) DO UPDATE SET 
-            met_threshold = EXCLUDED.met_threshold, 
-            updated_by = EXCLUDED.created_by
-        " |> add_optimistic_locking(),
-        updated_thresholds,
-        "threshold_entries"
-      )
-    }
-    
-    update_project_evaluation_db <- function(p, updated_project_evaluation) {
-      save_to_db(
-        p,
-        "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
-          VALUES ($1, 'in_app', $2, $3, $4)
-          ON CONFLICT (project_id) DO UPDATE SET 
-            method = EXCLUDED.method,
-            met_hud_thresholds = EXCLUDED.met_hud_thresholds, 
-            met_coc_thresholds = EXCLUDED.met_coc_thresholds,
-            updated_by = EXCLUDED.created_by
-        " |> add_optimistic_locking(),
-        updated_project_evaluation,
-        "project_evaluation"
-      )
     }
     
     observeEvent(input$save_requirements, {
@@ -270,7 +228,11 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
           met_all_HUD_requirements = input$yes_to_all_HUD,
           met_all_CoC_requirements = input$yes_to_all_CoC,
           username = user_coc$username,
-          date_updated = project_evaluation()$date_updated
+          date_updated = ifelse(
+            is_empty(project_evaluation()$date_updated), 
+            NA, 
+            project_evaluation()$date_updated
+          )
         )
       )
       
@@ -279,10 +241,10 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
 
       pool::poolWithTransaction(DB_POOL, function(p) {
         needs_refresh1 <- update_threshold_entries_db(p, updated_thresholds)
-        needs_refresh2 <- update_project_evaluation_db(p, updated_project_evaluation)
+        needs_refresh2 <- update_threshold_project_evaluation_db(p, updated_project_evaluation)
       })
       
-      if(needs_refresh1 || needs_refresh2)
+      # if(needs_refresh1 || needs_refresh2)
         refresh_trigger(\(x) x + 1)
       
     }, ignoreInit = TRUE) # end save_requirements

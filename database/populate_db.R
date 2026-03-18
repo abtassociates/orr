@@ -1,11 +1,20 @@
-populate_db <- function(add_demo_data = FALSE, USE_DEV_POSTGRES_DB=FALSE) {
-
+populate_db <- function(
+    add_demo_data = basename(getwd()) != "ORR", 
+    USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
+) {
 library(here)
 library(DBI)
-source("R/utils/get_db_data.R", local=TRUE)
 library(data.table)
 library(glue)
 library(collapse)
+  
+files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+lapply(files, source)
+  
+USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
+
+DB_POOL <- set_up_db_connection(USE_SQLITE)
+set_db_pool(DB_POOL)
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
@@ -24,12 +33,12 @@ ADMIN_USERS <- "
 
 drop_table <- function(tbl) {
 	message(glue::glue("Dropping {tbl}"))
-  if(!USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
-  DBI::dbExecute(DB_POOL, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(!USE_DEV_POSTGRES_DB, '', 'CASCADE')};"))
-	if(!USE_DEV_POSTGRES_DB) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+  if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+  DBI::dbExecute(DB_POOL, glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(USE_SQLITE, '', 'CASCADE')};"))
+	if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
 }
 
-id_var_attrs <- if(!USE_DEV_POSTGRES_DB) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
+id_var_attrs <- if(USE_SQLITE) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'
 
 # create users and All HIC Data ---------------------
 ############################
@@ -142,12 +151,12 @@ VALUES
 ('project_type', 'ES', 'Emergency Shelter', 'orr_service@abtglobal.com'),
 
 -- from target_populations
-('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
-('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
+('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
 ('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
 ('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
 ")
 
@@ -1091,8 +1100,8 @@ VALUES
 ('A. Describe plan for rapid implementation of the program, documenting how the project will be ready to begin housing the first program participant. Provide a detailed schedule of proposed activities for 60 days, 120 days, and 180 days after grant award.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_timeliness_new), NULL, NULL, 10, 'orr_service@abtglobal.com'),
 
 -- Financial (factor_group = fg_financial_new)
-('A. Project is cost-effective when projected cost per person served is compared to CoC average within project type.', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
-('A. Project is cost-effective when projected cost per person served is compared to CoC average within project type.', NULL, (SELECT reference_id FROM l_new), NULL, NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
+('A. Project is cost-effective when projected cost per person served is compared to CoC average within project type.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
+('A. Project is cost-effective when projected cost per person served is compared to CoC average within project type.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
 ('B1. Organization''s most recent audit: Found no exceptions to standard practices', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
 ('B1. Organization''s most recent audit: Found no exceptions to standard practices', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
 ('B2. Organization''s most recent audit: Identified agency as ''low risk''', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_financial_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
@@ -1348,7 +1357,7 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
 DBI::dbExecute(DB_POOL, glue::glue("
 --- Project_Evaluations
 CREATE TABLE IF NOT EXISTS project_evaluations (
-    project_evaluation_id INTEGER PRIMARY KEY,
+    project_evaluation_id {id_var_attrs},
     project_id INTEGER NOT NULL UNIQUE REFERENCES projects(project_id) ON DELETE CASCADE,
     method VARCHAR(7) NULL CHECK (method IN ('in_app', 'outside')),
     met_hud_thresholds BOOLEAN NULL,
@@ -1431,6 +1440,6 @@ DBI::dbExecute(DB_POOL, "CREATE INDEX IF NOT EXISTS idx_references_type ON looku
 
 message("Done populating the db!")
 
-if(add_demo_data)
+if(Sys.getenv("RSTUDIO") == "1" || add_demo_data)
   source(here("sandbox/generate_test_data_for_demo.R"), local=TRUE)
 }

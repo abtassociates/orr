@@ -1,0 +1,20 @@
+# Used to pull project-evaluation info for a given project
+get_project_evaluation <- function(coc_version_id, project_id) {
+  get_db_query(
+    "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, pe.date_updated 
+    FROM project_evaluations pe
+    LEFT JOIN projects p ON pe.project_id = p.project_id
+    WHERE p.coc_version_id = $1 and pe.project_id = $2",
+    params = list(coc_version_id, project_id)
+  )
+}
+
+get_projects_by_funding_action <- function(coc_version_id, funding_action_ids) {
+  get_db_query(glue::glue_sql(
+    "SELECT project_id, organization_name, project_name, project_type, target_population, funding_action
+    FROM projects 
+    WHERE coc_version_id = {coc_version_id} AND funding_action IN ({funding_action_ids*})
+    ORDER BY project_name",
+    .con=DB_POOL
+  ))
+}

@@ -64,7 +64,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
         
       editable_cols <- c("met_hud_thresholds", "met_coc_thresholds", "weighted_score")
       
-      colnames <- unname(project_variable_labels[names(data)])
+      colnames <- unname(variable_labels[names(data)])
       
       met_hud_input_id <- ns("set_met_hud_thresholds")
       met_coc_input_id <- ns("set_met_coc_thresholds")
@@ -185,30 +185,13 @@ mod_alternative_rating_server <- function(id, user_coc) {
         fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, date_updated)
     }
     
-    update_project_evaluations_db <- function(p, updated_project_evaluation) {
-      save_to_db(
-        p,
-        "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
-        VALUES ($1, 'outside', $2, $3, $4)
-        ON CONFLICT (project_id) DO UPDATE SET
-          method = EXCLUDED.method,
-          met_hud_thresholds = EXCLUDED.met_hud_thresholds,
-          met_coc_thresholds = EXCLUDED.met_coc_thresholds,
-          updated_by   = EXCLUDED.created_by
-        " |> add_optimistic_locking(),
-        updated_project_evaluation,
-        "project_evaluations"
-      )
-    }
-    
-    
     observeEvent(input$save_rating, {
       req(ratable_projects())
       
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
       needs_refresh <- update_project_evaluations_db(DB_POOL, updated_project_evaluations)
       
-      if(needs_refresh)
+      # if(needs_refresh)
         refresh_trigger(\(x) x + 1)
     }) # end save_rating
     
@@ -332,7 +315,8 @@ mod_alternative_rating_server <- function(id, user_coc) {
         )
         
         # Pull valid projects
-        valid_projects <- get_db_query("SELECT project_id, organization_name, project_name FROM projects")
+        valid_projects <- get_coc_projects(user_coc$coc_version_id) |>
+          fselect(project_id, organization_name, project_name)
         
         if ("project_id" %in% names(imported)) {
           validate(

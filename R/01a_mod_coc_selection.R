@@ -64,10 +64,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     project_ids <- reactive({
       req(user_coc$coc_version_id)
 
-      get_db_query(
-        "SELECT project_id FROM projects WHERE coc_version_id = $1", 
-        params = user_coc$coc_version_id
-      )$project_id
+      get_coc_projects(user_coc$coc_version_id)$project_id
     })
     
     owner_role_refid <- get_lookup_refid("Owner", "coc_version_role")
@@ -254,6 +251,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       # Next, update CoC Version USers in db
       db_append('coc_version_users', new_version_user)
+      
+      # Generate initial set of selected thresholds and factors
+      generate_data_for_new_coc_version(new_version_user$coc_version_id)
       
       # update reactiveVal
       coc_vu(

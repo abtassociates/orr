@@ -1,13 +1,13 @@
 pop_grp_toggles <- expand.grid(
-  pop = c("All" = 0, get_labelled_lookups("target_population", lookup_col = "value_long")),
+  pop = get_labelled_lookups("target_population", lookup_col = "value_long"),
   grp = get_labelled_lookups("population_group", lookup_col = "value_long")
 ) |>
   qDT() |>
   fmutate(
-    pop_txt = ifelse(names(pop) == "Domestic Violence", "DV", names(pop)),
+    pop_txt = gsub("Domestic Violence", "DV", names(pop)),
     grp_txt = names(grp)
   ) |>
-  fsubset(!pop_txt %in% c("Not Applicable", "Human Immunodeficiency Virus", "General")) |>
+  fsubset(!pop_txt %in% c("Not Applicable", "Human Immunodeficiency Virus")) |>
   setorder(-grp, pop) |>
   fmutate(
     full_text = fcase(
@@ -107,7 +107,8 @@ mod_funding_priorities_ui <- function(id) {
           checkboxGroupInput(
             ns("population_toggles"),
             label = "Enable/Disable Populations",
-            choices = pop_grp_toggles$full_text
+            choices = pop_grp_toggles$full_text,
+            selected =  c("General Families", "General Individuals", "Single Youth")
           )
         ),
         div(
@@ -129,6 +130,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     )
     coc_nofo_opportunities <- reactiveVal()
     coc_funding_priorities <- reactiveVal()
+    formatted_coc_funding_priorities <- reactiveVal()
     
     # Populate Funding Info -----------
     ard_field_names <- c(
@@ -166,13 +168,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     
     # Priorities ------------
-    get_coc_funding_priorities <- function(coc_version_id) {
-      get_db_query(
-        "SELECT * 
-           FROM coc_funding_priorities 
-           WHERE coc_version_id = $1 AND (beds IS NOT NULL OR funding IS NOT NULL or priority IS NOT NULL)",
-        params = list(coc_version_id)
-      ) |>
+    format_coc_funding_priorities <- function(coc_funding_priorities_db) {
+      coc_funding_priorities_db |>
         # 1. Need to get this into app-ready data structure, e.g.
         #                           Population PSH_Beds PSH_Funding PSH_Priority RRH_Beds RRH_Funding RRH_Priority TH_Beds TH_Funding TH_Priority TH+RRH_Beds TH+RRH_Funding TH+RRH_Priority
         #                               <char>    <num>       <num>       <char>    <num>       <num>       <char>   <num>      <num>      <char>       <num>          <num>          <char>
@@ -201,10 +198,11 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
             project_type = LOOKUPS[reference_type == "project_type" & value %in% MAIN_PROJECT_TYPES]$reference_id
           ),
           how = "right"
-        ) |>
+        ) %>%
         # convert project type number to label
         fmutate(
-          project_type = get_lookup_label(project_type, 'project_type')
+          project_type = get_lookup_label(project_type, 'project_type'),
+          priority = convert_to_factor(., "priority")
         ) |>
         # pivot to app data structure
         pivot(
@@ -224,19 +222,25 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       user_coc$coc_version_id, 
       refresh_trigger$coc_funding_priorities
     ), {
+      req(user_coc$coc_version_id)
+      
       ## Store priorities --------
       coc_funding_priorities(
         get_coc_funding_priorities(user_coc$coc_version_id)
       )
       
+      formatted_coc_funding_priorities(
+        format_coc_funding_priorities(coc_funding_priorities())
+      )
+      
       ## Population toggles --------
-      selected_populations <- coc_funding_priorities() %>%
+      selected_populations <- formatted_coc_funding_priorities() %>%
         dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
       
       updateCheckboxGroupInput(
         session,
         "population_toggles",
-        selected = selected_populations$Population
+        selected = if(fnrow(selected_populations) > 0) selected_populations$Population else input$population_toggles
       )
     })
     
@@ -245,13 +249,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       user_coc$coc_version_id, 
       refresh_trigger$coc_nofo_opportunities
     ), {
+      req(user_coc$coc_version_id)
+      
       coc_nofo_opportunities(
-        get_db_query(
-          "SELECT c.coc_nofo_opportunity_id, c.bonus_type, s.selected, s.date_updated
-          FROM coc_nofo_opportunities c
-          LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $1", 
-          params = list(user_coc$coc_version_id)
-        )
+        get_coc_nofo_opportunities(user_coc$coc_version_id)
       )
       
       selected_coc_nofo_opportunities <- coc_nofo_opportunities()[selected == 1]
@@ -283,7 +284,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     # Priorities section -----------------
     output$priorities_table <- renderDT({
-      # Require these two things to be ready before rendering
       req(coc_funding_priorities())
       
       show_priorities_row <- length(input$population_toggles) > 0
@@ -295,15 +295,27 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         "Click population in the left-hand sidebar to enter priorities for that population"
       ))
       
-      # Filter the full dataset based on the selected checkboxes
-      data_to_display <- isolate(coc_funding_priorities()[Population %in% input$population_toggles])
-
-      # Create the header structure
-      datatable(
-        data_to_display,
-        selection = 'none',
-        style = 'default',
-        rownames = FALSE,
+      data <- formatted_coc_funding_priorities() |>
+        fsubset(Population %in% input$population_toggles)
+      
+      initialize_inline_edit_table_ui(
+        data = data,
+        tableID = ns("priorities_table"),
+        formatting = list(
+          function(x) formatStyle(
+            x,
+            columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
+            `border-right` = "1px solid black"
+          ),
+          function(x) formatCurrency(
+            x,
+            columns = seq(3, ncol(data), by = 3),
+            currency = "$", 
+            mark = ",",
+            digits = 0
+          )
+        ), 
+        cols_to_disable = "Population",
         container = tags$table(
           tags$thead(
             tags$tr(
@@ -319,43 +331,28 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
             )
           )
         ),
-        editable = list(
-          target = 'cell',
-          disable = list(columns = c(0))
-        ),
         options = list(
           dom = 't',
-          pageLength = nrow(data_to_display),
-          #ordering = FALSE,
           searching = FALSE,
           info = FALSE
         ),
-        callback = JS(
-          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {",
-            paste0("$(this).css('background-color', '",USER_ENTRY_BG_COLOR,"');"),
-          "});
-          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
+        filter = 'none',
+        callback_js = glue::glue(
+          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
+            $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
+          }});
+          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
             $(this).css('background-color', 'inherit');
-          });
+          }});
         ")
-      ) %>% 
-        formatStyle(
-          columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
-          `border-right` = "1px solid black"
-        ) %>%
-        formatCurrency(
-          columns = seq(3, ncol(data_to_display), by = 3),
-          currency = "$", 
-          mark = ",",
-          digits = 0
-        )
+      ) #end initialize_data_Table
     }, server = FALSE)
     
     priorities_table_proxy <- dataTableProxy(ns("priorities_table"),session = session)
     
     observe({
-      req(coc_funding_priorities())
-      replaceData(priorities_table_proxy, coc_funding_priorities(), resetPaging = FALSE)
+      req(formatted_coc_funding_priorities())
+      replaceData(priorities_table_proxy, formatted_coc_funding_priorities(), resetPaging = FALSE)
     })
     
     
@@ -364,8 +361,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       info <- input$priorities_table_cell_edit
       
       # Update the full dataset 
-      current_data <- coc_funding_priorities()
-      
+      current_data <- formatted_coc_funding_priorities()
+
       # Get the population name from the row that was displayed
       # This is trickier because the view is filtered. We need to map the
       # viewed row index back to the full data index.
@@ -373,10 +370,14 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       population_to_update <- displayed_data[info$row, Population]
       full_data_row_index <- which(current_data$Population == population_to_update)
       
+      # only proceed if they changed anything:
+      old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE][[1]]
+      req(!identical(old_val, info$value))
+      
       # Update the value in the full dataset, so we can update the reactive and datatable proxy
       # The column index needs + 1 because datatable is 0 indexed
       current_data[full_data_row_index, (info$col + 1) := info$value]
-      
+
       ## Update database -------------
       changed_data <- current_data[full_data_row_index, c(1, info$col + 1), with=FALSE] |>
         tidyr::pivot_longer(
@@ -389,10 +390,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           on = c("Population" = "full_text")
         ) |>
         frename(pop = target_population, grp = population_group) |>
-        fmutate(project_type = get_lookup_refid(project_type, ref_type = "project_type"))
+        fmutate(project_type = get_lookup_refid(project_type, ref_type = "project_type")) |>
+        join(
+          coc_funding_priorities() |> 
+            fselect(project_type, target_population, population_group, date_updated),
+          on = c("project_type", "target_population", "population_group")
+        )
       
       # bed, funding, or priority
       metric_name <- names(changed_data)[3]
+      
       updated_coc_funding_priorities <- list(
         user_coc$coc_version_id,
         changed_data$project_type,
@@ -403,11 +410,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         date_updated = changed_data$date_updated
       )
       
-      needs_refresh <- update_coc_funding_priorities_db(DB_POOL, metric_name, updated_coc_funding_priorities)
-      if(needs_refresh)
+      needs_refresh <- update_coc_funding_priorities_db(
+        DB_POOL, 
+        metric_name, 
+        updated_coc_funding_priorities
+      )
+      
+      # if(needs_refresh)
         refresh_trigger$coc_funding_priorities <- refresh_trigger$coc_funding_priorities + 1
       
-      coc_funding_priorities(current_data)
+      formatted_coc_funding_priorities(current_data)
     }) # end observeEvent
     
     
@@ -426,36 +438,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     }
     
     ## Save to db -------------
-    update_coc_nofo_opportunities_db <- function(p, updated_coc_nofo_opportunities) {
-      save_to_db(
-        p,
-        "INSERT INTO selected_coc_nofo_opportunities (coc_version_id, coc_nofo_opportunity_id, selected, created_by)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO UPDATE SET
-            selected = EXCLUDED.selected,
-            updated_by = EXCLUDED.created_by
-          " |> add_optimistic_locking(),
-        updated_coc_nofo_opportunities,
-        "selected_coc_nofo_opportunities"
-      )
-    }
-    
-    update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding_priorities) {
-      save_to_db(
-        p,
-        glue::glue("INSERT INTO coc_funding_priorities (coc_version_id, project_type, target_population, population_group, {metric_name}, created_by)
-          VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (coc_version_id, project_type, target_population, population_group) DO UPDATE SET 
-            {metric_name} = EXCLUDED.{metric_name},
-            updated_by = EXCLUDED.created_by, -- Use the 'created_by' value from the attempted insert
-          ") |> add_optimistic_locking(),
-        updated_coc_funding_priorities,
-        "coc_funding_priorities"
-      )
-    }
-    
-    
-    ## Handle save -----------
     observeEvent(input$save_opportunities, {
       req(user_coc$coc_version_id, user_coc$username)
       
@@ -479,7 +461,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         updated_coc_nofo_opportunities
       )
       
-      if(needs_refresh)
+      # if(needs_refresh)
         refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
     })
     

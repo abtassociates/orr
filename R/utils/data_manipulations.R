@@ -85,7 +85,8 @@ factor_vars_db_prep <- function(data) {
   return(do.call(fmutate, c(list(data), mutate_expressions)))
 }
 
-project_variable_labels <- c(
+# Indicates how to display certain varibales in a more readable way
+variable_labels <- c(
   "project_id" = "Project ID",
   "organization_name" = "Organization Name",
   "project_name" = "Project Name",
@@ -345,13 +346,6 @@ get_db_timestamp <- function() {
   format_timestamp_for_db(Sys.time())
 }
 
-format_date_updated_for_db <- function(df) {
-  if("date_updated" %in% colnames(df))
-    df <- df |>
-      fmutate(date_updated = format_timestamp_for_db(date_updated))
-  
-  return(df)
-}
 save_to_db <- function(p, sql, params, tbl_name) {
   tryCatch({
     rows_changed <- if(!grepl("RETURNING ", sql)) {
@@ -422,7 +416,7 @@ add_optimistic_locking <- function(sql) {
     "{trimws(sql, which = 'right')},\n",
     "            date_updated = CURRENT_TIMESTAMP",
     "          WHERE {tbl_name}.date_updated = ${n + 1} ",
-    "OR (${n + 1} IS NULL AND {tbl_name}.date_updated IS NULL);"
+    "OR (${n + 1} IS NULL AND {tbl_name}.date_updated IS NULL)"
   )
   
   sql_with_locking

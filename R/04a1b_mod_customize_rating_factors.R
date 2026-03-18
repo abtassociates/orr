@@ -63,12 +63,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     ns <- session$ns
     
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
-    other_factor_group_id <- get_db_query(
-      "SELECT factor_group_id 
-         FROM factor_groups
-         WHERE factor_group = 'Other and Local Criteria' AND funding_action = $1", 
-      params = funding_action_id
-    )
+    other_factor_group_id <- get_other_factor_group_id(funding_action_id)
     
     refresh_trigger <- reactiveVal(0)
     # Counter for unique IDs for custom factor rows
@@ -77,27 +72,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     custom_factor_observers <- reactiveValues()
     subgroup_check_all_values <- reactiveValues()
 
-    get_all_coc_factors <- function(coc_version_id) {
-      get_db_query(
-        "SELECT rf.rating_factor_id, rf.funding_action, srf.selected, rf.project_type, rf.target_population, rf.rating_factor_text, COALESCE(srf.goal, rf.goal) AS goal,
-                 COALESCE(srf.max_point_value, rf.max_point_value) AS max_point_value, fg.factor_group, fsg.factor_subgroup, srf.date_updated
-          FROM rating_factors rf
-          JOIN factor_groups fg ON rf.factor_group = fg.factor_group_id
-          LEFT JOIN factor_subgroups fsg ON rf.factor_subgroup = fsg.factor_subgroup_id
-          LEFT JOIN selected_rating_factors srf ON rf.rating_factor_id = srf.rating_factor_id AND srf.coc_version_id = $2
-          WHERE rf.funding_action = $1 AND 
-            (rf.coc_version_id = $2 OR rf.coc_version_id IS NULL)",
-        params = list(funding_action_id, coc_version_id)
-      ) |>
-        fmutate(
-          selected = allNA(selected) | selected
-        )
-    }
-    
     all_coc_factors <- reactive({
       req(funding_action, user_coc$coc_version_id)
       
-      all_factors <- get_all_coc_factors(user_coc$coc_version_id)
+      all_factors <- get_all_coc_factors(funding_action_id, user_coc$coc_version_id)
       
       if(!is.null(input$project_type)) all_factors <- all_factors[project_type %in% input$project_type]
       if(!is.null(input$target_population)) all_factors <- all_factors[target_population %in% input$target_population]
@@ -145,9 +123,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
                 column(1, checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected)),
                 if(funding_action == "Renew") column(1, p(get_lookup_label(project_type, ref_type = "project_type"))),
                 if(funding_action == "Renew") column(1, p(get_lookup_label(target_population, ref_type = "target_population"))),
-                column(ifelse(funding_action == "Renew", 7, 9), p(text)),
-                column(1, textInput(ns(paste0("goal_", id)), label = NULL, value = goal)),
-                column(1, numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1))
+                column(ifelse(funding_action == "Renew", 5, 7), p(text)),
+                column(2, textInput(ns(paste0("goal_", id)), label = NULL, value = goal)),
+                column(2, numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1))
               )
             }
           )
@@ -166,9 +144,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               ),
               if(funding_action == "Renew") column(1, tags$b("Project Type")),
               if(funding_action == "Renew") column(1, tags$b("Target Population", style="word-wrap: normal;")),
-              column(ifelse(funding_action == "Renew", 7, 9), tags$b("Rating Factor")),
-              column(1, tags$b("Factor/Goal", style="word-wrap: normal;")),
-              column(1, tags$b("Max Point Value"))
+              column(ifelse(funding_action == "Renew", 5, 7), tags$b("Rating Factor")),
+              column(2, tags$b("Factor/\nGoal", style="word-wrap: normal;")),
+              column(2, tags$b("Max Point Value"))
             ),
             hr(),
             factor_rows,
@@ -205,14 +183,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       # 1. Fetch ALL possible subgroup names ONCE at the start.
       #    This decouples observer creation from the reactive data flow.
       #    We query the source table directly for this static list.
-      all_possible_subgroups <- get_db_query(
-        "SELECT sg.factor_subgroup, fg.factor_group
-          FROM factor_subgroups sg
-          RIGHT JOIN factor_groups fg ON fg.factor_group_id = sg.factor_group
-          WHERE fg.funding_action = $1
-        ", 
-        params = funding_action_id
-      )
+      all_possible_subgroups <- get_subgroups_by_funding_action(funding_action_id)
 
       # PARENT -> CHILDREN
       # observe changes to check-all boxes
@@ -308,16 +279,14 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               inputId = pt_input_id,
               label = NULL,
               choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-              multiple = TRUE,
-              selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
+              multiple = FALSE
             ) else NULL
           ),
           column(1, selectInput(
             inputId = tp_input_id,
             label = NULL,
-            choices = get_labelled_lookups("target_population")[c("DV", "General")],
-            multiple = TRUE,
-            selected = c("DV", "General") # Pre-select all for initial state
+            choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
+            multiple = FALSE
           )),
           column(7, textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text")),
           column(1, textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal")),
@@ -421,7 +390,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     }
 
     observeEvent(input$save_factors, {
-      timestamp <- get_db_timestamp()
       updated_selected_rating_factors <- rbindlist(lapply(all_coc_factors()$rating_factor_id, function(id) {
         data.table(
           rating_factor_id = id,
@@ -430,7 +398,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           goal = as.character(input[[paste0("goal_", id)]]),
           max_point_value = as.numeric(input[[paste0("points_", id)]]),
           created_by = user_coc$username,
-          new_date_updated = timestamp,
           date_updated = all_coc_factors()[rating_factor_id == id]$date_updated
         )
       }))
@@ -443,7 +410,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             project_type = input[[paste0("custom_pt_", i)]],
             target_population = input[[paste0("custom_tp_", i)]],
             rating_factor_text = input[[paste0("custom_text_", i)]],
-            factor_group_id = other_factor_group_id$factor_group_id,
+            factor_group_id = other_factor_group_id,
             selected = isTRUE(input[[paste0("custom_select_", i)]]),
             goal = input[[paste0("custom_goal_", i)]],
             max_point_value = input[[paste0("custom_points_", i)]],
@@ -456,19 +423,26 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       needs_refresh2 <- FALSE
       pool::poolWithTransaction(DB_POOL, function(p) {
         if(custom_factor_counter() > 0) {
-          inserted_custom_factor_info <- insert_custom_factor_to_db(p, custom_factor_data)
-        
-          updated_selected_rating_factors |>
+          # insert new factor into DB, return rating_factor_id
+          inserted_custom_factor_info <- insert_custom_factor_to_db(
+            p, 
+            custom_factor_data |> fselect(-selected)
+          )
+         
+          # add the newly created rating factor ID to the set of selected factors (it's auto-selected)
+         updated_selected_rating_factors <- updated_selected_rating_factors |>
             rbind(
-              inserted_custom_factor_info,
+              custom_factor_data |> 
+                cbind(inserted_custom_factor_info),
               fill = TRUE
-            )
+            ) |>
+           fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, date_updated)
         }
         
         needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)
       })
       
-      if(is.null(inserted_custom_factor_info) || needs_refresh2)
+      # if(is.null(inserted_custom_factor_info) || needs_refresh2)
         refresh_trigger(\(x) x + 1)
       
       module_returns$customize_rating_criteria <- TRUE
