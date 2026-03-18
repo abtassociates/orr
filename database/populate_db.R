@@ -572,27 +572,13 @@ SET
     date_created = CURRENT_TIMESTAMP;
 ")
 
-DBI::dbExecute(DB_CON, glue::glue("
-
-CREATE TABLE IF NOT EXISTS user_settings (
-    user_setting_id {id_var_attrs},
-    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
-  	coc_user VARCHAR(255) REFERENCES users(username),
-    setting_name VARCHAR(255),
-    setting_value VARCHAR,
-    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
-    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
-);
-"))
-
 #######################
 # USER-COC MANAGEMENT
 ######################
 drop_table("coc_versions")
 drop_table("coc_version_requests")
 drop_table("coc_version_users")
+drop_table("user_settings")
 
 DBI::dbExecute(DB_POOL, glue::glue("
 --- CoC versions (CoCs can have versions, as new users may decide to create their own)
@@ -644,6 +630,21 @@ CREATE TABLE IF NOT EXISTS coc_version_users (
     
     -- A user cannot be associated with the same CoC version more than once
     CONSTRAINT uq_coc_version_users UNIQUE (coc_version_id, username)
+);
+"))
+
+DBI::dbExecute(DB_POOL, glue::glue("
+
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_setting_id {id_var_attrs},
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
+  	coc_user VARCHAR(255) REFERENCES users(username),
+    setting_name VARCHAR(255),
+    setting_value VARCHAR,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username),
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username)
 );
 "))
 
