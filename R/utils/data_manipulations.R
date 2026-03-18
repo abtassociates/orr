@@ -124,9 +124,9 @@ variable_labels <- c(
   "vet_bed_inventory" = "Veteran Bed Inventory",
   "youth_bed_inventory" = "Youth Bed Inventory",
   "created_by" = "Created By",
-  # "date_created" = "Date Created",
-  # "date_updated" = "Date Updated",
-  # "updated_by" = "Updated By"
+  "date_created" = "Date Created",
+  "date_updated" = "Date Updated",
+  "updated_by" = "Updated By",
   "met_hud_thresholds" = "Met HUD Thresholds",
   "met_coc_thresholds" = "Met CoC Thresholds",
   "weighted_score" = "Weighted Rating Score (out of 100)"
@@ -254,9 +254,6 @@ store_user_settings <- function(user_coc, tab_name){
     return(NULL)
   
   if(is.null(isolate(user_coc$coc_version_id)))
-    return(NULL)
-  
-  if(is.null(isolate(user_coc$settings$cols_to_hide)))
     return(NULL)
   
   existing_settings <-  dbGetQuery(DB_POOL,
