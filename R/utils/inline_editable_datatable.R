@@ -29,12 +29,13 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
   )
 }
 
-get_init_js <- function(factor_levels, tableID, header_cb) {
+get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
   sprintf("
     function(settings, json) {
       var table = this.api();
       var factorInfo = %s;
       var tableID = '%s';
+      var has_double_header = '%s';
       
       // Build a map of column index -> compound column name from double header
       // Row 0 = top header (group), Row 1 = bottom header (sub-column)
@@ -89,7 +90,7 @@ get_init_js <- function(factor_levels, tableID, header_cb) {
 debugger;
         var cell = table.cell(this);
         var colIndex = cell.index().column;
-        var colName = getCompoundColName(colIndex);
+        var colName = has_double_header == 'TRUE' ? getCompoundColName(colIndex) : table.column(colIndex).header().innerText.toUpperCase();
         // var colName = table.column(colIndex).header().innerText;
         
         if (factorInfo[colName]) {
@@ -142,6 +143,7 @@ debugger;
     }", 
     jsonlite::toJSON(factor_levels), 
     tableID,
+    has_double_header,
     header_cb %||% ""
   )
 }
@@ -162,6 +164,7 @@ initialize_inline_edit_table_ui <- function(
     rownames = FALSE,
     fillContainer = TRUE,
     callback_js = NULL,
+    has_double_header = FALSE,
     ...
 ) {
   # --- STEP 1: handle factors as dropdowns ---
@@ -171,7 +174,7 @@ initialize_inline_edit_table_ui <- function(
   column_defs <- factor_info$column_defs
   
   # use js to show the dropdowns
-  init_js <- get_init_js(factor_info$factor_levels, tableID, header_cb)
+  init_js <- get_init_js(factor_info$factor_levels, tableID, has_double_header, header_cb)
   
   # --- STEP 1: handle user-specified options ---
   default_options <- list(

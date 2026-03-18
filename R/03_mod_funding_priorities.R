@@ -344,7 +344,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
             $(this).css('background-color', 'inherit');
           }});
-        ")
+        "),
+        has_double_header = TRUE
       ) #end initialize_data_Table
     }, server = FALSE)
     
