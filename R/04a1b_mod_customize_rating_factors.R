@@ -39,6 +39,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
     layout_sidebar(
       sidebar = sidebar(
         title = "Filters",
+        id = ns("sidebar"),
         width = "10%",
         project_and_pop_dropdowns(ns)
       ),
@@ -108,10 +109,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         )
       else
         breakpoints(
-          sm = c(1, 7, 2, 2),
-          md = c(1, 7, 2, 2),
-          lg = c(1, 7, 2, 2),
-          xl = c(1, 9, 1, 1)
+          sm = c(1, 1, 6, 2, 2),
+          md = c(1, 1, 6, 2, 2),
+          lg = c(1, 1, 6, 2, 2),
+          xl = c(1, 1, 8, 1, 1)
         )
     }
     
@@ -136,36 +137,46 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               subgroup_data$max_point_value, 
               subgroup_data$selected
             ), function(id, project_type, target_population, text, goal, points, selected) {
-              layout_columns(
-                col_widths = get_col_widths(funding_action),
+              row_items <- list(
                 checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
-                if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")),
-                if(funding_action == "Renew") div(get_lookup_label(target_population, ref_type = "target_population")),
+                if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")) else NULL,
+                div(get_lookup_label(target_population, ref_type = "target_population")),
                 div(text),
                 textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
                 numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1)
+              )
+              
+              layout_columns(
+                col_widths = get_col_widths(funding_action),
+                !!!purrr::compact(row_items)
               )
             }
           )
           
           all_subgroup_factors_selected <- nrow(subgroup_data) == nrow(subgroup_data[selected == TRUE])
+          
+          header_items <- list(
+            div(
+              tags$b("Use in rating?"),
+              checkboxInput(
+                ns(make.names(paste0(group_name, "_check_all_", subgroup_name))),
+                label = NULL,
+                value = all_subgroup_factors_selected
+              )
+            ),
+            # Use if() normally; compact() will remove the NULLs later
+            if(funding_action == "Renew") tags$b("Project Type") else NULL,
+            tags$b("Target Population", style="word-wrap: normal;"),
+            tags$b("Rating Factor"),
+            tags$b("Factor/\nGoal", style="word-wrap: normal;"),
+            tags$b("Max Point Value")
+          )
+          
           bslib::accordion_panel(
             title = ifelse(subgroup_name == "NA", "", subgroup_name),
             layout_columns(
               col_widths = get_col_widths(funding_action),
-              list(
-                tags$b("Use in rating?"),
-                checkboxInput(
-                  ns(make.names(paste0(group_name, "_check_all_", subgroup_name))),
-                  label = NULL,
-                  value = all_subgroup_factors_selected
-                )
-              ),
-              if(funding_action == "Renew") tags$b("Project Type"),
-              if(funding_action == "Renew") tags$b("Target Population", style="word-wrap: normal;"),
-              tags$b("Rating Factor"),
-              tags$b("Factor/\nGoal", style="word-wrap: normal;"),
-              tags$b("Max Point Value")
+              !!!purrr::compact(header_items)
             ),
             hr(),
             factor_rows,
@@ -292,7 +303,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         id = row_div_id,
         layout_columns(
           col_widths = get_col_widths(funding_action),
-          # style = "padding-top: 10px; border-top: 1px solid #eee;",
           checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE),
           if(funding_action == "Renew") 
             selectInput(
@@ -300,19 +310,19 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               label = NULL,
               choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
               multiple = FALSE
-            ),
-          if(funding_action == "Renew") 
-            selectInput(
-              inputId = tp_input_id,
-              label = NULL,
-              choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
-              multiple = FALSE
-            ),
+            ) else NULL,
+          selectInput(
+            inputId = tp_input_id,
+            label = NULL,
+            choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
+            multiple = FALSE
+          ),
           textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
           textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
-          div(style="display:flex; align-items:center; gap:5px;",
-              numericInput(ns(paste0("custom_points_", row_id)), label = NULL, value = 0, step = 1),
-              actionButton(ns(paste0("remove_custom_", row_id)), "", icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
+          div(
+            style="display:flex; align-items:center; gap:5px;",
+            numericInput(ns(paste0("custom_points_", row_id)), label = NULL, value = 0, step = 1),
+            actionButton(ns(paste0("remove_custom_", row_id)), "", icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
           )
         )
       )
