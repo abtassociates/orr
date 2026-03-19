@@ -163,7 +163,7 @@ initialize_inline_edit_table_ui <- function(
     selection = "none",
     rownames = FALSE,
     fillContainer = TRUE,
-    callback_js = NULL,
+    callback_js = "return table;",
     has_double_header = FALSE,
     ...
 ) {
@@ -197,6 +197,7 @@ initialize_inline_edit_table_ui <- function(
     #   "}"  
     # ))
   )
+
   final_options <- modifyList(default_options, options)
   
   # --- STEP 3: datatable creation ---
