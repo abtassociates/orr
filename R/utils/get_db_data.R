@@ -78,18 +78,7 @@ get_db_column_limit <- function(table_name, column_name) {
   
   # 1. Determine which DB type we are using
   # RPostgres returns "PostgreSQL", RSQLite returns "SQLite"
-  db_type <- DBI::dbGetInfo(pool)$dbmsName
-  
-  if (db_type == "PostgreSQL") {
-    # Postgres uses information_schema
-    sql <- "
-      SELECT character_maximum_length 
-      FROM information_schema.columns 
-      WHERE table_name = $1 AND column_name = $2"
-    res <- DBI::dbGetQuery(pool, sql, params = list(table = table_name, column = column_name))
-    limit <- res$character_maximum_length[1]
-    
-  } else if (db_type == "SQLite") {
+  if (.db_env$connection_type == "SQLite") {
     # SQLite uses PRAGMA table_info
     # This returns a table with a 'type' column (e.g., "VARCHAR(10)")
     res <- DBI::dbGetQuery(pool, paste0("PRAGMA table_info(", table_name, ")"))
@@ -100,7 +89,15 @@ get_db_column_limit <- function(table_name, column_name) {
     
     # If no parentheses found (e.g. type is just 'TEXT'), limit will be the same as col_type
     if (limit == col_type) limit <- NA 
-  }
+  } else {
+    # Postgres uses information_schema
+    sql <- "
+      SELECT character_maximum_length 
+      FROM information_schema.columns 
+      WHERE table_name = $1 AND column_name = $2"
+    res <- DBI::dbGetQuery(pool, sql, params = list(table_name, column_name))
+    limit <- res$character_maximum_length[1]
+  } 
   
   # Return the limit found, or a safe default (255) if it's unlimited/TEXT
   return(if (is.na(limit) || is.null(limit)) 255 else as.integer(limit))
