@@ -15,6 +15,6 @@ get_projects_by_funding_action <- function(coc_version_id, funding_action_ids) {
     FROM projects 
     WHERE coc_version_id = {coc_version_id} AND funding_action IN ({funding_action_ids*})
     ORDER BY project_name",
-    .con=DB_POOL
+    .con=get_db_pool()
   ))
 }

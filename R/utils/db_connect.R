@@ -1,20 +1,18 @@
 .db_env <- new.env(parent = emptyenv())
 
-set_db_pool <- function(pool) {
-  .db_env$pool <- pool
-}
-
 get_db_pool <- function() {
   if (is.null(.db_env$pool)) stop("DB pool not initialized. Call set_db_pool() first.")
   .db_env$pool
 }
 
 set_up_db_connection <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
-  if(Sys.getenv("RSTUDIO") == "1" && USE_SQLITE) {
-    return(get_sqlite_db())
+  .db_env$connection_type <- ifelse(USE_SQLITE, "SQLite", "RPostgres")
+  
+  .db_env$pool <- if(Sys.getenv("RSTUDIO") == "1" && USE_SQLITE) {
+    get_sqlite_db()
   } else {
     if(Sys.getenv("RSTUDIO") == "1") set_up_tunnel()
-    return(get_postgres_db())
+    get_postgres_db()
   }
 }
 
@@ -36,11 +34,54 @@ set_up_tunnel <- function() {
     
     Sys.sleep(2)
     
-    shiny::onStop(function() {
-      tools::pskill(tunnel)
-    })
+    if (shiny::isRunning()) {
+      shiny::onStop(function() {
+        try(tools::pskill(tunnel), silent = TRUE)
+      })
+    }
+  } else {
+    message("Port 5432 is already in use. Assuming tunnel is active.")
   }
 }
+
+with_tunnel_retry <- function(db_expr) {
+  # Capture the exact code passed into the function and the environment it came from
+  expr <- substitute(db_expr)
+  env  <- parent.frame()
+  
+  tryCatch({
+    # 1. Attempt the database operation
+    eval(expr, env)
+    
+  }, error = function(e) {
+    
+    # 2. If we are using SQLite, skip tunnel logic entirely and pass the error up
+    if (.db_env$connection_type == "SQLite" || Sys.getenv("RSTUDIO") != "1") {
+      stop(e)
+    }
+    
+    # 3. If we are using Postgres, check if it's a network/tunnel error
+    is_conn_error <- grepl("closed the connection|Connection refused|could not connect|no connection|terminating connection", e$message, ignore.case = TRUE)
+    
+    # 4. If the tunnel died AND we are in local development (RStudio)
+    if (is_conn_error && Sys.getenv("RSTUDIO") == "1") {
+      message("Database connection lost. Restarting SSH tunnel...")
+      
+      # Kill dead tunnel and start a new one
+      kill_open_tunnel()
+      set_up_tunnel()
+      Sys.sleep(2) # Give the tunnel a moment to connect to AWS
+      
+      # Try the exact same database operation one more time!
+      message("Retrying query...")
+      return(eval(expr, env))
+    }
+    
+    # 5. If it's just a normal SQL syntax error, pass the error up
+    stop(e)
+  })
+}
+
 
 # Database configuration
 # Using a global pool shares access to the db and is long-lived

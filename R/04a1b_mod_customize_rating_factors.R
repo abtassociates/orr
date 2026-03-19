@@ -449,7 +449,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
       inserted_custom_factor_info <- NULL
       needs_refresh2 <- FALSE
-      pool::poolWithTransaction(DB_POOL, function(p) {
+      pool::poolWithTransaction(get_db_pool(), function(p) {
         if(custom_factor_counter() > 0) {
           # insert new factor into DB, return rating_factor_id
           inserted_custom_factor_info <- insert_custom_factor_to_db(

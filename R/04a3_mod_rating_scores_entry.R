@@ -36,6 +36,9 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
     factors_and_scores_for_project <- reactiveVal()
     project_evaluation <- reactiveVal()
     
+    performance_char_limit <- get_db_column_limit("rating_scores","performance")
+    
+    
     observeEvent(c(selected_project(), refresh_trigger()), {
       req(user_coc$coc_version_id)
 
@@ -83,6 +86,16 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
               if (is.null(.) || is.na(.)) return(NULL)
               if (!is.numeric(.) || . < 0 || . > max_pts) 
                 return(paste0("Score must be a number between 0 and ", max_pts, "."))
+            }
+          )
+          
+          iv$add_rule(
+            paste0("performance_", id),
+            ~ {
+              # nchar(NULL) is integer(0), so we check for truthiness first
+              if (!is.null(.) && nchar(.) > performance_char_limit) {
+                return(paste0("Maximum length is ", performance_char_limit, " characters (currently ", nchar(.), ")."))
+              }
             }
           )
         }
@@ -138,15 +151,25 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
                 # We can add a class for CSS styling, e.g., for indentation
                 p(text),
                 p(goal),
-                div(class = "input-col", textInput(ns(paste0("performance_", id)), label = NULL, value = performance)),
-                div(class = "input-col", numericInput(
-                  ns(paste0("rating_score_", id)), 
-                  label = NULL, 
-                  value = rating_score,
-                  min = 0,
-                  max = max_points
-                )) |>
-                  tagAppendAttributes(class = 'score-input', `data-group` = group_id),
+                div(
+                  class = "input-col", 
+                  textInput(
+                    ns(paste0("performance_", id)), 
+                    label = NULL, 
+                    value = performance
+                  ) # |> 
+                    #shiny::tagAppendAttributes(maxlength = performance_char_limit)
+                ),
+                div(
+                  class = "input-col", 
+                  numericInput(
+                    ns(paste0("rating_score_", id)), 
+                    label = NULL, 
+                    value = rating_score,
+                    min = 0,
+                    max = max_points
+                  )) |>
+                    tagAppendAttributes(class = 'score-input', `data-group` = group_id),
                 p(paste("out of", max_points))
               )
             }
@@ -256,7 +279,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       
       needs_refresh1 <- FALSE
       needs_refresh2 <- FALSE
-      pool::poolWithTransaction(DB_POOL, function(p) {
+      pool::poolWithTransaction(get_db_pool(), function(p) {
         needs_refresh1 <- update_rating_scores_db(p, updated_rating_scores)
         needs_refresh2 <- update_rating_score_project_evaluation_db(p, updated_project_evaluation)
       })

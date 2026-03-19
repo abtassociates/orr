@@ -416,7 +416,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       )
       
       needs_refresh <- update_coc_funding_priorities_db(
-        DB_POOL, 
+        get_db_pool(), 
         metric_name, 
         updated_coc_funding_priorities
       )
@@ -462,7 +462,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       # update database
       needs_refresh <- FALSE
       needs_refresh <- update_coc_nofo_opportunities_db(
-        DB_POOL, 
+        get_db_pool(), 
         updated_coc_nofo_opportunities
       )
       

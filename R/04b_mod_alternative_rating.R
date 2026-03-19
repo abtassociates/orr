@@ -97,16 +97,27 @@ mod_alternative_rating_server <- function(id, user_coc) {
           }}
         }});
       ")
-            
-            
+      
       initialize_inline_edit_table_ui(
         data,
-        tableID = "alternative_rating_table",
+        tableID = ns("alternative_rating_table"),
         column_defs = list(
           list(
             targets =c(which(names(data) %in% c("funding_action", "date_updated")) - 1),
             className = "hidden",
             visible = FALSE
+          ),
+          list(
+            targets =c(which(names(data) == "project_id") - 1),
+            width = '90px'
+          ),
+          list(
+            targets =c(which(names(data) == "weighted_score") - 1),
+            width = '120px'
+          ),
+          list(
+            targets =c(which(names(data) %in% c("met_hud_thresholds", "met_coc_thresholds")) - 1),
+            width = '153px'
           )
         ),
         formatting = list(
@@ -125,7 +136,10 @@ mod_alternative_rating_server <- function(id, user_coc) {
         ),
         colnames = colnames,
         cols_to_disable = setdiff(names(data), editable_cols),
-        header_cb = header_cb
+        header_cb = header_cb,
+        options = list(
+          autoWidth = FALSE
+        )
       )
     })
     
@@ -189,7 +203,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
       req(ratable_projects())
       
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
-      needs_refresh <- update_project_evaluations_db(DB_POOL, updated_project_evaluations)
+      needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
       
       # if(needs_refresh)
         refresh_trigger(\(x) x + 1)

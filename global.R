@@ -56,8 +56,7 @@ lapply(files, source)
 
 
 # SET UP DB CONNECTION -----------------
-DB_POOL <- set_up_db_connection()
-set_db_pool(DB_POOL)
+set_up_db_connection(USE_SQLITE = FALSE)
 
 
 # PREP GLOBAL DATA ---------------
