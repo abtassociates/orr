@@ -1311,7 +1311,7 @@ CREATE TABLE IF NOT EXISTS rating_scores (
     project_id INTEGER REFERENCES projects(project_id),
     selected_rating_factor_id SMALLINT NULL REFERENCES selected_rating_factors(selected_rating_factor_id), --can be null if they rate outside the app
     rating_score INTEGER,
-    performance VARCHAR(5) NULL,
+    performance VARCHAR(100) NULL,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

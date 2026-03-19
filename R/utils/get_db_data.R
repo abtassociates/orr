@@ -71,3 +71,37 @@ db_append <- function(tbl, data) {
     list(ok = FALSE, error = e$message)
   })
 }
+
+
+get_db_column_limit <- function(table_name, column_name) {
+  pool <- get_db_pool()
+  
+  # 1. Determine which DB type we are using
+  # RPostgres returns "PostgreSQL", RSQLite returns "SQLite"
+  db_type <- DBI::dbGetInfo(pool)$dbmsName
+  
+  if (db_type == "PostgreSQL") {
+    # Postgres uses information_schema
+    sql <- "
+      SELECT character_maximum_length 
+      FROM information_schema.columns 
+      WHERE table_name = $1 AND column_name = $2"
+    res <- DBI::dbGetQuery(pool, sql, params = list(table = table_name, column = column_name))
+    limit <- res$character_maximum_length[1]
+    
+  } else if (db_type == "SQLite") {
+    # SQLite uses PRAGMA table_info
+    # This returns a table with a 'type' column (e.g., "VARCHAR(10)")
+    res <- DBI::dbGetQuery(pool, paste0("PRAGMA table_info(", table_name, ")"))
+    col_type <- res$type[res$name == column_name]
+    
+    # Use Regex to extract the number inside the parentheses: VARCHAR(10) -> 10
+    limit <- gsub(".*\\((\\d+)\\).*", "\\1", col_type)
+    
+    # If no parentheses found (e.g. type is just 'TEXT'), limit will be the same as col_type
+    if (limit == col_type) limit <- NA 
+  }
+  
+  # Return the limit found, or a safe default (255) if it's unlimited/TEXT
+  return(if (is.na(limit) || is.null(limit)) 255 else as.integer(limit))
+}
