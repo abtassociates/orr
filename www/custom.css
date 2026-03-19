@@ -60,6 +60,11 @@ td.disabled {
 #rating-alternative-alternative_rating_table .dt-buttons {
   display: none;
 }
+#rating-alternative-alternative_rating_table .dataTables_scrollBody {
+  height: 46vh !important;
+}
+
+
 
 /* Fix In-App Rating Sidebar */
 #rating-renew-project_selection_sidebar, 
