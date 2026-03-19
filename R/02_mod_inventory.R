@@ -15,15 +15,23 @@ mod_inventory_ui <- function(id) {
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
-        pickerInput(ns('projects_col_selections'), label = 'Choose Fields to Display',
-                    choices = setNames(names(inventory_variable_labels), inventory_variable_labels),
-                    selected = initial_cols_to_show, 
-                    multiple = TRUE, 
-                    
-                    options = pickerOptions(
-                      selectedTextFormat = 'count',
-                      countSelectedText = '{0} Fields Displayed'
-                    )
+        dropdownButton(
+          inputId = "mydropdown",
+          label = "Choose Fields to Display",
+          icon = icon("sliders"),
+          circle = FALSE,
+          
+          prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
+          pickerInput(ns('projects_col_selections'), label = 'Choose Fields to Display',
+                      choices = setNames(names(inventory_variable_labels), inventory_variable_labels),
+                      selected = initial_cols_to_show, 
+                      multiple = TRUE, 
+                      
+                      options = pickerOptions(
+                        selectedTextFormat = 'count',
+                        countSelectedText = '{0} Fields Displayed'
+                      )
+          )
         ),
         DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
         br(),
@@ -268,6 +276,22 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       }
       return(TRUE)
     }
+    
+    # Update DT table with Bed Inventory fields (switchInput)
+    observeEvent(input$toggle_bed_fields, {
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      req(projects_data())
+      
+      bed_fields <- grep('bed', names(projects_data())) - 1
+      bed_field_names <- names(projects_data())[bed_fields + 1]
+      
+      if(input$toggle_bed_fields){
+        updatePickerInput(session, inputId = 'projects_col_selections', selected = union(input$projects_col_selections, bed_field_names))
+      } else {
+        updatePickerInput(session, inputId = 'projects_col_selections', selected = setdiff(input$projects_col_selections, bed_field_names))
+      }
+    })
     
     # Update DT table with column changes made in dropdown (pickerInput)
     observeEvent(input$projects_col_selections, {

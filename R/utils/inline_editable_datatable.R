@@ -8,7 +8,7 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
   factor_names <- names(factor_cols)[factor_cols]
   factor_levels <- lapply(data[, ..factor_names], levels)
   if(!is.null(colnames)) 
-    names(factor_levels) <- toupper(inventory_variable_labels[match(names(factor_levels), names(inventory_variable_labels))])
+    names(factor_levels) <- toupper(variable_labels[match(names(factor_levels), names(variable_labels))])
 
   # column_defs adds classname for easier management
   column_defs[[length(column_defs) + 1]] <- list(
