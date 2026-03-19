@@ -262,7 +262,7 @@ store_user_settings <- function(user_coc, tab_name){
                                                  isolate(user_coc$username)))
   
   
-  settings_to_save <- c('rating_method','rating_tab','rating_subtab')
+  settings_to_save <- c('rating_method','rating_tab','rating_subtab', 'rating_renew_project_selected', 'rating_new_project_selected')
   
   ## save ratings navigation user settings
   lapply(settings_to_save, 
