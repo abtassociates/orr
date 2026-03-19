@@ -106,7 +106,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
         )
       )
       
-      needs_refresh1 <- update_selected_thresholds_db(DB_POOL, updated_selected_thresholds)
+      needs_refresh1 <- update_selected_thresholds_db(get_db_pool(), updated_selected_thresholds)
       
       # if(needs_refresh1)
         refresh_trigger(\(x) x + 1)
@@ -143,7 +143,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       
       # These don't need to be tied together, but it avoids dealing with 2 different conflicts
       updated_custom_threshold_info <- NULL
-      pool::poolWithTransaction(DB_POOL, function(p) {
+      pool::poolWithTransaction(get_db_pool(), function(p) {
         updated_custom_threshold_info <- update_thresholds_db(p, updated_custom_threshold)
         
         updated_selected_thresholds <- updated_custom_threshold_info |>

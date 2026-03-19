@@ -185,8 +185,8 @@ add_datetime_stamp <- function(x, is_new = FALSE) {
 }
 
 insert_and_return <- function(table, new_dt, return_cols) {
-  col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, names(new_dt)), collapse = ", ")
-  return_col_list <- paste(DBI::dbQuoteIdentifier(DB_POOL, return_cols), collapse = ", ")
+  col_list <- paste(DBI::dbQuoteIdentifier(get_db_pool(), names(new_dt)), collapse = ", ")
+  return_col_list <- paste(DBI::dbQuoteIdentifier(get_db_pool(), return_cols), collapse = ", ")
   placeholders <- paste0("$", seq_along(names(new_dt)), collapse = ", ")
 
   sql <- sprintf(
@@ -199,7 +199,7 @@ insert_and_return <- function(table, new_dt, return_cols) {
   
   results <- lapply(1:nrow(new_dt), function(i) {
     row_values <- as.character(unname(new_dt))
-    DBI::dbGetQuery(DB_POOL, sql, params = as.list(row_values))
+    DBI::dbGetQuery(get_db_pool(), sql, params = as.list(row_values))
   })
 
   return(results)

@@ -239,7 +239,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
       needs_refresh1 <- FALSE
       needs_refresh2 <- FALSE
 
-      pool::poolWithTransaction(DB_POOL, function(p) {
+      pool::poolWithTransaction(get_db_pool(), function(p) {
         needs_refresh1 <- update_threshold_entries_db(p, updated_thresholds)
         needs_refresh2 <- update_threshold_project_evaluation_db(p, updated_project_evaluation)
       })

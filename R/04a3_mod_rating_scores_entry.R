@@ -256,7 +256,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       
       needs_refresh1 <- FALSE
       needs_refresh2 <- FALSE
-      pool::poolWithTransaction(DB_POOL, function(p) {
+      pool::poolWithTransaction(get_db_pool(), function(p) {
         needs_refresh1 <- update_rating_scores_db(p, updated_rating_scores)
         needs_refresh2 <- update_rating_score_project_evaluation_db(p, updated_project_evaluation)
       })

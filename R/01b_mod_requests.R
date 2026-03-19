@@ -122,7 +122,7 @@ mod_requests_server <- function(id, user_coc) {
         as.list() |>
         unname()
       
-      dbWithTransaction(DB_POOL, {
+      dbWithTransaction(get_db_pool(), {
         db_execute(
           glue::glue(
             "UPDATE coc_version_requests 

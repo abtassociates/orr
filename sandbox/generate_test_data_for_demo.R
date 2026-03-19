@@ -13,7 +13,7 @@ delete_test_data <- function(tbl, anchorid) {
   )
 }
 
-if(USE_SQLITE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
+if(USE_SQLITE) DBI::dbExecute(get_db_pool(), "PRAGMA foreign_keys = OFF;")
 tbls_to_clear <- c(
   "coc_version_requests" = "coc_version_id",
   "coc_version_users" = "coc_version_id",
