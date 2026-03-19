@@ -158,6 +158,7 @@ initialize_inline_edit_table_ui <- function(
     buttons = NULL,
     header_cb = NULL,
     options = list(),
+    extensions = list(),
     filter = "top",
     escape = FALSE,
     selection = "none",
@@ -203,7 +204,7 @@ initialize_inline_edit_table_ui <- function(
   dt <- datatable(
     data,
     style = "default",
-    extensions = c('Buttons', 'KeyTable'),
+    extensions = extensions,
     colnames = colnames,
     editable = list(
       target = "cell",
