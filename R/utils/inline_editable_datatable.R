@@ -179,7 +179,7 @@ initialize_inline_edit_table_ui <- function(
   
   # --- STEP 1: handle user-specified options ---
   default_options <- list(
-    dom = "Bt",
+    dom = "tip",
     paging = FALSE,
     scrollY = "100%",  # Limit table height
     keys = TRUE,
