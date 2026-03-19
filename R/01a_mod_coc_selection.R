@@ -26,44 +26,37 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    ## subset coc_version_users to specific user
-    coc_vu <- reactiveVal(NULL)
+    ## versions associated with logged in user
+    users_versions <- reactiveVal(NULL)
     
     ## session variables used for sending access requests
     admin_email <- reactiveVal(NULL)
     coc_requested <- reactiveVal(NULL)
     version_requested <- reactiveVal(NULL)
     
-    get_all_users_and_versions <- function() {
-      coc_vu(
-        get_coc_versions_for_user(user_coc$username) |>
-          fselect(-created_by) |>
-          fmutate(
-            coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
-            coc_status = get_lookup_label(coc_status, 'coc_status')
-          ) |>
-          join(
-            cocs %>% fselect(coc_code, coc_name),
-            how = 'left', 
-            on = c('coc' = 'coc_code')
-          ) |>
-          colorder(coc, coc_name, pos = "after")
-      )
-    }
+    all_versions_and_users <- reactiveVal()
     
-    observeEvent(user_coc$auth, {
+    refresh_trigger <- reactiveVal(0)
+    
+    observeEvent(c(user_coc$auth, refresh_trigger()), {
       req(user_coc$auth)
-      get_all_users_and_versions()
+      all_versions_and_users(
+        get_all_coc_versions_and_users()
+      )
+      
+      users_versions(
+        all_versions_and_users() |>
+          fsubset(username == user_coc$username, -created_by)
+      )
     })
     
     observeEvent(input$refresh_versions_tbl, {
       showNotification("Refreshing Versions table!", type = "message")
-      get_all_users_and_versions()
+      refresh_trigger(\(x) x + 1)
     })
     
     project_ids <- reactive({
       req(user_coc$coc_version_id)
-
       get_coc_projects(user_coc$coc_version_id)$project_id
     })
     
@@ -75,15 +68,15 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
     
     observe({
-      req(coc_vu())
-      replaceData(coc_proxy, coc_vu())
+      req(users_versions())
+      replaceData(coc_proxy, users_versions())
     })
     
     output$coc_versions_dt <- renderDT({
       req(user_coc$auth)
       
-      datatable(coc_vu(), 
-                colnames = unname(versions_variable_labels[match(names(coc_vu()),  names(versions_variable_labels))]),
+      datatable(users_versions(), 
+                colnames = unname(versions_variable_labels[match(names(users_versions()),  names(versions_variable_labels))]),
                 rownames = FALSE,
                 options = list(
                   dom = 'tip', 
@@ -130,8 +123,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
 
       # If there are any versions NOT associated with the current user, allow them to Request Access
-      if(nrow(coc_vu()) > 0) {
-        shinyjs::toggle(id = 'request_access_direct', condition = coc_vu() |> 
+      if(nrow(users_versions()) > 0) {
+        shinyjs::toggle(id = 'request_access_direct', condition = users_versions() |> 
                           fgroup_by(coc) |> 
                           fsummarize(no_version_access = !any(username == user_coc$username)) |> 
                           fsubset(no_version_access) |> 
@@ -142,7 +135,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     ## Edit version ----------------
     observeEvent(input$coc_versions_dt_rows_selected, {
-      current_coc_info <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
+      current_coc_info <- users_versions()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
       user_coc$coc <- current_coc_info$coc
       user_coc$coc_version_id <- current_coc_info$coc_version_id
       user_coc$date_updated <- current_coc_info$date_updated
@@ -162,7 +155,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ## Delete version ---------------
     observeEvent(input$delete_coc_version, {
       
-      if(coc_vu()[input$coc_versions_dt_rows_selected, coc_version_role] == "Owner"){
+      if(users_versions()[input$coc_versions_dt_rows_selected, coc_version_role] == "Owner"){
         
         showModal(
           modalDialog(
@@ -213,7 +206,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ## Copy version ------------
     observeEvent(input$copy_version, {
       req(input$coc_versions_dt_rows_selected)
-      current_version_name <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc_version_name)]
+      current_version_name <- users_versions()[input$coc_versions_dt_rows_selected, .(coc_version_name)]
       showModal(
         modalDialog(
           title = paste0('Copy ', current_version_name),
@@ -256,9 +249,9 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       generate_data_for_new_coc_version(new_version_user$coc_version_id)
       
       # update reactiveVal
-      coc_vu(
+      users_versions(
         rbind(
-          copy(coc_vu()), 
+          copy(users_versions()), 
           new_version |>
             fmutate(
               coc_version_id = new_version_user$coc_version_id,
@@ -277,7 +270,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     observeEvent(input$copy_orr_confirm, {
       coc_version_id <- create_new_version_for_user(
-        coc_vu()[input$coc_versions_dt_rows_selected] |>
+        users_versions()[input$coc_versions_dt_rows_selected] |>
           fmutate(coc_version_name = input$copy_version_name) |>
           fselect(-coc_version_role, -date_updated, -date_created)
       )
@@ -309,11 +302,11 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       # If there’s an version THEY are already associated with (by looking up CoC Versions joined with CoC Version Users where the user is this user),
       # warn them that they already have an ORR for this CoC and that if they wish to modify settings, they can do so within existing ORRs.
       # Show options "Continue" or "Cancel"
-      check_if_already_have <- coc_vu() |>
+      check_if_already_have <- users_versions() |>
         fsubset(username == user_coc$username & coc == coc_requested())
       
-      check_if_others_have <- coc_vu() |>
-        fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == owner_role_refid)
+      check_if_others_have <- all_versions_and_users() |>
+        fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == "Owner")
       
       removeModal()
       
@@ -407,7 +400,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # When user clicks the "Request Access to a CoC" button on the dashboard
     # allow user to view versions and request access
     request_access_direct_coc_versions <- reactive({
-      coc_vu() |>
+      users_versions() |>
         fsubset(username != user_coc$username) |>
         fselect(coc, coc_version_name, username)
     })
@@ -471,7 +464,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       prev_requests <- get_db_tbl('coc_version_requests')
       
-      version_id <- coc_vu() |> 
+      version_id <- users_versions() |> 
         fsubset(coc == input$request_access_coc_dropdown & 
                 coc_version_name == input$direct_request_coc_versions_cell_clicked$value) |> 
         fselect('coc_version_id') %>% 
@@ -498,7 +491,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # but may not have known about an existing version for the same CoC
     request_access_indirect_coc_versions <- reactive({
       
-      coc_vu() |>
+      users_versions() |>
         fsubset(username != user_coc$username) |>
         fselect(coc, coc_version_name, username)
     })
@@ -559,7 +552,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       prev_requests <- get_db_tbl('coc_version_requests')
       
-      version_id <- coc_vu() |> 
+      version_id <- users_versions() |> 
         fsubset(coc == input$request_indirect_access_coc_dropdown & 
                   coc_version_name == input$indirect_request_coc_versions_cell_clicked$value) |> 
         fselect('coc_version_id') %>% 
