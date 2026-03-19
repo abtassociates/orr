@@ -23,7 +23,7 @@ mod_inventory_ui <- function(id) {
           
           prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
           pickerInput(ns('projects_col_selections'), label = 'Choose Fields to Display',
-                      choices = setNames(names(inventory_variable_labels), inventory_variable_labels),
+                      choices = setNames(initial_cols_to_show, inventory_variable_labels[initial_cols_to_show]),
                       selected = initial_cols_to_show, 
                       multiple = TRUE, 
                       
