@@ -74,3 +74,11 @@ table.dataTable tbody th.focus, table.dataTable tbody td.focus {
   top: 0; 
   height: 100vh;
 }
+
+/* allow DT dropdown filter text to expand and stay on single line */
+table.dataTable .selectize-dropdown-content {
+  white-space: nowrap;
+  display: inline-block;
+  background: var(--bs-body-bg);
+}
+
