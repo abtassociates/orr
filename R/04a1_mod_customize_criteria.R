@@ -37,7 +37,7 @@ mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_sess
     ns <- session$ns
     
     # Call sub-modules for each tab
-    mod_customize_coc_thresholds_server("coc_thresholds", user_coc, nav_control)
+    mod_customize_coc_thresholds_server("coc_thresholds", user_coc, nav_control, module_returns)
     mod_customize_rating_factors_server("renewal_rating_factors", user_coc, "Renew", module_returns)
     mod_customize_rating_factors_server("new_rating_factors", user_coc, "New", module_returns)
   })

@@ -1,0 +1,1 @@
+IN_PROD_APP <- function() Sys.getenv("RSTUDIO") != "1" && basename(getwd()) == "ORR"

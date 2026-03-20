@@ -1,0 +1,74 @@
+name: '🔎 Gemini R-Shiny Reviewer'
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'PR number to review'
+        required: true
+
+# Prevent multiple reviews from running on the same PR simultaneously 
+# to protect your Rate Limits (RPM)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: 'read'
+  pull-requests: 'write'
+
+jobs:
+  review:
+    if: false
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@v4'
+        with:
+          # If triggered by dispatch (relay), use the branch head.
+          # If triggered by pull_request, use the PR head.
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          fetch-depth: 0 # Important for the CLI to see the git history
+
+      # - name: 'List All Available Models'
+      #  shell: bash
+      #  run: |
+      #    curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=${{ secrets.GEMINI_API_KEY }}" \
+      #    | grep '"name": "models/'
+          
+      - name: 'Gemini Review'
+        id: gemini_review
+        uses: 'google-github-actions/run-gemini-cli@v0'
+        env:
+          # This is the key part: The CLI looks for this specific Env Var name
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          ISSUE_TITLE: ${{ github.event.pull_request.title || github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.pull_request.body || github.event.issue.body }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          REPOSITORY: ${{ github.repository }}
+          ADDITIONAL_CONTEXT: ${{ inputs.additional_context }}
+          # GEMINI_MODEL: 'gemini-3.0-flash-preview-001'
+          
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: 'gemini-2.5-flash-lite' # has higher limits (on Free Tier, 1500 requests-per-day (RPD) and 15 requests per minute (RPM))
+          # gemini_model: 'gemini-flash-latest' # (as of 2/16/26, uses 2.5 flash, 20 RPD and 5 RPM)
+          # gemini-model: 'gemini-3.0-flash-preview' #  (as of 2/16/26, 20 RPD and 5 RPM)
+          # gemini-model: 'gemini-3-flash-preview'
+          # gemini-model: 'gemini-3.0-flash-preview-001'
+          prompt: |
+            /gemini-review
+
+      # 2. Add a new step to dump the outputs
+      - name: 'View Gemini Usage Metadata'
+        if: always() 
+        env:
+          # Safely pass the JSON object as an environment variable
+          STEP_OUTPUTS: ${{ toJSON(steps.gemini_review.outputs) }}
+        run: |
+          echo "Raw Step Outputs:"
+          echo "$STEP_OUTPUTS" | jq .

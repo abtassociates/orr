@@ -54,3 +54,24 @@ td.disabled {
 .input-col input {
   text-align: center;
 }
+
+
+/* Alternative Rating*/
+#rating-alternative-alternative_rating_table .dt-buttons {
+  display: none;
+}
+#rating-alternative-alternative_rating_table .dataTables_scrollBody {
+  height: 46vh !important;
+}
+
+
+
+/* Fix In-App Rating Sidebar */
+#rating-renew-project_selection_sidebar, 
+#rating-new-project_selection_sidebar,
+#rating-customize_criteria-renewal_rating_factors-sidebar,
+#rating-customize_criteria-new_rating_factors-sidebar {
+  position: sticky; 
+  top: 0; 
+  height: 100vh;
+}

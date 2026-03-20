@@ -5,16 +5,21 @@ mod_requests_ui <- function(id) {
     #nav_panel(
     #  "Requests",
       card(
-        card_header(h4('Version Access Requests')),
+        #card_header(h4('Version Access Requests')),
+        card_header(h4("Version Access Requests", 
+                       div(style = "float: right;",
+                           actionBttn(ns('refresh_requests_tbl'), label="Refresh", color="primary", size="xs", icon=icon('refresh')))
+        )),
         card_body(
           fillable = FALSE,
           helpText("Please select a row from the table below to update a request."),
           br(),
           br(),
-          actionGroupButtons(
-            c(ns("filter_sent"), ns("filter_approved"), ns("filter_rejected")),
-            c("Outstanding", "Approved", "Rejected"),
-            status = "default"
+          radioGroupButtons(
+            ns('request_filters'),
+            choices = c('Received','Sent','Approved','Rejected'),
+            selected = NULL,
+            status = "primary"
           ),
           DTOutput(ns('requests_dt'))|> shinycssloaders::withSpinner(),
           actionButton(ns('approve_request'), label='Approve', class='btn-success'),
@@ -34,19 +39,24 @@ mod_requests_server <- function(id, user_coc) {
     all_requests <- reactive({
       req(user_coc$auth)
       
-      user_versions <- COC_VERSION_USERS |>
-        fsubset(username == user_coc$username)
+      user_versions <-  get_all_coc_versions_and_users(user_coc$username)
       
       get_db_tbl('coc_version_requests') |>
-        fsubset(coc_version_id %in% user_versions$coc_version_id) |># & request_status != "approved") |>
-        join(get_db_tbl('coc_versions') |> fselect(coc_version_id, coc), how='left') |>
+        fsubset(created_by == user_coc$username | coc_version_id %in% user_versions$coc_version_id) |>
+        join(get_db_tbl('coc_versions') |> fselect(coc_version_id, coc, coc_version_name), how='left') |>
         fmutate(request_status = get_lookup_label(request_status, "request_status")) |>
-        fselect(coc_request_id, coc, coc_version_id, created_by, date_created, request_status) |>
+        join(get_db_tbl('cocs'), how = 'left', on = c('coc' = 'coc_code')) |>
+        fselect(coc_request_id, coc_version_name, coc_name, coc, coc_version_id, created_by, date_created, request_status) |>
         roworder(-request_status)
     })
     
     observe({
       req(user_coc$auth)
+      cur_requests(all_requests())
+    })
+    
+    observeEvent(input$refresh_requests_tbl, {
+      showNotification("Refreshing Requests table!", type = "message")
       cur_requests(all_requests())
     })
     
@@ -58,17 +68,19 @@ mod_requests_server <- function(id, user_coc) {
     output$requests_dt <- renderDT({
       req(user_coc$auth)
       
+      # create "sent to " field when category is Sent
+      cols_to_hide <- which(names(cur_requests()) %in% c('coc_request_id', 'coc_version_id')) - 1
+      
       datatable(
         isolate(cur_requests()),
-        colnames = str_to_title(
-          str_replace_all(names(cur_requests()),'_',' ')
-        ),
+        colnames = unname(requests_variable_labels[names(cur_requests())]),
         escape=-1,
         style = 'default',
         options = list(
-          dom = 'Bfrtip',
+          dom = 'tip',
+          autoWidth = FALSE,
           columnDefs = list(
-            list(targets=0, className = "hidden")
+            list(targets= cols_to_hide, className = "hidden", visible = FALSE)
           ),
           language = list(
             zeroRecords = "No outstanding requests"
@@ -76,7 +88,11 @@ mod_requests_server <- function(id, user_coc) {
         ), 
         rownames = FALSE,
         editable = FALSE
-      )
+      ) %>% 
+        formatDate(
+          columns = c('date_created'),
+          method = 'toLocaleString'
+        )
     })
     
     # Toggle Approve/Reject buttons depending on whether user has selected a row or not
@@ -95,35 +111,68 @@ mod_requests_server <- function(id, user_coc) {
     update_request <- function(status) {
       request_status_num <- get_lookup_refid(status, "request_status")
       selected_requests <- cur_requests()[input$requests_dt_rows_selected]
+
+      update_params <- selected_requests |>
+        fselect(
+          "request_status_num" = request_status_num,
+          "username" = user_coc$username,
+          coc_request_id,
+          date_updated
+        ) |>
+        as.list() |>
+        unname()
       
-      apply(selected_requests, 1, function(row) {
-        # Set Status in Requests table
-        DBI::dbExecute(
-          DB_CON,
-          "UPDATE coc_version_requests 
-          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2
-          WHERE coc_request_id = $3", 
-          params = list(request_status_num, user_coc$username, row[["coc_request_id"]])
+      dbWithTransaction(get_db_pool(), {
+        db_execute(
+          glue::glue(
+            "UPDATE coc_version_requests 
+              SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2 
+                {ifelse(status == 'Approved', '', ', reason_for_rejection = $3')}
+              WHERE coc_request_id = $3 AND date_updated = $4"
+          ), 
+          params = update_params
         )
         
-        # Create version user
         user_role_num <- get_lookup_refid("Editor", "coc_version_role")
-        DBI::dbAppendTable(
-          DB_CON,
-          "coc_version_users",
-          data.table(
-            coc_version_id = row[["coc_version_id"]],
-            username = row[["created_by"]],
-            coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
+        current_time <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        
+        if(status == 'Approved') {
+          new_users <- data.table(
+            coc_version_id = selected_requests$coc_version_id,
+            username = selected_requests$created_by,
+            coc_version_role = user_role_num,
             created_by = user_coc$username,
-            date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-            date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+            date_created = current_time,
+            date_updated = current_time,
             updated_by = user_coc$username
           )
-        )
+
+          # Create version user
+          user_role_num <- get_lookup_refid("Editor", "coc_version_role")
+          db_append(
+            "coc_version_users",
+            data.table(
+              coc_version_id = row[["coc_version_id"]],
+              username = row[["created_by"]],
+              coc_version_role = user_role_num,  # Owner, Owner, Editor, Owner
+              created_by = user_coc$username,
+              updated_by = user_coc$username
+            ) |>
+              add_datetime_stamp(is_new = TRUE)
+          )
+        } else if(status == "Rejected"){
+          # Set Status in Requests table
+          db_execute(
+            "UPDATE coc_version_requests 
+          SET request_status = $1, date_updated = CURRENT_TIMESTAMP, updated_by = $2,
+              reason_for_rejection = $3
+          WHERE coc_request_id = $4", 
+            params = list(request_status_num, user_coc$username, input$rej_reason, row[["coc_request_id"]])
+          )
+        }
       })
-        
-      # Updaet datatable proxy
+
+      # Update datatable proxy
       cur_requests(
         cur_requests() |> 
           fmutate(
@@ -135,17 +184,72 @@ mod_requests_server <- function(id, user_coc) {
           )
       )
     }
-    observeEvent(input$approve_request, {update_request("Approved")})
-    observeEvent(input$reject_request, {update_request("Rejected")})
+    observeEvent(input$approve_request, {
+      showModal(
+        modalDialog(
+          title = 'Confirm Approval',
+          "Please confirm that you would like to approve access to the selected CoC versions.",
+          footer = tagList(
+            actionButton(ns('confirm_approve'), 'Confirm'),
+            modalButton('Cancel')
+          )
+        )
+      )
+    })
+    
+    observeEvent(input$confirm_approve, {
+      update_request("Approved")
+      removeModal()
+      showNotification('Request approved.', type='message') 
+    })
+    
+    observeEvent(input$reject_request, {
+      showModal(
+        modalDialog(
+          title = 'Confirm Rejection',
+          radioButtons(ns('rej_reason'), label = 'Please specify a reason for rejection and confirm.',
+                      choices = get_db_tbl('request_rejection_reasons')$request_rejection_reason),
+          # conditionalPanel(
+          #   condition = 'input.rej_reason == "Other"',
+          #   textInput('rej_other_specify', "Other - please specify:"),
+          # ),
+          footer = tagList(
+            actionButton(ns('confirm_reject'), 'Confirm'),
+            modalButton('Cancel')
+          )
+        )
+      )
+      
+    })
+    
+    observeEvent(input$confirm_reject, {
+      update_request("Rejected")
+      removeModal()
+      showNotification('Request rejected.', type = 'warning')
+    })
     
     filter_requests <- function(status) {
       cur_requests(
-        all_requests() |> 
-          fsubset(request_status == status)
+        if(status == 'Received'){
+          all_requests() |> 
+            fsubset(request_status == 'Sent' & created_by != user_coc$username)
+        } else if(status == 'Sent') {
+          all_requests() |> 
+            fsubset(created_by == user_coc$username)
+        } else if(status == 'Approved'){
+          all_requests() |> 
+            fsubset(request_status == 'Approved' & created_by != user_coc$username)
+        } else if(status == 'Rejected') {
+          all_requests() |> 
+            fsubset(request_status == 'Rejected' & created_by != user_coc$username)
+        }
+       
       )
     }
-    observeEvent(input$filter_sent, {filter_requests("Sent")})
-    observeEvent(input$filter_approved, {filter_requests("Approved")})
-    observeEvent(input$filter_rejected, {filter_requests("Rejected")})
+    
+    observeEvent(input$request_filters, {
+      filter_requests(status = input$request_filters)
+    })
+  
   }
 )}

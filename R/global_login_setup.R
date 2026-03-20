@@ -5,11 +5,16 @@ client_secret <- Sys.getenv("cognito_client_secret")
 base_cognito_url <- Sys.getenv("cognito_base_url")
 region <- Sys.getenv("cognito_region")
 
-redirect_uri <- rstudioapi::translateLocalUrl(
-  url = glue::glue("http://localhost:{Sys.getenv('TESTPORT')}"),
-  absolute = TRUE
-)
+redirect_uri <- if(IN_DEV_MODE) {
+  rstudioapi::translateLocalUrl(
+    url = glue::glue("http://localhost:{Sys.getenv('TESTPORT')}"),
+    absolute = TRUE
+  )
+} else {
+  glue::glue("https://orr.abtsites.com/{basename(getwd())}/")
+}
 
+print(redirect_uri)
 ## generate redirect URL
 aws_auth_redirect <-
   paste0(
