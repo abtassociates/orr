@@ -343,11 +343,11 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           keys = TRUE
         ),
         filter = 'none',
-        callback_js = glue::glue(
-          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
-            $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
-          }});
-          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
+        callback_js = sprintf(
+          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {
+            $(this).css('background-color', '%s');
+          });
+          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
             $(this).css('background-color', 'inherit');
           });
           
@@ -365,15 +365,15 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
               $(e.target).trigger('blur');
             }
           });
-        "), 
+        ", USER_ENTRY_BG_COLOR), 
         has_double_header = TRUE
       ) %>% 
         formatStyle(
-          columns = seq(4, ncol(data_to_display), by = 3),  # Priority columns (every 3rd column starting from 3)
+          columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
           `border-right` = "1px solid black"
         ) %>%
         formatCurrency(
-          columns = seq(3, ncol(data_to_display), by = 3),
+          columns = seq(3, ncol(data), by = 3),
           currency = "$", 
           mark = ",",
           digits = 0
