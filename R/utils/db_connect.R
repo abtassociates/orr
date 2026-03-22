@@ -82,6 +82,17 @@ with_tunnel_retry <- function(db_expr) {
   })
 }
 
+kill_open_tunnel <- function() {
+  message("Looking for and killing any open SSH tunnels on port 5432...")
+  
+  # This looks for any running process where the command contains "ssh" and "5432" and kills it.
+  system("pkill -f 'ssh.*5432'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  
+  # Give the OS a second to release the port
+  Sys.sleep(1)
+}
+
+
 
 # Database configuration
 # Using a global pool shares access to the db and is long-lived
