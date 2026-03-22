@@ -45,3 +45,15 @@ update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding
   )
 }
 
+
+get_coc_hud_ard_data <- function(c) {
+  HUD_ARD_REPORT[coc == c] |>
+    frename("total_ard" = estimated) |>
+    fmutate(
+      adjusted_ard = tier_1/0.9,
+      tier_2 = adjusted_ard * 0.1 + coc_bonus + dv_bonus,
+      yhdp_ard = total_ard - adjusted_ard,
+      dv_ard = as.numeric(NA)
+    )
+    
+}

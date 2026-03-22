@@ -75,3 +75,38 @@ td.disabled {
   top: 0; 
   height: 100vh;
 }
+
+
+/* Ranking*/
+td.drag-handle { cursor: grab !important; text-align: center; color: #999; vertical-align: middle;}
+td.drag-handle:active { cursor: grabbing !important; }
+
+#ranking-coc_bonus-bucket {
+  background-color: pink;
+}
+#ranking-dv_bonus-bucket {
+  background-color: brown;
+}
+#ranking-tier_1-bucket {
+  background-color: blue;
+}
+#ranking-tier_2-bucket {
+  background-color: orange;
+}
+#ranking-exceeds-bucket {
+  background-color: black;
+}
+
+div[data-value='ranking'] .progress {
+  height: 3em;
+  font-size: 1em;
+}
+
+#ranking-coc_bonus-bucket-title,
+#ranking-dv_bonus-bucket-title,
+#ranking-tier_1-bucket-title,
+#ranking-tier_2-bucket-title,
+#ranking-exceeds-bucket-title{
+  font-size: 1.3em;
+  font-weight: bold;
+}
