@@ -400,13 +400,12 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # When user clicks the "Request Access to a CoC" button on the dashboard
     # allow user to view versions and request access
     request_access_direct_coc_versions <- reactive({
-      users_versions() |>
+      all_versions_and_users() |>
         fsubset(username != user_coc$username) |>
         fselect(coc, coc_version_name, username)
     })
     # When user clicks the "Request Access to a CoC" button
     observeEvent(input$request_access_direct, {
-
       showModal(modalDialog(
         title = 'Request Access to a CoC',
         selectizeInput(
