@@ -171,7 +171,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     observe({
       req(ratable_projects())
       
-      replaceData(projects_table_proxy, ratable_projects(), resetPaging = FALSE, rownames = FALSE)
+      replaceData(projects_table_proxy, ratable_projects(), rownames = FALSE)
     })
     
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns
