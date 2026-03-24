@@ -535,31 +535,17 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH, encoding="Latin-1")
 
 # Rename columns to match SQL table
-setnames(hud_ard_data, old = c(
-  "CoC",
-  "CoC Number and Name",
-  "PPRN",
-  "Estimated ARD",
-  "DV Estimated ARD",
-  "YHDP Estimated ARD",
-  "FPRN",
-  "Tier 1",
-  "CoC Bonus",
-  "DV Bonus",
-  "CoC Planning"
-), new = c(
-  "coc",
-  "coc_number_and_name",
-  "pprn",
-  "estimated_ard",
-  "dv_ard",
-  "yhdp_ard",
-  "fprn",
-  "tier_1",
-  "coc_bonus",
-  "dv_bonus",
-  "coc_planning"
-))
+hud_ard_data <- frename(
+  hud_ard_data,
+  "CoCName" = "coc",
+  "CoC Number and Name" = "coc_number_and_name",
+  "PPRN" = "pprn",
+  "Estimated ARD" = "estimated",
+  "Tier 1" = "tier_1",
+  "CoC Bonus" = "coc_bonus",
+  "DV Bonus" = "dv_bonus",
+  "CoC Planning" = "coc_planning"
+)
 
 # only keep the ones where the CoC is in the HIC data
 hud_ard_data <- hud_ard_data |> fsubset(coc %in% funique(hic_data$hudnum))
