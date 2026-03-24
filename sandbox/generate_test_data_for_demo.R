@@ -1,7 +1,9 @@
 library(magrittr)
 
 LOOKUPS <- get_db_tbl("lookups")
-
+if("error" %in% names(LOOKUPS)) {
+  set_up_db_connection(USE_SQLITE)
+}
 delete_test_data <- function(p, tbl, anchorid) {
   print(glue::glue("deleting from {tbl}"))
   dbExecute(
@@ -49,17 +51,19 @@ second_user <- toString(USERS[3, 1])
 # -2: AK-500 Alternate, Second user owns, main user is editor (main user request approved)
 # -1: AK-501 Main Version, Second user owns, no one else on, main user requested
 coc_versions <- data.table(
-  coc_version_id = -5:-1,
+  coc_version_id = -6:-1,
   coc_version_name = c(
     'IL-517 Main Version',
+    'IL-517 Second Version',
     'FL-600 Main Version',
     'AK-500 Main Version',
     'AK-500 Alternative Version',
     'AK-501 Main Version'
   ),
-  coc = c('IL-517', 'FL-600', 'AK-500', 'AK-500', 'AK-501'),
-  coc_status = c(8, 8, 9, 8, 9),  # Not Started, In Progress, Not Started, In Progress
+  coc = c('IL-517', 'IL-517', 'FL-600', 'AK-500', 'AK-500', 'AK-501'),
+  coc_status = c(8, 8, 8, 9, 8, 9),  # Not Started, In Progress, Not Started, In Progress
   created_by = c(
+    second_user,
     second_user,
     main_user,
     main_user,
@@ -73,11 +77,12 @@ coc_versions <- data.table(
 
 # CoC Version Users (many-to-many relationship)
 coc_version_users <- data.table(
-  coc_version_user_id = 5:11,
-  coc_version_id = c(-5, -4, -3, -3, -2, -2, -1),
-  username = c(second_user, main_user, main_user, second_user, second_user, main_user, second_user),
-  coc_version_role = c(4, 4, 4, 5, 4, 5, 4),  # Owner, Owner, Owner, Editor, Owner, Editor, Owner
+  coc_version_user_id = 5:12,
+  coc_version_id = c(-6, -5, -4, -3, -3, -2, -2, -1),
+  username = c(second_user, second_user, main_user, main_user, second_user, second_user, main_user, second_user),
+  coc_version_role = c(4, 4, 4, 4, 5, 4, 5, 4),  # Owner, Owner, Owner, Editor, Owner, Editor, Owner
   created_by = c(
+    second_user,
     second_user,
     main_user,
     main_user,
@@ -193,3 +198,4 @@ lapply(c(-3, -2, -1), function(coc_version_id) {
 })
 })
 print("done generating demo data")
+pool::poolClose(get_db_pool())
