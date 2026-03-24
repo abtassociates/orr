@@ -518,16 +518,14 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       raw_data <- get_projects_to_rank(user_coc$coc_version_id) |>
         calculate_priority()
       
-      #TO DO: Remove the random generation
       # Ensure integer format and handle default values safely
       raw_data[, coc_funding_requested := as.integer(fcoalesce(coc_funding_requested, as.numeric(sample(10000:1000000, fnrow(raw_data)))))]
       raw_data[, coc_funding_recommendation := as.integer(fcoalesce(as.numeric(coc_funding_recommendation), as.numeric(coc_funding_requested)))]
       raw_data[, ` ` := as.character(icon("grip-vertical"))]
       
-      raw_data <- raw_data |>
-        colorder(` `)
+      raw_data <- raw_data |> colorder(` `)
       
-      # Partition data into the 4 tables
+      # Partition data
       rv$yhdp_ren <- raw_data[mckinneyventoyhdp & funding_action == "Renew"]
       rv$yhdp_oth <- raw_data[mckinneyventoyhdp & funding_action %in% c("Replace", "Reallocate", "Expand")]
       rv$excluded <- raw_data[!mckinneyventoyhdp & funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
@@ -543,7 +541,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
         
         ranked_data <- ranked_data[order(sort_type, sort_priority, -weighted_score)]
       } else {
-        # Otherwise, respect the saved rank order
         ranked_data <- ranked_data[order(rank)]
       }
       
@@ -613,31 +610,20 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
         selection = 'none',
         options = list(
           # dom = 'tip',
-          rowReorder = TRUE,
+          scrollY = NULL,
+          rowReorder = list(selector = 'td.drag-handle', update = FALSE), # Grab by icon
           fixedHeader = TRUE,
           rowGroup = list(
             dataSrc = which(colnames == "tier") - 1,  # Group by TIER column (0-indexed)
             startRender = JS("
               function(rows, group) {
-                // 1. Define a default color
-                var bgColor = '#6c757d'; // default gray
+                // Map the group name to the CSS classes we added in custom.css
+                var grpClass = '';
+                if (group.includes('Tier 1')) { grpClass = 'group-tier1'; } 
+                else if (group.includes('Tier 2')) { grpClass = 'group-tier2'; } 
+                else if (group.includes('Exceeding')) { grpClass = 'group-exceeding'; }
                 
-                // 2. Check the group name and assign specific colors
-                // Using .includes() makes it safer in case the exact string changes slightly
-                if (group.includes('Tier 1')) {
-                  bgColor = 'blue';
-                } else if (group.includes('Tier 2')) {
-                  bgColor = 'orange';
-                } else if (group.includes('Exceeding')) {
-                  bgColor = 'black';
-                }
-                
-                // 3. Return the styled row
-                return $('<tr class=\"group\"/>').append(
-                  '<td colspan=\"' + rows.columns().header().length + '\" ' + 
-                  'style=\"background-color: ' + bgColor + '; color: white; font-weight: bold; font-size: 16px;\">' + 
-                  group + '</td>'
-                );
+                return $('<tr class=\"' + grpClass + '\"/>').append('<td colspan=\"100%\">' + group + '</td>');
               }"
             )
           ),
@@ -679,25 +665,28 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
           overflow = 'hidden',
           textOverflow = 'ellipsis',
           maxWidth = '150px'        # REQUIRED: Set a max width so truncation triggers
+        ) |>
+        formatStyle(
+          'highlight',  # Replace with your actual column name
+          target = 'row',
+          backgroundColor = styleEqual(c("dv", "coc"), c('brown', 'pink')),
+          color = styleEqual(c("coc", "dv"), c('white', 'black'))
         )
-      
-      if("highlight" %in% colnames)
-        x <- x |>
-          formatStyle(
-            'highlight',  # Replace with your actual column name
-            target = 'row',
-            backgroundColor = styleEqual(c("dv", "coc"), c('brown', 'pink'))
-          )
+        # formatStyle(
+        #   1:length(colnames), 
+        #   valueColumns = 'highlight', 
+        #   backgroundColor = styleEqual(c("coc", "dv"), c('pink', 'tan')),
+        #   color = styleEqual(c("coc", "dv"), c('black', 'black'))
+        # )
       
       x
     }
     
     observeEvent(input$newOrder, {
       req(rv$ranked)
-      req(input$newOrder)
-
+      
       # Reorder data by new rank and re-rank
-      new_data <- rv$ranked |>
+      new_data <- copy(rv$ranked) |>
         fmutate(new_rank = input$newOrder) |>
         roworder(new_rank) |>
         fmutate(
@@ -705,8 +694,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
           new_rank = NULL
         )
       
-      # Update reactive value
-      rv$ranked <- new_data
+      # Recalculate completely handles the new ranks and tiers based on the new array order
+      rv$ranked <- recalculate_ranking(new_data)
     }, ignoreInit = TRUE)
     
     output$ui_ranked_list <- renderDT({
@@ -727,9 +716,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       new_val <- as.integer(gsub("[^0-9.]", "", info$value))
       
       if (!is.na(new_val)) {
-        # Modify via a copy to trigger reactive invalidation so proxy pushes the new value visually
+        # Create a copy so Shiny knows it changed and redraws the value via Proxy
         tmp <- copy(rv$ranked)
-        tmp[info$row, coc_funding_recommendation := new_val]
+        p_id <- tmp[info$row, project_id]
+        tmp[project_id == p_id, coc_funding_recommendation := new_val]
         rv$ranked <- tmp
       }
     })
