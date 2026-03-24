@@ -28,16 +28,16 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
-    
-    observeEvent(c(user_coc$coc_version_id, refresh_trigger()), {
+    observeEvent(refresh_trigger(), {
       req(user_coc$coc_version_id)
       
       ratable_projects(
         get_alternative_rating(
           user_coc$coc_version_id
-        )
+        ) %>%
+          format_table_data()
       )
-    }) # end observe that updates ratable_projects
+    }, ignoreInit = TRUE) # end observe that updates ratable_projects
     
     # Alternative Rating table
     # 1. Create a helper function to ensure data formatting is identical
@@ -59,8 +59,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
         nrow(data) > 0, 
         "No projects to rate"
       ))
-      
-      data <- format_table_data(data)
+      #data <- format_table_data(data)
         
       editable_cols <- c("met_hud_thresholds", "met_coc_thresholds", "weighted_score")
       
@@ -136,7 +135,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
         ),
         colnames = colnames,
         cols_to_disable = setdiff(names(data), editable_cols),
-        header_cb = header_cb,
+        #header_cb = header_cb,
         options = list(
           autoWidth = FALSE
         )
@@ -146,6 +145,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     # Update alternative rating data when cell is edited
     observeEvent(input$alternative_rating_table_cell_edit, {
       info <- input$alternative_rating_table_cell_edit
+      req(!identical(info$value, info$oldValue))
       
       current_data <- ratable_projects()
       
@@ -154,17 +154,24 @@ mod_alternative_rating_server <- function(id, user_coc) {
       ratable_projects(current_data)
     }, ignoreInit = TRUE) # end alt rating table cell edit
     
+    observe({
+      req(user_coc$coc_version_id)
+      
+      data <- get_alternative_rating(user_coc$coc_version_id) %>% 
+                format_table_data()
+      
+      ratable_projects(data)
+    })
+    
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy("alternative_rating_table")
+    projects_table_proxy <- dataTableProxy(ns("alternative_rating_table"), session = session)
     
     observe({
       req(ratable_projects())
       
-      formatted_data <- format_table_data(ratable_projects())
-
-      replaceData(projects_table_proxy, formatted_data, resetPaging = FALSE, rownames = FALSE)
+      replaceData(projects_table_proxy, ratable_projects(), resetPaging = FALSE, rownames = FALSE)
     })
     
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns
