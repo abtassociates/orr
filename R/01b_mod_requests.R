@@ -108,8 +108,12 @@ mod_requests_server <- function(id, user_coc) {
         cur_requests_dt()[input$requests_dt_rows_selected]$request_status == "Sent"
       )
       
-      shinyjs::toggle(id = 'approve_request', condition = length(input$requests_dt_rows_selected) > 0 && has_outstanding_requests)
-      shinyjs::toggle(id = 'reject_request', condition = length(input$requests_dt_rows_selected) > 0 && has_outstanding_requests)
+      condition <- length(input$requests_dt_rows_selected) > 0 && 
+        has_outstanding_requests &&
+        input$request_filters == "Received"
+      
+      shinyjs::toggle(id = 'approve_request', condition = condition)
+      shinyjs::toggle(id = 'reject_request', condition = condition)
     })
     
     # Updating DB
