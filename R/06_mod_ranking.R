@@ -101,13 +101,124 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
     observeEvent(input$btn_conduct_ranking, { process_data(force_reset = TRUE) })
     
     # Core Function: Recalculate Tiers and Bonuses
+    check_over_targets <- function(dt) {
+      combo_idx <- c("all_fam"=1, "dv_fam"=2, "ch_fam"=3, "vet_fam"=4, "par_youth"=5, 
+                     "all_ind"=6, "dv_ind"=7, "ch_ind"=8, "vet_ind"=9, "single_youth"=10)
+      
+      # Map project types to integer indexes (1 through N)
+      unique_ptypes <- as.character(unique(dt$project_type))
+      ptype_idx <- setNames(seq_along(unique_ptypes), unique_ptypes)
+      
+      # Pre-allocate tracking matrices (Rows = Project Type, Cols = Populations)
+      # Matrix indexing in R is nearly instantaneous compared to environment lookups
+      tracker_beds <- matrix(0, nrow = length(unique_ptypes), ncol = length(combo_idx))
+      tracker_fund <- matrix(0, nrow = length(unique_ptypes), ncol = length(combo_idx))
+      
+      dt[, is_over_target := FALSE]
+      
+      for (i in seq_len(nrow(dt))) {
+        ptype_val <- as.character(dt$project_type[i]) 
+        print(ptype_val)
+        pt_i <- ptype_idx[[ptype_val]] # Integer row index for our tracking matrix
+        
+        p_fund <- fcoalesce(dt$coc_funding_recommendation[i], 0L)
+        t_beds <- fcoalesce(dt$total_beds[i], 0L)
+        
+        # Extract current project beds into a fast, named numeric vector
+        p_beds <- c(
+          all_fam      = fcoalesce(dt$all_fam_beds[i], 0L),
+          dv_fam       = fcoalesce(dt$dv_fam_beds[i], 0L),
+          ch_fam       = fcoalesce(dt$ch_fam_beds[i], 0L),
+          vet_fam      = fcoalesce(dt$vet_fam_beds[i], 0L),
+          par_youth    = fcoalesce(dt$par_youth_beds[i], 0L),
+          all_ind      = fcoalesce(dt$all_ind_beds[i], 0L),
+          dv_ind       = fcoalesce(dt$dv_ind_beds[i], 0L),
+          ch_ind       = fcoalesce(dt$total_ch_ind_beds[i], 0L),
+          vet_ind      = fcoalesce(dt$vet_ind_beds[i], 0L),
+          single_youth = fcoalesce(dt$single_youth_beds[i], 0L)
+        )
+        
+        has_dv <- p_beds["dv_fam"] > 0 || p_beds["dv_ind"] > 0
+        subpops <- c("ch_fam", "vet_fam", "par_youth", "ch_ind", "vet_ind", "single_youth")
+        has_subpop <- has_dv || sum(p_beds[subpops]) > 0
+        
+        subpops_50 <- subpops[p_beds[subpops] >= 0.5 * t_beds & t_beds > 0]
+        relevant_subpops <- subpops[p_beds[subpops] > 0]
+        
+        check_mode <- ""
+        primary_combos <- character(0)
+        
+        if (!has_subpop) {
+          check_mode <- "only_all"
+          if (p_beds["all_fam"] > 0) primary_combos <- c(primary_combos, "all_fam")
+          if (p_beds["all_ind"] > 0) primary_combos <- c(primary_combos, "all_ind")
+          if (length(primary_combos) == 0) primary_combos <- c("all_fam", "all_ind")
+        } else if (has_dv) {
+          check_mode <- "dv"
+          if (p_beds["dv_fam"] > 0) primary_combos <- c(primary_combos, "dv_fam")
+          if (p_beds["dv_ind"] > 0) primary_combos <- c(primary_combos, "dv_ind")
+        } else if (length(subpops_50) > 0) {
+          check_mode <- "subpop_50"
+          primary_combos <- subpops_50
+        } else {
+          check_mode <- "all_relevant"
+        }
+        
+        check_exceeds <- function(cb) {
+          cb_i <- combo_idx[[cb]] # Matrix Col Index
+          
+          c_beds <- dt[[paste0("ceil_beds_", cb)]][i]
+          c_fund <- dt[[paste0("ceil_fund_", cb)]][i]
+          
+          u_beds <- tracker_beds[pt_i, cb_i]
+          u_fund <- tracker_fund[pt_i, cb_i]
+          
+          exceeds_beds <- !is.na(c_beds) && ((u_beds + p_beds[cb]) > c_beds)
+          exceeds_fund <- !is.na(c_fund) && ((u_fund + p_fund) > c_fund)
+          
+          return(exceeds_beds || exceeds_fund)
+        }
+        
+        is_excluded <- FALSE
+        
+        if (check_mode %in% c("only_all", "dv", "subpop_50")) {
+          for (cb in primary_combos) {
+            if (check_exceeds(cb)) { is_excluded <- TRUE; break }
+          }
+        } else if (check_mode == "all_relevant" && length(relevant_subpops) > 0) {
+          all_exceeded <- TRUE
+          for (cb in relevant_subpops) {
+            if (!check_exceeds(cb)) { all_exceeded <- FALSE; break }
+          }
+          if (all_exceeded) is_excluded <- TRUE
+        }
+        
+        if (is_excluded) {
+          dt$is_over_target[i] <- TRUE
+        } else {
+          # If project is kept, update our tracking matrices instantly
+          for (cb in names(combo_idx)) {
+            if (p_beds[cb] > 0 || (sum(p_beds) == 0 && cb %in% primary_combos)) {
+              cb_i <- combo_idx[[cb]]
+              tracker_beds[pt_i, cb_i] <- tracker_beds[pt_i, cb_i] + p_beds[cb]
+              tracker_fund[pt_i, cb_i] <- tracker_fund[pt_i, cb_i] + p_fund
+            }
+          }
+        }
+      }
+      return(dt)
+    }
+    
     recalculate_ranking <- function(dt) {
       if(is.null(dt) || nrow(dt) == 0) return(dt)
       
-      dt[, rank := .I]
+      dt <- check_over_targets(dt)
       
-      # 1. Evaluate Bonus Eligibility (based on specs formulas)
-      dt[, is_coc_eligible := grepl("New|Expand", funding_action) & (
+      # Rank only non-excluded rows correctly by sequence
+      dt[is_over_target == FALSE, rank := seq_len(.N)]
+      
+      # 1. Evaluate Bonus Eligibility only on valid projects
+      dt[is_over_target == FALSE, is_coc_eligible := grepl("New|Expand", funding_action) & (
         (project_type == "PSH" & ((total_ch_ind_beds > 0 & is_dedicated_ch_ind == "Yes") | (ch_fam_beds > 0 & is_dedicated_ch_fam == "Yes"))) |
           (project_type == "RRH" & (all_ind_beds > 0 | all_fam_beds > 0)) |
           (project_type == "TH+RRH" & (all_fam_beds > 0 | all_ind_beds > 0)) |
@@ -115,49 +226,132 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
           (project_type == "SSO-CE")
       )]
       
-      dt[, is_dv_eligible := grepl("New|Expand", funding_action) & is_dedicated_dv == "Yes" & coc_funding_recommendation >= 50000 & (
+      dt[is_over_target == FALSE, is_dv_eligible := grepl("New|Expand", funding_action) & is_dedicated_dv == "Yes" & coc_funding_recommendation >= 50000 & (
         (project_type == "RRH" & (dv_ind_beds > 0 | dv_fam_beds > 0)) |
           (project_type == "TH+RRH" & (dv_ind_beds > 0 | dv_fam_beds > 0)) |
           (project_type == "SSO-CE")
       )]
       
-      dt[, bonus_eligibility := fcase(
+      dt[is_over_target == FALSE, bonus_eligibility := fcase(
         is_coc_eligible & is_dv_eligible, "DV and CoC",
         is_coc_eligible, "CoC Bonus",
         is_dv_eligible, "DV Bonus",
         default = ""
       )]
       
-      # 2. Cumulative Funding & Tier Straddling
-      dt[, cum_funding := cumsum(coc_funding_recommendation)]
-      dt[, prev_cum := cum_funding - coc_funding_recommendation]
+      # 2. Cumulative Funding & Tier Straddling only on valid projects
+      dt[is_over_target == FALSE, cum_funding := cumsum(coc_funding_recommendation)]
+      dt[is_over_target == FALSE, prev_cum := cum_funding - coc_funding_recommendation]
       
-      dt[, tier := fcase(
+      dt[is_over_target == FALSE, tier := fcase(
         prev_cum < coc_ard_data()$tier_1, "Tier 1",
         prev_cum < (coc_ard_data()$tier_1 + coc_ard_data()$tier_2), "Tier 2",
         default = "Projects Exceeding ARD"
       )]
       
-      # 3. Bonus Selection (Top-Down Availability)
-      dt[, coc_selected := FALSE]
-      if (any(dt$is_coc_eligible)) {
+      dt[is_over_target == FALSE, coc_selected := FALSE]
+      if (any(dt$is_coc_eligible, na.rm=TRUE)) {
         dt[is_coc_eligible == TRUE, coc_cum := cumsum(coc_funding_recommendation)]
         dt[is_coc_eligible == TRUE & (coc_cum - coc_funding_recommendation) < coc_ard_data()$coc_bonus, coc_selected := TRUE]
       }
       
-      dt[, dv_selected := FALSE]
-      if (any(dt$is_dv_eligible)) {
-        # Only draw from DV bucket if NOT already selected for CoC
+      dt[is_over_target == FALSE, dv_selected := FALSE]
+      if (any(dt$is_dv_eligible, na.rm=TRUE)) {
         dt[is_dv_eligible == TRUE & coc_selected == FALSE, dv_cum := cumsum(coc_funding_recommendation)]
         dt[is_dv_eligible == TRUE & coc_selected == FALSE & (dv_cum - coc_funding_recommendation) < coc_ard_data()$dv_bonus, dv_selected := TRUE]
       }
       
-      # Determine row highlight colors
-      dt[, highlight := fcase(
-        coc_selected, "coc",
-        dv_selected, "dv",
-        default = "none"
+      dt[is_over_target == FALSE, highlight := fcase(coc_selected, "coc", dv_selected, "dv", default = "none")]
+      
+      return(dt)
+    }
+    
+    calculate_priority <- function(dt) {
+      # 2. Fetch Priorities and convert lookup IDs to standard string values
+      priorities <- get_ceilings_priorities(user_coc$coc_version_id)
+      
+      if (fnrow(priorities) > 0) {
+        priorities[, prio_score := fcase(priority == "High", 3, priority == "Medium", 2, priority == "Low", 1, default = 0)]
+        
+        priorities[, combo := fcase(
+          target_population == "General" & population_group == "Family", "all_fam",
+          target_population == "DV" & population_group == "Family", "dv_fam",
+          target_population == "CH" & population_group == "Family", "ch_fam",
+          target_population == "Vet" & population_group == "Family", "vet_fam",
+          target_population == "Youth" & population_group == "Family", "par_youth",
+          target_population == "General" & population_group == "Individual", "all_ind",
+          target_population == "DV" & population_group == "Individual", "dv_ind",
+          target_population == "CH" & population_group == "Individual", "ch_ind",
+          target_population == "Vet" & population_group == "Individual", "vet_ind",
+          target_population == "Youth" & population_group == "Individual", "single_youth",
+          default = "other"
+        )]
+        
+        priorities <- priorities[!is.na(project_type) & combo != "other"]
+        safe_max <- function(x) { if (all(is.na(x))) NA_real_ else max(x, na.rm = TRUE) }
+        
+        browser() # can we switcht ocollapose?
+        # Pivot Wide for Priorities
+        wide_prio <- dcast(priorities, project_type ~ combo, value.var = "prio_score", fun.aggregate = safe_max, fill = 0)
+        setnames(wide_prio, setdiff(names(wide_prio), "project_type"), paste0("prio_", setdiff(names(wide_prio), "project_type")))
+        
+        # Pivot Wide for Bed Ceilings
+        wide_beds <- dcast(priorities, project_type ~ combo, value.var = "ceil_beds", fun.aggregate = safe_max, fill = NA_real_)
+        setnames(wide_beds, setdiff(names(wide_beds), "project_type"), paste0("ceil_beds_", setdiff(names(wide_beds), "project_type")))
+        
+        # Pivot Wide for Funding Ceilings
+        wide_fund <- dcast(priorities, project_type ~ combo, value.var = "ceil_fund", fun.aggregate = safe_max, fill = NA_real_)
+        setnames(wide_fund, setdiff(names(wide_fund), "project_type"), paste0("ceil_fund_", setdiff(names(wide_fund), "project_type")))
+        
+        dt <- merge(dt, wide_prio, by = "project_type", all.x = TRUE)
+        dt <- merge(dt, wide_beds, by = "project_type", all.x = TRUE)
+        dt <- merge(dt, wide_fund, by = "project_type", all.x = TRUE)
+      }
+      
+      # Ensure target columns exist safely
+      expected_combos <- c("all_fam", "dv_fam", "ch_fam", "vet_fam", "par_youth", "all_ind", "dv_ind", "ch_ind", "vet_ind", "single_youth")
+      for (cb in expected_combos) {
+        if (!paste0("prio_", cb) %in% names(dt)) dt[, (paste0("prio_", cb)) := 0]
+        if (!paste0("ceil_beds_", cb) %in% names(dt)) dt[, (paste0("ceil_beds_", cb)) := NA_real_]
+        if (!paste0("ceil_fund_", cb) %in% names(dt)) dt[, (paste0("ceil_fund_", cb)) := NA_real_]
+      }
+      
+      bed_cols <- c("all_fam_beds", "dv_fam_beds", "ch_fam_beds", "vet_fam_beds", "par_youth_beds", 
+                    "all_ind_beds", "dv_ind_beds", "total_ch_ind_beds", "vet_ind_beds", "single_youth_beds")
+      for (col in bed_cols) {
+        if (!col %in% names(dt)) { dt[, (col) := 0] } else { dt[is.na(get(col)), (col) := 0] }
+      }
+      
+      dt[, total_beds := all_fam_beds + all_ind_beds]
+      unspec_types <- c("HMIS", "HMIS Project", "OPH", "SSO", "SSO+CE", "SSO-CE", "SSO-Host Homes", "SH")
+      
+      # Assign Priority Based on Bed Distribution
+      dt[, calc_prio_score := fcase(
+        project_type %in% unspec_types, 0,
+        dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_dv_fam, prio_dv_ind, na.rm = TRUE),
+        
+        (ch_fam_beds >= 0.5 * total_beds & total_beds > 0) | (vet_fam_beds >= 0.5 * total_beds & total_beds > 0) |
+          (par_youth_beds >= 0.5 * total_beds & total_beds > 0) | (total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0) |
+          (vet_ind_beds >= 0.5 * total_beds & total_beds > 0) | (single_youth_beds >= 0.5 * total_beds & total_beds > 0),
+        pmax(
+          fifelse(ch_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_ch_fam, 0),
+          fifelse(vet_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_vet_fam, 0),
+          fifelse(par_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_par_youth, 0),
+          fifelse(total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0, prio_ch_ind, 0),
+          fifelse(vet_ind_beds >= 0.5 * total_beds & total_beds > 0, prio_vet_ind, 0),
+          fifelse(single_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_single_youth, 0), na.rm = TRUE),
+        
+        (ch_fam_beds + total_ch_ind_beds + vet_fam_beds + vet_ind_beds + par_youth_beds + single_youth_beds) >= 0.5 * total_beds & total_beds > 0, 0,
+        all_fam_beds > all_ind_beds, prio_all_fam,
+        all_ind_beds > all_fam_beds, prio_all_ind,
+        all_fam_beds == all_ind_beds & total_beds > 0, pmax(prio_all_fam, prio_all_ind, na.rm = TRUE),
+        default = 0
       )]
+      
+      dt[, priority := factor(fcase(calc_prio_score == 3, "High", calc_prio_score == 2, "Medium", calc_prio_score == 1, "Low", default = "Unspecified"), levels = c("High", "Medium", "Low", "Unspecified"))]
+      
+      cols_to_drop <- c(paste0("prio_", expected_combos), "calc_prio_score")
+      dt[, (cols_to_drop) := NULL]
       
       return(dt)
     }
@@ -165,7 +359,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
     # Process Initial Data on Load or Reset
     process_data <- function(force_reset = FALSE) {
       req(user_coc$coc_version_id)
-      raw_data <- get_projects_to_rank(user_coc$coc_version_id)
+      raw_data <- get_projects_to_rank(user_coc$coc_version_id) |>
+        calculate_priority()
       
       #TO DO: Remove the random generation
       # Ensure integer format and handle default values safely
@@ -195,8 +390,21 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
         ranked_data <- ranked_data[order(rank)]
       }
       
-      # Apply tiers and calculations
-      rv$ranked <- recalculate_ranking(ranked_data)
+      # Apply Ceilings and subsequent Tiers
+      ranked_data <- recalculate_ranking(ranked_data)
+      
+      # Flag Over-Target and merge back to excluded safely
+      over_target <- ranked_data[is_over_target == TRUE]
+      if (nrow(over_target) > 0) {
+        over_target[, tier := "Excluded (Over Target)"]
+        over_target[, rank := "Over Target"] # Converted intentionally to character to display in dt
+        # Make sure rv$excluded has a character rank row so they combine
+        if (!is.character(rv$excluded$rank)) rv$excluded[, rank := as.character(rank)]
+        rv$excluded <- rbindlist(list(rv$excluded, over_target), fill = TRUE, use.names = TRUE)
+      }
+      
+      # Store clean ranked rows to UI
+      rv$ranked <- ranked_data[is_over_target == FALSE]
     }
     
     format_ranked_tbl <-function(dt) {
