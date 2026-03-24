@@ -530,14 +530,15 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       # Partition data into the 4 tables
       rv$yhdp_ren <- raw_data[mckinneyventoyhdp & funding_action == "Renew"]
       rv$yhdp_oth <- raw_data[mckinneyventoyhdp & funding_action %in% c("Replace", "Reallocate", "Expand")]
-      rv$excluded <- raw_data[!mckinneyventoyhdp & funding_action %in% c("Reallocate", "Ineligible", "NOT RATED")]
+      rv$excluded <- raw_data[!mckinneyventoyhdp & funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
       
-      # Get valid ranked projects
-      ranked_data <- raw_data[!mckinneyventoyhdp & !funding_action %in% c("Reallocate", "Ineligible", "NOT RATED")]
+      # Get valid ranked projects 
+      ranked_data <- raw_data[!mckinneyventoyhdp & !funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
       
-      # If resetting OR if projects haven't been ranked yet (rank is all NA), apply the default sort
+      # Step 1: Default Sorted Logic Pre-Ranking
       if (force_reset || all(is.na(ranked_data$rank))) {
-        ranked_data[, sort_type := fcase(project_type %in% c("SSO-CE", "HMIS Project", "SSO"), 1, default = 2)]
+        # Unspecified First -> Priorities -> Weighted Score Desc
+        ranked_data[, sort_type := fcase(project_type %in% c("SSO-CE", "HMIS Project", "SSO", "HMIS", "SSO+CE", "SSO-Host Homes", "SH"), 1, default = 2)]
         ranked_data[, sort_priority := fcase(priority == "High", 1, priority == "Medium", 2, priority == "Low", 3, default = 4)]
         
         ranked_data <- ranked_data[order(sort_type, sort_priority, -weighted_score)]
