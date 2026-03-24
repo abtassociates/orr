@@ -32,9 +32,9 @@ ADMIN_USERS <- "
 
 drop_table <- function(tbl) {
 	message(glue::glue("Dropping {tbl}"))
-  if(USE_SQLITE) DBI::dbExecute(get_get_db_pool()(), "PRAGMA foreign_keys = OFF;")
+  if(USE_SQLITE) DBI::dbExecute(get_db_pool(), "PRAGMA foreign_keys = OFF;")
   DBI::dbExecute(get_db_pool(), glue::glue("DROP TABLE IF EXISTS {tbl} {ifelse(USE_SQLITE, '', 'CASCADE')};"))
-	if(USE_SQLITE) DBI::dbExecute(get_get_db_pool()(), "PRAGMA foreign_keys = ON;")
+	if(USE_SQLITE) DBI::dbExecute(get_db_pool(), "PRAGMA foreign_keys = ON;")
 }
 
 id_var_attrs <- if(USE_SQLITE) 'INTEGER PRIMARY KEY AUTOINCREMENT' else 'SERIAL PRIMARY KEY'

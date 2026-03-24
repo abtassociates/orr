@@ -56,7 +56,7 @@ lapply(files, source)
 
 
 # SET UP DB CONNECTION -----------------
-set_up_db_connection(USE_SQLITE = TRUE)
+set_up_db_connection()
 
 
 # PREP GLOBAL DATA ---------------
