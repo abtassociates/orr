@@ -14,8 +14,8 @@ mod_alternative_rating_ui <- function(id) {
       ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary"),
-        actionButton(ns("import_rating"), "Import Rating", icon = icon("upload"))
+        actionButton(ns("import_rating"), "Import Rating", icon = icon("upload")),
+        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary")
       )
     )
   )
