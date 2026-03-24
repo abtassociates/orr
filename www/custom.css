@@ -78,8 +78,53 @@ td.disabled {
 
 
 /* Ranking*/
-td.drag-handle { cursor: grab !important; text-align: center; color: #999; vertical-align: middle;}
-td.drag-handle:active { cursor: grabbing !important; }
+/* Drag Handle Styling */
+td.drag-handle { 
+  cursor: grab !important; 
+  text-align: center; 
+  color: #999; 
+  vertical-align: middle;
+}
+td.drag-handle:active { 
+  cursor: grabbing !important; 
+}
+
+/* Ranking Summary Widget Text Styles */
+.ranking-limit {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 0.2rem;
+}
+.ranking-remaining {
+  font-size: 1em;
+  margin-bottom: 0;
+}
+.ranking-exceeded {
+  font-size: 1em;
+  margin-bottom: 0;
+  color: #ffc107; /* Bright yellow to contrast against dark backgrounds */
+  font-weight: bold;
+}
+
+/* DataTables RowGroup Header Styles */
+tr.group-tier1 td {
+  background-color: blue !important; 
+  color: white !important; 
+  font-weight: bold !important; 
+  font-size: 16px !important;
+}
+tr.group-tier2 td {
+  background-color: orange !important; 
+  color: white !important; 
+  font-weight: bold !important; 
+  font-size: 16px !important;
+}
+tr.group-exceeding td {
+  background-color: black !important; 
+  color: white !important; 
+  font-weight: bold !important; 
+  font-size: 16px !important;
+}
 
 #ranking-coc_bonus-bucket {
   background-color: pink;
@@ -96,7 +141,7 @@ td.drag-handle:active { cursor: grabbing !important; }
 #ranking-exceeds-bucket {
   background-color: black;
 }
-
+/*
 div[data-value='ranking'] .progress {
   height: 3em;
   font-size: 1em;
@@ -109,4 +154,4 @@ div[data-value='ranking'] .progress {
 #ranking-exceeds-bucket-title{
   font-size: 1.3em;
   font-weight: bold;
-}
+}*/

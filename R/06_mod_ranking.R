@@ -69,14 +69,22 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
     alloc_tier1 <- reactive( get_allocated_funding(quote(tier == "Tier 1")) )
     alloc_tier2 <- reactive( get_allocated_funding(quote(tier == "Tier 2")) )
     alloc_coc <- reactive( get_allocated_funding(quote(coc_selected == TRUE)) )
-    alloc_dv <- reactive( get_allocated_funding(quote(dv_selected == TRUE)) )
     alloc_exceed <- reactive( get_allocated_funding(quote(tier == "Projects Exceeding ARD")) )
     
-    mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data()$coc_bonus, user_coc, "CoC Bonus")
-    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data()$tier_1, user_coc, "Tier 1 (Adj ARD * 90%)")
-    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data()$tier_2, user_coc, "Tier 2 (Adj ARD * 10% + CoC B)")
-    mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data()$dv_bonus, user_coc, "DV Bonus")
-    mod_ranking_widget_server("exceeds", alloc_exceed, Inf, user_coc, "Exceeding ARD")
+    alloc_dv <- reactive({
+      req(fnrow(rv$ranked) > 0)
+      list(
+        total = sum(rv$ranked[dv_selected == TRUE]$coc_funding_recommendation, na.rm = TRUE),
+        t1 = sum(rv$ranked[dv_selected == TRUE & tier == "Tier 1"]$coc_funding_recommendation, na.rm = TRUE),
+        t2 = sum(rv$ranked[dv_selected == TRUE & tier == "Tier 2"]$coc_funding_recommendation, na.rm = TRUE)
+      )
+    })
+    
+    mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data()$coc_bonus, "CoC Bonus", bg_color = "pink", icon_name = "plus-circle")
+    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data()$tier_1, "Tier 1 (Adj ARD * 90%)", bg_color = "blue", icon_name = "layer-group")
+    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data()$tier_2, "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)", bg_color = "orange", icon_name = "layer-group")
+    mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data()$dv_bonus, "DV Bonus", bg_color = "brown", icon_name = "heart")
+    mod_ranking_widget_server("exceeds", alloc_exceed, Inf, "Exceeding ARD", bg_color = "black", icon_name = "exclamation-triangle")
     
     # Reactive values to store the data and bucket limits
     rv <- reactiveValues(
