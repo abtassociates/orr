@@ -135,7 +135,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
         ),
         colnames = colnames,
         cols_to_disable = setdiff(names(data), editable_cols),
-        #header_cb = header_cb,
+        header_cb = header_cb,
         options = list(
           autoWidth = FALSE
         )
