@@ -16,5 +16,5 @@ logs
 # GitHub App credentials
 gha-creds-*.json
 
-sandbox/dev_db.sqlite-shm
-sandbox/dev_db.sqlite-wal
+sandbox/dev_db.sqlite*
+sandbox/.nfs*
