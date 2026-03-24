@@ -39,9 +39,18 @@ mod_ranking_ui <- function(id) {
       mod_ranking_widget_ui(ns("exceeds"))
     ),
     
+    bslib::accordion(
+      open = FALSE,
+      bslib::accordion_panel(
+        "Funding Analysis Table",
+        icon = icon("table"),
+        uiOutput(ns("ui_funding_analysis"))
+      )
+    ),
+    
+    
     # 4. Drag and Drop Zones
     DTOutput(ns("ui_ranked_list")),
-    
     br(),
     br(),
     DTOutput(ns("ui_excluded_list")),
@@ -60,6 +69,153 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
     
     coc_ard_data <- reactive({
       get_coc_hud_ard_data(user_coc$coc)
+    })
+    
+    # Helper for the Funding Analysis Matrix
+    get_funding_analysis_data <- function(dt) {
+      combos <- c("all_fam" = "All Families", "dv_fam" = "DV Families", 
+                  "ch_fam" = "Chronically Homeless Families", "vet_fam" = "Veteran Families", 
+                  "par_youth" = "Parenting Youth", "all_ind" = "All Individuals", 
+                  "dv_ind" = "DV Individuals", "ch_ind" = "Chronically Homeless Individuals", 
+                  "vet_ind" = "Veteran Individuals", "single_youth" = "Single Youth")
+      
+      bed_cols <- c(all_fam="all_fam_beds", dv_fam="dv_fam_beds", ch_fam="ch_fam_beds", vet_fam="vet_fam_beds", 
+                    par_youth="par_youth_beds", all_ind="all_ind_beds", dv_ind="dv_ind_beds", 
+                    ch_ind="total_ch_ind_beds", vet_ind="vet_ind_beds", single_youth="single_youth_beds")
+      
+      p_types <- c("PSH", "RRH", "TH", "TH+RRH")
+      
+      # For matrix, we report beds & funding specifically for valid Tier 1 and Tier 2 projects 
+      dt_sub <- dt[tier %in% c("Tier 1", "Tier 2") & is_over_target == FALSE]
+      
+      res <- data.table(Population = unname(combos))
+      
+      for (pt in p_types) {
+        alloc_col <- character(length(combos))
+        pct_col <- character(length(combos))
+        
+        for (i in seq_along(combos)) {
+          cb <- names(combos)[i]
+          
+          alloc_b <- 0
+          alloc_f <- 0
+          
+          dt_pt <- dt_sub[project_type == pt]
+          dt_all_pt <- dt[project_type == pt] # Use un-subset dt to safely locate ceiling maxes 
+          
+          ceil_b <- NA_real_
+          ceil_f <- NA_real_
+          
+          # Grab applicable Ceilings 
+          if (nrow(dt_all_pt) > 0) {
+            c_b_vals <- dt_all_pt[[paste0("ceil_beds_", cb)]]
+            c_f_vals <- dt_all_pt[[paste0("ceil_fund_", cb)]]
+            if (!all(is.na(c_b_vals))) ceil_b <- max(c_b_vals, na.rm = TRUE)
+            if (!all(is.na(c_f_vals))) ceil_f <- max(c_f_vals, na.rm = TRUE)
+          }
+          
+          if (nrow(dt_pt) > 0) {
+            for (r in seq_len(nrow(dt_pt))) {
+              p_beds <- fcoalesce(dt_pt[[ bed_cols[[cb]] ]][r], 0L)
+              p_fund <- fcoalesce(dt_pt$coc_funding_recommendation[r], 0L)
+              t_beds <- fcoalesce(dt_pt$total_beds[r], 0L)
+              
+              r_beds <- sapply(names(bed_cols), function(x) fcoalesce(dt_pt[[ bed_cols[[x]] ]][r], 0L))
+              
+              has_dv <- (r_beds[["dv_fam"]] > 0) || (r_beds[["dv_ind"]] > 0)
+              subpops <- c("ch_fam", "vet_fam", "par_youth", "ch_ind", "vet_ind", "single_youth")
+              has_subpop <- (has_dv || sum(unlist(r_beds[subpops])) > 0)
+              
+              primary_combos <- character(0)
+              
+              # Distribute logic (Mirrors recalculate_ranking exclusion checks)
+              if (!has_subpop) {
+                if (r_beds[["all_fam"]] > 0) primary_combos <- c(primary_combos, "all_fam")
+                if (r_beds[["all_ind"]] > 0) primary_combos <- c(primary_combos, "all_ind")
+                if (length(primary_combos) == 0) primary_combos <- c("all_fam", "all_ind")
+              } else if (has_dv) {
+                if (r_beds[["dv_fam"]] > 0) primary_combos <- c(primary_combos, "dv_fam")
+                if (r_beds[["dv_ind"]] > 0) primary_combos <- c(primary_combos, "dv_ind")
+              } else {
+                for (scb in subpops) {
+                  if (t_beds > 0 && r_beds[[scb]] >= 0.5 * t_beds) {
+                    primary_combos <- c(primary_combos, scb)
+                  }
+                }
+              }
+              
+              if (p_beds > 0 || (sum(unlist(r_beds)) == 0 && cb %in% primary_combos)) {
+                alloc_b <- alloc_b + p_beds
+                alloc_f <- alloc_f + p_fund
+              }
+            }
+          }
+          
+          alloc_col[i] <- paste0(alloc_b, " Beds<br>", scales::dollar(alloc_f, accuracy=1))
+          
+          pct_b <- if (is.na(ceil_b) || ceil_b == 0) "-" else scales::percent(alloc_b / ceil_b, accuracy=0.1)
+          pct_f <- if (is.na(ceil_f) || ceil_f == 0) "-" else scales::percent(alloc_f / ceil_f, accuracy=0.1)
+          
+          pct_col[i] <- if (pct_b == "-" && pct_f == "-") "-" else paste0(pct_b, "<br>", pct_f)
+        }
+        
+        res[[paste0(pt, "_Allocated")]] <- alloc_col
+        res[[paste0(pt, "_PctCeil")]] <- pct_col
+      }
+      return(res)
+    }
+    output$ui_funding_analysis <- renderUI({
+      req(rv$ranked)
+      dt <- get_funding_analysis_data(rv$ranked)
+      
+      sketch <- htmltools::withTags(table(
+        class = "display",
+        thead(
+          tr(
+            th(rowspan = 2, style = "vertical-align: middle;", ""),
+            th(colspan = 2, style = "text-align:center; background-color:black; color:white; border: 1px solid white;", "PSH"),
+            th(colspan = 2, style = "text-align:center; background-color:black; color:white; border: 1px solid white;", "RRH"),
+            th(colspan = 2, style = "text-align:center; background-color:black; color:white; border: 1px solid white;", "TH"),
+            th(colspan = 2, style = "text-align:center; background-color:black; color:white; border: 1px solid white;", "TH+RRH")
+          ),
+          tr(
+            th(style = "background-color:black; color:white; text-align:center; border: 1px solid #444;", "Allocated"), 
+            th(style = "background-color:black; color:white; text-align:center; border: 1px solid #444;", "% of Ceiling"),
+            th(style = "background-color:black; color:white; text-align:center; border: 1px solid #444;", "Allocated"), 
+            th(style = "background-color:black; color:white; text-align:center; border: 1px solid #444;", "% of Ceiling"),
+            th(style = "background-color:black; color:white; text-align:center; border: 1px solid #444;", "Allocated"), 
+            th(style = "background-color:black; color:white; text-align:center; border: 1px solid #444;", "% of Ceiling"),
+            th(style = "background-color:black; color:white; text-align:center; border: 1px solid #444;", "Allocated"), 
+            th(style = "background-color:black; color:white; text-align:center; border: 1px solid #444;", "% of Ceiling")
+          )
+        )
+      ))
+      
+      DT::datatable(
+        dt,
+        escape = FALSE,
+        rownames = FALSE,
+        selection = "none",
+        container = sketch,
+        options = list(
+          dom = 't',
+          ordering = FALSE,
+          paging = FALSE,
+          columnDefs = list(
+            list(className = 'dt-center', targets = 1:8),
+            list(className = 'dt-right', targets = 0)
+          )
+        )
+      ) |>
+        DT::formatStyle(
+          columns = 1:9,
+          borderRight = '1px solid #ccc'
+        ) |>
+        # Add visual highlighting similar to the uploaded image for cells > 0
+        DT::formatStyle(
+          columns = c(2,4,6,8), # The 'Allocated' columns
+          backgroundColor = DT::styleRow(1:10, rep(c('#a8c4e5', 'white'), 5)) # Example light blue striping to visualize rows better
+        )
     })
     
     get_allocated_funding <- function(condition) {
