@@ -200,7 +200,9 @@ insert_and_return <- function(p, table, new_dt, return_cols) {
       return_col_list
     ), 
     params = paramify(new_dt)
-  )
+  ) |>
+    qDT() |>
+    convert_timestamps_to_char()
   
   return(results)
 }
