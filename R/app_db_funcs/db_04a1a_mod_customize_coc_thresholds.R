@@ -7,7 +7,11 @@ get_all_coc_thresholds <- function(coc_version_id) {
           (t.coc_version_id = $1 OR t.coc_version_id IS NULL)
         ORDER BY t.threshold_id",
     params = list(coc_version_id)
-  )
+  ) |>
+    fmutate(
+      threshold_date_updated = as.character(threshold_date_updated, tz = "UTC"),
+      selected_threshold_date_updated = as.character(selected_threshold_date_updated, tz = "UTC")
+    )
 }
 
 update_thresholds_db <- function(p, updated_thresholds) {
