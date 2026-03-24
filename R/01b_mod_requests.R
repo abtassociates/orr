@@ -59,15 +59,15 @@ mod_requests_server <- function(id, user_coc) {
       }
     }
     
-    cur_requests_dt <- reactive({
+    cur_requests_filtered <- reactive({
       if(is.null(input$request_filters)) cur_requests()
       else filter_requests(cur_requests(), status = input$request_filters)
     })
     
     cur_requests_proxy <- dataTableProxy("requests_dt", session=session)
     observe({
-      req(cur_requests_dt())
-      replaceData(cur_requests_proxy, cur_requests_dt(), resetPaging = FALSE, rownames = FALSE)
+      req(cur_requests_filtered())
+      replaceData(cur_requests_proxy, cur_requests_filtered(), resetPaging = FALSE, rownames = FALSE)
     })
     
     output$requests_dt <- renderDT({
@@ -77,7 +77,7 @@ mod_requests_server <- function(id, user_coc) {
       cols_to_hide <- which(names(cur_requests()) %in% c('coc_request_id', 'coc_version_id')) - 1
       
       datatable(
-        isolate(cur_requests_dt()),
+        isolate(cur_requests_filtered()),
         colnames = unname(requests_variable_labels[names(cur_requests())]),
         escape=-1,
         style = 'default',
@@ -105,7 +105,7 @@ mod_requests_server <- function(id, user_coc) {
       req(user_coc$auth)
       
       has_outstanding_requests <- any(
-        cur_requests_dt()[input$requests_dt_rows_selected]$request_status == "Sent"
+        cur_requests_filtered()[input$requests_dt_rows_selected]$request_status == "Sent"
       )
       
       condition <- length(input$requests_dt_rows_selected) > 0 && 
@@ -119,7 +119,7 @@ mod_requests_server <- function(id, user_coc) {
     # Updating DB
     update_request <- function(status) {
       request_status_num <- get_lookup_refid(status, "request_status")
-      selected_requests <- cur_requests_dt()[input$requests_dt_rows_selected]
+      selected_requests <- cur_requests_filtered()[input$requests_dt_rows_selected]
 
       update_params <- selected_requests |>
         fmutate(
