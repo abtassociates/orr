@@ -97,14 +97,15 @@ function(input, output, session) {
     nav_select("nav", selected = nav_control())
   })
 
-    shiny::onStop( function(){
-      cat("Running onStop")
-      ## record user settings
-      store_user_settings(user_coc, tab_name = input$nav)
-      # Get a dev version that persists beyond the app 
-        if(IN_PROD_APP())
-          pool::poolClose(get_db_pool())
-      
-      }, session = session
-    )
+  shiny::onStop( function(){
+    cat("Running onStop")
+    ## record user settings
+    store_user_settings(user_coc, tab_name = input$nav)
+    # Get a dev version that persists beyond the app 
+    pool::poolClose(get_db_pool())
+    
+    if (shiny::isRunning()) {
+      try(tools::pskill(tunnel), silent = TRUE)
+    }
+  }, session = session)
 }

@@ -33,12 +33,6 @@ set_up_tunnel <- function() {
     )
     
     Sys.sleep(2)
-    
-    if (shiny::isRunning()) {
-      shiny::onStop(function() {
-        try(tools::pskill(tunnel), silent = TRUE)
-      })
-    }
   } else {
     message("Port 5432 is already in use. Assuming tunnel is active.")
   }
