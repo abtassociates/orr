@@ -69,31 +69,26 @@ mod_alternative_rating_server <- function(id, user_coc) {
       met_coc_input_id <- ns("set_met_coc_thresholds")
       
       header_cb <- glue::glue("
+        function create_select_all_btns(th, title, id) {{
+          $(th).html(
+            `${{title}}<div style='margin-top:4px; white-space:nowrap;'>
+              <button class='btn btn-xs btn-success' style='margin-right:2px;'
+                onclick=\"Shiny.setInputValue('${{id}}', '1', {{priority: 'event'}})\">✓ All</button>
+              <button class='btn btn-xs btn-danger'
+                onclick=\"Shiny.setInputValue('${{id}}', '2', {{priority: 'event'}})\">✗ None</button>
+              </div>
+           `
+          );
+        }}
         var thead = $(this.api().table().header());
         thead.find('th').each(function() {{
           var colName = $(this).text().trim();
-
-          if (colName === 'Met HUD Thresholds') {{
-            $(this).html(
-              'MET HUD THRESHOLDS<div style=\"margin-top:4px;\">' +
-              '<button class=\"btn btn-xs btn-success\" style=\"margin-right:2px;\" ' +
-                'onclick=\"Shiny.setInputValue(\\'{met_hud_input_id}\\', \\'1\\', {{priority: \\'event\\'}})\">✓ All</button>' +
-              '<button class=\"btn btn-xs btn-danger\" ' +
-                'onclick=\"Shiny.setInputValue(\\'{met_hud_input_id}\\', \\'0\\', {{priority: \\'event\\'}})\">✗ None</button>' +
-              '</div>'
-            );
-          }}
+debugger;
+          if (colName === 'Met HUD Thresholds')
+              create_select_all_btns(this, 'MET HUD THRESHOLDS', '{met_hud_input_id}')
           
-          if (colName === 'Met CoC Thresholds') {{
-            $(this).html(
-              'MET COC THRESHOLDS<div style=\"margin-top:4px;\">' +
-              '<button class=\"btn btn-xs btn-success\" style=\"margin-right:2px;\" ' +
-                'onclick=\"Shiny.setInputValue(\\'{met_coc_input_id}\\', \\'1\\', {{priority: \\'event\\'}})\">✓ All</button>' +
-              '<button class=\"btn btn-xs btn-danger\" ' +
-                'onclick=\"Shiny.setInputValue(\\'{met_coc_input_id}\\', \\'0\\', {{priority: \\'event\\'}})\">✗ None</button>' +
-              '</div>'
-            );
-          }}
+          if (colName === 'Met CoC Thresholds')
+            create_select_all_btns(this, 'MET COC THRESHOLDS', '{met_coc_input_id}')
         }});
       ")
       
