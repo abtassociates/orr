@@ -203,7 +203,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
         fmutate(
           created_by = username
         ) |>
-        fselect(project_id, met_hud_thresholds, met_coc_thresholds, created_by, date_updated)
+        fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by, date_updated)
     }
     
     observeEvent(input$save_rating, {
