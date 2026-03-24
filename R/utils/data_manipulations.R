@@ -158,6 +158,7 @@ versions_variable_labels <- c(
   "coc_version_role" = "Your Role",
   "updated_by" = "Updated By",
   "date_updated" = "Date Updated",
+  "created_by" = "Created By",
   "date_created" = "Date Created"
 )
 
