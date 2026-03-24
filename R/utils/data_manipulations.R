@@ -257,7 +257,7 @@ store_user_settings <- function(user_coc, tab_name){
   if(is.null(isolate(user_coc$coc_version_id)))
     return(NULL)
   
-  existing_settings <-  dbGetQuery(DB_POOL,
+  existing_settings <-  dbGetQuery(get_db_pool(),
                                    'SELECT * FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', 
                                    params = list(isolate(user_coc$coc_version_id),
                                                  isolate(user_coc$username)))
