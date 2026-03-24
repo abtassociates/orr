@@ -67,9 +67,21 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    unspec_types <- c("HMIS Project", "OPH", "SSO", "SSO-CE", "SSO-Host Homes", "SH")
+    
     coc_ard_data <- reactive({
       get_coc_hud_ard_data(user_coc$coc)
     })
+    
+    # Reactive values to store the data and bucket limits
+    rv <- reactiveValues(
+      # limits = list(tier1 = 0, tier2 = 0, dv = 0),
+      # RankedProjects = NULL,
+      ranked = NULL,
+      yhdp_ren = NULL,
+      yhdp_oth = NULL,
+      excluded = NULL
+    )
     
     # Helper for the Funding Analysis Matrix
     get_funding_analysis_data <- function(dt) {
@@ -242,15 +254,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
     mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data()$dv_bonus, "DV Bonus", bg_color = "brown", icon_name = "heart")
     mod_ranking_widget_server("exceeds", alloc_exceed, Inf, "Exceeding ARD", bg_color = "black", icon_name = "exclamation-triangle")
     
-    # Reactive values to store the data and bucket limits
-    rv <- reactiveValues(
-      # limits = list(tier1 = 0, tier2 = 0, dv = 0),
-      # RankedProjects = NULL,
-      ranked = NULL,
-      yhdp_ren = NULL,
-      yhdp_oth = NULL,
-      excluded = NULL
-    )
     # ranked_project_ids <- reactiveValues(new = NULL)
     
     observeEvent(user_coc$coc_version_id, { process_data(force_reset = FALSE) }, ignoreInit = TRUE)
