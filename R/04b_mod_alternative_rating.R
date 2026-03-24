@@ -166,7 +166,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("alternative_rating_table"), session = session)
+    projects_table_proxy <- dataTableProxy("alternative_rating_table", session = session)
     
     observe({
       req(ratable_projects())
@@ -193,6 +193,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
       
       updated <- copy(ratable_projects())
       updated[visible_rows, met_coc_thresholds := as.integer(input$set_met_coc_thresholds)]
+      
       ratable_projects(updated)
     })
     
