@@ -243,8 +243,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
               coc_version_id = new_version_user$coc_version_id,
               coc_status = get_lookup_label(coc_status, "coc_status"),
               coc_version_role = get_lookup_label(new_version_user$coc_version_role, "coc_version_role"),
-              date_updated = as.POSIXct(new_coc_version_info$date_updated[1]),
-              date_created = as.POSIXct(new_coc_version_info$date_updated[1])
+              date_updated = format_timestamp(new_coc_version_info$date_updated[1]),
+              date_created = format_timestamp(new_coc_version_info$date_updated[1])
             ),
           fill=TRUE
         ) %>% fselect(-created_by)
@@ -610,7 +610,11 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
           coc_amount_awarded_last_year = as.numeric(NA),
           coc_amount_expended_last_year = as.numeric(NA),
           coc_funding_requested = as.numeric(NA),
-          funding_action = fifelse(mckinneyvento == "Yes", "Renew", "Ignore"),
+          funding_action = fifelse(
+            project_type == "ES" | mckinneyvento == "No",
+            "Ignore", 
+            "Renew"
+          ),
           coc_version_id = coc_version_id,
           # additional cols user will fill out
           is_dedicated_ch_fam = factor_yesno(NA),

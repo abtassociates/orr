@@ -208,12 +208,13 @@ insert_and_return <- function(p, table, new_dt, return_cols) {
   return(results)
 }
 
-format_timestamp_for_db <- function(t) {
-  format(lubridate::with_tz(t, "UTC"), "%Y-%m-%d %H:%M:%S")
+format_timestamp <- function(t) {
+  strftime(t, format = "%Y-%m-%d %H:%M:%S")
 }
 
+
 get_db_timestamp <- function() {
-  format_timestamp_for_db(Sys.time())
+  as.character(Sys.time())
 }
 
 save_to_db <- function(p, sql, params, tbl_name) {
