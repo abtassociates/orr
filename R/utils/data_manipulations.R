@@ -251,14 +251,14 @@ save_to_db <- function(p, sql, params, tbl_name) {
       msg <- glue::glue("{tbl_name} saved successfully!")
       needs_refresh <- FALSE
     }
-    print(msg)
+    logger::log_info(msg)
     showNotification(msg, type = "message")
     return(needs_refresh)
   }, error = function(e) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
     showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
-    cat("Database save error:", e$message, "\n")
+    logger::log_error(e$message)
     stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }
