@@ -147,7 +147,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     hud_ard_coc_data <- reactive({
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
-          tier_2 = estimated * 0.1 + coc_bonus + dv_bonus,
+          tier_2 = estimated * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
           adjusted_ard = round(tier_1/0.9, 0),
           yhdp_ard = estimated - adjusted_ard,
           dv_ard = as.numeric(NA)
