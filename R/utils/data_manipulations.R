@@ -223,12 +223,13 @@ store_single_setting <- function(user_coc, existing_settings, setting_nm, settin
   if(fnrow(cur_setting_existing) > 0){
     # modify
     db_execute(
-                   glue::glue("UPDATE user_settings SET setting_value = $1, 
+        "UPDATE user_settings SET setting_value = $1, 
         date_updated = CURRENT_TIMESTAMP, updated_by = $2
-        WHERE coc_version_id = $3 AND coc_user = $2 AND setting_name = '{setting_nm}'"), 
+        WHERE coc_version_id = $3 AND coc_user = $2 AND setting_name = $4", 
                    params = list(isolate(setting_val), 
                                  isolate(user_coc$username), 
-                                 isolate(user_coc$coc_version_id))
+                                 isolate(user_coc$coc_version_id),
+                                 setting_nm)
     )
   } else {
     # add
