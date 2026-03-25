@@ -147,12 +147,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     hud_ard_coc_data <- reactive({
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
-          tier_2 = estimated_ard * 0.1 + coc_bonus + dv_bonus,
-          adjusted_ard = round(tier_1/0.9, 0)#,
-          #yhdp_ard = estimated - adjusted_ard,
-          #dv_ard = as.numeric(NA)
+          tier_2 = adjusted * 0.1 + coc_bonus + dv_bonus,
+          adjusted_ard = round(tier_1/0.9, 0)
         ) |>
-        frename(estimated_ard = "total_ard")
+        frename(estimated = "total_ard")
     })
     
     observeEvent(user_coc$coc, {
