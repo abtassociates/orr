@@ -123,7 +123,8 @@ mod_requests_server <- function(id, user_coc, module_returns) {
       update_params <- selected_requests |>
         fmutate(
           "request_status_num" = request_status_num,
-          "username" = user_coc$username
+          "username" = user_coc$username,
+          "reason_for_rejection" = input$rej_reason
         ) |>
         fselect(
           request_status_num,
@@ -133,7 +134,7 @@ mod_requests_server <- function(id, user_coc, module_returns) {
         )
       
       pool::poolWithTransaction(get_db_pool(), function(p) {
-        update_request_status(p, update_params, status)
+        update_request_status(p, update_params)
         
         if(status == 'Approved') {
           new_version_users <- selected_requests |>
@@ -145,14 +146,6 @@ mod_requests_server <- function(id, user_coc, module_returns) {
             fselect(coc_version_id, username, coc_version_role, created_by, updated_by)
           
           DBI::dbAppendTable(p,"coc_version_users",new_version_users)
-          
-        } else if(status == "Rejected"){
-          save_request_rejection(p, list(
-            request_status_num,
-            user_coc$username, 
-            input$rej_reason,
-            selected_requests$coc_request_id
-          ))
         }
         
         # Update datatable proxy
