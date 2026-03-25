@@ -403,7 +403,9 @@ mod_inventory_add_project_server <- function(
         # Handle YHDP Reallocation special case for total beds
         total_fam <- get_val("total_beds", "fam")
         total_ind <- get_val("total_beds", "ind")
-        if (input$funding_source == "YHDP" && grepl("Reallocation", form_type())) {
+        if (input$funding_source == "YHDP" 
+            # && grepl("Reallocation", form_type())
+          ) {
           total_fam <- get_val("youth_beds", "fam")
           total_ind <- get_val("youth_beds", "ind")
         }
