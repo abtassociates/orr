@@ -14,7 +14,9 @@ generate_data_for_new_coc_version <- function(p, coc_version_id) {
 generate_selected_thresholds_for_coc <- function(p, coc_version_id) {
   thresholds <- DBI::dbGetQuery(
     p, 
-    "SELECT threshold_id, $1 AS coc_version_id FROM thresholds",
+    "SELECT threshold_id, $1 AS coc_version_id 
+    FROM thresholds
+    WHERE coc_version_id IS NULL",
     params = list(coc_version_id)
   )
   
@@ -30,7 +32,9 @@ generate_selected_thresholds_for_coc <- function(p, coc_version_id) {
 generate_selected_rating_factors_for_coc <- function(p, coc_version_id) {
   rating_factors <- DBI::dbGetQuery(
     p, 
-    "SELECT rating_factor_id, $1 AS coc_version_id FROM rating_factors",
+    "SELECT rating_factor_id, $1 AS coc_version_id 
+    FROM rating_factors
+    WHERE coc_version_id IS NULL",
     params = list(coc_version_id)
   )
 
