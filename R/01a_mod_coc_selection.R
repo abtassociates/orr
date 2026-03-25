@@ -653,7 +653,11 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           coc_amount_awarded_last_year = as.numeric(NA),
           coc_amount_expended_last_year = as.numeric(NA),
           coc_funding_requested = as.numeric(NA),
-          funding_action = fifelse(mckinneyvento == "Yes", "Renew", "Ignore"),
+          funding_action = fifelse(
+            project_type == "ES" | mckinneyvento == "No",
+            "Ignore", 
+            "Renew"
+          ),
           coc_version_id = coc_version_id,
           # additional cols user will fill out
           is_dedicated_ch_fam = factor_yesno(NA),
