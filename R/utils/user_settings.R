@@ -2,8 +2,8 @@
 get_user_setting <- function(setting_nm, coc_version_id, username){
   get_db_query(
     "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3",
-    params = list(user_coc$coc_version_id,
-                  user_coc$username,
+    params = list(coc_version_id,
+                  username,
                   setting_nm)
   ) |> unlist(use.names = FALSE)
 }
