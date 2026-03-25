@@ -121,3 +121,11 @@ get_sqlite_db <- function() {
 shiny::onStop(function() {
   pool::poolClose(get_db_pool())
 })
+
+close_pool <- function() {
+  pool::poolClose(get_db_pool())
+}
+
+db_connect <- function(USE_SQLITE = TRUE) {
+  set_up_db_connection(USE_SQLITE)
+}
