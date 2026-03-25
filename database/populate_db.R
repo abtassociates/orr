@@ -18,7 +18,7 @@ set_db_pool(DB_POOL)
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
-HUD_ARD_DATA_FILEPATH <- here("database/fy24_hud_ard_data.csv")
+HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
 
 # Ideally, this get dynamically populated with data from Cognito
 # But not a huge deal since this won't be run after we're live
