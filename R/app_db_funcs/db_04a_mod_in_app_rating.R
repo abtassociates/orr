@@ -13,8 +13,22 @@ get_projects_by_funding_action <- function(coc_version_id, funding_action_ids) {
   get_db_query(glue::glue_sql(
     "SELECT project_id, organization_name, project_name, project_type, target_population, funding_action
     FROM projects 
-    WHERE coc_version_id = {coc_version_id} AND funding_action IN ({funding_action_ids*})
+    WHERE 
+      coc_version_id = {coc_version_id} AND 
+      funding_action IN ({funding_action_ids*}) AND 
+      mckinneyvento = 1 AND
+      mckinneyventoyhdp <> 1
     ORDER BY project_name",
     .con=get_db_pool()
-  ))
+  )) |>
+    join(
+      stack(RATABLE_PROJECT_TYPES) |> 
+        frename("project_type" = values, "funding_action" = ind) |>
+        fmutate(
+          funding_action = get_lookup_refid(funding_action, "funding_action"),
+          project_type = get_lookup_refid(project_type, "project_type")
+        ),
+      on = c("funding_action","project_type"),
+      how = "inner"
+    )
 }
