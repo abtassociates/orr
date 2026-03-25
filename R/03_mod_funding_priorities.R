@@ -343,29 +343,29 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           keys = TRUE
         ),
         filter = 'none',
-        callback_js = sprintf(
-          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {
-            $(this).css('background-color', '%s');
-          });
-          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {
+        callback_js = glue::glue(
+          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
+            $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
+          }});
+          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
             $(this).css('background-color', 'inherit');
-          });
+          }});
           
           // Start cell editing with Enter key (13)
-          table.on('key', function(e, datatable, key, cell, originalEvent){
+          table.on('key', function(e, datatable, key, cell, originalEvent){{
             var targetName = originalEvent.target.localName;
-            if(key == 13 && targetName == 'body'){
+            if(key == 13 && targetName == 'body'){{
               $(cell.node()).trigger('dblclick.dt');
-            }
-          });
+            }}
+          }});
           // Exit cell editing with Tab (9), Enter (13), or Arrow Keys (37-40)
-          table.on('keydown', function(e){
+          table.on('keydown', function(e){{
             var keys = [9,13,37,38,39,40];
-            if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1){
+            if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1){{
               $(e.target).trigger('blur');
-            }
-          });
-        ", USER_ENTRY_BG_COLOR), 
+            }}
+          }});
+        "), 
         has_double_header = TRUE
       ) %>% 
         formatStyle(
