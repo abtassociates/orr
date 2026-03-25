@@ -18,7 +18,7 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) {
+mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -460,6 +460,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       # Add row to requests table
       db_append("coc_version_requests", request_row)
+      
+      module_returns$updated_request <- reactive({TRUE})
     }
     
     observeEvent(input$send_direct_request, {
