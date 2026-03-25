@@ -153,8 +153,8 @@ VALUES
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
 ('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
-('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
-('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'Veteran', 'Veteran', 'orr_service@abtglobal.com'),
+('target_population', 'Youth', 'Youth', 'orr_service@abtglobal.com'),
 ('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
 ")
@@ -518,7 +518,6 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 	coc VARCHAR(6) REFERENCES cocs(coc_code),
     coc_number_and_name TEXT,
     pprn INTEGER,
-    estimated INTEGER,
     tier_1 INTEGER,
     coc_bonus INTEGER NULL,
     dv_bonus INTEGER,
@@ -531,25 +530,17 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH, encoding="Latin-1")
 
 # Rename columns to match SQL table
-setnames(hud_ard_data, old = c(
-  "CoCName",
-  "CoC Number and Name",
-  "PPRN",
-  "Estimated ARD",
-  "Tier 1",
-  "CoC Bonus",
-  "DV Bonus",
-  "CoC Planning"
-), new = c(
-  "coc",
-  "coc_number_and_name",
-  "pprn",
-  "estimated",
-  "tier_1",
-  "coc_bonus",
-  "dv_bonus",
-  "coc_planning"
-))
+hud_ard_data <- frename(
+  hud_ard_data,
+  "CoCName" = "coc",
+  "CoC Number and Name" = "coc_number_and_name",
+  "PPRN" = "pprn",
+  "Estimated ARD" = "estimated",
+  "Tier 1" = "tier_1",
+  "CoC Bonus" = "coc_bonus",
+  "DV Bonus" = "dv_bonus",
+  "CoC Planning" = "coc_planning"
+)
 
 # only keep the ones where the CoC is in the HIC data
 hud_ard_data <- hud_ard_data |> fsubset(coc %in% funique(hic_data$hudnum))
