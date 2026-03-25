@@ -16,8 +16,8 @@ get_projects_by_funding_action <- function(coc_version_id, funding_action_ids) {
     WHERE 
       coc_version_id = {coc_version_id} AND 
       funding_action IN ({funding_action_ids*}) AND 
-      mckinneyvento = 1 AND
-      mckinneyventoyhdp <> 1
+      mckinneyvento = TRUE AND
+      mckinneyventoyhdp = FALSE
     ORDER BY project_name",
     .con=get_db_pool()
   )) |>
