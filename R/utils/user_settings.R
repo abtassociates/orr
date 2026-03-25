@@ -1,3 +1,13 @@
+## retrieve individual user setting value from DB
+get_user_setting <- function(setting_nm, coc_version_id, username){
+  get_db_query(
+    "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3",
+    params = list(user_coc$coc_version_id,
+                  user_coc$username,
+                  setting_nm)
+  ) |> unlist(use.names = FALSE)
+}
+
 ## on app exit, update individual settings
 store_single_setting <- function(user_coc, existing_settings, setting_nm, setting_val){
   

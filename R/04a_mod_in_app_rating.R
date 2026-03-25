@@ -36,11 +36,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
       req(user_coc$coc_version_id & nav_control() == 'rating')
       req(nrow(all_projects()) > 0)
       
-      user_prev_project_selected <- get_db_query(
-        glue::glue("SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = 'rating_{id}_project_selected'"),
-        params = list(user_coc$coc_version_id,
-                      user_coc$username)
-      )|> unlist(use.names = FALSE)
+      user_prev_project_selected <- get_user_setting(glue::glue('rating_{id}_project_selected'), user_coc$coc_version_id, user_coc$username)
       
       if(length(user_prev_project_selected) > 0){
         updateSelectInput(session, inputId = 'project_select', selected = user_prev_project_selected)
