@@ -94,7 +94,7 @@ mod_requests_server <- function(id, user_coc, module_returns) {
         editable = FALSE
       ) %>% 
         formatDate(
-          columns = c('date_created'),
+          columns = c('date_created', 'date_updated'),
           method = 'toLocaleString'
         )
     })
