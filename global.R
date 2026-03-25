@@ -33,6 +33,11 @@ set_collapse(na.rm = TRUE, verbose = FALSE, sort = FALSE)
 # COLORS AND THEME -----------
 # Need to set this or `brandr::assert_brand_yml` will not work correctly because for non-interactive sessions, it takes the main path
 options(BRANDR_BRAND_YML = here::here("_brand.yml"))
+options(shiny.error = function() {
+  logger::log_error(paste("Shiny Error:", traceback()))
+})
+logger::log_appender(appender_console) 
+Sys.setenv("LOG_LEVEL", "WARN")
 
 USER_ENTRY_BG_COLOR <- "#e6ffe6"
 
