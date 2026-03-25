@@ -170,7 +170,8 @@ requests_variable_labels <- c(
   "coc_version_name" = "CoC Version Name",
   "request_status" = "Request Status",
   "created_by" = "Requested By",
-  "date_created" = "Date Requested"
+  "date_created" = "Date Requested",
+  "date_updated" = "Date Updated"
 )
 
 add_user_stamp <- function(x, user_coc, is_new = FALSE) {
