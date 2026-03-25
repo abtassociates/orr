@@ -36,8 +36,8 @@ options(BRANDR_BRAND_YML = here::here("_brand.yml"))
 options(shiny.error = function() {
   logger::log_error(paste("Shiny Error:", traceback()))
 })
-logger::log_appender(appender_console) 
-Sys.setenv("LOG_LEVEL", "WARN")
+logger::log_appender(logger::appender_console) 
+Sys.setenv("LOG_LEVEL" = "WARN")
 
 USER_ENTRY_BG_COLOR <- "#e6ffe6"
 
