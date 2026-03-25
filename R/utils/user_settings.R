@@ -68,9 +68,8 @@ store_user_settings <- function(user_coc, tab_name){
     # modify
     
     current_selection <- isolate(user_coc$settings$cols_to_hide)
-    previous_selection <-  get_db_query("SELECT setting_name FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_value = 'hide' AND setting_name LIKE 'disp_%'",
-                                        params = list(isolate(user_coc$coc_version_id),
-                                                      isolate(user_coc$username))) |> unlist(use.names = FALSE)
+    previous_selection <-  get_project_fields_to_display(isolate(user_coc$coc_version_id),
+                                                 isolate(user_coc$username))
     
     
     to_add <- setdiff(current_selection, gsub('disp_', '', previous_selection))
