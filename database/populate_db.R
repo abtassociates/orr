@@ -485,6 +485,7 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 	coc VARCHAR(6) REFERENCES cocs(coc_code),
     coc_number_and_name TEXT,
     pprn INTEGER,
+    estimated INTEGER,
     tier_1 INTEGER,
     coc_bonus INTEGER NULL,
     dv_bonus INTEGER,
