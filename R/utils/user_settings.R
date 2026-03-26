@@ -9,7 +9,7 @@ get_user_setting <- function(setting_nm, coc_version_id, username){
 }
 
 ## on app exit, update individual settings
-store_single_setting <- function(user_coc, existing_settings, setting_nm, setting_val){
+update_single_user_setting <- function(p, user_coc, setting_nm, setting_val){
   
   if(is.null(isolate(setting_val)))
     return(NULL)
@@ -45,8 +45,8 @@ store_single_setting <- function(user_coc, existing_settings, setting_nm, settin
   }
 }
 
-## on app exit, update settings for tab and project table
-store_user_settings <- function(user_coc, tab_name){
+## on app exit, update all settings
+update_all_user_settings <- function(user_coc, tab_name){
   
   if(!isolate(user_coc$auth))
     return(NULL)

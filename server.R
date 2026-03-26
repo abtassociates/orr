@@ -99,8 +99,9 @@ function(input, output, session) {
 
   shiny::onStop( function(){
     cat("Running onStop")
+    
     ## record user settings
-    store_user_settings(user_coc, tab_name = input$nav)
+    update_all_user_settings(user_coc, tab_name = input$nav)
     # Get a dev version that persists beyond the app 
     pool::poolClose(get_db_pool())
     
