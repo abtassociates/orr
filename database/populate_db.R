@@ -643,7 +643,10 @@ CREATE TABLE IF NOT EXISTS user_settings (
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username),
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+    -- A version user can only set one of each type of user setting
+    CONSTRAINT user_settings_unique_key UNIQUE (coc_version_id, coc_user, setting_name)
 );
 "))
 
