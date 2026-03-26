@@ -57,12 +57,12 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
             selectInput(ns("funding_action"), "Funding Action*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$funding_action))
           ),
           layout_columns(
-            selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$all_project_types)), # Choices populated by server
+            selectInput(ns("project_type"), "Project Type*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$all_project_types)),
             selectInput(ns("target_population"), "Target Population*", selectize = TRUE, choices = c("Select an option below" = "", LOOKUP_CHOICES$target_populations))
           ),
           
           layout_columns(
-            textInput(ns("grant_number"), "Grant Number", placeholder = "Please enter if applicable"), # Visibility controlled by server
+            textInput(ns("grant_number"), "Grant Number*", placeholder = "Please enter if applicable"),
             div()
           )
         ),
@@ -403,7 +403,9 @@ mod_inventory_add_project_server <- function(
         # Handle YHDP Reallocation special case for total beds
         total_fam <- get_val("total_beds", "fam")
         total_ind <- get_val("total_beds", "ind")
-        if (input$funding_source == "YHDP" && grepl("Reallocation", form_type())) {
+        if (input$funding_source == "YHDP" 
+            # && grepl("Reallocation", form_type())
+          ) {
           total_fam <- get_val("youth_beds", "fam")
           total_ind <- get_val("youth_beds", "ind")
         }
