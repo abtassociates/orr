@@ -595,7 +595,7 @@ CREATE TABLE IF NOT EXISTS coc_version_users (
 );
 "))
 
-DBI::dbExecute(DB_POOL, glue::glue("
+DBI::dbExecute(get_db_pool(), glue::glue("
 
 CREATE TABLE IF NOT EXISTS user_settings (
     user_setting_id {id_var_attrs},
