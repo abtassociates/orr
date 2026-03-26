@@ -331,11 +331,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
             )
           )
         ),
-        editable = list(
-          target = 'cell',
-          disable = list(columns = c(0))
-        ),
-        extension = 'KeyTable',
         options = list(
           dom = 't',
           searching = FALSE,
