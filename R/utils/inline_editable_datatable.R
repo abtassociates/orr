@@ -90,7 +90,16 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
 debugger;
         var cell = table.cell(this);
         var colIndex = cell.index().column;
-        var colName = has_double_header == 'TRUE' ? getCompoundColName(colIndex) : table.column(colIndex).header().childNodes[0].wholeText;
+        var colName;
+
+        if (has_double_header == 'TRUE') {
+            colName = getCompoundColName(colIndex);
+        } else if (tableID == 'rating-alternative-alternative_rating_table') {
+            colName = table.column(colIndex).header().childNodes[0].wholeText;
+        } else {
+            colName = table.column(colIndex).header().innerText.toUpperCase();
+        }
+        
         // var colName = table.column(colIndex).header().innerText;
         
         if (factorInfo[colName]) {
