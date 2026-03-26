@@ -234,9 +234,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, mo
           is_initialized <- !is.null(stored_val)
           
           # Only update children if the user clicked (value changed from what we last recorded)
-          if(!identical(new_val, stored_val)) {
+          if(!identical(new_val, stored_val) && is_initialized) {
             subgroup_check_all_values[[subgroup_check_all_input]] <- new_val
-            subgroup_factors <- isolate(all_coc_factors())[[group]][[toString(subgroup)]]
+            
+            subgroup_factors <- isolate(all_coc_factors_structured())[[group]][[toString(subgroup)]]
             
             lapply(subgroup_factors$rating_factor_id, function(factor_id) {
               checkbox_id <- paste0("select_", factor_id)
