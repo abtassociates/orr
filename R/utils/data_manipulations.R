@@ -218,19 +218,15 @@ get_db_timestamp <- function() {
 }
 
 save_to_db <- function(p, sql, params, tbl_name) {
+  paramified <- paramify(params)
+  if(purrr::every(paramified, is.null)) 
+    return(FALSE)
+  
   tryCatch({
     rows_changed <- if(!grepl("RETURNING ", sql)) {
-      DBI::dbExecute(
-        p,
-        sql,
-        params = paramify(params)
-      )
+      DBI::dbExecute(p, sql, params = paramified)
     } else {
-      DBI::dbGetQuery(
-        p,
-        sql,
-        params = paramify(params)
-      )
+      DBI::dbGetQuery(p, sql, params = paramified)
     }
     
     if(grepl("RETURNING ", sql)) {
