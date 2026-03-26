@@ -84,6 +84,8 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
     
     observeEvent(c(selected_project(), refresh_trigger()), {
       req(user_coc$coc_version_id)
+      req(selected_project())
+      req(fnrow(selected_project()) > 0)
 
       # individual threshold entries
       thresholds_to_enter(
