@@ -50,9 +50,9 @@ second_user <- toString(USERS[3, 1])
 # -3: AK-500 Main Version, Main user owns, second user is editor (request approved)
 # -2: AK-500 Alternate, Second user owns, main user is editor (main user request approved)
 # -1: AK-501 Main Version, Second user owns, no one else on, main user requested
-coc_versions <- -6:-1
+coc_version_ids <- -6:-1
 coc_versions <- data.table(
-  coc_version_id = coc_versions,
+  coc_version_id = coc_version_ids,
   coc_version_name = c(
     'IL-517 Main Version',
     'IL-517 Second Version',
@@ -194,7 +194,7 @@ DBI::dbAppendTable(p, "coc_version_requests", coc_version_requests)
 print("Adding selected thresholds, factors, and nofo opportunities for test coc_versions")
 source("R/app_db_funcs/db_01a_mod_coc_selection.R", local=TRUE)
 
-lapply(coc_versions, function(coc_version_id) {
+lapply(coc_version_ids, function(coc_version_id) {
   generate_data_for_new_coc_version(p, coc_version_id)
 })
 })
