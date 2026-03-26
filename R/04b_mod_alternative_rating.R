@@ -45,7 +45,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     format_table_data <- function(df) {
       
       message("INFO: in formatting table_data, df = \n")
-      message(df)
+      message(names(df))
       df %>%
         fmutate(
           met_hud_thresholds = factor_yesno(met_hud_thresholds),
