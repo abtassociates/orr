@@ -33,7 +33,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     
     ## restore last selected project from user_settings DB tbl
     observe({
-      req(user_coc$coc_version_id & nav_control() == 'rating')
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
       req(nrow(all_projects()) > 0)
       
       user_prev_project_selected <- get_user_setting(glue::glue('rating_{id}_project_selected'), user_coc$coc_version_id, user_coc$username)
