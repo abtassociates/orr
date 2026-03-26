@@ -103,10 +103,10 @@ function(input, output, session) {
     ## record user settings
     update_all_user_settings(user_coc, tab_name = input$nav)
     # Get a dev version that persists beyond the app 
-    pool::poolClose(get_db_pool())
+    # pool::poolClose(get_db_pool())
     
-    if (shiny::isRunning()) {
-      try(tools::pskill(tunnel), silent = TRUE)
-    }
+    # if (shiny::isRunning()) {
+    #   try(tools::pskill(tunnel), silent = TRUE)
+    # }
   }, session = session)
 }

@@ -67,5 +67,11 @@ set_up_db_connection()
 # PREP GLOBAL DATA ---------------
 source(here("R/global_data_prep.R"))
 
-
+shiny::onStop( function(){
+  pool::poolClose(get_db_pool())
+  
+  if (shiny::isRunning()) {
+    try(tools::pskill(tunnel), silent = TRUE)
+  }
+})
 # shiny::runApp(port = 4000, launch.browser = T)
