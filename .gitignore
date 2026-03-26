@@ -17,3 +17,4 @@ logs
 gha-creds-*.json
 
 sandbox/dev_db.sqlite*
+sandbox/.nfs*

@@ -15,6 +15,11 @@ USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
 
 set_up_db_connection(USE_SQLITE)
 
+if(USE_SQLITE) {
+  DBI::dbExecute(get_db_pool(), "PRAGMA journal_mode = WAL;")
+  DBI::dbExecute(get_db_pool(), "PRAGMA synchronous = NORMAL;")
+}
+
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
 HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
