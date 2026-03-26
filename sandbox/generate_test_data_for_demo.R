@@ -2,7 +2,7 @@ library(magrittr)
 
 LOOKUPS <- get_db_tbl("lookups")
 if("error" %in% names(LOOKUPS)) {
-  set_up_db_connection(USE_SQLITE)
+  set_up_db_connection()
 }
 delete_test_data <- function(p, tbl, anchorid) {
   print(glue::glue("deleting from {tbl}"))

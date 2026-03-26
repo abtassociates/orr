@@ -9,7 +9,7 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
   factor_levels <- lapply(data[, ..factor_names], levels)
   if(!is.null(colnames)) 
     names(factor_levels) <- toupper(variable_labels[match(names(factor_levels), names(variable_labels))])
-  
+
   # column_defs adds classname for easier management
   column_defs[[length(column_defs) + 1]] <- list(
     targets = match(factor_names, names(data)) - 1,  # Vector of all indices
@@ -179,7 +179,7 @@ initialize_inline_edit_table_ui <- function(
   
   # --- STEP 1: handle user-specified options ---
   default_options <- list(
-    dom = "Bt",
+    dom = "tip",
     paging = FALSE,
     scrollY = "100%",  # Limit table height
     keys = TRUE,

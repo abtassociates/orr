@@ -5,7 +5,13 @@ function(input, output, session) {
     username = NULL,
     auth = FALSE, # is the user authenticated or not
     given_name = NULL, # user's given_name as stored and returned by cognito
-    email = NULL  # user's email as stored and returned by cognito
+    email = NULL,  # user's email as stored and returned by cognito
+    active_tab = NULL, # last active tab
+    settings = list(
+      cols_to_hide = NULL, # which project columns to display
+      rating_method = NULL, # in-app vs alternative rating method
+      rating_tab = NULL
+    )
   )
   nav_control <- reactiveVal("about")
 
@@ -91,4 +97,16 @@ function(input, output, session) {
     nav_select("nav", selected = nav_control())
   })
 
+  shiny::onStop( function(){
+    cat("Running onStop")
+    
+    ## record user settings
+    update_all_user_settings(user_coc, tab_name = input$nav)
+    # Get a dev version that persists beyond the app 
+    pool::poolClose(get_db_pool())
+    
+    if (shiny::isRunning()) {
+      try(tools::pskill(tunnel), silent = TRUE)
+    }
+  }, session = session)
 }

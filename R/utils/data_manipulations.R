@@ -125,10 +125,17 @@ variable_labels <- c(
   "youth_bed_inventory" = "Youth Bed Inventory",
   "created_by" = "Created By",
   "date_created" = "Date Created",
+  "date_updated" = "Date Updated",
+  "updated_by" = "Updated By",
   "met_hud_thresholds" = "Met HUD Thresholds",
   "met_coc_thresholds" = "Met CoC Thresholds",
   "weighted_score" = "Weighted Rating Score (out of 100)"
 )
+
+inventory_variable_labels <- variable_labels[!(names(variable_labels) %in% c('met_hud_thresholds', 'met_coc_thresholds', 'weighted_score'))]
+
+initial_cols_to_show <- setdiff(names(inventory_variable_labels), c('created_by','date_created','date_updated','updated_by'))
+                                                                  
 
 giw_variable_labels <- c(
   "grant_number" = "Grant Number",
@@ -157,6 +164,7 @@ versions_variable_labels <- c(
   "coc_version_id" = "CoC Version ID",
   "coc_version_role" = "Your Role",
   "updated_by" = "Updated By",
+  "created_by" = "Created By",
   "date_updated" = "Date Updated",
   "created_by" = "Created By",
   "date_created" = "Date Created"

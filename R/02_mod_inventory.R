@@ -14,6 +14,25 @@ mod_inventory_ui <- function(id) {
         helpText("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
+        
+        dropdownButton(
+          inputId = "mydropdown",
+          label = "Choose Fields to Display",
+          icon = icon("sliders"),
+          circle = FALSE,
+          
+          prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
+          pickerInput(ns('projects_col_selections'), label = 'Choose Fields to Display',
+                      choices = setNames(initial_cols_to_show, inventory_variable_labels[initial_cols_to_show]),
+                      selected = initial_cols_to_show, 
+                      multiple = TRUE, 
+                      
+                      options = pickerOptions(
+                        selectedTextFormat = 'count',
+                        countSelectedText = '{0} Fields Displayed'
+                      )
+          )
+        ),
         DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
         br(),
         textOutput(ns("projects_table_counts")),
@@ -96,6 +115,30 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       projects_data(data)
     })
     
+    ## after initial DT table creation, show/hide any columns from user settings
+    observe({
+      req(projects_data())
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      
+      initial_cols_to_hide <- setdiff(names(projects_data()), initial_cols_to_show )
+      
+      # retrieve user columns from user-settings table
+      user_previous_hidden <- get_project_fields_to_hide(user_coc$coc_version_id, user_coc$username)
+      user_cols_to_hide <- gsub('disp_','',user_previous_hidden)
+
+      if(length(user_cols_to_hide) > 0){
+        initial_cols_to_hide <- union(initial_cols_to_hide, user_cols_to_hide)
+
+        ## update selections checkboxes with full set of initially hidden columns
+        updatePickerInput(session, inputId = 'projects_col_selections', selected = setdiff(initial_cols_to_show, initial_cols_to_hide))
+      }
+      
+      ## update DT table with full set of initially hidden columns
+      hideCols(projects_table_proxy, initial_cols_to_hide)
+      showCols(projects_table_proxy, setdiff(initial_cols_to_show, initial_cols_to_hide))
+      
+    })
+    
     # Projects datatable -----
     output$projects_table <- renderDT({
       req(user_coc$coc_version_id)
@@ -115,7 +158,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
-      colnames <- unname(variable_labels[names(data)])
+      colnames <- unname(inventory_variable_labels[names(data)])
+      
+      ## initially, only hide pre-specified columns; later, will hide user settings-based ones
+      initial_cols_to_hide <- setdiff(names(data), initial_cols_to_show )
+      col_inds_to_hide <- match(initial_cols_to_hide, names(data)) - 1
       
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
@@ -124,8 +171,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         initial_filter = initial_filter,
         column_defs = list(
           list(
-            targets =c(which(names(data) == "created_by") - 1,
-                       which(names(data) == 'geocode') - 1), 
+            targets = col_inds_to_hide, 
             className = "hidden",
             visible = FALSE
           )
@@ -184,20 +230,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         ),
         colnames = colnames,
         cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
-        buttons = list(
-          'colvis',
-          list(
-            extend = 'collection',
-            text="Show/Hide Bed Inventory",
-            action = DT::JS(sprintf("
-              function ( e, dt, node, config ) {
-                var cols = %s;
-                dt.columns(cols).visible(!dt.column(cols[0]).visible());
-              }",
-              jsonlite::toJSON(grep("Bed", colnames) - 1)
-            ))
-          )
-        ),
+        options = list(dom = 't'),
         callback_js = "
           $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
             $(this).css('cursor', 'pointer');
@@ -209,10 +242,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("projects_table"),session = session)
+    projects_table_proxy <- dataTableProxy("projects_table",session = session)
     
     observe({
       req(projects_data())
+      #this line may not be needed: projects_table_proxy$rawId <- projects_table_proxy$id
       replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
     })
     
@@ -238,7 +272,45 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       }
       return(TRUE)
     }
-
+    
+    # Update DT table with Bed Inventory fields (switchInput)
+    observeEvent(input$toggle_bed_fields, {
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      req(projects_data())
+      
+      bed_fields <- grep('bed', names(projects_data())) - 1
+      bed_field_names <- names(projects_data())[bed_fields + 1]
+      
+      if(input$toggle_bed_fields){
+        updatePickerInput(session, inputId = 'projects_col_selections', selected = union(input$projects_col_selections, bed_field_names))
+      } else {
+        updatePickerInput(session, inputId = 'projects_col_selections', selected = setdiff(input$projects_col_selections, bed_field_names))
+      }
+    })
+    
+    # Update DT table with column changes made in dropdown (pickerInput)
+    observeEvent(input$projects_col_selections, {
+      
+       req(user_coc$auth)
+       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+       req(projects_data())
+        
+       cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
+       cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
+       # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+       
+       ## show and hide columns as needed
+        if(length(cols_to_hide) > 0){
+          hideCols(projects_table_proxy, hide = cols_to_hide)
+        }
+        if(length(cols_to_show) > 0){
+          showCols(projects_table_proxy, show = cols_to_show)
+        }
+       
+       user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
+    })
+    
     # Update projects -----
     ## consolidated update function
     inventory_update <- function(info, value) {

@@ -1,3 +1,4 @@
+
 convert_timestamps_to_char <- function(dt) {
   if("date_created" %in% names(dt)) 
     dt[, date_created := as.character(date_created, tz = "UTC")]
