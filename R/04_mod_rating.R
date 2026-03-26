@@ -115,7 +115,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
     observe({
       req(user_coc$auth)
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-
+browser()
       user_previous_method <- get_user_setting('rating_method', user_coc$coc_version_id, user_coc$username)
       
       if(length(user_previous_method) > 0){
