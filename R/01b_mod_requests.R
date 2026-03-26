@@ -63,7 +63,7 @@ mod_requests_server <- function(id, user_coc, module_returns) {
       else filter_requests(cur_requests(), status = input$request_filters)
     })
     
-    cur_requests_proxy <- dataTableProxy("requests_dt", session=session)
+    cur_requests_proxy <- dataTableProxy(ns("requests_dt"), session=session)
     observe({
       req(cur_requests_filtered())
       replaceData(cur_requests_proxy, cur_requests_filtered(), resetPaging = FALSE, rownames = FALSE)
