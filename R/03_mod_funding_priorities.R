@@ -419,8 +419,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         ) |>
         frename(pop = target_population, grp = population_group) |>
         fmutate(
-          project_type = get_lookup_refid(project_type, ref_type = "project_type"),
-          priority = get_lookup_refid(priority, "ref_type" = "priority")
+          project_type = get_lookup_refid(project_type, ref_type = "project_type")
         ) |>
         join(
           coc_funding_priorities() |> 
@@ -430,6 +429,11 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # bed, funding, or priority
       metric_name <- names(changed_data)[3]
+      
+      if(metric_name == "priority") 
+        changed_data <- changed_data |>
+          fmutate(priority = get_lookup_refid(priority, ref_type = "priority"))
+      
       
       updated_coc_funding_priorities <- list(
         user_coc$coc_version_id,
