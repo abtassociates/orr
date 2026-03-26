@@ -300,7 +300,10 @@ debugger;
           } else {
             readxl::read_xlsx(input$rating_file$datapath)
           }
-        }, error = function(e) NULL)
+        }, error = function(e) {
+          logger::log_error(e$message)
+          NULL
+        })
         
         shiny::validate(
           need(!is.null(uploaded), "Unable to read file.")

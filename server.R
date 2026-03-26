@@ -1,4 +1,6 @@
 function(input, output, session) {
+  logger::log_shiny_input_changes(input)
+  
   user_coc <- reactiveValues(
     coc = NULL,
     coc_version_id = NULL,
