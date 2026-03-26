@@ -33,11 +33,22 @@ set_collapse(na.rm = TRUE, verbose = FALSE, sort = FALSE)
 # COLORS AND THEME -----------
 # Need to set this or `brandr::assert_brand_yml` will not work correctly because for non-interactive sessions, it takes the main path
 options(BRANDR_BRAND_YML = here::here("_brand.yml"))
-options(shiny.error = function() {
-  logger::log_error(paste("Shiny Error:", traceback()))
-})
-logger::log_appender(logger::appender_console) 
-Sys.setenv("LOG_LEVEL" = "WARN")
+
+filtered_appender <- function(lines) {
+  # Regex to drop lines where an input is transitioning from NULL
+  lines <- lines[!grepl("Shiny input change detected in .*: NULL -> ", lines)]
+  
+  # Pass any remaining lines to the standard stderr appender
+  if (length(lines) > 0) {
+    logger::appender_stderr(lines)
+  }
+}
+
+logger::log_appender(filtered_appender)
+logger::log_threshold(Sys.getenv("LOG_LEVEL", "DEBUG"))
+
+options(shiny.fullstacktrace = TRUE)
+options(shiny.sanitize.errors = FALSE)
 
 USER_ENTRY_BG_COLOR <- "#e6ffe6"
 
