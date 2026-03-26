@@ -393,34 +393,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       user_coc$settings[[glue::glue('rating_{id}_target_population')]] <- input$target_population
     }, ignoreInit = TRUE)
     
-    insert_custom_factor_to_db <- function(p, custom_factor_data) {
-      save_to_db(
-        p, 
-        "INSERT INTO rating_factors (funding_action, coc_version_id, project_type, target_population, rating_factor_text, factor_group_id, goal, max_point_value, created_by)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-          ON CONFLICT (coc_version_id, COALESCE(project_type, -1), COALESCE(target_population, -1), rating_factor_text) DO NOTHING
-        RETURNING rating_factor_id, selected, goal, max_point_value, date_updated;",
-        custom_factor_data,
-        "rating_factors"
-      )
-    }
-    
-    update_selected_rating_factors_db <- function(p, updated_selected_rating_factors) {
-      save_to_db(
-        p, 
-        "INSERT INTO selected_rating_factors (rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by)
-          VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (coc_version_id, rating_factor_id) DO UPDATE SET
-            selected = EXCLUDED.selected,
-            goal = EXCLUDED.goal,
-            max_point_value = EXCLUDED.max_point_value,
-            updated_by = EXCLUDED.created_by
-        " |> add_optimistic_locking(),
-        updated_selected_rating_factors,
-        "selected_rating_factors"
-      )
-    }
-
     observeEvent(input$save_factors, {
       updated_selected_rating_factors <- rbindlist(lapply(all_coc_factors()$rating_factor_id, function(id) {
         data.table(
