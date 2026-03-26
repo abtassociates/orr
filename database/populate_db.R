@@ -15,6 +15,11 @@ USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
 
 set_up_db_connection(USE_SQLITE)
 
+if(USE_SQLITE) {
+  DBI::dbExecute(get_db_pool(), "PRAGMA journal_mode = WAL;")
+  DBI::dbExecute(get_db_pool(), "PRAGMA synchronous = NORMAL;")
+}
+
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
 HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
@@ -153,8 +158,8 @@ VALUES
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
 ('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
-('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
-('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'Veteran', 'Veteran', 'orr_service@abtglobal.com'),
+('target_population', 'Youth', 'Youth', 'orr_service@abtglobal.com'),
 ('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
 ")
@@ -221,76 +226,43 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
 
 # import HIC data ----------------
 hic_data <- fread(HIC_DATA_FILEPATH)
-
 # Rename columns to match SQL table
-setnames(hic_data, old = c(
-  "Row #",
-  "HudNum",
-  "CoC",
-  "Organization Name",
-  "Project Name",
-  "Project Type",
-  "Geocode",
-  "Target Population",
-  "mcKinneyVentoEsgEs",
-  "mcKinneyVentoEsgRrh",
-  "mcKinneyVentoEsgCov",
-  "mcKinneyVentoEsgRUSH",
-  "mcKinneyVentoCocSh",
-  "mcKinneyVentoCocTh",
-  "mcKinneyVentoCocPsh",
-  "mcKinneyVentoCocRrh",
-  "mcKinneyVentoCocSro",
-  "mcKinneyVentoCocThRrh",
-  "mcKinneyVentoSpC",
-  "mcKinneyVentoS8",
-  "mcKinneyVentoShp",
-  "mcKinneyVentoYhdp",
-  "mcKinneyVentoYhdpRenewals",
-  "Beds HH w/ Children",
-  "Veteran Beds HH w/ Children",
-  "Youth Beds HH w/ Children",
-  "CH Beds HH w/ Children",
-  "Beds HH w/o Children",
-  "Veteran Beds HH w/o Children",
-  "Youth Beds HH w/o Children",
-  "CH Beds HH w/o Children",
-  "Beds HH w/ only Children",
-  "CH Beds HH w only Children"
-), new = c(
-  "row_num",
-  "hudnum",
-  "coc_name",
-  "organization_name",
-  "project_name",
-  "project_type",
-  "geocode",
-  "target_population",
-  "mckinneyventoesges",
-  "mckinneyventoesgrrh",
-  "mckinneyventoesgcov",
-  "mckinneyventoesgrrhcov",
-  "mckinneyventococsh",
-  "mckinneyventococth",
-  "mckinneyventococpsh",
-  "mckinneyventococrrh",
-  "mckinneyventococsro",
-  "mckinneyventococthrrh",
-  "mckinneyventospc",
-  "mckinneyventos8",
-  "mckinneyventoshp",
-  "mckinneyventoyhdp",
-  "mckinneyventoyhdprenewals",
-  "beds_hh_w_children",
-  "veteran_beds_hh_w_children",
-  "youth_beds_hh_w_children",
-  "ch_beds_hh_w_children",
-  "beds_hh_wo_children",
-  "veteran_beds_hh_wo_children",
-  "youth_beds_hh_wo_children",
-  "ch_beds_hh_wo_children",
-  "beds_hh_w_only_children",
-  "ch_beds_hh_w_only_children"
+setnames(hic_data, c(
+  row_num                   = "Row #",
+  hudnum                    = "HudNum",
+  coc_name                  = "CoC",
+  organization_name         = "Organization Name",
+  project_name              = "Project Name",
+  project_type              = "Project Type",
+  geocode                   = "Geocode",
+  target_population         = "Target Population",
+  mckinneyventoesges        = "mcKinneyVentoEsgEs",
+  mckinneyventoesgrrh       = "mcKinneyVentoEsgRrh",
+  mckinneyventoesgcov       = "mcKinneyVentoEsgCov",
+  mckinneyventoesgrrhcov    = "mcKinneyVentoEsgRUSH",
+  mckinneyventococsh        = "mcKinneyVentoCocSh",
+  mckinneyventococth        = "mcKinneyVentoCocTh",
+  mckinneyventococpsh       = "mcKinneyVentoCocPsh",
+  mckinneyventococrrh       = "mcKinneyVentoCocRrh",
+  mckinneyventococsro       = "mcKinneyVentoCocSro",
+  mckinneyventococthrrh     = "mcKinneyVentoCocThRrh",
+  mckinneyventospc          = "mcKinneyVentoSpC",
+  mckinneyventos8           = "mcKinneyVentoS8",
+  mckinneyventoshp          = "mcKinneyVentoShp",
+  mckinneyventoyhdp         = "mcKinneyVentoYhdp",
+  mckinneyventoyhdprenewals = "mcKinneyVentoYhdpRenewals",
+  mckinneyventounshelt      = "mcKinneyVentoUnshelt",
+  mckinneyventorural        = "mcKinneyVentoRural",
+  beds_hh_w_children        = "Beds HH w/ Children",
+  veteran_beds_hh_w_children= "Veteran Beds HH w/ Children",
+  youth_beds_hh_w_children  = "Youth Beds HH w/ Children",
+  ch_beds_hh_w_children     = "CH Beds HH w/ Children",
+  beds_hh_wo_children       = "Beds HH w/o Children",
+  veteran_beds_hh_wo_children = "Veteran Beds HH w/o Children",
+  youth_beds_hh_wo_children = "Youth Beds HH w/o Children",
+  ch_beds_hh_wo_children    = "CH Beds HH w/o Children",
+  beds_hh_w_only_children   = "Beds HH w/ only Children",
+  ch_beds_hh_w_only_children = "CH Beds HH w only Children"
 ))
 
 # Drop columns that aren't in your SQL table (if they exist)
@@ -518,7 +490,6 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 	coc VARCHAR(6) REFERENCES cocs(coc_code),
     coc_number_and_name TEXT,
     pprn INTEGER,
-    estimated INTEGER,
     tier_1 INTEGER,
     coc_bonus INTEGER NULL,
     dv_bonus INTEGER,
@@ -531,25 +502,17 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH, encoding="Latin-1")
 
 # Rename columns to match SQL table
-setnames(hud_ard_data, old = c(
-  "CoCName",
-  "CoC Number and Name",
-  "PPRN",
-  "Estimated ARD",
-  "Tier 1",
-  "CoC Bonus",
-  "DV Bonus",
-  "CoC Planning"
-), new = c(
-  "coc",
-  "coc_number_and_name",
-  "pprn",
-  "estimated",
-  "tier_1",
-  "coc_bonus",
-  "dv_bonus",
-  "coc_planning"
-))
+hud_ard_data <- frename(
+  hud_ard_data,
+  "CoCName" = "coc",
+  "CoC Number and Name" = "coc_number_and_name",
+  "PPRN" = "pprn",
+  "Estimated ARD" = "estimated",
+  "Tier 1" = "tier_1",
+  "CoC Bonus" = "coc_bonus",
+  "DV Bonus" = "dv_bonus",
+  "CoC Planning" = "coc_planning"
+)
 
 # only keep the ones where the CoC is in the HIC data
 hud_ard_data <- hud_ard_data |> fsubset(coc %in% funique(hic_data$hudnum))

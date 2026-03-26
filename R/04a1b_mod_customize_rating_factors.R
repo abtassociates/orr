@@ -7,7 +7,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
   
   project_and_pop_dropdowns <- function(ns) {
     project_type_dropdown <- selectInput(
-      inputId = ns("project_type"),
+      inputId = ns("project_type_filter"),
       label = "Select project type",
       choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
       multiple = TRUE,
@@ -15,7 +15,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
     )
     
     target_pop_dropdown <- selectInput(
-      inputId = ns("target_population"),
+      inputId = ns("target_population_filter"),
       label = "Select special populations",
       choices = get_labelled_lookups("target_population")[c("DV", "General")],
       multiple = TRUE,
@@ -76,23 +76,26 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     all_coc_factors <- reactive({
       req(funding_action, user_coc$coc_version_id)
       
-      all_factors <- get_all_coc_factors(funding_action_id, user_coc$coc_version_id)
+      get_all_coc_factors(funding_action_id, user_coc$coc_version_id)
+    })
+    
+    all_coc_factors_filtered <- reactive({
+      f <- all_coc_factors()
+      if(!is.null(input$project_type_filter)) f <- f[project_type %in% c(input$project_type_filter, NA)]
+      if(!is.null(input$target_population_filter)) f <- f[target_population %in% c(input$target_population_filter, NA)]
       
-      if(!is.null(input$project_type)) all_factors <- all_factors[project_type %in% input$project_type]
-      if(!is.null(input$target_population)) all_factors <- all_factors[target_population %in% input$target_population]
-      
-      all_factors
+      f
     })
     
     all_coc_factors_structured <- reactive({
       req(user_coc$coc_version_id)
       
-      all_factors <- all_coc_factors()
+      f <- all_coc_factors_filtered()
       nested_data <- list()
-      unique_groups <- unique(all_factors$factor_group)
+      unique_groups <- unique(f$factor_group)
       
       for (group_name in unique_groups) {
-        group_dt <- all_factors[factor_group == group_name]
+        group_dt <- f[factor_group == group_name]
         nested_data[[group_name]] <- split(group_dt, by = "factor_subgroup")
       }
       
@@ -231,9 +234,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           is_initialized <- !is.null(stored_val)
           
           # Only update children if the user clicked (value changed from what we last recorded)
-          if(!identical(new_val, stored_val)) {
+          if(!identical(new_val, stored_val) && is_initialized) {
             subgroup_check_all_values[[subgroup_check_all_input]] <- new_val
-            subgroup_factors <- isolate(all_coc_factors())[[group]][[toString(subgroup)]]
+            
+            subgroup_factors <- isolate(all_coc_factors_structured())[[group]][[toString(subgroup)]]
             
             lapply(subgroup_factors$rating_factor_id, function(factor_id) {
               checkbox_id <- paste0("select_", factor_id)

@@ -5,7 +5,8 @@ get_db_pool <- function() {
   .db_env$pool
 }
 
-set_up_db_connection <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
+set_up_db_connection <- function() {
+  if(!exists("USE_SQLITE")) USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
   .db_env$connection_type <- ifelse(USE_SQLITE, "SQLite", "RPostgres")
   
   .db_env$pool <- if(Sys.getenv("RSTUDIO") == "1" && USE_SQLITE) {
@@ -115,3 +116,16 @@ get_sqlite_db <- function() {
 # shiny::onStop(function() {
 #   pool::poolClose(get_db_pool())
 # })
+
+close_pool <- function() {
+  pool::poolClose(get_db_pool())
+}
+
+db_connect <- function(USE_SQLITE = TRUE) {
+  set_up_db_connection(USE_SQLITE)
+}
+
+run_app <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
+  USE_SQLITE <<- USE_SQLITE
+  runApp()
+}
