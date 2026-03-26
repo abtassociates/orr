@@ -30,7 +30,9 @@ ADMIN_USERS <- "
   ('Victoria.Lopez@abtglobal.com', 'Victoria', 'Lopez', NULL),
   ('anthony.appau@abtglobal.com', 'Anthony', 'Appau', NULL),
   ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL),
-  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL)
+  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL),
+  ('kally.canfield@abtglobal.com', 'Kally', 'Canfield', NULL),
+  ('Randy.McCoy@abtglobal.com', 'Randy', 'McCoy', NULL)
 "
 
 drop_table <- function(tbl) {
