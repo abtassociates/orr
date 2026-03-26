@@ -5,7 +5,8 @@ get_db_pool <- function() {
   .db_env$pool
 }
 
-set_up_db_connection <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
+set_up_db_connection <- function() {
+  if(!exists("USE_SQLITE")) USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
   .db_env$connection_type <- ifelse(USE_SQLITE, "SQLite", "RPostgres")
   
   .db_env$pool <- if(Sys.getenv("RSTUDIO") == "1" && USE_SQLITE) {
@@ -128,4 +129,8 @@ close_pool <- function() {
 
 db_connect <- function(USE_SQLITE = TRUE) {
   set_up_db_connection(USE_SQLITE)
+
+run_app <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
+  USE_SQLITE <<- USE_SQLITE
+  runApp()
 }
