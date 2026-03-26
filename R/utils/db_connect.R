@@ -129,6 +129,7 @@ close_pool <- function() {
 
 db_connect <- function(USE_SQLITE = TRUE) {
   set_up_db_connection(USE_SQLITE)
+}
 
 run_app <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
   USE_SQLITE <<- USE_SQLITE
