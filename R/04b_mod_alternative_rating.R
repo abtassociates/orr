@@ -43,6 +43,9 @@ mod_alternative_rating_server <- function(id, user_coc) {
     # 1. Create a helper function to ensure data formatting is identical
     # for both the initial render and subsequent proxy updates.
     format_table_data <- function(df) {
+      
+      logger::log_info("in formatting table_data, df = \n")
+      logger::log_info(df)
       df %>%
         fmutate(
           met_hud_thresholds = factor_yesno(met_hud_thresholds),
