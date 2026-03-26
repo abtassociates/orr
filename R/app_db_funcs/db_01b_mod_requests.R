@@ -26,33 +26,14 @@ get_all_requests <- function(username) {
     fselect(-u_coc_version_id)
 }
 
-update_request_status <- function(p, update_params, status) {
+update_request_status <- function(p, update_params) {
   DBI::dbExecute(
     p,
     glue::glue(
       "UPDATE coc_version_requests 
-      SET request_status = $1, 
-      date_updated = CURRENT_TIMESTAMP, 
-      updated_by = $2 
-        {ifelse(status == 'Approved', '', ', reason_for_rejection = $3')}
-      WHERE coc_request_id = $3 AND date_updated = $4"
+      SET request_status = $1, updated_by = $2, reason_for_rejection = $3
+      WHERE coc_request_id = $4 AND date_updated = $5"
     ),
     params = paramify(update_params)
-  )
-}
-
-save_request_rejection <- function(p, params) {
-  # Set Status in Requests table
-  save_to_db(
-    p,
-    "UPDATE coc_version_requests 
-    SET 
-      request_status = $1, 
-      date_updated = CURRENT_TIMESTAMP, 
-      updated_by = $2,
-      reason_for_rejection = $3
-    WHERE coc_request_id = $4", 
-    params,
-    "coc_version_requests"
   )
 }
