@@ -464,7 +464,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           selected_new = coc_nofo_opportunity_id %in% params$nofo_opportunity_ids,
           created_by = params$created_by
         ) |>
-        fsubset(selected_new != fcoalesce(selected, FALSE)) |>
+        fsubset(selected_new != fcoalesce(as.logical(selected), FALSE)) |>
         fselect(coc_version_id, coc_nofo_opportunity_id, selected_new, created_by, date_updated)
     }
     
