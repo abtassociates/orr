@@ -337,7 +337,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           info = FALSE,
           keys = TRUE
         ),
-        extensions = 'KeyTable',
         filter = 'none',
         callback_js = glue::glue(
           "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
