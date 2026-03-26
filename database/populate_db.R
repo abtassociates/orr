@@ -10,10 +10,8 @@ library(collapse)
   
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
-  
-USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
 
-set_up_db_connection(USE_SQLITE)
+set_up_db_connection()
 
 if(USE_SQLITE) {
   DBI::dbExecute(get_db_pool(), "PRAGMA journal_mode = WAL;")
@@ -207,6 +205,8 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
     mckinneyventoshp BOOLEAN,
     mckinneyventoyhdp BOOLEAN,
     mckinneyventoyhdprenewals BOOLEAN,
+    mckinneyventounshelt BOOLEAN,
+    mckinneyventorural BOOLEAN,
     beds_hh_w_children INTEGER,
     --units_hh_w_children INTEGER,
     veteran_beds_hh_w_children INTEGER,
@@ -225,53 +225,48 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
 ")
 
 # import HIC data ----------------
-hic_data <- fread(HIC_DATA_FILEPATH)
-# Rename columns to match SQL table
-setnames(hic_data, c(
-  row_num                   = "Row #",
-  hudnum                    = "HudNum",
-  coc_name                  = "CoC",
-  organization_name         = "Organization Name",
-  project_name              = "Project Name",
-  project_type              = "Project Type",
-  geocode                   = "Geocode",
-  target_population         = "Target Population",
-  mckinneyventoesges        = "mcKinneyVentoEsgEs",
-  mckinneyventoesgrrh       = "mcKinneyVentoEsgRrh",
-  mckinneyventoesgcov       = "mcKinneyVentoEsgCov",
-  mckinneyventoesgrrhcov    = "mcKinneyVentoEsgRUSH",
-  mckinneyventococsh        = "mcKinneyVentoCocSh",
-  mckinneyventococth        = "mcKinneyVentoCocTh",
-  mckinneyventococpsh       = "mcKinneyVentoCocPsh",
-  mckinneyventococrrh       = "mcKinneyVentoCocRrh",
-  mckinneyventococsro       = "mcKinneyVentoCocSro",
-  mckinneyventococthrrh     = "mcKinneyVentoCocThRrh",
-  mckinneyventospc          = "mcKinneyVentoSpC",
-  mckinneyventos8           = "mcKinneyVentoS8",
-  mckinneyventoshp          = "mcKinneyVentoShp",
-  mckinneyventoyhdp         = "mcKinneyVentoYhdp",
-  mckinneyventoyhdprenewals = "mcKinneyVentoYhdpRenewals",
-  mckinneyventounshelt      = "mcKinneyVentoUnshelt",
-  mckinneyventorural        = "mcKinneyVentoRural",
-  beds_hh_w_children        = "Beds HH w/ Children",
-  veteran_beds_hh_w_children= "Veteran Beds HH w/ Children",
-  youth_beds_hh_w_children  = "Youth Beds HH w/ Children",
-  ch_beds_hh_w_children     = "CH Beds HH w/ Children",
-  beds_hh_wo_children       = "Beds HH w/o Children",
-  veteran_beds_hh_wo_children = "Veteran Beds HH w/o Children",
-  youth_beds_hh_wo_children = "Youth Beds HH w/o Children",
-  ch_beds_hh_wo_children    = "CH Beds HH w/o Children",
-  beds_hh_w_only_children   = "Beds HH w/ only Children",
-  ch_beds_hh_w_only_children = "CH Beds HH w only Children"
-))
-
-# Drop columns that aren't in your SQL table (if they exist)
-cols_to_drop <- c("mcKinneyVentoUnshelt", "mcKinneyVentoRural")
-hic_data[, (cols_to_drop) := NULL]
-
-# Add missing columns that are in SQL but not in CSV (with default values)
-hic_data[, mckinneyventoesg := FALSE]
-hic_data[, mckinneyventococ := FALSE]
+hic_data <- fread(HIC_DATA_FILEPATH) |>
+  frename(
+    row_num                   = "Row #",
+    hudnum                    = "HudNum",
+    coc_name                  = "CoC",
+    organization_name         = "Organization Name",
+    project_name              = "Project Name",
+    project_type              = "Project Type",
+    geocode                   = "Geocode",
+    target_population         = "Target Population",
+    mckinneyventoesges        = "mcKinneyVentoEsgEs",
+    mckinneyventoesgrrh       = "mcKinneyVentoEsgRrh",
+    mckinneyventoesgcov       = "mcKinneyVentoEsgCov",
+    mckinneyventoesgrrhcov    = "mcKinneyVentoEsgRUSH",
+    mckinneyventococsh        = "mcKinneyVentoCocSh",
+    mckinneyventococth        = "mcKinneyVentoCocTh",
+    mckinneyventococpsh       = "mcKinneyVentoCocPsh",
+    mckinneyventococrrh       = "mcKinneyVentoCocRrh",
+    mckinneyventococsro       = "mcKinneyVentoCocSro",
+    mckinneyventococthrrh     = "mcKinneyVentoCocThRrh",
+    mckinneyventospc          = "mcKinneyVentoSpC",
+    mckinneyventos8           = "mcKinneyVentoS8",
+    mckinneyventoshp          = "mcKinneyVentoShp",
+    mckinneyventoyhdp         = "mcKinneyVentoYhdp",
+    mckinneyventoyhdprenewals = "mcKinneyVentoYhdpRenewals",
+    mckinneyventounshelt      = "mcKinneyVentoUnshelt",
+    mckinneyventorural        = "mcKinneyVentoRural",
+    beds_hh_w_children        = "Beds HH w/ Children",
+    veteran_beds_hh_w_children= "Veteran Beds HH w/ Children",
+    youth_beds_hh_w_children  = "Youth Beds HH w/ Children",
+    ch_beds_hh_w_children     = "CH Beds HH w/ Children",
+    beds_hh_wo_children       = "Beds HH w/o Children",
+    veteran_beds_hh_wo_children = "Veteran Beds HH w/o Children",
+    youth_beds_hh_wo_children = "Youth Beds HH w/o Children",
+    ch_beds_hh_wo_children    = "CH Beds HH w/o Children",
+    beds_hh_w_only_children   = "Beds HH w/ only Children",
+    ch_beds_hh_w_only_children = "CH Beds HH w only Children"
+  ) |>
+  fmutate(
+    mckinneyventoesg = FALSE,
+    mckinneyventococ = FALSE
+  )
 
 # Fetch lookup tables from database
 project_type_lookup <- DBI::dbGetQuery(get_db_pool(), 

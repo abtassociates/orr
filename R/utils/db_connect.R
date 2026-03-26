@@ -6,10 +6,10 @@ get_db_pool <- function() {
 }
 
 set_up_db_connection <- function() {
-  if(!exists("USE_SQLITE")) USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
-  .db_env$connection_type <- ifelse(USE_SQLITE, "SQLite", "RPostgres")
+  use_sqlite <- ifelse(exists("USE_SQLITE", where = .GlobalEnv), USE_SQLITE, Sys.getenv("RSTUDIO") == "1")
+  .db_env$connection_type <- ifelse(use_sqlite, "SQLite", "RPostgres")
   
-  .db_env$pool <- if(Sys.getenv("RSTUDIO") == "1" && USE_SQLITE) {
+  .db_env$pool <- if(Sys.getenv("RSTUDIO") == "1" && use_sqlite) {
     get_sqlite_db()
   } else {
     if(Sys.getenv("RSTUDIO") == "1") set_up_tunnel()
@@ -121,11 +121,11 @@ close_pool <- function() {
   pool::poolClose(get_db_pool())
 }
 
-db_connect <- function(USE_SQLITE = TRUE) {
-  set_up_db_connection(USE_SQLITE)
+db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1") {
+  set_up_db_connection(use_sqlite)
 }
 
-run_app <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
-  USE_SQLITE <<- USE_SQLITE
+run_app <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1") {
+  USE_SQLITE <<- use_sqlite
   runApp()
 }
