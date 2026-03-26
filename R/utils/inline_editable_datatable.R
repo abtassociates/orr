@@ -165,6 +165,7 @@ initialize_inline_edit_table_ui <- function(
     fillContainer = TRUE,
     callback_js = "return table;",
     has_double_header = FALSE,
+    extensions = c("Buttons","KeyTable"),
     ...
 ) {
   # --- STEP 1: handle factors as dropdowns ---
@@ -204,7 +205,7 @@ initialize_inline_edit_table_ui <- function(
   dt <- datatable(
     data,
     style = "default",
-    extensions = c('Buttons', 'KeyTable'),
+    extensions = extensions,
     colnames = colnames,
     editable = list(
       target = "cell",
