@@ -64,7 +64,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     ns <- session$ns
     
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
-    other_factor_group_id <- get_other_factor_group_id(funding_action_id)
+    other_factor_group_id <- get_other_factor_group_id(funding_action_id) #used to ensure the custom factor goes in the Other group
     
     refresh_trigger <- reactiveVal(0)
     # Counter for unique IDs for custom factor rows
@@ -169,7 +169,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             div(
               tags$b("Use in rating?"),
               checkboxInput(
-                ns(make.names(paste0(group_name, "_check_all_", subgroup_name))),
+                ns(janitor:::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))),
                 label = NULL,
                 value = all_subgroup_factors_selected
               )
@@ -198,7 +198,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               div(id = ns("custom_factors_placeholder"))
             }
           )
-        })
+        }) # end subaccordion items
         
         bslib::accordion_panel(
           title = group_name,
@@ -209,7 +209,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             open = names(group_data_subgroups)[1]
           )
         )
-      })
+      }) #end group accordion items
       
       bslib::accordion(
         !!!accordion_items_group,
@@ -230,7 +230,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       lapply(seq_row(all_possible_subgroups), function(i) {
         group <- all_possible_subgroups$factor_group[i]
         subgroup <- all_possible_subgroups$factor_subgroup[i]
-        subgroup_check_all_input <- make.names(paste0(group, "_check_all_", subgroup))
+        subgroup_check_all_input <- janitor:::make_clean_names(paste0(group, "_check_all_", subgroup))
         
         observeEvent(input[[subgroup_check_all_input]], {
           new_val <- input[[subgroup_check_all_input]]
@@ -285,7 +285,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             parent_should_be_checked <- all(unlist(factor_selections))
             
             # Get the ID of the parent checkbox
-            subgroup_check_all_input <- make.names(paste0(group_name, "_check_all_", subgroup_name))
+            subgroup_check_all_input <- janitor:::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))
 
             # Update the parent checkbox ONLY if its state needs to change.
             # This avoids unnecessary updates and potential infinite loops.
