@@ -302,35 +302,35 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       # Use a unique ID for the row's wrapper div for easy removal
       row_div_id <- ns(paste0("custom_row_", row_id))
       
+      custom_factor_items <- list(
+        checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE),
+        if(funding_action == "Renew") 
+          selectInput(
+            inputId = ns(paste0("custom_pt_", row_id)),
+            label = NULL,
+            choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
+            multiple = TRUE
+          ) else NULL,
+        selectInput(
+          inputId = ns(paste0("custom_tp_", row_id)),
+          label = NULL,
+          choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
+          multiple = TRUE
+        ),
+        textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
+        textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
+        div(
+          style="display:flex; align-items:center; gap:5px;",
+          numericInput(ns(paste0("custom_points_", row_id)), min = 1, label = NULL, value = 0, step = 0.1),
+          actionButton(ns(paste0("remove_custom_", row_id)), NULL, icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
+        )
+      )
       # Define the namespaced input IDs
-      pt_input_id <- ns(paste0("custom_pt_", row_id))
-      tp_input_id <- ns(paste0("custom_tp_", row_id))
-
       div(
         id = row_div_id,
         layout_columns(
-          col_widths = get_col_widths(funding_action),
-          checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE),
-          if(funding_action == "Renew") 
-            selectInput(
-              inputId = pt_input_id,
-              label = NULL,
-              choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-              multiple = TRUE
-            ) else NULL,
-          selectInput(
-            inputId = tp_input_id,
-            label = NULL,
-            choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
-            multiple = TRUE
-          ),
-          textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
-          textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
-          div(
-            style="display:flex; align-items:center; gap:5px;",
-            numericInput(ns(paste0("custom_points_", row_id)), label = NULL, value = 0, step = 1),
-            actionButton(ns(paste0("remove_custom_", row_id)), "", icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
-          )
+          col_widths = get_col_widths(funding_action, TRUE),
+          !!!purrr::compact(custom_factor_items)
         )
       )
     }
