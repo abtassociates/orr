@@ -74,7 +74,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     subgroup_check_all_values <- reactiveValues()
 
     all_coc_factors <- reactive({
-      req(funding_action, user_coc$coc_version_id)
+      req(funding_action, user_coc$coc_version_id, refresh_trigger())
       
       get_all_coc_factors(funding_action_id, user_coc$coc_version_id)
     })
