@@ -313,13 +313,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               inputId = pt_input_id,
               label = NULL,
               choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-              multiple = FALSE
+              multiple = TRUE
             ) else NULL,
           selectInput(
             inputId = tp_input_id,
             label = NULL,
             choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
-            multiple = FALSE
+            multiple = TRUE
           ),
           textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
           textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
@@ -408,18 +408,23 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
       if(custom_factor_counter() > 0) {
         custom_factor_data <- rbindlist(lapply(seq(custom_factor_counter()), function(i) {
+          pt_tp_combo <- expand.grid(
+            list(
+              project_type = input[[paste0("custom_pt_", i)]],
+              target_population = input[[paste0("custom_tp_", i)]]
+            )
+          )
+          
           data.table(
             funding_action = funding_action_id,
             coc_version_id = user_coc$coc_version_id,
-            project_type = input[[paste0("custom_pt_", i)]],
-            target_population = input[[paste0("custom_tp_", i)]],
             rating_factor_text = input[[paste0("custom_text_", i)]],
             factor_group_id = other_factor_group_id,
             selected = isTRUE(input[[paste0("custom_select_", i)]]),
             goal = input[[paste0("custom_goal_", i)]],
             max_point_value = input[[paste0("custom_points_", i)]],
             username = user_coc$username
-          )
+          ) |> cbind(pt_tp_combo)
         }))
       }
       
