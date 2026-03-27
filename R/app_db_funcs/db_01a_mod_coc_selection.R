@@ -22,9 +22,9 @@ generate_selected_thresholds_for_coc <- function(p, coc_version_id) {
   
   DBI::dbExecute(
     p,
-    "INSERT INTO selected_thresholds (threshold_id, selected, coc_version_id)
-    VALUES ($1, TRUE, $2)
-    ON CONFLICT (coc_version_id, threshold_id) DO NOTHING;",
+    glue::glue("INSERT INTO selected_thresholds (threshold_id, selected, coc_version_id)
+    VALUES ($1, TRUE, $2, '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
+    ON CONFLICT (coc_version_id, threshold_id) DO NOTHING;"),
     params = paramify(thresholds)
   )
 }
@@ -32,7 +32,7 @@ generate_selected_thresholds_for_coc <- function(p, coc_version_id) {
 generate_selected_rating_factors_for_coc <- function(p, coc_version_id) {
   rating_factors <- DBI::dbGetQuery(
     p, 
-    "SELECT rating_factor_id, $1 AS coc_version_id 
+    "SELECT rating_factor_id, $1 AS coc_version_id, goal, max_point_value
     FROM rating_factors
     WHERE coc_version_id IS NULL",
     params = list(coc_version_id)
@@ -40,9 +40,9 @@ generate_selected_rating_factors_for_coc <- function(p, coc_version_id) {
 
   DBI::dbExecute(
     p,
-    "INSERT INTO selected_rating_factors (rating_factor_id, selected, coc_version_id)
-    VALUES ($1, TRUE, $2)
-    ON CONFLICT (coc_version_id, rating_factor_id) DO NOTHING;",
+    glue::glue("INSERT INTO selected_rating_factors (rating_factor_id, selected, coc_version_id, created_by, updated_by)
+    VALUES ($1, TRUE, $2, $3, $4,  '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
+    ON CONFLICT (coc_version_id, rating_factor_id) DO NOTHING;"),
     params = paramify(rating_factors)
   )
 }
@@ -56,9 +56,9 @@ generate_selected_coc_nofo_opportunities <- function(p, coc_version_id) {
   
   DBI::dbExecute(
     p,
-    "INSERT INTO selected_coc_nofo_opportunities (coc_nofo_opportunity_id, selected, coc_version_id)
-    VALUES ($1, TRUE, $2)
-    ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO NOTHING;",
+    glue::glue("INSERT INTO selected_coc_nofo_opportunities (coc_nofo_opportunity_id, selected, coc_version_id, created_by, updated_by)
+    VALUES ($1, TRUE, $2, '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
+    ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO NOTHING;"),
     params = paramify(coc_nofo_opportunities)
   )
 }
