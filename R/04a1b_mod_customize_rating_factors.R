@@ -424,7 +424,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         custom_factor_data <- rbindlist(lapply(seq(custom_factor_counter()), function(i) {
           pt_tp_combo <- expand.grid(
             list(
-              project_type = input[[paste0("custom_pt_", i)]],
+              project_type = if(funding_action == "Renew") input[[paste0("custom_pt_", i)]] else NA,
               target_population = input[[paste0("custom_tp_", i)]]
             )
           )
@@ -437,7 +437,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             selected = isTRUE(input[[paste0("custom_select_", i)]]),
             goal = input[[paste0("custom_goal_", i)]],
             max_point_value = input[[paste0("custom_points_", i)]],
-            username = user_coc$username
+            created_by = user_coc$username
           ) |> cbind(pt_tp_combo)
         }))
       }
@@ -453,13 +453,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           )
          
           # add the newly created rating factor ID to the set of selected factors (it's auto-selected)
-         updated_selected_rating_factors <- updated_selected_rating_factors |>
+          updated_selected_rating_factors <- updated_selected_rating_factors |>
             rbind(
               custom_factor_data |> 
                 cbind(inserted_custom_factor_info),
               fill = TRUE
             ) |>
-           fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, date_updated)
+            fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, date_updated)
         }
         
         needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)
