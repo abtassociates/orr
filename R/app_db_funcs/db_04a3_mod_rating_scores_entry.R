@@ -13,7 +13,7 @@ get_rating_factors_and_scores <- function(coc_version_id, selected_project) {
       CASE WHEN r.rating_factor_text_short IS NOT NULL THEN r.rating_factor_text_short ELSE r.rating_factor_text END AS rating_factor_text_short, 
       r.piping_text, r.project_type, r.target_population, sr.selected_rating_factor_id, 
       fg.factor_group, fsg.factor_subgroup, 
-      r.goal, r.max_point_value,
+      sr.goal, sr.max_point_value,
       rs.rating_score, rs.performance, rs.project_id,
       rs.date_updated
     FROM rating_factors r
