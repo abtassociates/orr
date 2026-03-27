@@ -127,37 +127,41 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         return(p(placeholder_text))
       }
       
-      accordion_items_group <- purrr::map(names(data_groups_nested), function(group_name) {
+      accordion_items_group <- lapply(names(data_groups_nested), function(group_name) {
         group_data_subgroups <- data_groups_nested[[group_name]]
         
-        sub_accordion_items <- purrr::map(names(group_data_subgroups), function(subgroup_name) {
+        sub_accordion_items <- lapply(names(group_data_subgroups), function(subgroup_name) {
           subgroup_data <- group_data_subgroups[[subgroup_name]]
           
-          factor_rows <- purrr::pmap(
-            list(
-              subgroup_data$rating_factor_id, 
-              subgroup_data$project_type, 
-              subgroup_data$target_population, 
-              subgroup_data$rating_factor_text, 
-              subgroup_data$goal, 
-              subgroup_data$max_point_value, 
-              subgroup_data$selected
-            ), function(id, project_type, target_population, text, goal, points, selected) {
-              row_items <- list(
-                checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
-                if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")) else NULL,
-                div(get_lookup_label(target_population, ref_type = "target_population")),
-                div(text),
-                textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
-                numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1)
-              )
-              
-              layout_columns(
-                col_widths = get_col_widths(funding_action),
-                !!!purrr::compact(row_items)
-              )
-            }
-          )
+          factor_rows <- if(allNA(subgroup_data$rating_factor_id))
+            NULL
+          else
+            purrr::pmap(
+              list(
+                subgroup_data$rating_factor_id, 
+                subgroup_data$project_type, 
+                subgroup_data$target_population, 
+                subgroup_data$rating_factor_text, 
+                subgroup_data$goal, 
+                subgroup_data$max_point_value, 
+                subgroup_data$selected
+              ), function(id, project_type, target_population, text, goal, points, selected) {
+                row_items <- list(
+                  checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
+                  if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")) else NULL,
+                  div(get_lookup_label(target_population, ref_type = "target_population")),
+                  div(text),
+                  textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
+                  numericInput(ns(paste0("points_", id)), min = 1, label = NULL, value = points, step = 0.1)
+                )
+                
+                layout_columns(
+                  id = ns(paste0("rows_items_", gsub(" ", "-", group_name))),
+                  col_widths = get_col_widths(funding_action),
+                  !!!purrr::compact(row_items)
+                )
+              }
+            ) # end purrr::pmap
           
           all_subgroup_factors_selected <- nrow(subgroup_data) == nrow(subgroup_data[selected == TRUE])
           
@@ -185,7 +189,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               !!!purrr::compact(header_items)
             ),
             hr(),
-            factor_rows,
+            if(allNA(subgroup_data$rating_factor_id)) NULL else factor_rows,
             
             # --- NEW: Add a placeholder for custom factors ---
             # This div will only be added for the specific subgroup.
