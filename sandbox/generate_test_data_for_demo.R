@@ -78,7 +78,7 @@ coc_versions <- data.table(
 
 # CoC Version Users (many-to-many relationship)
 coc_version_users <- data.table(
-  coc_version_user_id = 5:12,
+  coc_version_user_id = -12:-5,
   coc_version_id = c(-6, -5, -4, -3, -3, -2, -2, -1),
   username = c(second_user, second_user, main_user, main_user, second_user, second_user, main_user, second_user),
   coc_version_role = c(4, 4, 4, 4, 5, 4, 5, 4),  # Owner, Owner, Owner, Editor, Owner, Editor, Owner
@@ -104,7 +104,7 @@ coc_version_users <- data.table(
 # -2: AK-500 Alternate, Second user owns, main user is editor (main user request approved)
 # -1: AK-501 Main Version, Second user owns, no one else on, main user requested
 coc_version_requests <- data.table(
-  coc_request_id = 1:4,
+  coc_request_id = -4:-1,
   coc_version_id = c(-4, -3, -2, -1),
   request_status = c(1, 2, 2, 1),  # Sent by second user to main, Approved by main from second, Approved by second user from main, Sent by main user to second
   reason_for_rejection = NA_integer_,
