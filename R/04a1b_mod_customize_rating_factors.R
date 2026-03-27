@@ -102,21 +102,24 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       nested_data
     })
     
-    get_col_widths <- function(funding_action) {
+    get_col_widths <- function(funding_action, adding_custom_factor = FALSE) {
       if(funding_action == "Renew")
         breakpoints(
           sm = c(1, 1, 1, 5, 2, 2),
           md = c(1, 1, 1, 5, 2, 2),
           lg = c(1, 1, 1, 5, 2, 2),
-          xl = c(1, 1, 1, 7, 1, 1)
+          xl = c(1, 1, 1, 5, 2, 2),
+          xxl = c(1, 1, 1, 7, 1, 1)
         )
-      else
+      else if(!adding_custom_factor)
         breakpoints(
           sm = c(1, 1, 6, 2, 2),
           md = c(1, 1, 6, 2, 2),
           lg = c(1, 1, 6, 2, 2),
-          xl = c(1, 1, 8, 1, 1)
+          xl = c(1, 1, 6, 2, 2),
+          xxl = c(1, 1, 8, 1, 1)
         )
+      else c(1, 1, 6, 2, 2)
     }
     
     render_nested_factor_accordion_ui <- function(ns, funding_action = "Renew", data_groups_nested, placeholder_text = "No rating factors found.") {
@@ -197,7 +200,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           title = group_name,
           bslib::accordion(
             !!!sub_accordion_items,
-            id = ns(paste0("sub_accordion_", make.names(group_name))),
+            id = ns(paste0("sub_accordion_", janitor:::make_clean_names(group_name))),
             multiple = TRUE,
             open = names(group_data_subgroups)[1]
           )
@@ -337,9 +340,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       current_id <- custom_factor_counter() + 1
       custom_factor_counter(current_id)
       
+      group_name <- "Other and Local Criteria"
       bslib::accordion_panel_open(
         id = "main_accordion", 
-        values = "Other and Local Criteria"
+        values = group_name
       )
       
       # Insert the new UI row
@@ -348,6 +352,16 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         where = "beforeEnd",
         ui = create_custom_factor_row_ui(ns, current_id, funding_action)
       )
+      
+      # adjust the group's column widths to match the being-added custom row
+      subgroup_accordion_id <- ns(paste0("sub_accordion_", janitor:::make_clean_names(group_name)))
+      
+      col_widths <-  get_col_widths(funding_action, TRUE) |>
+        paste0("fr", collapse = " ")
+      
+      shinyjs::runjs(glue::glue(
+        "$('#{subgroup_accordion_id} bslib-layout-columns').css('grid-template-columns', '{col_widths}');
+          $('#{subgroup_accordion_id} bslib-layout-columns').children().css('grid-column', 'span 1');"))
       
       # Focus on the first text input of the new row
       pt_input_id_js <- ns(paste0("custom_pt_", current_id))
