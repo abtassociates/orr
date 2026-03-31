@@ -33,9 +33,9 @@ mod_inventory_ui <- function(id) {
                       )
           )
         ),
-        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
-        br(),
-        textOutput(ns("projects_table_counts")),
+        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
+        # br(),
+        # textOutput(ns("projects_table_counts")),
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       ),
       card_footer(
@@ -237,7 +237,19 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         ),
         colnames = colnames,
         cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
-        options = list(dom = 't'),
+        options = list(
+          paging = TRUE,
+          pageLength = 100,
+          
+          # Letter	Meaning
+          # l	Length changing input (rows per page selector)
+          # f	Filtering input (search box)
+          # t	The table itself
+          # i	Table information summary
+          # p	Pagination controls
+          # B	Buttons (CSV, Excel, PDF, etc.)
+          dom = '<"top"f>rt<"bottom"ip>'
+        ),
         callback_js = "
           $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
             $(this).css('cursor', 'pointer');
@@ -628,10 +640,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       )
     })
     
-    output$projects_table_counts <- renderText({
-      req(projects_data())
-      paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
-    })
+    # output$projects_table_counts <- renderText({
+    #   req(projects_data())
+    #   paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
+    # })
     
   }) # end moduleServer
 }
