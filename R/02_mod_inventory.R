@@ -581,9 +581,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     orgnames <- reactive({
       req(user_coc$coc_version_id)
-      c("Select or add Organization" = "", 
         c("Select or add Organization" = "", funique(projects_data()$organization_name, sort=TRUE))
-      )
     })
     
     # Project modal control -------------
