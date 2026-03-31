@@ -299,7 +299,7 @@ debugger;
             readxl::read_xlsx(input$rating_file$datapath)
           }
         }, error = function(e) {
-          logger::log_error(e$message)
+          log_error(e$message)
           NULL
         })
         
