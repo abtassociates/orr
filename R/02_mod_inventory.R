@@ -13,6 +13,7 @@ mod_inventory_ui <- function(id) {
         max_height = "81vh",
         helpText("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
+        # This adds selectize dependencies, to avoid conflicts with DT and ensure selectize inputs show up as such
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
         dropdownButton(
@@ -257,7 +258,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
             $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
           });"
       )
-    })
+    }) # end project_Table renderDT
     
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
@@ -266,7 +267,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     observe({
       req(projects_data())
-      #this line may not be needed: projects_table_proxy$rawId <- projects_table_proxy$id
       replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
     })
     
@@ -417,7 +417,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       
       # numeric validation
       if (is.numeric(projects_data()[[col_name]])) {
-        is_valid <- validate_numeric_entry(projects_data(), col_name)
+        is_valid <- validate_numeric_entry(projects_data(), col_name, info$value)
+        if(!is_valid) revert_cell(info)
         req(is_valid)
       }
       
@@ -507,13 +508,43 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     # Handle replacement modal ------
     ## Revert cell to original value -----
+    get_old_val <- function(info, server=DT_USES_SERVER) {
+      if("oldValue" %in% info) 
+        return(info$oldValue)
+      
+      else if(server) {
+        # Map displayed row -> actual row index
+        actual_row_index <- input$projects_table_rows_current[info$row]
+        
+        # Get the ID
+        order <- seq_row(projects_data())
+        row_id <- order[actual_row_index]
+        
+        # Now find the row in your full dataset using the ID
+        true_row <- which(order == order[actual_row_index])
+        
+        return(projects_data()[true_row, info$col + 1, with=FALSE])
+      } else {
+        return(projects_data()[info$row, info$col + 1, with=FALSE])
+      }
+      
+    }
     revert_cell <- function(info) {
+      # replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
+      # info$oldValue works when handled via js because we pass that value
+      # otherwise, when server=FALSE, we can grab from the not-yet-updated reactive
+      # if server=TRUE, then we need to determine the actual row in case user filtered 
+      
+      oldVal <- get_old_val(info, server=DT_USES_SERVER)
       shinyjs::runjs(sprintf(
         "
               var table = $('#%s table').DataTable();
-              table.cell(%s, %s).data('%s');
-            ", 
-        ns("projects_table"), info$row - 1, info$col, info$oldValue
+              table.cell(%s, %s).data('%s').draw(false);
+            ",
+        ns("projects_table"),
+        info$row - 1,
+        info$col,
+        jsonlite::toJSON(oldVal, auto_unbox = TRUE)
       ))
     }
     
