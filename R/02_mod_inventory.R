@@ -53,7 +53,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     # Hardcodes and reactiveValues --------------
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
-    funding_columns <- c("coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested")
+    funding_columns <- c("coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "amount_other_public_funding", "amount_private_funding")
     
     # Keep track of active observers for Add Project modals
     # Need them in a reactivevalues list so we can destroy them and avoid duplicate ones uncessarilly
