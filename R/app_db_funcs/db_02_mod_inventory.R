@@ -8,6 +8,7 @@ get_project_fields_to_hide <- function(p, coc_version_id, username){
   } else {
     return(character(0))
   }
+}
 
 update_inventory_db <- function(new_value, col_name, proj_id) {
   db_execute(
