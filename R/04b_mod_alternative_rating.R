@@ -133,7 +133,10 @@ debugger;
         cols_to_disable = setdiff(names(data), editable_cols),
         header_cb = header_cb,
         options = list(
-          autoWidth = FALSE
+          autoWidth = FALSE,
+          paging = TRUE,
+          pageLength = 100,
+          dom = 'frtip'
         )
       )
     })

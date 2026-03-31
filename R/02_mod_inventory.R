@@ -244,11 +244,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           # Letter	Meaning
           # l	Length changing input (rows per page selector)
           # f	Filtering input (search box)
+          # r	Processing display element (shows “Processing…” when loading)
           # t	The table itself
           # i	Table information summary
           # p	Pagination controls
           # B	Buttons (CSV, Excel, PDF, etc.)
-          dom = '<"top"f>rt<"bottom"ip>'
+          dom = 'frtip'
         ),
         callback_js = "
           $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
