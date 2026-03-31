@@ -42,7 +42,17 @@ td.disabled {
 }*/
 
 #inventory-projects_table .dataTables_scrollBody {
-  height: 36vh !important;
+  height: 38vh !important;
+}
+
+/*the container div of the field control dropdown on Inventory*/
+/*positioning so search bar is in line with it*/
+#inventory-field_display_control_state {
+  display: flex; 
+  gap: 15px; 
+  padding: 10px; 
+  position: absolute;
+  z-index: 1;
 }
 
 

@@ -10,13 +10,13 @@ mod_inventory_ui <- function(id) {
       card_body(
         fillable = FALSE,
         min_height = "60vh",
-        max_height = "76vh",
+        max_height = "81vh",
         helpText("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
         dropdownButton(
-          inputId = "mydropdown",
+          inputId = ns("field_display_control"),
           label = "Choose Fields to Display",
           icon = icon("sliders"),
           circle = FALSE,
@@ -36,7 +36,7 @@ mod_inventory_ui <- function(id) {
         DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
         br(),
         textOutput(ns("projects_table_counts")),
-        helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
+        # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       ),
       card_footer(
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
@@ -158,7 +158,14 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
-      colnames <- unname(inventory_variable_labels[names(data)])
+      # helper text explaining this
+      helper_html <- "<span title='Projects with funding action \"Ignore\" are filtered out by default.'>funding action ⓘ</span>"
+      
+      
+      # More readable col header text
+      colnames <- inventory_variable_labels[names(data)]
+      colnames["funding_action"] <- helper_html
+      colnames <- unname(colnames)
       
       ## initially, only hide pre-specified columns; later, will hide user settings-based ones
       initial_cols_to_hide <- setdiff(names(data), initial_cols_to_show )
