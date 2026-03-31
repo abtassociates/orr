@@ -419,9 +419,17 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       req(projects_data())
       
       info <- input$projects_table_cell_edit
+      
+      req(info$value != "" && !is.null(info$value))
       req(!identical(info$value, info$oldValue))
       
       col_name <- colnames(projects_data())[info$col + 1]
+      
+      # numeric validation
+      if (is.numeric(projects_data()[[col_name]])) {
+        is_valid <- validate_numeric_entry(projects_data(), col_name)
+        req(is_valid)
+      }
       
       info$project_id <- ifelse(
         is.na(info$project_id) || is.null(info$project_id),
