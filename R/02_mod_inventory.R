@@ -342,17 +342,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       update_inventory_db(value, col_name, proj_id)
     }
     
-    update_inventory_db <- function(new_value, col_name, proj_id) {
-      db_execute(
-        "UPDATE projects SET $1 = $2 WHERE project_id = $3",
-        params = list(col_name, new_value, proj_id)
-      )
-      
-      message(sprintf("Updated db: project_id=%s, column=%s to '%s'",
-                      proj_id, col_name, new_value))
-      
-    }
-    
     update_datatable <- function(proj_id, col_name, value) {
       # update the reactiveVal that updates the proxy
       updated_data <- copy(projects_data())[

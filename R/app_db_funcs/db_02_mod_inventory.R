@@ -4,3 +4,10 @@ get_project_fields_to_hide <- function(coc_version_id, username){
     params = list(coc_version_id, username)
   ) |> unlist(use.names = FALSE)
 }
+
+update_inventory_db <- function(new_value, col_name, proj_id) {
+  db_execute(
+    glue::glue("UPDATE projects SET {col_name} = $1 WHERE project_id = $2"),
+    params = list(new_value, proj_id)
+  )
+}
