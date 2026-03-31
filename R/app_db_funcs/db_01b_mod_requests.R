@@ -29,11 +29,9 @@ get_all_requests <- function(username) {
 update_request_status <- function(p, update_params) {
   DBI::dbExecute(
     p,
-    glue::glue(
-      "UPDATE coc_version_requests 
-      SET request_status = $1, updated_by = $2, reason_for_rejection = $3
-      WHERE coc_request_id = $4 AND date_updated = $5"
-    ),
+    "UPDATE coc_version_requests 
+    SET request_status = $1, updated_by = $2, reason_for_rejection = $3, date_updated = CURRENT_TIMESTAMP
+    WHERE coc_request_id = $4 AND date_updated = $5",
     params = paramify(update_params)
   )
 }

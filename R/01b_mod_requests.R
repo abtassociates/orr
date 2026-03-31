@@ -66,7 +66,8 @@ mod_requests_server <- function(id, user_coc, module_returns) {
     cur_requests_proxy <- dataTableProxy(ns("requests_dt"), session=session)
     observe({
       req(cur_requests_filtered())
-      replaceData(cur_requests_proxy, cur_requests_filtered(), resetPaging = FALSE, rownames = FALSE)
+      
+      replaceData(cur_requests_proxy, cur_requests_filtered(), rownames = FALSE)
     })
     
     output$requests_dt <- renderDT({
@@ -76,12 +77,12 @@ mod_requests_server <- function(id, user_coc, module_returns) {
       cols_to_hide <- which(names(cur_requests()) %in% c('coc_request_id', 'coc_version_id')) - 1
       
       datatable(
-        isolate(cur_requests_filtered()),
+        cur_requests_filtered(),
         colnames = unname(requests_variable_labels[names(cur_requests())]),
         escape=-1,
         style = 'default',
         options = list(
-          dom = 'tip',
+          dom = 'frtip',
           autoWidth = FALSE,
           columnDefs = list(
             list(targets= cols_to_hide, className = "hidden", visible = FALSE)
@@ -122,13 +123,14 @@ mod_requests_server <- function(id, user_coc, module_returns) {
 
       update_params <- selected_requests |>
         fmutate(
-          "request_status_num" = request_status_num,
-          "username" = user_coc$username,
-          "reason_for_rejection" = input$rej_reason
+          request_status_num = request_status_num,
+          username = user_coc$username,
+          reason_for_rejection = ifelse(is.null(input$rej_reason), NA, input$rej_reason)
         ) |>
         fselect(
           request_status_num,
           username,
+          reason_for_rejection,
           coc_request_id,
           date_updated
         )
