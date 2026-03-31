@@ -26,7 +26,7 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
 
   column_defs[[length(column_defs) + 1]] <- list(
     targets = match(integer_cols, names(data)) - 1,
-    className = 'integer-edit-cell'
+    className = 'numeric-edit-cell integer-edit-cell'
   )
 
   column_defs[[length(column_defs) + 1]] <- list(
@@ -117,7 +117,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
   
   numeric_js <-  
     "// HANDLER FOR NUMERIC COLUMNS
-    table.on('dblclick', 'td.numeric-edit-cell', function(e) {
+    table.on('dblclick', 'td.numeric-edit-cell td.integer-edit-cell', function(e) {
       e.stopImmediatePropagation();
       var $td = $(this);
       if (!$td.find('input').length) return; // already editing
