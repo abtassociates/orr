@@ -101,7 +101,8 @@ get_postgres_db <- function() {
     port = as.integer(Sys.getenv("AWS_RDS_PORT", "3306")),
     dbname = Sys.getenv(ifelse(IN_PROD_APP(), "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV")),
     user = Sys.getenv("AWS_RDS_USERNAME"),
-    password = Sys.getenv("AWS_RDS_PASSWORD")
+    password = Sys.getenv("AWS_RDS_PASSWORD"),
+    sslmode = "require"
   )
 } 
 

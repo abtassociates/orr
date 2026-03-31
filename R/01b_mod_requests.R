@@ -132,7 +132,7 @@ mod_requests_server <- function(id, user_coc, module_returns) {
           username,
           reason_for_rejection,
           coc_request_id,
-          date_updated
+          version_id
         )
       
       pool::poolWithTransaction(get_db_pool(), function(p) {

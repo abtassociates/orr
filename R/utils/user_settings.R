@@ -32,7 +32,7 @@ update_single_user_setting <- function(p, user_coc, setting_nm, setting_val){
               setting_value = EXCLUDED.setting_value,
               updated_by = EXCLUDED.created_by,
               date_updated = CURRENT_TIMESTAMP",
-      "\nRETURNING user_setting_id, setting_name, setting_value, date_updated"
+      "\nRETURNING user_setting_id, setting_name, setting_value, version_id"
     ),
     updated_settings,
     "user_settings"

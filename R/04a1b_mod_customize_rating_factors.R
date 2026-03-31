@@ -420,7 +420,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           goal = as.character(input[[paste0("goal_", id)]]),
           max_point_value = as.numeric(input[[paste0("points_", id)]]),
           created_by = user_coc$username,
-          date_updated = all_coc_factors()[rating_factor_id == id]$date_updated
+          version_id = all_coc_factors()[rating_factor_id == id]$version_id
         )
       }))
       
@@ -463,7 +463,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
                 cbind(inserted_custom_factor_info),
               fill = TRUE
             ) |>
-            fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, date_updated)
+            fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, version_id)
         }
         
         needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)

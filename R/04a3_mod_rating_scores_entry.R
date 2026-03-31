@@ -244,7 +244,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         project_id = params$project_id,
         weighted_score = params$weighted_score,
         created_by = params$username,
-        date_updated = params$date_updated
+        version_id = params$version_id
       )
     }
     
@@ -260,7 +260,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         rating_scores               = sapply(selected_ids, \(id) input[[paste0("rating_score_", id)]]),
         performances                = sapply(selected_ids, \(id) input[[paste0("performance_", id)]]),
         created_bys                 = alloc(user_coc$username, num_selected),
-        date_updated                = df$date_updated
+        version_id                = df$version_id
       )
       
       
@@ -273,7 +273,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
           project_id =  selected_project()$project_id,
           weighted_score = round(100 * numerator/denominator, 0),
           username = user_coc$username,
-          date_updated = project_evaluation()$date_updated
+          version_id = project_evaluation()$version_id
         )
       )
       

@@ -1,14 +1,4 @@
 
-convert_timestamps_to_char <- function(dt) {
-  if("date_created" %in% names(dt)) 
-    dt[, date_created := as.character(date_created, tz = "UTC")]
-  
-  if("date_updated" %in% names(dt)) 
-    dt[, date_updated := as.character(date_updated, tz = "UTC")]
-  
-  return(dt)
-}
-
 # Get DB data ------------------
 get_db_query <- function(sql, params = NULL) {
   tryCatch({
@@ -18,11 +8,8 @@ get_db_query <- function(sql, params = NULL) {
         sql,
         params = params
       )
-    })
-    
-    dt <- dt |> 
-      qDT() |>
-      convert_timestamps_to_char()
+    }) |> 
+      qDT()
     
     return(dt)
   }, error = function(e) {

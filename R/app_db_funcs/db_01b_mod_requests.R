@@ -11,6 +11,7 @@ get_all_requests <- function(username) {
       cvr.created_by, 
       cvr.date_created, 
       cvr.request_status,
+      cvr.version_id,
       cvr.date_updated
     FROM coc_version_requests cvr 
     LEFT JOIN coc_versions cv ON cvr.coc_version_id = cv.coc_version_id
@@ -30,8 +31,13 @@ update_request_status <- function(p, update_params) {
   DBI::dbExecute(
     p,
     "UPDATE coc_version_requests 
-    SET request_status = $1, updated_by = $2, reason_for_rejection = $3, date_updated = CURRENT_TIMESTAMP
-    WHERE coc_request_id = $4 AND date_updated = $5",
+    SET 
+      request_status = $1, 
+      updated_by = $2, 
+      reason_for_rejection = $3, 
+      date_updated = CURRENT_TIMESTAMP, 
+      version_id = version_id + 1
+    WHERE coc_request_id = $4 AND version_id = $5",
     params = paramify(update_params)
   )
 }
