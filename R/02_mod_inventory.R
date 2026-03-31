@@ -10,13 +10,14 @@ mod_inventory_ui <- function(id) {
       card_body(
         fillable = FALSE,
         min_height = "60vh",
-        max_height = "76vh",
+        max_height = "81vh",
         helpText("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
+        # This adds selectize dependencies, to avoid conflicts with DT and ensure selectize inputs show up as such
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
         dropdownButton(
-          inputId = "mydropdown",
+          inputId = ns("field_display_control"),
           label = "Choose Fields to Display",
           icon = icon("sliders"),
           circle = FALSE,
@@ -33,10 +34,10 @@ mod_inventory_ui <- function(id) {
                       )
           )
         ),
-        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
-        br(),
-        textOutput(ns("projects_table_counts")),
-        helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
+        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
+        # br(),
+        # textOutput(ns("projects_table_counts")),
+        # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       ),
       card_footer(
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
@@ -158,7 +159,14 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initial_filter <- vector("list", ncol(data))
       initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
 
-      colnames <- unname(inventory_variable_labels[names(data)])
+      # helper text explaining this
+      helper_html <- "<span title='Projects with funding action \"Ignore\" are filtered out by default.'>funding action ⓘ</span>"
+      
+      
+      # More readable col header text
+      colnames <- inventory_variable_labels[names(data)]
+      colnames["funding_action"] <- helper_html
+      colnames <- unname(colnames)
       
       ## initially, only hide pre-specified columns; later, will hide user settings-based ones
       initial_cols_to_hide <- setdiff(names(data), initial_cols_to_show )
@@ -230,14 +238,27 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         ),
         colnames = colnames,
         cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
-        options = list(dom = 't'),
+        options = list(
+          paging = TRUE,
+          pageLength = 100,
+          
+          # Letter	Meaning
+          # l	Length changing input (rows per page selector)
+          # f	Filtering input (search box)
+          # r	Processing display element (shows “Processing…” when loading)
+          # t	The table itself
+          # i	Table information summary
+          # p	Pagination controls
+          # B	Buttons (CSV, Excel, PDF, etc.)
+          dom = 'frtip'
+        ),
         callback_js = "
           $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
             $(this).css('cursor', 'pointer');
             $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
           });"
       )
-    })
+    }) # end project_Table renderDT
     
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
@@ -246,7 +267,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     observe({
       req(projects_data())
-      #this line may not be needed: projects_table_proxy$rawId <- projects_table_proxy$id
       replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
     })
     
@@ -323,17 +343,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       update_inventory_db(value, col_name, proj_id)
     }
     
-    update_inventory_db <- function(new_value, col_name, proj_id) {
-      db_execute(
-        "UPDATE projects SET $1 = $2 WHERE project_id = $3",
-        params = list(col_name, new_value, proj_id)
-      )
-      
-      message(sprintf("Updated db: project_id=%s, column=%s to '%s'",
-                      proj_id, col_name, new_value))
-      
-    }
-    
     update_datatable <- function(proj_id, col_name, value) {
       # update the reactiveVal that updates the proxy
       updated_data <- copy(projects_data())[
@@ -400,9 +409,18 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       req(projects_data())
       
       info <- input$projects_table_cell_edit
+      
+      req(info$value != "" && !is.null(info$value))
       req(!identical(info$value, info$oldValue))
       
       col_name <- colnames(projects_data())[info$col + 1]
+      
+      # numeric validation
+      if (is.numeric(projects_data()[[col_name]])) {
+        is_valid <- validate_numeric_entry(projects_data(), col_name, info$value)
+        if(!is_valid) revert_cell(info)
+        req(is_valid)
+      }
       
       info$project_id <- ifelse(
         is.na(info$project_id) || is.null(info$project_id),
@@ -490,13 +508,43 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     
     # Handle replacement modal ------
     ## Revert cell to original value -----
+    get_old_val <- function(info, server=DT_USES_SERVER) {
+      if("oldValue" %in% info) 
+        return(info$oldValue)
+      
+      else if(server) {
+        # Map displayed row -> actual row index
+        actual_row_index <- input$projects_table_rows_current[info$row]
+        
+        # Get the ID
+        order <- seq_row(projects_data())
+        row_id <- order[actual_row_index]
+        
+        # Now find the row in your full dataset using the ID
+        true_row <- which(order == order[actual_row_index])
+        
+        return(projects_data()[true_row, info$col + 1, with=FALSE])
+      } else {
+        return(projects_data()[info$row, info$col + 1, with=FALSE])
+      }
+      
+    }
     revert_cell <- function(info) {
+      # replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
+      # info$oldValue works when handled via js because we pass that value
+      # otherwise, when server=FALSE, we can grab from the not-yet-updated reactive
+      # if server=TRUE, then we need to determine the actual row in case user filtered 
+      
+      oldVal <- get_old_val(info, server=DT_USES_SERVER)
       shinyjs::runjs(sprintf(
         "
               var table = $('#%s table').DataTable();
-              table.cell(%s, %s).data('%s');
-            ", 
-        ns("projects_table"), info$row - 1, info$col, info$oldValue
+              table.cell(%s, %s).data('%s').draw(false);
+            ",
+        ns("projects_table"),
+        info$row - 1,
+        info$col,
+        jsonlite::toJSON(oldVal, auto_unbox = TRUE)
       ))
     }
     
@@ -621,10 +669,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       )
     })
     
-    output$projects_table_counts <- renderText({
-      req(projects_data())
-      paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
-    })
+    # output$projects_table_counts <- renderText({
+    #   req(projects_data())
+    #   paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
+    # })
     
   }) # end moduleServer
 }

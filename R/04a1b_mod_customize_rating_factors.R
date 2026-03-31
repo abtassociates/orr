@@ -64,7 +64,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     ns <- session$ns
     
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
-    other_factor_group_id <- get_other_factor_group_id(funding_action_id)
+    other_factor_group_id <- get_other_factor_group_id(funding_action_id) #used to ensure the custom factor goes in the Other group
     
     refresh_trigger <- reactiveVal(0)
     # Counter for unique IDs for custom factor rows
@@ -102,21 +102,24 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       nested_data
     })
     
-    get_col_widths <- function(funding_action) {
+    get_col_widths <- function(funding_action, adding_custom_factor = FALSE) {
       if(funding_action == "Renew")
         breakpoints(
           sm = c(1, 1, 1, 5, 2, 2),
           md = c(1, 1, 1, 5, 2, 2),
           lg = c(1, 1, 1, 5, 2, 2),
-          xl = c(1, 1, 1, 7, 1, 1)
+          xl = c(1, 1, 1, 5, 2, 2),
+          xxl = c(1, 1, 1, 7, 1, 1)
         )
-      else
+      else if(!adding_custom_factor)
         breakpoints(
           sm = c(1, 1, 6, 2, 2),
           md = c(1, 1, 6, 2, 2),
           lg = c(1, 1, 6, 2, 2),
-          xl = c(1, 1, 8, 1, 1)
+          xl = c(1, 1, 6, 2, 2),
+          xxl = c(1, 1, 8, 1, 1)
         )
+      else c(1, 1, 6, 2, 2)
     }
     
     render_nested_factor_accordion_ui <- function(ns, funding_action = "Renew", data_groups_nested, placeholder_text = "No rating factors found.") {
@@ -124,37 +127,41 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         return(p(placeholder_text))
       }
       
-      accordion_items_group <- purrr::map(names(data_groups_nested), function(group_name) {
+      accordion_items_group <- lapply(names(data_groups_nested), function(group_name) {
         group_data_subgroups <- data_groups_nested[[group_name]]
         
-        sub_accordion_items <- purrr::map(names(group_data_subgroups), function(subgroup_name) {
+        sub_accordion_items <- lapply(names(group_data_subgroups), function(subgroup_name) {
           subgroup_data <- group_data_subgroups[[subgroup_name]]
           
-          factor_rows <- purrr::pmap(
-            list(
-              subgroup_data$rating_factor_id, 
-              subgroup_data$project_type, 
-              subgroup_data$target_population, 
-              subgroup_data$rating_factor_text, 
-              subgroup_data$goal, 
-              subgroup_data$max_point_value, 
-              subgroup_data$selected
-            ), function(id, project_type, target_population, text, goal, points, selected) {
-              row_items <- list(
-                checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
-                if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")) else NULL,
-                div(get_lookup_label(target_population, ref_type = "target_population")),
-                div(text),
-                textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
-                numericInput(ns(paste0("points_", id)), label = NULL, value = points, step = 1)
-              )
-              
-              layout_columns(
-                col_widths = get_col_widths(funding_action),
-                !!!purrr::compact(row_items)
-              )
-            }
-          )
+          factor_rows <- if(allNA(subgroup_data$rating_factor_id))
+            NULL
+          else
+            purrr::pmap(
+              list(
+                subgroup_data$rating_factor_id, 
+                subgroup_data$project_type, 
+                subgroup_data$target_population, 
+                subgroup_data$rating_factor_text, 
+                subgroup_data$goal, 
+                subgroup_data$max_point_value, 
+                subgroup_data$selected
+              ), function(id, project_type, target_population, text, goal, points, selected) {
+                row_items <- list(
+                  checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
+                  if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")) else NULL,
+                  div(get_lookup_label(target_population, ref_type = "target_population")),
+                  div(text),
+                  textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
+                  numericInput(ns(paste0("points_", id)), min = 1, label = NULL, value = points, step = 0.1)
+                )
+                
+                layout_columns(
+                  id = ns(paste0("rows_items_", gsub(" ", "-", group_name))),
+                  col_widths = get_col_widths(funding_action),
+                  !!!purrr::compact(row_items)
+                )
+              }
+            ) # end purrr::pmap
           
           all_subgroup_factors_selected <- nrow(subgroup_data) == nrow(subgroup_data[selected == TRUE])
           
@@ -162,7 +169,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             div(
               tags$b("Use in rating?"),
               checkboxInput(
-                ns(make.names(paste0(group_name, "_check_all_", subgroup_name))),
+                ns(janitor:::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))),
                 label = NULL,
                 value = all_subgroup_factors_selected
               )
@@ -182,7 +189,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               !!!purrr::compact(header_items)
             ),
             hr(),
-            factor_rows,
+            if(allNA(subgroup_data$rating_factor_id)) NULL else factor_rows,
             
             # --- NEW: Add a placeholder for custom factors ---
             # This div will only be added for the specific subgroup.
@@ -191,18 +198,18 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               div(id = ns("custom_factors_placeholder"))
             }
           )
-        })
+        }) # end subaccordion items
         
         bslib::accordion_panel(
           title = group_name,
           bslib::accordion(
             !!!sub_accordion_items,
-            id = ns(paste0("sub_accordion_", make.names(group_name))),
+            id = ns(paste0("sub_accordion_", janitor:::make_clean_names(group_name))),
             multiple = TRUE,
             open = names(group_data_subgroups)[1]
           )
         )
-      })
+      }) #end group accordion items
       
       bslib::accordion(
         !!!accordion_items_group,
@@ -223,7 +230,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       lapply(seq_row(all_possible_subgroups), function(i) {
         group <- all_possible_subgroups$factor_group[i]
         subgroup <- all_possible_subgroups$factor_subgroup[i]
-        subgroup_check_all_input <- make.names(paste0(group, "_check_all_", subgroup))
+        subgroup_check_all_input <- janitor:::make_clean_names(paste0(group, "_check_all_", subgroup))
         
         observeEvent(input[[subgroup_check_all_input]], {
           new_val <- input[[subgroup_check_all_input]]
@@ -278,7 +285,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             parent_should_be_checked <- all(unlist(factor_selections))
             
             # Get the ID of the parent checkbox
-            subgroup_check_all_input <- make.names(paste0(group_name, "_check_all_", subgroup_name))
+            subgroup_check_all_input <- janitor:::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))
 
             # Update the parent checkbox ONLY if its state needs to change.
             # This avoids unnecessary updates and potential infinite loops.
@@ -299,35 +306,35 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       # Use a unique ID for the row's wrapper div for easy removal
       row_div_id <- ns(paste0("custom_row_", row_id))
       
+      custom_factor_items <- list(
+        checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE),
+        if(funding_action == "Renew") 
+          selectInput(
+            inputId = ns(paste0("custom_pt_", row_id)),
+            label = NULL,
+            choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
+            multiple = TRUE
+          ) else NULL,
+        selectInput(
+          inputId = ns(paste0("custom_tp_", row_id)),
+          label = NULL,
+          choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
+          multiple = TRUE
+        ),
+        textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
+        textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
+        div(
+          style="display:flex; align-items:center; gap:5px;",
+          numericInput(ns(paste0("custom_points_", row_id)), min = 1, label = NULL, value = 0, step = 0.1),
+          actionButton(ns(paste0("remove_custom_", row_id)), NULL, icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
+        )
+      )
       # Define the namespaced input IDs
-      pt_input_id <- ns(paste0("custom_pt_", row_id))
-      tp_input_id <- ns(paste0("custom_tp_", row_id))
-
       div(
         id = row_div_id,
         layout_columns(
-          col_widths = get_col_widths(funding_action),
-          checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE),
-          if(funding_action == "Renew") 
-            selectInput(
-              inputId = pt_input_id,
-              label = NULL,
-              choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-              multiple = TRUE
-            ) else NULL,
-          selectInput(
-            inputId = tp_input_id,
-            label = NULL,
-            choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
-            multiple = TRUE
-          ),
-          textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
-          textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
-          div(
-            style="display:flex; align-items:center; gap:5px;",
-            numericInput(ns(paste0("custom_points_", row_id)), label = NULL, value = 0, step = 1),
-            actionButton(ns(paste0("remove_custom_", row_id)), "", icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
-          )
+          col_widths = get_col_widths(funding_action, TRUE),
+          !!!purrr::compact(custom_factor_items)
         )
       )
     }
@@ -337,9 +344,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       current_id <- custom_factor_counter() + 1
       custom_factor_counter(current_id)
       
+      group_name <- "Other and Local Criteria"
       bslib::accordion_panel_open(
         id = "main_accordion", 
-        values = "Other and Local Criteria"
+        values = group_name
       )
       
       # Insert the new UI row
@@ -348,6 +356,16 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         where = "beforeEnd",
         ui = create_custom_factor_row_ui(ns, current_id, funding_action)
       )
+      
+      # adjust the group's column widths to match the being-added custom row
+      subgroup_accordion_id <- ns(paste0("sub_accordion_", janitor:::make_clean_names(group_name)))
+      
+      col_widths <-  get_col_widths(funding_action, TRUE) |>
+        paste0("fr", collapse = " ")
+      
+      shinyjs::runjs(glue::glue(
+        "$('#{subgroup_accordion_id} bslib-layout-columns').css('grid-template-columns', '{col_widths}');
+          $('#{subgroup_accordion_id} bslib-layout-columns').children().css('grid-column', 'span 1');"))
       
       # Focus on the first text input of the new row
       pt_input_id_js <- ns(paste0("custom_pt_", current_id))
@@ -410,7 +428,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         custom_factor_data <- rbindlist(lapply(seq(custom_factor_counter()), function(i) {
           pt_tp_combo <- expand.grid(
             list(
-              project_type = input[[paste0("custom_pt_", i)]],
+              project_type = if(funding_action == "Renew") input[[paste0("custom_pt_", i)]] else NA,
               target_population = input[[paste0("custom_tp_", i)]]
             )
           )
@@ -423,7 +441,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             selected = isTRUE(input[[paste0("custom_select_", i)]]),
             goal = input[[paste0("custom_goal_", i)]],
             max_point_value = input[[paste0("custom_points_", i)]],
-            username = user_coc$username
+            created_by = user_coc$username
           ) |> cbind(pt_tp_combo)
         }))
       }
@@ -439,13 +457,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           )
          
           # add the newly created rating factor ID to the set of selected factors (it's auto-selected)
-         updated_selected_rating_factors <- updated_selected_rating_factors |>
+          updated_selected_rating_factors <- updated_selected_rating_factors |>
             rbind(
               custom_factor_data |> 
                 cbind(inserted_custom_factor_info),
               fill = TRUE
             ) |>
-           fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, date_updated)
+            fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, date_updated)
         }
         
         needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)

@@ -9,11 +9,29 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
   factor_levels <- lapply(data[, ..factor_names], levels)
   if(!is.null(colnames)) 
     names(factor_levels) <- toupper(variable_labels[match(names(factor_levels), names(variable_labels))])
-
+  
   # column_defs adds classname for easier management
   column_defs[[length(column_defs) + 1]] <- list(
     targets = match(factor_names, names(data)) - 1,  # Vector of all indices
     className = 'factor-edit-cell'
+  )
+  
+  # Add class for Numeric Validation
+  # 2. Identify Numeric columns (excluding disabled ones)
+  numeric_cols <- names(data)[sapply(data, is.numeric)] |>
+    setdiff(cols_to_disable)
+
+  integer_cols <- names(data)[sapply(data, is.integer)] |>
+    setdiff(cols_to_disable)
+
+  column_defs[[length(column_defs) + 1]] <- list(
+    targets = match(integer_cols, names(data)) - 1,
+    className = 'numeric-edit-cell integer-edit-cell'
+  )
+
+  column_defs[[length(column_defs) + 1]] <- list(
+    targets = match(setdiff(numeric_cols, integer_cols), names(data)) - 1,
+    className = 'numeric-edit-cell'
   )
   
   column_defs[[length(column_defs) + 1]] <- list(
@@ -30,8 +48,8 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
 }
 
 get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
-  sprintf("
-    function(settings, json) {
+  main_js <- sprintf(
+    "function(settings, json) {
       var table = this.api();
       var factorInfo = %s;
       var tableID = '%s';
@@ -75,86 +93,212 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
           ? groupName.toUpperCase() + '_' + subName.toLowerCase()
           : subName.toLowerCase();
       }
-      
+    
       // Function to set cell value
       function setCellText(cell, val) {
         var $td = $(cell.node());
         $td.empty().text(val); // Remove dropdown, restore text
       }
       
-      table.on('dblclick', 'td.factor-edit-cell', function(e) {
-        e.stopImmediatePropagation();
-      
-        var $td = $(this);
-        if ($td.find('select').length) return; // already editing
-debugger;
-        var cell = table.cell(this);
-        var colIndex = cell.index().column;
-        var colName;
-
+      function getColName(colIndex) {
+        let colName = table.column(colIndex).header().innerText.toUpperCase();
         if (has_double_header == 'TRUE') {
             colName = getCompoundColName(colIndex);
         } else if (tableID == 'rating-alternative-alternative_rating_table') {
             colName = table.column(colIndex).header().childNodes[0].wholeText;
-        } else {
-            colName = table.column(colIndex).header().innerText.toUpperCase();
         }
-        
-        // var colName = table.column(colIndex).header().innerText;
-        
-        if (factorInfo[colName]) {
-          var choices = factorInfo[colName];
-          var currentVal = cell.data();
-
-          // Build the dropdown
-          var $select = $('<select></select>').css('width', '100%%');
-          $.each(choices, function(i, value) {
-            var $opt = $('<option></option>').val(value).text(value);
-            if (value == currentVal) $opt.prop('selected', true);
-            $select.append($opt);
-          });
-  debugger;
-          // Add the dropdown to the cell
-          $td.empty().append($select);
-          $select.focus();
-          
-          // If user makes a change, we update the cell in several ways:
-          // 1. set the text of the cell to whatever dropdown value they select
-          // 2. set the cell data to the same value. This is so if they double-click the cell again, the new value will appear as the default selection
-          // 3. trigger a cell_edit event on the server, which will:
-              // 1. update the underlying datatable data (so that the new value will be preserved in sorting and filtering)
-              // 2. update the database
-          $select.off('change blur').on('change blur', function(e) {
-            setCellText(cell, this.value); // Update cell text
-            cell.data(this.value); // Update cell data
-            Shiny.setInputValue(tableID + '_cell_edit', { // Trigger cell_edit server event
-              row: cell.index().row + 1,
-              col: cell.index().column,
-              value: this.value,
-              oldValue: currentVal,
-              project_id: table.cells(cell.index().row, 0).data()[0],
-            }, {priority: 'event'});
-          });
-          
-          $('input').on('keydown', function(e) {
-          //$select.off('keydown').on('keydown', function(e) {
-          debugger;
-            if (e.key === 'Escape') {
-              setCellText(cell, currentVal); // On escape, revert to old value
-            } else if (e.key === 'Enter') {
-              $(this).blur(); // Trigger the change/blur event
-            }
-          });
-        }
-      }); /*end double-click*/
-      
-      %s
-    }", 
+        return(colName);
+      }
+    ",
     jsonlite::toJSON(factor_levels), 
     tableID,
-    has_double_header,
-    header_cb %||% ""
+    has_double_header
   )
+  
+  numeric_js <-  
+    "// HANDLER FOR NUMERIC COLUMNS
+    table.on('dblclick', 'td.numeric-edit-cell', function(e) {
+      e.stopImmediatePropagation();
+      var $td = $(this);
+      if (!$td.find('input').length) return; // already editing
+  
+      var cell = table.cell(this);
+      var currentVal = cell.data();
+      var colIndex = cell.index().column;
+      var colName = getColName(colIndex);
+
+      is_funding_col = colName.includes('FUNDING') || colName.includes('AMOUNT');
+      
+      // --- 1. Trim Values by Max input length ---
+      function get_max_length(colName) {
+        let maxLength;
+        if(colName.includes('BED')) maxLength = 5;
+        else if(colName == 'weighted_score') maxLength = 3;
+        else if(is_funding_col) maxLength = 9;
+        return(maxLength);
+      }
+      
+      function trim_val(colName, val, max_length = null) {
+        let c = colName.toUpperCase();
+        
+        let maxLength;
+        if(max_length) maxLength = max_length;
+        else maxLength = get_max_length(c);
+        
+        if (val.length > maxLength) val = val.slice(0, maxLength);
+        return(val);
+      }
+      
+      // --- 2. Get the input ---
+      var isInteger = $td.hasClass('integer-edit-cell');
+      var $input = $td.find('input[type=number]')
+        .attr({'min': '0', 'step': '1'});
+        //.val(currentVal);
+  
+      // --- 3. Enforce the Character Limit! ---
+      $input.on('input', function() {
+        var val = this.value;
+
+        if(colName.includes('FUNDING') || colName.includes('AMOUNT')) {
+          if (val.includes('.')) {
+            var parts = val.split('.');
+            parts[0] = trim_val(colName, parts[0]);
+            parts[1] = trim_val(colName, parts[1], 2);
+            this.value = parts[0] + '.' + parts[1]; // stitch back together
+          } else {
+            this.value = trim_val(colName, val)
+          }
+        } else {
+          this.value = trim_val(colName, val)
+        }
+      });
+
+      // $td.empty().append($input);
+      // $input.focus().select();
+  
+      function formatUSD(amount) {
+        if (typeof amount !== 'number' || isNaN(amount)) {
+            throw new Error('Invalid input: amount must be a valid number.');
+        }
+    
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount);
+      }
+
+      $input.on('keydown', function(e) {
+        // Prevent '-' (minus sign) and 'e' (scientific notation)
+        if (e.key === '-' || e.key === 'e' || e.key === 'E')
+          e.preventDefault();
+            
+        // IF it's an integer cell, also prevent the decimal point
+        if (isInteger && (e.key === '.' || e.key === ','))
+          e.preventDefault();
+            
+        debugger;
+        if (e.key === 'Enter') $(this).blur();
+        else if (e.key === 'Escape') setCellText(cell, is_funding_col ? formatUSD(currentVal) : currentVal); // Revert UI
+      });
+  
+      
+      /*
+      // --- 4. Validation ---
+      $input.on('blur', function() {
+        var rawVal = $(this).val();
+        var newVal = isInteger ? parseInt(rawVal, 10) : parseFloat(rawVal);
+        
+        if(newVal === null) return;
+        
+        // VALIDATION LOGIC
+        let max_length = get_max_length(colName);
+        var maxVal = BigInt('9'.repeat(max_length)).toLocaleString();
+        if (newVal < 0 || newVal > maxVal) {
+          alert(`Please enter a number between 0 and ${maxVal}.`);
+          setCellText(cell, currentVal); // Revert on error
+          return;
+        }
+
+        setCellText(cell, newVal);
+        cell.data(newVal);
+        
+        // Trigger the Shiny input
+        Shiny.setInputValue(tableID + '_cell_edit', {
+          row: cell.index().row + 1,
+          col: cell.index().column,
+          value: newVal,
+          oldValue: currentVal,
+          project_id: table.cells(cell.index().row, 0).data()[0],
+        }, {priority: 'event'});
+      });
+      */
+    });"
+  
+  factor_js <- 
+    "// HANDLER FOR FACTOR COLUMNS
+    table.on('dblclick', 'td.factor-edit-cell', function(e) {
+      e.stopImmediatePropagation();
+      
+      var isEscaping = false;
+      
+      var $td = $(this);
+      if ($td.find('select').length) return; // already editing
+debugger;
+      var cell = table.cell(this);
+      var colIndex = cell.index().column;
+      var colName = getColName(colIndex);
+  
+      if (factorInfo[colName]) {
+        var choices = factorInfo[colName];
+        var currentVal = cell.data();
+
+        // Build the dropdown
+        var $select = $('<select></select>').css('width', '100%');
+        $.each(choices, function(i, value) {
+          var $opt = $('<option></option>').val(value).text(value);
+          if (value == currentVal) $opt.prop('selected', true);
+          $select.append($opt);
+        });
+debugger;
+        // Add the dropdown to the cell
+        $td.empty().append($select);
+        $select.focus();
+        
+        // If user makes a change, we update the cell in several ways:
+        // 1. set the text of the cell to whatever dropdown value they select
+        // 2. set the cell data to the same value. This is so if they double-click the cell again, the new value will appear as the default selection
+        // 3. trigger a cell_edit event on the server, which will:
+            // 1. update the underlying datatable data (so that the new value will be preserved in sorting and filtering)
+            // 2. update the database
+        $select.off('change blur').on('change blur', function(e) {
+          if(isEscaping) return;
+          setCellText(cell, this.value); // Update cell text
+          cell.data(this.value); // Update cell data
+          Shiny.setInputValue(tableID + '_cell_edit', { // Trigger cell_edit server event
+            row: cell.index().row + 1,
+            col: cell.index().column,
+            value: this.value,
+            oldValue: currentVal,
+            project_id: table.cells(cell.index().row, 0).data()[0],
+          }, {priority: 'event'});
+        });
+        
+        $select.on('keydown', function(e) {
+          debugger;
+          if (e.key === 'Escape') {
+            isEscaping = true;
+            setCellText(cell, currentVal); // On escape, revert to old value
+          } else if (e.key === 'Enter') {
+            $(this).blur(); // Trigger the change/blur event
+          }
+        });
+      }
+    }); /*end double-click*/"
+  
+  paste(main_js, numeric_js, factor_js, header_cb, "}")
+  # paste(main_js, factor_js, header_cb, "}")
 }
 initialize_inline_edit_table_ui <- function(
     data, 
@@ -240,4 +384,24 @@ initialize_inline_edit_table_ui <- function(
     dt <- dt %>% f # needs to be %>% instead of |>
   }
   return(dt)
+}
+
+validate_numeric_entry <- function(df, col_name, val) {
+  new_val <- if(is.integer(df[[col_name]]))
+    as.integer(val)
+  else 
+    as.numeric(val)
+  
+  max_val = fcase(
+    grepl("BED", toupper(col_name)), 99999,
+    toupper(col_name) == 'weighted_score', 100,
+    grepl("FUNDING|AMOUNT", toupper(col_name)), 999999999
+  )
+  
+  if (!is.na(new_val) && (new_val < 0 || new_val > max_val)) {
+    showNotification(glue::glue("Invalid input: Please enter a number between 0 and {prettyNum(max_val, big.mark=',')}", type = "error"))
+    return(FALSE)
+  }
+  
+  return(TRUE)
 }

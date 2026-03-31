@@ -118,8 +118,8 @@ variable_labels <- c(
   "is_dedicated_ch_fam" = "Is 100% Dedicated + or CH Fam (Yes/No)",
   "is_dedicated_ch_ind" = "Is 100% Dedicated + or CH Ind (Yes/No)",
   "is_dedicated_dv" = "Is 100% DV (Yes/No)",
-  "amount_other_public_funding" = "Amount of other public funding",#(federal, state, county, city)",
-  "amount_private_funding" = "Amount of private funding",
+  "amount_other_public_funding" = "Other public funding amount",#(federal, state, county, city)",
+  "amount_private_funding" = "Private funding amount",
   "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
   "vet_bed_inventory" = "Veteran Bed Inventory",
   "youth_bed_inventory" = "Youth Bed Inventory",
@@ -265,7 +265,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
     showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
-    logger::log_error(e$message)
+    log_error(e$message)
     stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }
