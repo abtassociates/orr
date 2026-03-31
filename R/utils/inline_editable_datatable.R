@@ -26,7 +26,7 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
 
   column_defs[[length(column_defs) + 1]] <- list(
     targets = match(integer_cols, names(data)) - 1,
-    className = 'numeric-edit-cell integer-edit-cell'
+    className = 'integer-edit-cell'
   )
 
   column_defs[[length(column_defs) + 1]] <- list(
