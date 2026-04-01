@@ -38,7 +38,7 @@ mod_requests_server <- function(id, user_coc, module_returns) {
 
     observeEvent(c(user_coc$auth, module_returns$updated_request), {
       cur_requests(
-        get_all_requests(user_coc$username) %>%
+        get_all_requests_by_user(user_coc$username) %>%
           fmutate(
             request_status = get_lookup_label(request_status, ref_type = "request_status")
           )
