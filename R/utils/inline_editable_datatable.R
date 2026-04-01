@@ -115,15 +115,17 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
   
   numeric_js <-  
     "// HANDLER FOR NUMERIC COLUMNS
-    table.on('dblclick', 'td.numeric-edit-cell td.integer-edit-cell', function(e) {
-      e.stopImmediatePropagation();
+    table.on('dblclick', 'td.numeric-edit-cell', function(e) {
+      //e.stopImmediatePropagation();
       var $td = $(this);
-      if (!$td.find('input').length) return; // already editing
+      setTimeout(function() {
+      debugger;
+      //if ($td.find('input').length) return; // already editing
   
-      var cell = table.cell(this);
+      var cell = table.cell($td);
       var currentVal = cell.data();
       var colIndex = cell.index().column;
-      var colName = getColName(colIndex);
+      var colName = getColName(colIndex).toUpperCase();
 
       is_funding_col = colName.includes('FUNDING') || colName.includes('AMOUNT');
       
@@ -137,7 +139,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
       }
       
       function trim_val(colName, val, max_length = null) {
-        let c = colName.toUpperCase();
+        let c = colName;
         
         let maxLength;
         if(max_length) maxLength = max_length;
@@ -150,13 +152,12 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
       // --- 2. Get the input ---
       var isInteger = $td.hasClass('integer-edit-cell');
       var $input = $td.find('input[type=number]')
-        .attr({'min': '0', 'step': '1'});
-        //.val(currentVal);
+        .attr({'min': '0', 'max' : '9'.repeat(get_max_length(colName)), 'step': '1'});
   
       // --- 3. Enforce the Character Limit! ---
-      $input.on('input', function() {
+      $input.off('input').on('input', function() {
         var val = this.value;
-
+debugger;
         if(colName.includes('FUNDING') || colName.includes('AMOUNT')) {
           if (val.includes('.')) {
             var parts = val.split('.');
@@ -170,9 +171,6 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
           this.value = trim_val(colName, val)
         }
       });
-
-      // $td.empty().append($input);
-      // $input.focus().select();
   
       function formatUSD(amount) {
         if (typeof amount !== 'number' || isNaN(amount)) {
@@ -187,7 +185,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         }).format(amount);
       }
 
-      $input.on('keydown', function(e) {
+      $input.off('keydown').on('keydown', function(e) {
         // Prevent '-' (minus sign) and 'e' (scientific notation)
         if (e.key === '-' || e.key === 'e' || e.key === 'E')
           e.preventDefault();
@@ -195,32 +193,17 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         // IF it's an integer cell, also prevent the decimal point
         if (isInteger && (e.key === '.' || e.key === ','))
           e.preventDefault();
-            
-        debugger;
-        if (e.key === 'Enter') $(this).blur();
-        else if (e.key === 'Escape') setCellText(cell, is_funding_col ? formatUSD(currentVal) : currentVal); // Revert UI
+          
+        if (e.key === 'Enter') $td.blur();
+        else if (e.key === 'Escape') setCellText(cell, is_funding_col ? formatUSD(currentVal) : currentVal.toLocaleString('en-US')); // Revert UI
       });
   
-      
-      /*
       // --- 4. Validation ---
-      $input.on('blur', function() {
-        var rawVal = $(this).val();
-        var newVal = isInteger ? parseInt(rawVal, 10) : parseFloat(rawVal);
-        
-        if(newVal === null) return;
-        
-        // VALIDATION LOGIC
-        let max_length = get_max_length(colName);
-        var maxVal = BigInt('9'.repeat(max_length)).toLocaleString();
-        if (newVal < 0 || newVal > maxVal) {
-          alert(`Please enter a number between 0 and ${maxVal}.`);
-          setCellText(cell, currentVal); // Revert on error
-          return;
-        }
-
-        setCellText(cell, newVal);
-        cell.data(newVal);
+      $input.off('blue').on('blur', function() {
+        var rawVal = this.value;
+        formatted_val = is_funding_col ? formatUSD(rawVal) : rawVal.toLocaleString('en-US')
+        setCellText(cell, formatted_val);
+        cell.data(rawVal);
         
         // Trigger the Shiny input
         Shiny.setInputValue(tableID + '_cell_edit', {
@@ -231,7 +214,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
           project_id: table.cells(cell.index().row, 0).data()[0],
         }, {priority: 'event'});
       });
-      */
+      }, 500);
     });"
   
   factor_js <- 
