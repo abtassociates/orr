@@ -63,3 +63,14 @@ generate_selected_coc_nofo_opportunities <- function(p, coc_version_id) {
     params = paramify(coc_nofo_opportunities)
   )
 }
+
+update_coc_version <- function(params) {
+  db_execute( 
+    "UPDATE coc_versions 
+      SET coc_status = $1, 
+          date_updated = CURRENT_TIMESTAMP, 
+          updated_by = $2
+      WHERE coc_version_id = $3 AND version_id = $4", 
+    params = params
+  )
+}
