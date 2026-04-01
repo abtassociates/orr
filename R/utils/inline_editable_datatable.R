@@ -16,14 +16,22 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
     className = 'factor-edit-cell'
   )
   
+  return(
+    list(
+      factor_levels = factor_levels,
+      column_defs = column_defs
+    )
+  )
+}
+
+get_numeric_info <- function(data, column_defs) {
+  
   # Add class for Numeric Validation
   # 2. Identify Numeric columns (excluding disabled ones)
-  numeric_cols <- names(data)[sapply(data, is.numeric)] |>
-    setdiff(cols_to_disable)
-
-  integer_cols <- names(data)[sapply(data, is.integer)] |>
-    setdiff(cols_to_disable)
-
+  numeric_cols <- names(data)[sapply(data, is.numeric)]
+  
+  integer_cols <- names(data)[sapply(data, is.integer)]
+  
   column_defs[[length(column_defs) + 1]] <- list(
     targets = match(integer_cols, names(data)) - 1,
     className = 'numeric-edit-cell integer-edit-cell'
@@ -34,17 +42,7 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
     className = 'numeric-edit-cell'
   )
   
-  column_defs[[length(column_defs) + 1]] <- list(
-    targets = match(cols_to_disable, names(data)) - 1,  # Vector of all indices
-    className = 'disabled dt-right'
-  )
-  
-  return(
-    list(
-      factor_levels = factor_levels,
-      column_defs = column_defs
-    )
-  )
+  return(column_defs)
 }
 
 get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
@@ -326,6 +324,15 @@ initialize_inline_edit_table_ui <- function(
   factor_info <- get_factor_info(data, column_defs, colnames, cols_to_disable)
   factor_levels <- factor_info$factor_levels
   column_defs <- factor_info$column_defs
+  
+  # assign classes to numeric cols
+  column_defs <- get_numeric_info(data, column_defs)
+  
+  # handle cols to disable
+  column_defs[[length(column_defs) + 1]] <- list(
+    targets = match(cols_to_disable, names(data)) - 1,  # Vector of all indices
+    className = 'disabled dt-right'
+  )
   
   # use js to show the dropdowns
   init_js <- get_init_js(factor_info$factor_levels, tableID, has_double_header, header_cb)
