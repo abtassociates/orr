@@ -222,7 +222,7 @@ format_timestamp <- function(t) {
 
 
 get_db_timestamp <- function() {
-  as.character(Sys.time())
+  format_timestamp(Sys.time())
 }
 
 save_to_db <- function(p, sql, params, tbl_name) {
