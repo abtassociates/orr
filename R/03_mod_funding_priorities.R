@@ -405,9 +405,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       col_name <- colnames(current_data)[info$col + 1]
       
       # numeric validation
+      # NOTE: This is redundant with the client-side validation we're doing (in the inline_editable_datatable script)
       if (is.numeric(current_data[[col_name]])) {
         is_valid <- validate_numeric_entry(current_data, col_name, info$value)
-        if(!is_valid) revert_cell(info)
+        if(!is_valid) revert_cell(ns("priorities_table"), info, input$priorities_table_rows_current, current_data)
         req(is_valid)
       }
       

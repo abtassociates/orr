@@ -377,10 +377,7 @@ initialize_inline_edit_table_ui <- function(
 }
 
 validate_numeric_entry <- function(df, col_name, val) {
-  new_val <- if(is.integer(df[[col_name]]))
-    as.integer(val)
-  else 
-    as.numeric(val)
+  new_val <- ifelse(is.integer(df[[col_name]]), as.integer(val), as.numeric(val))
   
   max_val = fcase(
     grepl("BED", toupper(col_name)), 99999,
@@ -388,7 +385,7 @@ validate_numeric_entry <- function(df, col_name, val) {
     grepl("FUNDING|AMOUNT", toupper(col_name)), 999999999
   )
   
-  if (!is.na(new_val) && (new_val < 0 || new_val > max_val)) {
+  if ((!is.na(new_val) && (new_val < 0 || new_val > max_val)) || (is.na(new_val) && !is.na(val))) {
     showNotification(glue::glue("Invalid input: Please enter a number between 0 and {prettyNum(max_val, big.mark=',')}", type = "error"))
     return(FALSE)
   }
