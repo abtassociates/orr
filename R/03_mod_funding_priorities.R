@@ -309,9 +309,14 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           ),
           function(x) formatCurrency(
             x,
-            columns = seq(3, ncol(data), by = 3),
+            columns = seq(3, ncol(data), by = 3), # funding fields
             currency = "$", 
             mark = ",",
+            digits = 0
+          ),
+          function(x) formatRound(
+            x,
+            columns = seq(2, ncol(data), by = 3), # bed fields
             digits = 0
           )
         ), 
@@ -362,17 +367,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           }});
         "), 
         has_double_header = TRUE
-      ) %>% 
-        formatStyle(
-          columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
-          `border-right` = "1px solid black"
-        ) %>%
-        formatCurrency(
-          columns = seq(3, ncol(data), by = 3),
-          currency = "$", 
-          mark = ",",
-          digits = 0
-        )       
+      )      
       #end initialize_data_Table
     }, server = FALSE)
     
@@ -401,6 +396,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       # only proceed if they changed anything:
       old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE][[1]]
       req(!identical(old_val, info$value))
+      
+      col_name <- colnames(current_data)[info$col + 1]
+      
+      # numeric validation
+      # NOTE: This is redundant with the client-side validation we're doing (in the inline_editable_datatable script)
+      if (is.numeric(current_data[[col_name]])) {
+        is_valid <- validate_numeric_entry(current_data, col_name, info$value)
+        if(!is_valid) revert_cell(ns("priorities_table"), info, input$priorities_table_rows_current, current_data)
+        req(is_valid)
+      }
       
       # Update the value in the full dataset, so we can update the reactive and datatable proxy
       # The column index needs + 1 because datatable is 0 indexed

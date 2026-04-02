@@ -296,3 +296,45 @@ add_optimistic_locking <- function(sql) {
   
   sql_with_locking
 }
+
+## Revert cell to original value -----
+get_old_val <- function(info, visible_rows, full_data, server=TRUE) {
+  if("oldValue" %in% info) 
+    return(info$oldValue)
+  
+  else if(server) {
+    # Map displayed row -> actual row index
+    actual_row_index <- visible_rows[info$row]
+    
+    # Get the ID
+    order <- seq_row(full_data)
+    row_id <- order[actual_row_index]
+    
+    # Now find the row in your full dataset using the ID
+    true_row <- which(order == order[actual_row_index])
+    
+    return(full_data[true_row, info$col + 1, with=FALSE])
+  } else {
+    return(full_data[info$row, info$col + 1, with=FALSE])
+  }
+  
+}
+revert_cell <- function(tableID, info, visible_rows, full_data) {
+  # replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
+  # info$oldValue works when handled via js because we pass that value
+  # otherwise, when server=FALSE, we can grab from the not-yet-updated reactive
+  # if server=TRUE, then we need to determine the actual row in case user filtered 
+  
+  oldVal <- get_old_val(info, visible_rows, full_data, server=TRUE)
+  shinyjs::runjs(sprintf(
+    "
+              var table = $('#%s table').DataTable();
+              table.cell(%s, %s).data('%s').draw(false);
+            ",
+    tableID,
+    info$row - 1,
+    info$col,
+    jsonlite::toJSON(oldVal, auto_unbox = TRUE)
+  ))
+}
+
