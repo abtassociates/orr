@@ -5,10 +5,11 @@ get_db_pool <- function() {
   .db_env$pool
 }
 
-set_up_db_connection <- function(USE_SQLITE = Sys.getenv("RSTUDIO") == "1") {
-  .db_env$connection_type <- ifelse(USE_SQLITE, "SQLite", "RPostgres")
+set_up_db_connection <- function() {
+  use_sqlite <- ifelse(exists("USE_SQLITE", where = .GlobalEnv), USE_SQLITE, Sys.getenv("RSTUDIO") == "1")
+  .db_env$connection_type <- ifelse(use_sqlite, "SQLite", "RPostgres")
   
-  .db_env$pool <- if(Sys.getenv("RSTUDIO") == "1" && USE_SQLITE) {
+  .db_env$pool <- if(Sys.getenv("RSTUDIO") == "1" && use_sqlite) {
     get_sqlite_db()
   } else {
     if(Sys.getenv("RSTUDIO") == "1") set_up_tunnel()
@@ -33,12 +34,6 @@ set_up_tunnel <- function() {
     )
     
     Sys.sleep(2)
-    
-    if (shiny::isRunning()) {
-      shiny::onStop(function() {
-        try(tools::pskill(tunnel), silent = TRUE)
-      })
-    }
   } else {
     message("Port 5432 is already in use. Assuming tunnel is active.")
   }
@@ -82,6 +77,17 @@ with_tunnel_retry <- function(db_expr) {
   })
 }
 
+kill_open_tunnel <- function() {
+  message("Looking for and killing any open SSH tunnels on port 5432...")
+  
+  # This looks for any running process where the command contains "ssh" and "5432" and kills it.
+  system("pkill -f 'ssh.*5432'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  
+  # Give the OS a second to release the port
+  Sys.sleep(1)
+}
+
+
 
 # Database configuration
 # Using a global pool shares access to the db and is long-lived
@@ -107,7 +113,20 @@ get_sqlite_db <- function() {
 }
 
 # Get a dev version that persists beyond the app 
-shiny::onStop(function() {
-  if(IN_PROD_APP())
-    pool::poolClose(get_db_pool())
-})
+# shiny::onStop(function() {
+#   pool::poolClose(get_db_pool())
+# })
+
+close_pool <- function() {
+  pool::poolClose(get_db_pool())
+}
+
+db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1") {
+  USE_SQLITE <<- use_sqlite
+  set_up_db_connection()
+}
+
+run_app <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1") {
+  USE_SQLITE <<- use_sqlite
+  runApp()
+}

@@ -1,3 +1,4 @@
+
 convert_timestamps_to_char <- function(dt) {
   if("date_created" %in% names(dt)) 
     dt[, date_created := as.character(date_created, tz = "UTC")]
@@ -25,6 +26,7 @@ get_db_query <- function(sql, params = NULL) {
     
     return(dt)
   }, error = function(e) {
+    log_error(e$message)
     list(ok = FALSE, error = e$message)
   })
 }
@@ -45,6 +47,7 @@ get_db_tbl <- function(tbl_name) {
     
     return(tbl)
   }, error = function(e) {
+    log_error(e$message)
     list(ok = FALSE, error = e$message)
   })
 }
@@ -58,6 +61,7 @@ db_execute <- function(sql, params) {
       DBI::dbExecute(get_db_pool(), sql, params = params)
     })
   }, error = function(e) {
+    log_error(e$message)
     list(ok = FALSE, error = e$message)
   })
 }
@@ -68,6 +72,7 @@ db_append <- function(tbl, data) {
       DBI::dbAppendTable(get_db_pool(), tbl, data)
     })
   }, error = function(e) {
+    log_error(e$message)
     list(ok = FALSE, error = e$message)
   })
 }

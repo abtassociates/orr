@@ -10,10 +10,13 @@ library(collapse)
   
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
-  
-USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
 
-set_up_db_connection(USE_SQLITE)
+set_up_db_connection()
+
+if(USE_SQLITE) {
+  DBI::dbExecute(get_db_pool(), "PRAGMA journal_mode = WAL;")
+  DBI::dbExecute(get_db_pool(), "PRAGMA synchronous = NORMAL;")
+}
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
@@ -27,7 +30,9 @@ ADMIN_USERS <- "
   ('Victoria.Lopez@abtglobal.com', 'Victoria', 'Lopez', NULL),
   ('anthony.appau@abtglobal.com', 'Anthony', 'Appau', NULL),
   ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL),
-  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL)
+  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL),
+  ('kally.canfield@abtglobal.com', 'Kally', 'Canfield', NULL),
+  ('Randy.McCoy@abtglobal.com', 'Randy', 'McCoy', NULL)
 "
 
 drop_table <- function(tbl) {
@@ -153,8 +158,8 @@ VALUES
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
 ('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
-('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
-('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'Veteran', 'Veteran', 'orr_service@abtglobal.com'),
+('target_population', 'Youth', 'Youth', 'orr_service@abtglobal.com'),
 ('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
 ")
@@ -202,6 +207,8 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
     mckinneyventoshp BOOLEAN,
     mckinneyventoyhdp BOOLEAN,
     mckinneyventoyhdprenewals BOOLEAN,
+    mckinneyventounshelt BOOLEAN,
+    mckinneyventorural BOOLEAN,
     beds_hh_w_children INTEGER,
     --units_hh_w_children INTEGER,
     veteran_beds_hh_w_children INTEGER,
@@ -220,86 +227,48 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
 ")
 
 # import HIC data ----------------
-hic_data <- fread(HIC_DATA_FILEPATH)
-
-# Rename columns to match SQL table
-setnames(hic_data, old = c(
-  "Row #",
-  "HudNum",
-  "CoC",
-  "Organization Name",
-  "Project Name",
-  "Project Type",
-  "Geocode",
-  "Target Population",
-  "mcKinneyVentoEsgEs",
-  "mcKinneyVentoEsgRrh",
-  "mcKinneyVentoEsgCov",
-  "mcKinneyVentoEsgRUSH",
-  "mcKinneyVentoCocSh",
-  "mcKinneyVentoCocTh",
-  "mcKinneyVentoCocPsh",
-  "mcKinneyVentoCocRrh",
-  "mcKinneyVentoCocSro",
-  "mcKinneyVentoCocThRrh",
-  "mcKinneyVentoSpC",
-  "mcKinneyVentoS8",
-  "mcKinneyVentoShp",
-  "mcKinneyVentoYhdp",
-  "mcKinneyVentoYhdpRenewals",
-  "Beds HH w/ Children",
-  "Veteran Beds HH w/ Children",
-  "Youth Beds HH w/ Children",
-  "CH Beds HH w/ Children",
-  "Beds HH w/o Children",
-  "Veteran Beds HH w/o Children",
-  "Youth Beds HH w/o Children",
-  "CH Beds HH w/o Children",
-  "Beds HH w/ only Children",
-  "CH Beds HH w only Children"
-), new = c(
-  "row_num",
-  "hudnum",
-  "coc_name",
-  "organization_name",
-  "project_name",
-  "project_type",
-  "geocode",
-  "target_population",
-  "mckinneyventoesges",
-  "mckinneyventoesgrrh",
-  "mckinneyventoesgcov",
-  "mckinneyventoesgrrhcov",
-  "mckinneyventococsh",
-  "mckinneyventococth",
-  "mckinneyventococpsh",
-  "mckinneyventococrrh",
-  "mckinneyventococsro",
-  "mckinneyventococthrrh",
-  "mckinneyventospc",
-  "mckinneyventos8",
-  "mckinneyventoshp",
-  "mckinneyventoyhdp",
-  "mckinneyventoyhdprenewals",
-  "beds_hh_w_children",
-  "veteran_beds_hh_w_children",
-  "youth_beds_hh_w_children",
-  "ch_beds_hh_w_children",
-  "beds_hh_wo_children",
-  "veteran_beds_hh_wo_children",
-  "youth_beds_hh_wo_children",
-  "ch_beds_hh_wo_children",
-  "beds_hh_w_only_children",
-  "ch_beds_hh_w_only_children"
-))
-
-# Drop columns that aren't in your SQL table (if they exist)
-cols_to_drop <- c("mcKinneyVentoUnshelt", "mcKinneyVentoRural")
-hic_data[, (cols_to_drop) := NULL]
-
-# Add missing columns that are in SQL but not in CSV (with default values)
-hic_data[, mckinneyventoesg := FALSE]
-hic_data[, mckinneyventococ := FALSE]
+hic_data <- fread(HIC_DATA_FILEPATH) |>
+  frename(
+    row_num                   = "Row #",
+    hudnum                    = "HudNum",
+    coc_name                  = "CoC",
+    organization_name         = "Organization Name",
+    project_name              = "Project Name",
+    project_type              = "Project Type",
+    geocode                   = "Geocode",
+    target_population         = "Target Population",
+    mckinneyventoesges        = "mcKinneyVentoEsgEs",
+    mckinneyventoesgrrh       = "mcKinneyVentoEsgRrh",
+    mckinneyventoesgcov       = "mcKinneyVentoEsgCov",
+    mckinneyventoesgrrhcov    = "mcKinneyVentoEsgRUSH",
+    mckinneyventococsh        = "mcKinneyVentoCocSh",
+    mckinneyventococth        = "mcKinneyVentoCocTh",
+    mckinneyventococpsh       = "mcKinneyVentoCocPsh",
+    mckinneyventococrrh       = "mcKinneyVentoCocRrh",
+    mckinneyventococsro       = "mcKinneyVentoCocSro",
+    mckinneyventococthrrh     = "mcKinneyVentoCocThRrh",
+    mckinneyventospc          = "mcKinneyVentoSpC",
+    mckinneyventos8           = "mcKinneyVentoS8",
+    mckinneyventoshp          = "mcKinneyVentoShp",
+    mckinneyventoyhdp         = "mcKinneyVentoYhdp",
+    mckinneyventoyhdprenewals = "mcKinneyVentoYhdpRenewals",
+    mckinneyventounshelt      = "mcKinneyVentoUnshelt",
+    mckinneyventorural        = "mcKinneyVentoRural",
+    beds_hh_w_children        = "Beds HH w/ Children",
+    veteran_beds_hh_w_children= "Veteran Beds HH w/ Children",
+    youth_beds_hh_w_children  = "Youth Beds HH w/ Children",
+    ch_beds_hh_w_children     = "CH Beds HH w/ Children",
+    beds_hh_wo_children       = "Beds HH w/o Children",
+    veteran_beds_hh_wo_children = "Veteran Beds HH w/o Children",
+    youth_beds_hh_wo_children = "Youth Beds HH w/o Children",
+    ch_beds_hh_wo_children    = "CH Beds HH w/o Children",
+    beds_hh_w_only_children   = "Beds HH w/ only Children",
+    ch_beds_hh_w_only_children = "CH Beds HH w only Children"
+  ) |>
+  fmutate(
+    mckinneyventoesg = FALSE,
+    mckinneyventococ = FALSE
+  )
 
 # Fetch lookup tables from database
 project_type_lookup <- DBI::dbGetQuery(get_db_pool(), 
@@ -531,25 +500,17 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH, encoding="Latin-1")
 
 # Rename columns to match SQL table
-setnames(hud_ard_data, old = c(
-  "CoCName",
-  "CoC Number and Name",
-  "PPRN",
-  "Estimated ARD",
-  "Tier 1",
-  "CoC Bonus",
-  "DV Bonus",
-  "CoC Planning"
-), new = c(
-  "coc",
-  "coc_number_and_name",
-  "pprn",
-  "estimated",
-  "tier_1",
-  "coc_bonus",
-  "dv_bonus",
-  "coc_planning"
-))
+hud_ard_data <- frename(
+  hud_ard_data,
+  "CoCName" = "coc",
+  "CoC Number and Name" = "coc_number_and_name",
+  "PPRN" = "pprn",
+  "Estimated ARD" = "estimated",
+  "Tier 1" = "tier_1",
+  "CoC Bonus" = "coc_bonus",
+  "DV Bonus" = "dv_bonus",
+  "CoC Planning" = "coc_planning"
+)
 
 # only keep the ones where the CoC is in the HIC data
 hud_ard_data <- hud_ard_data |> fsubset(coc %in% funique(hic_data$hudnum))
@@ -577,6 +538,7 @@ SET
 drop_table("coc_versions")
 drop_table("coc_version_requests")
 drop_table("coc_version_users")
+drop_table("user_settings")
 
 DBI::dbExecute(get_db_pool(), glue::glue("
 --- CoC versions (CoCs can have versions, as new users may decide to create their own)
@@ -628,6 +590,24 @@ CREATE TABLE IF NOT EXISTS coc_version_users (
     
     -- A user cannot be associated with the same CoC version more than once
     CONSTRAINT uq_coc_version_users UNIQUE (coc_version_id, username)
+);
+"))
+
+DBI::dbExecute(get_db_pool(), glue::glue("
+
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_setting_id {id_var_attrs},
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
+  	coc_user VARCHAR(255) REFERENCES users(username),
+    setting_name VARCHAR(255),
+    setting_value VARCHAR,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username),
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    
+    -- A version user can only set one of each type of user setting
+    CONSTRAINT user_settings_unique_key UNIQUE (coc_version_id, coc_user, setting_name)
 );
 "))
 

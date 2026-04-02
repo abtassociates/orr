@@ -147,9 +147,9 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     hud_ard_coc_data <- reactive({
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
-          tier_2 = estimated * 0.1 + coc_bonus + dv_bonus,
           adjusted_ard = round(tier_1/0.9, 0),
-          yhdp_ard = estimated - adjusted_ard,
+          tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
+          yhdp_ard = estimated - min(adjusted_ard, estimated),
           dv_ard = as.numeric(NA)
         ) |>
         frename(estimated = "total_ard")
@@ -334,7 +334,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         options = list(
           dom = 't',
           searching = FALSE,
-          info = FALSE
+          info = FALSE,
+          keys = TRUE
         ),
         filter = 'none',
         callback_js = glue::glue(
@@ -344,9 +345,35 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
             $(this).css('background-color', 'inherit');
           }});
-        "),
+          
+          // Start cell editing with Enter key (13)
+          table.on('key', function(e, datatable, key, cell, originalEvent){{
+            var targetName = originalEvent.target.localName;
+            if(key == 13 && targetName == 'body'){{
+              $(cell.node()).trigger('dblclick.dt');
+            }}
+          }});
+          // Exit cell editing with Tab (9), Enter (13), or Arrow Keys (37-40)
+          table.on('keydown', function(e){{
+            var keys = [9,13,37,38,39,40];
+            if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1){{
+              $(e.target).trigger('blur');
+            }}
+          }});
+        "), 
         has_double_header = TRUE
-      ) #end initialize_data_Table
+      ) %>% 
+        formatStyle(
+          columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
+          `border-right` = "1px solid black"
+        ) %>%
+        formatCurrency(
+          columns = seq(3, ncol(data), by = 3),
+          currency = "$", 
+          mark = ",",
+          digits = 0
+        )       
+      #end initialize_data_Table
     }, server = FALSE)
     
     priorities_table_proxy <- dataTableProxy(ns("priorities_table"),session = session)
@@ -392,8 +419,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         ) |>
         frename(pop = target_population, grp = population_group) |>
         fmutate(
-          project_type = get_lookup_refid(project_type, ref_type = "project_type"),
-          priority = get_lookup_refid(priority, "ref_type" = "priority")
+          project_type = get_lookup_refid(project_type, ref_type = "project_type")
         ) |>
         join(
           coc_funding_priorities() |> 
@@ -403,6 +429,11 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # bed, funding, or priority
       metric_name <- names(changed_data)[3]
+      
+      if(metric_name == "priority") 
+        changed_data <- changed_data |>
+          fmutate(priority = get_lookup_refid(priority, ref_type = "priority"))
+      
       
       updated_coc_funding_priorities <- list(
         user_coc$coc_version_id,
@@ -437,7 +468,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           selected_new = coc_nofo_opportunity_id %in% params$nofo_opportunity_ids,
           created_by = params$created_by
         ) |>
-        fsubset(selected_new != fcoalesce(selected, FALSE)) |>
+        fsubset(selected_new != fcoalesce(as.logical(selected), FALSE)) |>
         fselect(coc_version_id, coc_nofo_opportunity_id, selected_new, created_by, date_updated)
     }
     

@@ -118,17 +118,24 @@ variable_labels <- c(
   "is_dedicated_ch_fam" = "Is 100% Dedicated + or CH Fam (Yes/No)",
   "is_dedicated_ch_ind" = "Is 100% Dedicated + or CH Ind (Yes/No)",
   "is_dedicated_dv" = "Is 100% DV (Yes/No)",
-  "amount_other_public_funding" = "Amount of other public funding",#(federal, state, county, city)",
-  "amount_private_funding" = "Amount of private funding",
+  "amount_other_public_funding" = "Other public funding amount",#(federal, state, county, city)",
+  "amount_private_funding" = "Private funding amount",
   "ch_bed_inventory" = "CH Bed Inventory (PSH Only)",
   "vet_bed_inventory" = "Veteran Bed Inventory",
   "youth_bed_inventory" = "Youth Bed Inventory",
   "created_by" = "Created By",
   "date_created" = "Date Created",
+  "date_updated" = "Date Updated",
+  "updated_by" = "Updated By",
   "met_hud_thresholds" = "Met HUD Thresholds",
   "met_coc_thresholds" = "Met CoC Thresholds",
   "weighted_score" = "Weighted Rating Score (out of 100)"
 )
+
+inventory_variable_labels <- variable_labels[!(names(variable_labels) %in% c('met_hud_thresholds', 'met_coc_thresholds', 'weighted_score'))]
+
+initial_cols_to_show <- setdiff(names(inventory_variable_labels), c('created_by','date_created','date_updated','updated_by'))
+                                                                  
 
 giw_variable_labels <- c(
   "grant_number" = "Grant Number",
@@ -157,7 +164,9 @@ versions_variable_labels <- c(
   "coc_version_id" = "CoC Version ID",
   "coc_version_role" = "Your Role",
   "updated_by" = "Updated By",
+  "created_by" = "Created By",
   "date_updated" = "Date Updated",
+  "created_by" = "Created By",
   "date_created" = "Date Created"
 )
 
@@ -169,7 +178,8 @@ requests_variable_labels <- c(
   "coc_version_name" = "CoC Version Name",
   "request_status" = "Request Status",
   "created_by" = "Requested By",
-  "date_created" = "Date Requested"
+  "date_created" = "Date Requested",
+  "date_updated" = "Date Updated"
 )
 
 add_user_stamp <- function(x, user_coc, is_new = FALSE) {
@@ -184,49 +194,47 @@ add_datetime_stamp <- function(x, is_new = FALSE) {
   return(x)
 }
 
-insert_and_return <- function(table, new_dt, return_cols) {
-  col_list <- paste(DBI::dbQuoteIdentifier(get_db_pool(), names(new_dt)), collapse = ", ")
-  return_col_list <- paste(DBI::dbQuoteIdentifier(get_db_pool(), return_cols), collapse = ", ")
+insert_and_return <- function(p, table, new_dt, return_cols) {
+  col_list <- paste(DBI::dbQuoteIdentifier(p, names(new_dt)), collapse = ", ")
+  return_col_list <- paste(DBI::dbQuoteIdentifier(p, return_cols), collapse = ", ")
   placeholders <- paste0("$", seq_along(names(new_dt)), collapse = ", ")
-
-  sql <- sprintf(
-    "INSERT INTO %s (%s) VALUES (%s) RETURNING %s",
-    table,
-    col_list,
-    placeholders,
-    return_col_list
-  )
   
-  results <- lapply(1:nrow(new_dt), function(i) {
-    row_values <- as.character(unname(new_dt))
-    DBI::dbGetQuery(get_db_pool(), sql, params = as.list(row_values))
-  })
-
+  results <- DBI::dbGetQuery(
+    p, 
+    sprintf(
+      "INSERT INTO %s (%s) VALUES (%s) RETURNING %s",
+      table,
+      col_list,
+      placeholders,
+      return_col_list
+    ), 
+    params = paramify(new_dt)
+  ) |>
+    qDT() |>
+    convert_timestamps_to_char()
+  
   return(results)
 }
 
-format_timestamp_for_db <- function(t) {
-  format(lubridate::with_tz(t, "UTC"), "%Y-%m-%d %H:%M:%S")
+format_timestamp <- function(t) {
+  strftime(t, format = "%Y-%m-%d %H:%M:%S")
 }
 
+
 get_db_timestamp <- function() {
-  format_timestamp_for_db(Sys.time())
+  as.character(Sys.time())
 }
 
 save_to_db <- function(p, sql, params, tbl_name) {
+  paramified <- paramify(params)
+  if(purrr::every(paramified, is.null)) 
+    return(FALSE)
+  
   tryCatch({
     rows_changed <- if(!grepl("RETURNING ", sql)) {
-      DBI::dbExecute(
-        p,
-        sql,
-        params = paramify(params)
-      )
+      DBI::dbExecute(p, sql, params = paramified)
     } else {
-      DBI::dbGetQuery(
-        p,
-        sql,
-        params = paramify(params)
-      )
+      DBI::dbGetQuery(p, sql, params = paramified)
     }
     
     if(grepl("RETURNING ", sql)) {
@@ -250,14 +258,14 @@ save_to_db <- function(p, sql, params, tbl_name) {
       msg <- glue::glue("{tbl_name} saved successfully!")
       needs_refresh <- FALSE
     }
-    print(msg)
+    logger::log_info(msg)
     showNotification(msg, type = "message")
     return(needs_refresh)
   }, error = function(e) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
     showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
-    cat("Database save error:", e$message, "\n")
+    log_error(e$message)
     stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }

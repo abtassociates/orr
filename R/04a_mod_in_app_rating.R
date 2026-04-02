@@ -8,7 +8,8 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     title = paste0("Rate ", ptypes),
     value = id,
     br(),
-    em(paste0("Rate your ", ptypes, " against your selected criteria")),
+    helpText(paste0("Rate your ", ptypes, " against your selected criteria.", ifelse(id == "New", "Note that New YHDP projects do not get rated and thus will not appear in the Select Project dropdown below.", ""))),
+    br(),
     layout_sidebar(
       style = "min-height: 500px;",
       # the side bar will be 
@@ -27,15 +28,35 @@ mod_in_app_rating_ui <- function(id, funding_action) {
   )
 }
 
-mod_in_app_rating_server <- function(id, user_coc, funding_action, module_returns) {
+mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, module_returns) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    
+    ## restore last selected project from user_settings DB tbl
+    observe({
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
+      req(nrow(all_projects()) > 0)
+      
+      user_prev_project_selected <- get_user_setting(get_db_pool(), glue::glue('rating_{id}_project_selected'), user_coc$coc_version_id, user_coc$username)
+      
+      if(length(user_prev_project_selected) > 0){
+        updateSelectInput(session, inputId = 'project_select', selected = user_prev_project_selected)
+      }
+    })
     
     # Collapse sidebar when user is on Customize Rating Criteria tab, since it's
     # not useful there
     observeEvent(input$main_contents, {
-      req(user_coc$coc_version_id)
+      req(user_coc$coc_version_id & nav_control() == 'rating')
+      
+      user_coc$settings$rating_subtab <- gsub(glue::glue('rating-{id}-'), '', input$main_contents)
       toggle_sidebar(id = "project_selection_sidebar", open = input$main_contents != ns("rating_factors"))
+    }, ignoreInit = TRUE)
+    
+    # Store selected project in user setting
+    observeEvent(input$project_select, {
+      req(user_coc$coc_version_id & nav_control() == 'rating')
+      user_coc$settings[[glue::glue('rating_{id}_project_selected')]] <- input$project_select
     }, ignoreInit = TRUE)
     
     # Get all projects for the CoC and the current funding action

@@ -5,47 +5,61 @@ get_coc_projects <- function(coc_version_id) {
   )
 }
 
-generate_data_for_new_coc_version <- function(coc_version_id) {
-  generate_selected_thresholds_for_coc(coc_version_id)
-  generate_selected_rating_factors_for_coc(coc_version_id)
-  generate_selected_coc_nofo_opportunities(coc_version_id)
+generate_data_for_new_coc_version <- function(p, coc_version_id) {
+  generate_selected_thresholds_for_coc(p, coc_version_id)
+  generate_selected_rating_factors_for_coc(p, coc_version_id)
+  generate_selected_coc_nofo_opportunities(p, coc_version_id)
 }
 
-generate_selected_thresholds_for_coc <- function(coc_version_id) {
-  thresholds <- get_db_query("SELECT threshold_id FROM thresholds") |>
-    fmutate(coc_version_id = coc_version_id)
+generate_selected_thresholds_for_coc <- function(p, coc_version_id) {
+  thresholds <- DBI::dbGetQuery(
+    p, 
+    "SELECT threshold_id, $1 AS coc_version_id 
+    FROM thresholds
+    WHERE coc_version_id IS NULL",
+    params = list(coc_version_id)
+  )
   
   DBI::dbExecute(
-    get_db_pool(),
-    "INSERT INTO selected_thresholds (threshold_id, selected, coc_version_id)
-    VALUES ($1, TRUE, $2)
-    ON CONFLICT (coc_version_id, threshold_id) DO NOTHING;",
+    p,
+    glue::glue("INSERT INTO selected_thresholds (threshold_id, selected, coc_version_id, created_by, updated_by)
+    VALUES ($1, TRUE, $2, '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
+    ON CONFLICT (coc_version_id, threshold_id) DO NOTHING;"),
     params = paramify(thresholds)
   )
 }
 
-generate_selected_rating_factors_for_coc <- function(coc_version_id) {
-  rating_factors <- get_db_query("SELECT rating_factor_id FROM rating_factors") |>
-    fmutate(coc_version_id = coc_version_id)
-  
+generate_selected_rating_factors_for_coc <- function(p, coc_version_id) {
+  rating_factors <- DBI::dbGetQuery(
+    p, 
+    "SELECT rating_factor_id, $1 AS coc_version_id, goal, max_point_value
+    FROM rating_factors
+    WHERE coc_version_id IS NULL",
+    params = list(coc_version_id)
+  )
+
   DBI::dbExecute(
-    get_db_pool(),
-    "INSERT INTO selected_rating_factors (rating_factor_id, selected, coc_version_id)
-    VALUES ($1, TRUE, $2)
-    ON CONFLICT (coc_version_id, rating_factor_id) DO NOTHING;",
+    p,
+    glue::glue("INSERT INTO selected_rating_factors (rating_factor_id, selected, coc_version_id, goal, max_point_value, created_by, updated_by)
+    VALUES ($1, TRUE, $2, $3, $4, '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
+    ON CONFLICT (coc_version_id, rating_factor_id) DO NOTHING;"),
     params = paramify(rating_factors)
   )
 }
 
-generate_selected_coc_nofo_opportunities <- function(coc_version_id) {
-  coc_nofo_opportunities <- get_db_query("SELECT coc_nofo_opportunity_id FROM coc_nofo_opportunities") |>
-    fmutate(coc_version_id = coc_version_id)
+generate_selected_coc_nofo_opportunities <- function(p, coc_version_id) {
+  coc_nofo_opportunities <- DBI::dbGetQuery(
+    p, 
+    "SELECT coc_nofo_opportunity_id, $1 AS coc_version_id 
+    FROM coc_nofo_opportunities",
+    params = list(coc_version_id)
+  )
   
   DBI::dbExecute(
-    get_db_pool(),
-    "INSERT INTO selected_coc_nofo_opportunities (coc_nofo_opportunity_id, selected, coc_version_id)
-    VALUES ($1, TRUE, $2)
-    ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO NOTHING;",
+    p,
+    glue::glue("INSERT INTO selected_coc_nofo_opportunities (coc_nofo_opportunity_id, selected, coc_version_id, created_by, updated_by)
+    VALUES ($1, TRUE, $2, '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
+    ON CONFLICT (coc_version_id, coc_nofo_opportunity_id) DO NOTHING;"),
     params = paramify(coc_nofo_opportunities)
   )
 }

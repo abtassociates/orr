@@ -25,12 +25,13 @@ get_alternative_rating <- function(coc_version_id) {
 update_project_evaluations_db <- function(p, updated_project_evaluation) {
   save_to_db(
     p,
-    "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, created_by)
-    VALUES ($1, 'outside', $2, $3, $4)
+    "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by)
+    VALUES ($1, 'outside', $2, $3, $4, $5)
     ON CONFLICT (project_id) DO UPDATE SET
       method = EXCLUDED.method,
       met_hud_thresholds = EXCLUDED.met_hud_thresholds,
       met_coc_thresholds = EXCLUDED.met_coc_thresholds,
+      weighted_score = EXCLUDED.weighted_score,
       updated_by   = EXCLUDED.created_by
     " |> add_optimistic_locking(),
     updated_project_evaluation,
