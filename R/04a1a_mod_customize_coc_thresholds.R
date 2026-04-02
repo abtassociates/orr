@@ -13,7 +13,13 @@ mod_customize_coc_thresholds_ui <- function(id) {
     value = id,
     card(
       em("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
-      uiOutput(ns("threshold_checkboxes_ui")),
+      checkboxGroupInput(
+        inputId = ns("threshold_checkboxes"),
+        label = "CoC Threshold Requirements",
+        choices = NULL,
+        width = "100%",
+        selected = NULL
+      ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         actionButton(ns("add_threshold_btn"), "Add Custom Threshold", icon = icon("plus")),
@@ -51,23 +57,6 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       )
       
       isolate(updating_from_db(FALSE))
-    })
-    
-    # Dynamically render the checkboxes based on available and selected data
-    output$threshold_checkboxes_ui <- renderUI({
-      req(user_coc$coc_version_id)
-      req(fnrow(all_coc_thresholds()) > 0)
-      
-      checkboxGroupInput(
-        inputId = ns("threshold_checkboxes"),
-        label = "CoC Threshold Requirements",
-        choices = setNames(
-          all_coc_thresholds()$threshold_id, 
-          all_coc_thresholds()$threshold_text
-        ),
-        width = "100%",
-        selected = all_coc_thresholds()[selected == TRUE]$threshold_id
-      )
     })
     
     # Handle changes to the thresholds shown to the user
