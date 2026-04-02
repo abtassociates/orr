@@ -41,7 +41,6 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
   modalDialog(
     title = title,
     size = "xl",
-    page_fluid(
       # -- Core Project Info --
       layout_columns(
         
@@ -89,7 +88,6 @@ mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_repla
       #shinyjs::hidden(helpText(id = ns("target_population_inst"), "Select if project is targeted to DV, HIV, Youth, or General")),
       shinyjs::hidden(checkboxInput(ns("all_dv_checkbox"), "100% targeted to DV", value = FALSE)),
       
-    ),
     footer = tagList(
       div(style = "width: 50%; text-align:left;",
            tags$p("* = Required field"),
