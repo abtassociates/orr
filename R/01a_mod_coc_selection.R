@@ -458,7 +458,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
             default = "Not yet requested"
           )
         ) |>
-        fselect(-coc_version_id, -is_logged_in_user, -coc_version_role)
+        fselect(-is_logged_in_user, -coc_version_role)
     })
     
     ## enable/disable request actionbuttons based on if a CoC version is selected from the modal table
@@ -469,7 +469,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
     # Datatable of versions and user's requests 
     # shown in Create ORR and Request Access to CoC modals
     output$existing_versions <- renderDT({
-      versions_to_show <- versions_and_requests_for_selected_coc()
+      versions_to_show <- versions_and_requests_for_selected_coc() |>
+        fselect(-coc_version_id)
       
       req(fnrow(versions_to_show) > 0)
       
@@ -512,11 +513,11 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
     # Create Version Request in DB, pass success to requests module, notify user
     observeEvent(input$send_request, {
       selected_version <- versions_and_requests_for_selected_coc()[input$existing_versions_rows_selected]
-      append_version_request(selected_version)
+      append_version_request(selected_version, user_coc)
       
       ## TODO: send email to admin of version that is requested
       
-      module_returns$updated_request(module_returns$updated_request() + 1)
+      module_returns$updated_request <- module_returns$updated_request + 1
       
       removeModal()
       

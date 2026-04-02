@@ -64,7 +64,7 @@ generate_selected_coc_nofo_opportunities <- function(p, coc_version_id) {
   )
 }
 
-append_version_request <- function(selected_version) {
+append_version_request <- function(selected_version, user_coc) {
   request_row <- data.table(
     #coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
     coc_version_id = selected_version$coc_version_id,
