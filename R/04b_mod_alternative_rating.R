@@ -28,6 +28,10 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
+    
+    # binary indicator for whether a new row/project has been added
+    clicked_all_or_none <- reactiveVal(FALSE)
+    
     observeEvent(refresh_trigger(), {
       req(user_coc$coc_version_id)
       
@@ -54,7 +58,14 @@ mod_alternative_rating_server <- function(id, user_coc) {
     }
     
     output$alternative_rating_table <- renderDT({
-      data <- isolate(ratable_projects())
+      
+      if(clicked_all_or_none()){
+        data <- ratable_projects()
+        clicked_all_or_none(FALSE)
+      } else {
+        data <- isolate(ratable_projects())
+      }
+      
 
       shiny::validate(need(
         nrow(data) > 0, 
@@ -169,8 +180,7 @@ debugger;
     
     observe({
       req(ratable_projects())
-      
-      replaceData(projects_table_proxy, ratable_projects(), rownames = FALSE)
+      replaceData(projects_table_proxy, ratable_projects(), rownames = FALSE, resetPaging = FALSE)
     })
     
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns
@@ -183,6 +193,7 @@ debugger;
       updated[visible_rows, met_hud_thresholds := as.integer(input$set_met_hud_thresholds)]
 
       ratable_projects(updated)
+      clicked_all_or_none(TRUE)
     })
     
     observeEvent(input$set_met_coc_thresholds, {
@@ -194,6 +205,7 @@ debugger;
       updated[visible_rows, met_coc_thresholds := as.integer(input$set_met_coc_thresholds)]
       
       ratable_projects(updated)
+      clicked_all_or_none(TRUE)
     })
     
     
