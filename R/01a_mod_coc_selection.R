@@ -474,6 +474,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
     # Datatable of versions and user's requests 
     # shown in Create ORR and Request Access to CoC modals
     output$existing_versions <- renderDT({
+      req(input$coc_dropdown)
+      
       versions_to_show <- versions_and_requests_for_selected_coc() |>
         fselect(-coc_version_id)
       
@@ -511,7 +513,11 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
       shinyjs::toggle(id = "send_request", condition = has_existing_versions)
       shinyjs::toggle(id = "existing_versions", condition = has_existing_versions)
       
-      replaceData(existing_versions_proxy, versions_and_requests_for_selected_coc(), rownames = FALSE)
+      replaceData(
+        existing_versions_proxy, 
+        versions_and_requests_for_selected_coc() |> fmutate(coc_version_id = NULL), 
+        rownames = FALSE
+      )
     })
     
     
