@@ -25,7 +25,7 @@ mod_customize_coc_thresholds_ui <- function(id) {
 
 #' @title mod_coc_thresholds_server
 #' @noRd
-mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, module_returns) {
+mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -50,7 +50,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
         selected = data[selected == 1]$threshold_id
       )
       
-      shiny::isolate(updating_from_db(FALSE))
+      isolate(updating_from_db(FALSE))
     })
     
     # Dynamically render the checkboxes based on available and selected data
@@ -111,6 +111,8 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       # if(needs_refresh1)
         refresh_trigger(\(x) x + 1)
       
+      if(!needs_refresh1)
+        user_coc$customized_coc_thresholds_updated <- user_coc$customized_coc_thresholds_updated + 1
     }, ignoreInit = TRUE) # end save_thresholds observeEvent
     
     observeEvent(input$add_threshold_btn, {
@@ -158,7 +160,8 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       
       refresh_trigger(\(x) x + 1)
       
+      if(!needs_refresh2)
+        user_coc$customized_coc_thresholds_updated <- user_coc$customized_coc_thresholds_updated + 1
     }) # end submit custom threhsold
-    module_returns$selected_thresholds <- input$threshold_checkboxes
   })
 }

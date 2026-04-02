@@ -13,17 +13,14 @@ function(input, output, session) {
       cols_to_hide = NULL, # which project columns to display
       rating_method = NULL, # in-app vs alternative rating method
       rating_tab = NULL
-    )
+    ),
+    
+    requests_updated = 0,
+    projects_updated = 0,
+    customized_rating_factors_updated = 0,
+    customized_coc_thresholds_updated = 0
   )
   nav_control <- reactiveVal("about")
-
-  module_returns <- reactiveValues(
-    customize_rating_criteria = 0,
-    
-    # used to update Requests table after user makes a request
-    # this is needed because the requests table is in a separate module from CoC Selection, where the requests are made
-    updated_requests = 0
-  )
   
   observeEvent(user_coc$auth, {
     req(user_coc$auth)
@@ -35,7 +32,7 @@ function(input, output, session) {
       nav_insert("nav", get(glue::glue("mod_{t}_ui"))(t), select = t == "dashboard")
       
       # Server
-      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc, session, module_returns)
+      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc, session)
     })
   })
   

@@ -52,7 +52,7 @@ mod_thresholds_entry_ui <- function(id) {
   ) # end nav_panel
 }
 
-mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected_criteria) {
+mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -82,7 +82,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, selected
         fsubset(type == "CoC" & selected)
     })
     
-    observeEvent(c(selected_project(), refresh_trigger()), {
+    observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_coc_thresholds_updated), {
       req(user_coc$coc_version_id)
       req(selected_project())
       req(fnrow(selected_project()) > 0)

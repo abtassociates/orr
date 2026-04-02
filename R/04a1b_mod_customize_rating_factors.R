@@ -57,7 +57,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
 
 #' @title mod_new_factors_server
 #' @noRd
-mod_customize_rating_factors_server <- function(id, user_coc, funding_action, nav_control, module_returns) {
+mod_customize_rating_factors_server <- function(id, user_coc, funding_action, nav_control) {
   # The server logic here is identical in structure to the renewal/expansion module,
   # differing only by the `funding_action` filter ('New').
   moduleServer(id, function(input, output, session) {
@@ -471,8 +471,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
       # if(is.null(inserted_custom_factor_info) || needs_refresh2)
         refresh_trigger(\(x) x + 1)
-      
-      module_returns$customize_rating_criteria <- TRUE
+      if(!needs_refresh2)
+        user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
     }, ignoreInit = TRUE)
   })
 }
