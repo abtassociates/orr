@@ -309,9 +309,14 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           ),
           function(x) formatCurrency(
             x,
-            columns = seq(3, ncol(data), by = 3),
+            columns = seq(3, ncol(data), by = 3), # funding fields
             currency = "$", 
             mark = ",",
+            digits = 0
+          ),
+          function(x) formatRound(
+            x,
+            columns = seq(2, ncol(data), by = 3), # bed fields
             digits = 0
           )
         ), 
@@ -362,17 +367,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           }});
         "), 
         has_double_header = TRUE
-      ) %>% 
-        formatStyle(
-          columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
-          `border-right` = "1px solid black"
-        ) %>%
-        formatCurrency(
-          columns = seq(3, ncol(data), by = 3),
-          currency = "$", 
-          mark = ",",
-          digits = 0
-        )       
+      )      
       #end initialize_data_Table
     }, server = FALSE)
     
