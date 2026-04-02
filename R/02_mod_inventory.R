@@ -234,6 +234,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
             columns = funding_columns, 
             currency = "$", 
             digits = 0
+          ),
+          
+          function(x) formatRound(
+            x,
+            columns = grep('bed', names(data)) - 1,
+            digits = 0
           )
         ),
         colnames = colnames,
