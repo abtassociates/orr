@@ -213,7 +213,7 @@ debugger;
         Shiny.setInputValue(tableID + '_cell_edit', {
           row: cell.index().row + 1,
           col: cell.index().column,
-          value: newVal,
+          value: rawVal,
           oldValue: currentVal,
           project_id: table.cells(cell.index().row, 0).data()[0],
         }, {priority: 'event'});
