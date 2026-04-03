@@ -232,9 +232,9 @@ save_to_db <- function(p, sql, params, tbl_name) {
   
   tryCatch({
     rows_changed <- if(!grepl("RETURNING ", sql)) {
-      DBI::dbExecute(p, sql, params = paramified)
+      pool::poolWithTransaction(p, function(p) DBI::dbExecute(p, sql, params = paramified))
     } else {
-      DBI::dbGetQuery(p, sql, params = paramified)
+      pool::poolWithTransaction(p, function(p) DBI::dbGetQuery(p, sql, params = paramified))
     }
     
     if(grepl("RETURNING ", sql)) {
