@@ -73,7 +73,12 @@ mod_alternative_rating_server <- function(id, user_coc) {
         var thead = $(table.header());
         
         // We attach functions to 'window' so the HTML 'onclick' can find them
-        window.select_all_thresholds = function(val, colIdx, inputId) {{
+        window.select_all_thresholds = function(e, val, colIdx, inputId) {{
+          // 1. STOP PROPAGATION: Prevents the header from sorting when the button is clicked
+          if (e && e.stopPropagation) e.stopPropagation();
+          if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+          if (e && e.preventDefault) e.preventDefault();
+          
           // 1. Update Shiny
           Shiny.setInputValue(inputId, val, {{priority: 'event'}});
           
@@ -93,9 +98,9 @@ mod_alternative_rating_server <- function(id, user_coc) {
           $(th).html(
             `${{title}}<div style='margin-top:4px; white-space:nowrap;'>
               <button class='btn btn-xs btn-success' style='margin-right:2px;'
-                onclick=\"window.select_all_thresholds(1, ${{colIdx}}, '${{inputId}}')\">✓ All</button>
+                onclick=\"window.select_all_thresholds(event, 1, ${{colIdx}}, '${{inputId}}')\">✓ All</button>
               <button class='btn btn-xs btn-danger'
-                onclick=\"window.select_all_thresholds(2, ${{colIdx}}, '${{inputId}}')\">✗ None</button>
+                onclick=\"window.select_all_thresholds(event, 2, ${{colIdx}}, '${{inputId}}')\">✗ None</button>
               </div>
            `
           );
