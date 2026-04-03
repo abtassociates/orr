@@ -47,5 +47,12 @@ TABS_AFTER_PROJECTS_EXIST <- c(
   "ranking"
 )
 
+RATABLE_PROJECT_TYPES <- list(
+  "New" = c("RRH","PSH", "TH+RRH"),
+  "Renew" = c("RRH", "PSH", "TH","TH+RRH","OPH","DEM"),
+  "Expand" = c("RRH","PSH")
+)
+
+
 HUD_THRESHOLD_REQUIREMENTS <- get_db_tbl("thresholds") |> 
   fsubset(type == "HUD")

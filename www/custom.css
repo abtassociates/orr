@@ -42,7 +42,17 @@ td.disabled {
 }*/
 
 #inventory-projects_table .dataTables_scrollBody {
-  height: 36vh !important;
+  height: 38vh !important;
+}
+
+/*the container div of the field control dropdown on Inventory*/
+/*positioning so search bar is in line with it*/
+#inventory-field_display_control_state {
+  display: flex; 
+  gap: 15px; 
+  padding: 10px; 
+  position: absolute;
+  z-index: 1;
 }
 
 
@@ -55,6 +65,10 @@ td.disabled {
   text-align: center;
 }
 
+/* Set color of DT KeyTable cell outline */
+table.dataTable tbody th.focus, table.dataTable tbody td.focus {
+  outline: 2px solid var(--brand-dark_blue) !important;
+}
 
 /* Alternative Rating*/
 #rating-alternative-alternative_rating_table .dt-buttons {
@@ -75,7 +89,6 @@ td.disabled {
   top: 0; 
   height: 100vh;
 }
-
 
 /* Ranking*/
 td.drag-handle { cursor: grab !important; text-align: center; color: #999; vertical-align: middle;}
@@ -109,4 +122,11 @@ div[data-value='ranking'] .progress {
 #ranking-exceeds-bucket-title{
   font-size: 1.3em;
   font-weight: bold;
+}
+
+/* allow DT dropdown filter text to expand and stay on single line */
+table.dataTable .selectize-dropdown-content {
+  white-space: nowrap;
+  display: inline-block;
+  background: var(--bs-body-bg);
 }

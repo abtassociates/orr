@@ -1,15 +1,29 @@
 function(input, output, session) {
+  logger::log_shiny_input_changes(input)
+  
   user_coc <- reactiveValues(
     coc = NULL,
     coc_version_id = NULL,
     username = NULL,
     auth = FALSE, # is the user authenticated or not
     given_name = NULL, # user's given_name as stored and returned by cognito
-    email = NULL  # user's email as stored and returned by cognito
+    email = NULL,  # user's email as stored and returned by cognito
+    active_tab = NULL, # last active tab
+    settings = list(
+      cols_to_hide = NULL, # which project columns to display
+      rating_method = NULL, # in-app vs alternative rating method
+      rating_tab = NULL
+    )
   )
   nav_control <- reactiveVal("about")
 
-  module_returns <- reactiveValues(customize_rating_criteria = 0)
+  module_returns <- reactiveValues(
+    customize_rating_criteria = 0,
+    
+    # used to update Requests table after user makes a request
+    # this is needed because the requests table is in a separate module from CoC Selection, where the requests are made
+    updated_requests = 0
+  )
   
   observeEvent(user_coc$auth, {
     req(user_coc$auth)
@@ -91,4 +105,16 @@ function(input, output, session) {
     nav_select("nav", selected = nav_control())
   })
 
+  shiny::onStop( function(){
+    cat("Running onStop")
+    
+    ## record user settings
+    update_all_user_settings(user_coc, tab_name = input$nav)
+    # Get a dev version that persists beyond the app 
+    # pool::poolClose(get_db_pool())
+    
+    # if (shiny::isRunning()) {
+    #   try(tools::pskill(tunnel), silent = TRUE)
+    # }
+  }, session = session)
 }

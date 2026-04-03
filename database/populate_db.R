@@ -10,10 +10,13 @@ library(collapse)
   
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
-  
-USE_SQLITE <- USE_SQLITE && Sys.getenv("RSTUDIO") == "1"
 
-set_up_db_connection(USE_SQLITE)
+set_up_db_connection()
+
+if(USE_SQLITE) {
+  DBI::dbExecute(get_db_pool(), "PRAGMA journal_mode = WAL;")
+  DBI::dbExecute(get_db_pool(), "PRAGMA synchronous = NORMAL;")
+}
 
 HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
 GIW_DATA_FILEPATH <- here("database/GIW.csv")
@@ -27,7 +30,9 @@ ADMIN_USERS <- "
   ('Victoria.Lopez@abtglobal.com', 'Victoria', 'Lopez', NULL),
   ('anthony.appau@abtglobal.com', 'Anthony', 'Appau', NULL),
   ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL),
-  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL)
+  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL),
+  ('kally.canfield@abtglobal.com', 'Kally', 'Canfield', NULL),
+  ('Randy.McCoy@abtglobal.com', 'Randy', 'McCoy', NULL)
 "
 
 drop_table <- function(tbl) {
@@ -50,9 +55,9 @@ CREATE TABLE IF NOT EXISTS users (
     firstname VARCHAR(255),
     lastname VARCHAR(255),
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 ")
 
@@ -82,9 +87,9 @@ CREATE TABLE IF NOT EXISTS lookups (
     other_specify_flag BOOLEAN DEFAULT FALSE,
     -- Standard audit columns
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -153,8 +158,8 @@ VALUES
 ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
 ('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
 ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
-('target_population', 'Vet', 'Veteran', 'orr_service@abtglobal.com'),
-('target_population', 'Yth', 'Youth', 'orr_service@abtglobal.com'),
+('target_population', 'Veteran', 'Veteran', 'orr_service@abtglobal.com'),
+('target_population', 'Youth', 'Youth', 'orr_service@abtglobal.com'),
 ('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
 ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
 ")
@@ -202,6 +207,8 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
     mckinneyventoshp BOOLEAN,
     mckinneyventoyhdp BOOLEAN,
     mckinneyventoyhdprenewals BOOLEAN,
+    mckinneyventounshelt BOOLEAN,
+    mckinneyventorural BOOLEAN,
     beds_hh_w_children INTEGER,
     --units_hh_w_children INTEGER,
     veteran_beds_hh_w_children INTEGER,
@@ -220,86 +227,48 @@ CREATE TABLE IF NOT EXISTS all_hic_data (
 ")
 
 # import HIC data ----------------
-hic_data <- fread(HIC_DATA_FILEPATH)
-
-# Rename columns to match SQL table
-setnames(hic_data, old = c(
-  "Row #",
-  "HudNum",
-  "CoC",
-  "Organization Name",
-  "Project Name",
-  "Project Type",
-  "Geocode",
-  "Target Population",
-  "mcKinneyVentoEsgEs",
-  "mcKinneyVentoEsgRrh",
-  "mcKinneyVentoEsgCov",
-  "mcKinneyVentoEsgRUSH",
-  "mcKinneyVentoCocSh",
-  "mcKinneyVentoCocTh",
-  "mcKinneyVentoCocPsh",
-  "mcKinneyVentoCocRrh",
-  "mcKinneyVentoCocSro",
-  "mcKinneyVentoCocThRrh",
-  "mcKinneyVentoSpC",
-  "mcKinneyVentoS8",
-  "mcKinneyVentoShp",
-  "mcKinneyVentoYhdp",
-  "mcKinneyVentoYhdpRenewals",
-  "Beds HH w/ Children",
-  "Veteran Beds HH w/ Children",
-  "Youth Beds HH w/ Children",
-  "CH Beds HH w/ Children",
-  "Beds HH w/o Children",
-  "Veteran Beds HH w/o Children",
-  "Youth Beds HH w/o Children",
-  "CH Beds HH w/o Children",
-  "Beds HH w/ only Children",
-  "CH Beds HH w only Children"
-), new = c(
-  "row_num",
-  "hudnum",
-  "coc_name",
-  "organization_name",
-  "project_name",
-  "project_type",
-  "geocode",
-  "target_population",
-  "mckinneyventoesges",
-  "mckinneyventoesgrrh",
-  "mckinneyventoesgcov",
-  "mckinneyventoesgrrhcov",
-  "mckinneyventococsh",
-  "mckinneyventococth",
-  "mckinneyventococpsh",
-  "mckinneyventococrrh",
-  "mckinneyventococsro",
-  "mckinneyventococthrrh",
-  "mckinneyventospc",
-  "mckinneyventos8",
-  "mckinneyventoshp",
-  "mckinneyventoyhdp",
-  "mckinneyventoyhdprenewals",
-  "beds_hh_w_children",
-  "veteran_beds_hh_w_children",
-  "youth_beds_hh_w_children",
-  "ch_beds_hh_w_children",
-  "beds_hh_wo_children",
-  "veteran_beds_hh_wo_children",
-  "youth_beds_hh_wo_children",
-  "ch_beds_hh_wo_children",
-  "beds_hh_w_only_children",
-  "ch_beds_hh_w_only_children"
-))
-
-# Drop columns that aren't in your SQL table (if they exist)
-cols_to_drop <- c("mcKinneyVentoUnshelt", "mcKinneyVentoRural")
-hic_data[, (cols_to_drop) := NULL]
-
-# Add missing columns that are in SQL but not in CSV (with default values)
-hic_data[, mckinneyventoesg := FALSE]
-hic_data[, mckinneyventococ := FALSE]
+hic_data <- fread(HIC_DATA_FILEPATH) |>
+  frename(
+    row_num                   = "Row #",
+    hudnum                    = "HudNum",
+    coc_name                  = "CoC",
+    organization_name         = "Organization Name",
+    project_name              = "Project Name",
+    project_type              = "Project Type",
+    geocode                   = "Geocode",
+    target_population         = "Target Population",
+    mckinneyventoesges        = "mcKinneyVentoEsgEs",
+    mckinneyventoesgrrh       = "mcKinneyVentoEsgRrh",
+    mckinneyventoesgcov       = "mcKinneyVentoEsgCov",
+    mckinneyventoesgrrhcov    = "mcKinneyVentoEsgRUSH",
+    mckinneyventococsh        = "mcKinneyVentoCocSh",
+    mckinneyventococth        = "mcKinneyVentoCocTh",
+    mckinneyventococpsh       = "mcKinneyVentoCocPsh",
+    mckinneyventococrrh       = "mcKinneyVentoCocRrh",
+    mckinneyventococsro       = "mcKinneyVentoCocSro",
+    mckinneyventococthrrh     = "mcKinneyVentoCocThRrh",
+    mckinneyventospc          = "mcKinneyVentoSpC",
+    mckinneyventos8           = "mcKinneyVentoS8",
+    mckinneyventoshp          = "mcKinneyVentoShp",
+    mckinneyventoyhdp         = "mcKinneyVentoYhdp",
+    mckinneyventoyhdprenewals = "mcKinneyVentoYhdpRenewals",
+    mckinneyventounshelt      = "mcKinneyVentoUnshelt",
+    mckinneyventorural        = "mcKinneyVentoRural",
+    beds_hh_w_children        = "Beds HH w/ Children",
+    veteran_beds_hh_w_children= "Veteran Beds HH w/ Children",
+    youth_beds_hh_w_children  = "Youth Beds HH w/ Children",
+    ch_beds_hh_w_children     = "CH Beds HH w/ Children",
+    beds_hh_wo_children       = "Beds HH w/o Children",
+    veteran_beds_hh_wo_children = "Veteran Beds HH w/o Children",
+    youth_beds_hh_wo_children = "Youth Beds HH w/o Children",
+    ch_beds_hh_wo_children    = "CH Beds HH w/o Children",
+    beds_hh_w_only_children   = "Beds HH w/ only Children",
+    ch_beds_hh_w_only_children = "CH Beds HH w only Children"
+  ) |>
+  fmutate(
+    mckinneyventoesg = FALSE,
+    mckinneyventococ = FALSE
+  )
 
 # Fetch lookup tables from database
 project_type_lookup <- DBI::dbGetQuery(get_db_pool(), 
@@ -324,9 +293,9 @@ DBI::dbAppendTable(get_db_pool(), "all_hic_data", hic_data)
 # populate HIC, States, CoCs, and GIWs tables ---------------------
 DBI::dbExecute(get_db_pool(), "ALTER TABLE all_hic_data ADD COLUMN hic_data_id INTEGER")
 DBI::dbExecute(get_db_pool(), "ALTER TABLE all_hic_data ADD COLUMN date_created TIMESTAMP")
-DBI::dbExecute(get_db_pool(), "ALTER TABLE all_hic_data ADD COLUMN created_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(get_db_pool(), "ALTER TABLE all_hic_data ADD COLUMN created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE")
 DBI::dbExecute(get_db_pool(), "ALTER TABLE all_hic_data ADD COLUMN date_updated TIMESTAMP")
-DBI::dbExecute(get_db_pool(), "ALTER TABLE all_hic_data ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username)")
+DBI::dbExecute(get_db_pool(), "ALTER TABLE all_hic_data ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE")
 
 DBI::dbExecute(get_db_pool(), "
 UPDATE all_hic_data
@@ -343,9 +312,9 @@ CREATE TABLE IF NOT EXISTS states (
     state_code VARCHAR(2) PRIMARY KEY,
     state_name VARCHAR(100),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 ")
 
@@ -423,9 +392,9 @@ CREATE TABLE IF NOT EXISTS cocs (
     coc_name TEXT,
     state VARCHAR(2) REFERENCES states(state_code),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 ")
 
@@ -498,9 +467,9 @@ DBI::dbAppendTable(get_db_pool(), "giw", giw_data)
 
 # Update GIW ---------------------
 DBI::dbExecute(get_db_pool(), "ALTER TABLE giw ADD COLUMN date_created TIMESTAMP")
-DBI::dbExecute(get_db_pool(), "ALTER TABLE giw ADD COLUMN created_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(get_db_pool(), "ALTER TABLE giw ADD COLUMN created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE")
 DBI::dbExecute(get_db_pool(), "ALTER TABLE giw ADD COLUMN date_updated TIMESTAMP")
-DBI::dbExecute(get_db_pool(), "ALTER TABLE giw ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username)")
+DBI::dbExecute(get_db_pool(), "ALTER TABLE giw ADD COLUMN updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE")
 
 DBI::dbExecute(get_db_pool(), "
 UPDATE giw
@@ -515,7 +484,7 @@ SET
 drop_table("hud_ard_report")
 DBI::dbExecute(get_db_pool(), "
 CREATE TABLE IF NOT EXISTS hud_ard_report (
-	coc VARCHAR(6) REFERENCES cocs(coc_code),
+	coc VARCHAR(6) REFERENCES cocs(coc_code) ON DELETE CASCADE,
     coc_number_and_name TEXT,
     pprn INTEGER,
     estimated INTEGER,
@@ -531,25 +500,17 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
 hud_ard_data <- fread(HUD_ARD_DATA_FILEPATH, encoding="Latin-1")
 
 # Rename columns to match SQL table
-setnames(hud_ard_data, old = c(
-  "CoCName",
-  "CoC Number and Name",
-  "PPRN",
-  "Estimated ARD",
-  "Tier 1",
-  "CoC Bonus",
-  "DV Bonus",
-  "CoC Planning"
-), new = c(
-  "coc",
-  "coc_number_and_name",
-  "pprn",
-  "estimated",
-  "tier_1",
-  "coc_bonus",
-  "dv_bonus",
-  "coc_planning"
-))
+hud_ard_data <- frename(
+  hud_ard_data,
+  "CoCName" = "coc",
+  "CoC Number and Name" = "coc_number_and_name",
+  "PPRN" = "pprn",
+  "Estimated ARD" = "estimated",
+  "Tier 1" = "tier_1",
+  "CoC Bonus" = "coc_bonus",
+  "DV Bonus" = "dv_bonus",
+  "CoC Planning" = "coc_planning"
+)
 
 # only keep the ones where the CoC is in the HIC data
 hud_ard_data <- hud_ard_data |> fsubset(coc %in% funique(hic_data$hudnum))
@@ -558,9 +519,9 @@ DBI::dbAppendTable(get_db_pool(), "hud_ard_report", hud_ard_data)
 
 # Create rest of table ---------------------
 DBI::dbExecute(get_db_pool(), "ALTER TABLE hud_ard_report ADD COLUMN date_created TIMESTAMP")
-DBI::dbExecute(get_db_pool(), "ALTER TABLE hud_ard_report ADD COLUMN created_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(get_db_pool(), "ALTER TABLE hud_ard_report ADD COLUMN created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE")
 DBI::dbExecute(get_db_pool(), "ALTER TABLE hud_ard_report ADD COLUMN date_updated TIMESTAMP")
-DBI::dbExecute(get_db_pool(), "ALTER TABLE hud_ard_report ADD COLUMN updated_by VARCHAR(100) REFERENCES users(username)")
+DBI::dbExecute(get_db_pool(), "ALTER TABLE hud_ard_report ADD COLUMN updated_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE")
 
 DBI::dbExecute(get_db_pool(), "
 UPDATE hud_ard_report
@@ -577,6 +538,7 @@ SET
 drop_table("coc_versions")
 drop_table("coc_version_requests")
 drop_table("coc_version_users")
+drop_table("user_settings")
 
 DBI::dbExecute(get_db_pool(), glue::glue("
 --- CoC versions (CoCs can have versions, as new users may decide to create their own)
@@ -584,12 +546,12 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 CREATE TABLE IF NOT EXISTS coc_versions (
     coc_version_id {id_var_attrs},
 	coc_version_name VARCHAR(255),
-    coc VARCHAR(6) REFERENCES cocs(coc_code),
+    coc VARCHAR(6) REFERENCES cocs(coc_code) ON DELETE CASCADE,
     coc_status SMALLINT REFERENCES lookups(reference_id),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -599,13 +561,13 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 -- request in the system that the version Admin can approve/reject
 CREATE TABLE IF NOT EXISTS coc_version_requests (
 	coc_request_id {id_var_attrs},
-	coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
+	coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
 	request_status SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
 	reason_for_rejection SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -619,15 +581,33 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 CREATE TABLE IF NOT EXISTS coc_version_users (
     coc_version_user_id {id_var_attrs},
     coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
-    username VARCHAR(100) REFERENCES users(username),
+    username VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     coc_version_role SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
     
     -- A user cannot be associated with the same CoC version more than once
     CONSTRAINT uq_coc_version_users UNIQUE (coc_version_id, username)
+);
+"))
+
+DBI::dbExecute(get_db_pool(), glue::glue("
+
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_setting_id {id_var_attrs},
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
+  	coc_user VARCHAR(255) REFERENCES users(username) ON DELETE CASCADE,
+    setting_name VARCHAR(255),
+    setting_value VARCHAR,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
+    
+    -- A version user can only set one of each type of user setting
+    CONSTRAINT user_settings_unique_key UNIQUE (coc_version_id, coc_user, setting_name)
 );
 "))
 
@@ -647,9 +627,9 @@ CREATE TABLE IF NOT EXISTS factor_groups (
     factor_group VARCHAR(100),
     funding_action SMALLINT REFERENCES lookups(reference_id),
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -680,12 +660,12 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 CREATE TABLE IF NOT EXISTS factor_subgroups (
     factor_subgroup_id {id_var_attrs},
     factor_subgroup VARCHAR(100),
-    factor_group SMALLINT REFERENCES factor_groups(factor_group_id),
+    factor_group SMALLINT REFERENCES factor_groups(factor_group_id) ON DELETE CASCADE,
     funding_action SMALLINT REFERENCES lookups(reference_id), -- 1. New, 2. Renew
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -722,11 +702,11 @@ CREATE TABLE IF NOT EXISTS thresholds (
     threshold_id {id_var_attrs},
     type VARCHAR(3), -- 'CoC' or 'HUD'
     threshold_text TEXT,
-    coc_version_id SMALLINT NULL REFERENCES coc_versions(coc_version_id),  -- only filled out for custom thresholds
+    coc_version_id SMALLINT NULL REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,  -- only filled out for custom thresholds
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
     
   
 CONSTRAINT custom_threshold_unique_key UNIQUE (coc_version_id, threshold_text)
@@ -825,15 +805,15 @@ CREATE TABLE IF NOT EXISTS rating_factors (
     funding_action SMALLINT REFERENCES lookups(reference_id),
     project_type SMALLINT NULL REFERENCES lookups(reference_id),
     target_population SMALLINT NULL REFERENCES lookups(reference_id),
-    factor_group SMALLINT REFERENCES factor_groups(factor_group_id), 
-    factor_subgroup SMALLINT REFERENCES factor_subgroups(factor_subgroup_id),
+    factor_group SMALLINT REFERENCES factor_groups(factor_group_id) ON DELETE CASCADE, 
+    factor_subgroup SMALLINT REFERENCES factor_subgroups(factor_subgroup_id) ON DELETE CASCADE,
     goal VARCHAR(10) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes',
     max_point_value NUMERIC(4, 1),
-    coc_version_id SMALLINT NULL REFERENCES coc_versions(coc_version_id), -- only filled out for custom factors
+    coc_version_id SMALLINT NULL REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE, -- only filled out for custom factors
 	  date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -1126,9 +1106,9 @@ CREATE TABLE IF NOT EXISTS coc_nofo_opportunities (
     target_population SMALLINT REFERENCES lookups(reference_id),
     population_group SMALLINT REFERENCES lookups(reference_id),
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -1186,7 +1166,7 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 -- Ideally, there would be one source of truth in the HIC data, but the timing and SecOps doesn't allow that
 CREATE TABLE IF NOT EXISTS projects (
     project_id {id_var_attrs},
-    coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
+    coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     organization_name VARCHAR,
     project_name VARCHAR,
     project_type SMALLINT REFERENCES lookups(reference_id),
@@ -1220,9 +1200,9 @@ CREATE TABLE IF NOT EXISTS projects (
     amount_other_public_funding NUMERIC(11, 2),
     amount_private_funding NUMERIC(11, 2),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -1234,7 +1214,7 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- each row corresponds to a ProjectType + TargetPopulation combo. It may not have any priorities
 CREATE TABLE IF NOT EXISTS coc_funding_priorities (
     coc_funding_priority_id {id_var_attrs},
-    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     project_type SMALLINT REFERENCES lookups(reference_id),
     target_population SMALLINT REFERENCES lookups(reference_id),
 	population_group SMALLINT REFERENCES lookups(reference_id),
@@ -1242,9 +1222,9 @@ CREATE TABLE IF NOT EXISTS coc_funding_priorities (
     funding NUMERIC(11, 2) NULL,
     priority SMALLINT NULL REFERENCES lookups(reference_id),
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
 
 CONSTRAINT coc_funding_priorities_unique_key UNIQUE (coc_version_id, project_type, target_population, population_group)
 );
@@ -1254,13 +1234,13 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- User-Selected NOFO Opportunities
 CREATE TABLE IF NOT EXISTS selected_coc_nofo_opportunities (
     selected_coc_nofo_opportunity_id {id_var_attrs},
-    coc_nofo_opportunity_id SMALLINT REFERENCES coc_nofo_opportunities(coc_nofo_opportunity_id),
+    coc_nofo_opportunity_id SMALLINT REFERENCES coc_nofo_opportunities(coc_nofo_opportunity_id) ON DELETE CASCADE,
     selected BOOLEAN DEFAULT FALSE,
-    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
     
     CONSTRAINT coc_nofo_opportunities_unique_key UNIQUE (coc_version_id, coc_nofo_opportunity_id)
 );
@@ -1271,15 +1251,15 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- User-Selected Rating Factors
 CREATE TABLE IF NOT EXISTS selected_rating_factors (
     selected_rating_factor_id {id_var_attrs},
-    rating_factor_id SMALLINT REFERENCES rating_factors(rating_factor_id),
+    rating_factor_id SMALLINT REFERENCES rating_factors(rating_factor_id) ON DELETE CASCADE,
     goal VARCHAR(100) NULL, -- text of the goal, e.g. '30 days' or '90%' or 'Yes'
     max_point_value NUMERIC(4, 1),
     selected BOOLEAN DEFAULT FALSE,
-    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
 
 	-- a CoC Profile cannot have more than one of a given selected rating factor
 	CONSTRAINT uq_selected_rating_factors_profile UNIQUE (coc_version_id, rating_factor_id)
@@ -1290,13 +1270,13 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- User-Selected Threshold Factors
 CREATE TABLE IF NOT EXISTS selected_thresholds (
     selected_threshold_id {id_var_attrs},
-    threshold_id SMALLINT REFERENCES thresholds(threshold_id),
+    threshold_id SMALLINT REFERENCES thresholds(threshold_id) ON DELETE CASCADE,
     selected BOOLEAN DEFAULT FALSE,
-    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
 
 	-- a CoC Profile cannot have more than one of a given selected rating factor
     CONSTRAINT uq_selected_thresholds_profile UNIQUE (coc_version_id, threshold_id)
@@ -1308,14 +1288,14 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- Rating_Scores
 CREATE TABLE IF NOT EXISTS rating_scores (
     rating_score_id {id_var_attrs},
-    project_id INTEGER REFERENCES projects(project_id),
-    selected_rating_factor_id SMALLINT NULL REFERENCES selected_rating_factors(selected_rating_factor_id), --can be null if they rate outside the app
+    project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
+    selected_rating_factor_id SMALLINT NULL REFERENCES selected_rating_factors(selected_rating_factor_id) ON DELETE CASCADE, --can be null if they rate outside the app
     rating_score INTEGER,
     performance VARCHAR(100) NULL,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
     
   CONSTRAINT uq_rating_scores_profile UNIQUE (project_id, selected_rating_factor_id)
 );
@@ -1325,13 +1305,13 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- Threshold_Entries
 CREATE TABLE IF NOT EXISTS threshold_entries (
     threshold_entry_id {id_var_attrs},
-    project_id INTEGER REFERENCES projects(project_id),
-    threshold_id SMALLINT NULL REFERENCES thresholds(threshold_id),
+    project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
+    threshold_id SMALLINT NULL REFERENCES thresholds(threshold_id) ON DELETE CASCADE,
     met_threshold BOOLEAN,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username),
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
     
   
   CONSTRAINT uq_threshold_entries_profile UNIQUE (project_id, threshold_id)
@@ -1350,9 +1330,9 @@ CREATE TABLE IF NOT EXISTS project_evaluations (
     weighted_score SMALLINT CHECK (weighted_score >= 0 AND weighted_score <= 100),
 
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 
@@ -1361,15 +1341,15 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- Ranking 
 CREATE TABLE IF NOT EXISTS ranking (
     rank_id {id_var_attrs},
-    project_id INTEGER REFERENCES projects(project_id),
-    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id),
+    project_id INTEGER REFERENCES projects(project_id ON DELETE CASCADE),
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     rank SMALLINT,
     tier VARCHAR(50) NULL,
     coc_funding_recommendation NUMERIC(11, 2),
-	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(100) REFERENCES users(username),
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username)
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
 

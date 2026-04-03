@@ -11,7 +11,7 @@ mod_customize_criteria_ui <- function(id) {
     br(),
     em("Select and customize the threshold and rating criteria you will use to evaluate your CoC's projects"),
     navset_tab(
-      id = "rating_criteria_subtabs",
+      id = ns("rating_criteria_subtabs"),
       mod_customize_coc_thresholds_ui(ns("coc_thresholds")),
       nav_panel(
         "Rating Factors",
@@ -36,9 +36,20 @@ mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_sess
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    observeEvent(input$rating_criteria_subtabs, {
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
+      user_coc$settings$rating_subtab <- gsub('rating-customize_criteria-', '', input$rating_criteria_subtabs)
+    }, ignoreInit = TRUE)
+    
+    observeEvent(input$rating_factors_subtabs, {
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
+      user_coc$settings$rating_subsubtab <- gsub('rating-customize_criteria-', '', input$rating_factors_subtabs)
+      
+    }, ignoreInit = TRUE)
+    
     # Call sub-modules for each tab
     mod_customize_coc_thresholds_server("coc_thresholds", user_coc, nav_control, module_returns)
-    mod_customize_rating_factors_server("renewal_rating_factors", user_coc, "Renew", module_returns)
-    mod_customize_rating_factors_server("new_rating_factors", user_coc, "New", module_returns)
+    mod_customize_rating_factors_server("renewal_rating_factors", user_coc, "Renew", nav_control, module_returns)
+    mod_customize_rating_factors_server("new_rating_factors", user_coc, "New", nav_control, module_returns)
   })
 }
