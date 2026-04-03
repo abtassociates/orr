@@ -175,6 +175,8 @@ debugger;
       function formatUSD(amount) {
         if(amount === null) return;
         
+        amount = Number(amount);
+        
         if (typeof amount !== 'number' || isNaN(amount)) {
             throw new Error('Invalid input: amount must be a valid number.');
         }
