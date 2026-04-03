@@ -173,6 +173,10 @@ debugger;
       });
   
       function formatUSD(amount) {
+        if(amount === null) return;
+        
+        amount = Number(amount);
+        
         if (typeof amount !== 'number' || isNaN(amount)) {
             throw new Error('Invalid input: amount must be a valid number.');
         }
@@ -209,7 +213,7 @@ debugger;
         Shiny.setInputValue(tableID + '_cell_edit', {
           row: cell.index().row + 1,
           col: cell.index().column,
-          value: newVal,
+          value: rawVal,
           oldValue: currentVal,
           project_id: table.cells(cell.index().row, 0).data()[0],
         }, {priority: 'event'});
