@@ -348,16 +348,30 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           
           footer = tagList(
             actionButton(ns("submit_custom_factor"), "Submit", class = "btn-primary"),
-            modalButton("Cancel")
+            actionButton(ns("cancel_custom_factor"), "Cancel")
           )
         )
       )
       
     }, ignoreInit = TRUE)
     
-    observeEvent(input$submit_custom_factor, {
+    iv <- shinyvalidate::InputValidator$new()
+    
+    # validate that rating_factor_text is not empty
+    iv$add_rule("custom_text", sv_required())
+    ## validate that max point value of >= 0
+    iv$add_rule("custom_points", sv_gte(0))
+    
+    observeEvent(input$cancel_custom_factor, {
+      iv$disable()
       removeModal()
-      req(nchar(trimws(input$custom_text)) > 0)
+    })
+    
+    observeEvent(input$submit_custom_factor, {
+      
+      iv$enable()
+      req(iv$is_valid())
+      removeModal()
       
       ## build new selected_rating_factors row
       updated_selected_rating_factors <- data.table(
