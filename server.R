@@ -17,7 +17,13 @@ function(input, output, session) {
   )
   nav_control <- reactiveVal("about")
 
-  module_returns <- reactiveValues(customize_rating_criteria = 0)
+  module_returns <- reactiveValues(
+    customize_rating_criteria = 0,
+    
+    # used to update Requests table after user makes a request
+    # this is needed because the requests table is in a separate module from CoC Selection, where the requests are made
+    updated_requests = 0
+  )
   
   observeEvent(user_coc$auth, {
     req(user_coc$auth)
