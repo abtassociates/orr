@@ -173,6 +173,8 @@ debugger;
       });
   
       function formatUSD(amount) {
+        if(amount === null) return;
+        
         if (typeof amount !== 'number' || isNaN(amount)) {
             throw new Error('Invalid input: amount must be a valid number.');
         }
