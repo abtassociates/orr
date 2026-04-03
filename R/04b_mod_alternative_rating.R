@@ -14,8 +14,8 @@ mod_alternative_rating_ui <- function(id) {
       ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("import_rating"), "Import Rating", icon = icon("upload")),
-        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary")
+        actionButton(ns("import_rating"), "Import Rating", icon = icon("upload")) #,
+        # actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary")
       )
     )
   )
@@ -161,6 +161,14 @@ debugger;
       )
     }, server=FALSE)
     
+    alt_rating_update <- function() {
+      updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
+      needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
+      
+      if(needs_refresh)
+        refresh_trigger(\(x) x + 1)
+    }
+    
     # Update alternative rating data when cell is edited
     observeEvent(input$alternative_rating_table_cell_edit, {
       info <- input$alternative_rating_table_cell_edit
@@ -172,6 +180,8 @@ debugger;
       current_data[info$row, (info$col + 1) := info$value]
       
       ratable_projects(current_data)
+      
+      alt_rating_update()
     }, ignoreInit = TRUE) # end alt rating table cell edit
     
     observe({
@@ -200,6 +210,8 @@ debugger;
         updated[visible_rows, (colname) := as.integer(input[[input_name]])]
         
         ratable_projects(updated)
+        
+        alt_rating_update()
       })
     }
     set_all_thresholds_handler("met_hud_thresholds")
@@ -216,15 +228,10 @@ debugger;
         fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by, date_updated)
     }
     
-    observeEvent(input$save_rating, {
-      req(ratable_projects())
-      
-      updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
-      needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
-      
-      # if(needs_refresh)
-        refresh_trigger(\(x) x + 1)
-    }) # end save_rating
+    # observeEvent(input$save_rating, {
+    #   req(ratable_projects())
+    #   alt_rating_update()
+    # }, ignoreInit = TRUE) # end save_rating
     
     
     # Importing --------------------
