@@ -45,3 +45,16 @@ update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding
   )
 }
 
+update_dv_ard <- function(p, params) {
+  save_to_db(
+    p,
+    "UPDATE hud_ard_report 
+    SET 
+      dv_ard = $1, 
+      updated_by = $2, 
+      date_updated = CURRENT_TIMESTAMP
+    WHERE coc = $3",
+    params,
+    "hud_ard_report"
+  )
+}

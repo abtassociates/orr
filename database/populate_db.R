@@ -491,7 +491,8 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
     tier_1 INTEGER,
     coc_bonus INTEGER NULL,
     dv_bonus INTEGER,
-    coc_planning INTEGER
+    coc_planning INTEGER,
+    dv_ard INTEGER
 );
 ")
 

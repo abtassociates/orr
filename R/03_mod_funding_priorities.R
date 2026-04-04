@@ -166,6 +166,12 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       })
     })
     
+    observeEvent(input$dv_ard, {
+      update_dv_ard(
+        list(input$dv_ard, user_coc$username, user_coc$coc)
+      )
+    })
+    
     
     # Priorities ------------
     format_coc_funding_priorities <- function(coc_funding_priorities_db) {
