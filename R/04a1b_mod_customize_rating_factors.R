@@ -302,83 +302,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     }
     
     # Function to generate the UI for a single custom factor row
-    create_custom_factor_row_ui <- function(ns, row_id, funding_action) {
-      # Use a unique ID for the row's wrapper div for easy removal
-      row_div_id <- ns(paste0("custom_row_", row_id))
-      
-      custom_factor_items <- list(
-        checkboxInput(ns(paste0("custom_select_", row_id)), label = NULL, value = TRUE),
-        if(funding_action == "Renew") 
-          selectInput(
-            inputId = ns(paste0("custom_pt_", row_id)),
-            label = NULL,
-            choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES],
-            multiple = TRUE
-          ) else NULL,
-        selectInput(
-          inputId = ns(paste0("custom_tp_", row_id)),
-          label = NULL,
-          choices = get_labelled_lookups("target_population")[c("DV", "General", "NA")],
-          multiple = TRUE
-        ),
-        textInput(ns(paste0("custom_text_", row_id)), label = NULL, placeholder = "Enter custom factor text"),
-        textInput(ns(paste0("custom_goal_", row_id)), label = NULL, placeholder = "Enter goal"),
-        div(
-          style="display:flex; align-items:center; gap:5px;",
-          numericInput(ns(paste0("custom_points_", row_id)), min = 1, label = NULL, value = 0, step = 0.1),
-          actionButton(ns(paste0("remove_custom_", row_id)), NULL, icon = icon("trash-alt"), class = "btn-sm btn-danger", style="margin-bottom: 1rem;") # margin-bottom matches container div
-        )
-      )
-      # Define the namespaced input IDs
-      div(
-        id = row_div_id,
-        layout_columns(
-          col_widths = get_col_widths(funding_action, TRUE),
-          !!!purrr::compact(custom_factor_items)
-        )
-      )
-    }
     
-    add_custom_factor_ui <- function(ns, input) {
-      # Increment counter
-      current_id <- custom_factor_counter() + 1
-      custom_factor_counter(current_id)
-      
-      group_name <- "Other and Local Criteria"
-      bslib::accordion_panel_open(
-        id = "main_accordion", 
-        values = group_name
-      )
-      
-      # Insert the new UI row
-      insertUI(
-        selector = paste0("#", ns("custom_factors_placeholder")),
-        where = "beforeEnd",
-        ui = create_custom_factor_row_ui(ns, current_id, funding_action)
-      )
-      
-      # adjust the group's column widths to match the being-added custom row
-      subgroup_accordion_id <- ns(paste0("sub_accordion_", janitor:::make_clean_names(group_name)))
-      
-      col_widths <-  get_col_widths(funding_action, TRUE) |>
-        paste0("fr", collapse = " ")
-      
-      shinyjs::runjs(glue::glue(
-        "$('#{subgroup_accordion_id} bslib-layout-columns').css('grid-template-columns', '{col_widths}');
-          $('#{subgroup_accordion_id} bslib-layout-columns').children().css('grid-column', 'span 1');"))
-      
-      # Focus on the first text input of the new row
-      pt_input_id_js <- ns(paste0("custom_pt_", current_id))
-      shinyjs::runjs(sprintf("$('#%s').focus();", pt_input_id_js))
-      
-      # Create and store an observer for the new "Remove" button
-      remove_btn_id <- paste0("remove_custom_", current_id)
-      custom_factor_observers[[remove_btn_id]] <- observeEvent(input[[remove_btn_id]], {
-        removeUI(selector = paste0("#", ns(paste0("custom_row_", current_id))))
-        # Destroy this observer to prevent memory leaks
-        custom_factor_observers[[remove_btn_id]]$destroy()
-      }, ignoreInit = TRUE, once = TRUE) # `once = TRUE` is crucial
-    }
     
     output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
       data_groups_nested <- all_coc_factors_structured()
@@ -397,8 +321,115 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     # This just adds UI for the user to enter a new factor
     # It doesn't actually save until they click Save
     observeEvent(input$add_custom_factor, {
-      add_custom_factor_ui(ns, input)
+      showModal(
+        modalDialog(
+          title = "Additional Rating Factor",
+          # Project Type - dropdown
+          if(funding_action == "Renew") 
+            selectInput(
+              inputId = ns("custom_pt"),
+              label = "Project Type",
+              choices = c("Select an option below" = "", get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES]),
+              multiple = TRUE
+            ) else NULL,
+          # Target Population - dropdown
+          selectInput(
+            inputId = ns("custom_tp"),
+            label = "Target Population",
+            choices = c("Select an option below" = "", get_labelled_lookups("target_population")[c("DV", "General", "NA")]),
+            multiple = TRUE
+          ),
+          # Rating Factor Text
+          textInput(ns("custom_text"), label = "Rating Factor", placeholder = "Enter custom factor text"),
+          # Factor/Goal - short text
+          textInput(ns("custom_goal"), label = "Factor/Goal", placeholder = "Enter goal"),
+          # Max Point Value - numeric
+          numericInput(ns("custom_points"), min = 1, label = "Max Point Value", value = 0, step = 0.1),
+          
+          footer = tagList(
+            actionButton(ns("submit_custom_factor"), "Submit", class = "btn-primary"),
+            actionButton(ns("cancel_custom_factor"), "Cancel")
+          )
+        )
+      )
+      
     }, ignoreInit = TRUE)
+    
+    iv <- shinyvalidate::InputValidator$new()
+    
+    # validate that rating_factor_text is not empty
+    iv$add_rule("custom_text", sv_required())
+    ## validate that max point value of >= 0
+    iv$add_rule("custom_points", sv_gte(0))
+    
+    observeEvent(input$cancel_custom_factor, {
+      iv$disable()
+      removeModal()
+    })
+    
+    observeEvent(input$submit_custom_factor, {
+      
+      iv$enable()
+      req(iv$is_valid())
+      removeModal()
+      
+      ## build new selected_rating_factors row
+      updated_selected_rating_factors <- data.table(
+        coc_version_id = user_coc$coc_version_id,
+        selected = TRUE,
+        goal = input$custom_goal,
+        max_point_value = as.numeric(input$custom_points),
+        created_by = user_coc$username
+      )
+    
+      pt_tp_combo <- expand.grid(
+        list(
+          project_type = if(funding_action == "Renew") as.integer(input$custom_pt) else NA,
+          target_population = as.integer(input$custom_tp)
+        )
+      )
+        
+      ## build new rating_factors row
+      custom_factor_data <- data.table(
+        funding_action = funding_action_id,
+        coc_version_id = user_coc$coc_version_id,
+        rating_factor_text = input$custom_text,
+        factor_group = other_factor_group_id,
+        factor_subgroup = NA,
+        selected = TRUE,
+        goal = input$custom_goal,
+        max_point_value = input$custom_points,
+        created_by = user_coc$username
+      ) |> cbind(pt_tp_combo)
+      
+      inserted_custom_factor_info <- NULL
+      
+      pool::poolWithTransaction(get_db_pool(), function(p) {
+        
+        # insert new factor into DB, return rating_factor_id
+        inserted_custom_factor_info <- insert_custom_factor_to_db(
+          p,
+          custom_factor_data |>
+            fselect(funding_action, coc_version_id, rating_factor_text, factor_group, goal, max_point_value, created_by, project_type, target_population)
+        )
+        ## proceed only if first attempt succeeded
+        if(length(inserted_custom_factor_info) > 0 && isTruthy(inserted_custom_factor_info)){
+          # add the newly created rating factor ID to the set of selected factors (it's auto-selected)
+          dbAppendTable(
+            p, 
+            'selected_rating_factors',
+            updated_selected_rating_factors |>
+              cbind(inserted_custom_factor_info)
+          )
+        }
+        
+      })
+      showNotification("Custom rating factor added!", type = 'message')
+      
+      refresh_trigger(\(x) x + 1)
+      
+      module_returns$customize_rating_criteria <- TRUE
+    })
     
     ## store user settings for project type and target population
     observeEvent(input$project_type, {
