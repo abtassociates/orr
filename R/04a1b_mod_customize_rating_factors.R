@@ -325,6 +325,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     iv_custom <- shinyvalidate::InputValidator$new()
     # validate that rating_factor_text is not empty
     iv_custom$add_rule("custom_text", sv_required())
+    iv_custom$add_rule("custom_text", ~ if(. %in% all_coc_factors()$rating_factor_text) "You already have a rating factor with this text.")
     ## validate that max point value of >= 0
     iv_custom$add_rule("custom_points", sv_gte(0))
     
