@@ -167,7 +167,9 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     })
     
     observeEvent(input$dv_ard, {
+      req(user_coc$coc)
       update_dv_ard(
+        get_db_pool(),
         list(input$dv_ard, user_coc$username, user_coc$coc)
       )
     })
