@@ -51,7 +51,7 @@ function(input, output, session) {
     
     if (!("code" %in% names(query))){
       # no code in the url variables means the user hasn't logged in yet
-      print('not logged in yet')
+      message('not logged in yet')
       #showElement("login_welcome_text")
       showElement("login_link")
       showElement("signup_link")
@@ -60,14 +60,14 @@ function(input, output, session) {
       
       # if an error occurred during login
       if (is.null(current_user)){
-        print('user is NULL')
+        message('user is NULL')
         #hideElement("login_welcome_text")
         user_coc$auth <- FALSE
       } else {
-        print('user found!')
+        message('user found!')
         # check if user is in allowed user list
         if (!(str_to_lower(current_user$email) %in% get_db_tbl('users')$username)){
-            print("new user added to allowed list")
+          message("new user added to allowed list")
             
             new_user_df <- data.frame(
               username = current_user$email, 
@@ -78,7 +78,7 @@ function(input, output, session) {
             )
             db_append('users', new_user_df)
         } else {
-          print("user in allowed list")
+          message("user in allowed list")
           
         }
         
