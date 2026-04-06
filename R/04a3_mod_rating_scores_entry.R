@@ -20,6 +20,17 @@ mod_rating_scores_entry_ui <- function(id) {
     )))),
     card(
       uiOutput(ns("project_rating_factors")),
+      card(
+        layout_columns(
+          col_widths = c(5, 2, 2, 1, 2),
+          div(strong("Total")),
+          div(),
+          div(),
+          div(style = "text-align:center;", 
+              strong(textOutput(ns("total_score"), inline=TRUE))),
+          div(strong(textOutput(ns("total_max"), inline=TRUE)))
+        )
+      ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         actionButton(ns("save_rating"), "Save Rating", icon = icon("save"))
@@ -266,6 +277,13 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         output[[paste0("subtotal_max_", group_id)]] <- renderText({
           paste0("out of ", fsum(grouped_data[[group_name]]$max_point_value))
         })
+      })
+      
+      output$total_score <- renderText({
+        fsum(factors_and_scores_for_project()$rating_score)
+      })
+      output$total_max <- renderText({
+        paste0("out of ", fsum(factors_and_scores_for_project()$max_point_value))
       })
     })
     
