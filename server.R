@@ -66,7 +66,7 @@ function(input, output, session) {
       } else {
         message('user found!')
         # check if user is in allowed user list
-        if (!(str_to_lower(current_user$email) %in% get_db_tbl('users')$username)){
+        if (!(str_to_lower(current_user$email) %in% str_to_lower(get_db_tbl('users')$username))){
           message("new user added to allowed list")
             
             new_user_df <- data.frame(
