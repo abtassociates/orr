@@ -139,8 +139,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
         params = list(
           get_lookup_refid("In Progress", "coc_status"), 
           user_coc$username, 
-          user_coc$coc_version_id, 
-          users_versions()[input$coc_versions_dt_rows_selected]$version_id
+          user_coc$coc_version_id #, 
+          # users_versions()[input$coc_versions_dt_rows_selected]$version_id
         )
       )
       
