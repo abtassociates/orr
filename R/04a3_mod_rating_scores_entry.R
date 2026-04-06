@@ -21,6 +21,8 @@ mod_rating_scores_entry_ui <- function(id) {
     card(
       uiOutput(ns("project_rating_factors")),
       card(
+        id = ns("total_row"),
+        style = "display:none;",
         layout_columns(
           col_widths = c(5, 2, 2, 1, 2),
           div(strong("Total")),
@@ -29,6 +31,19 @@ mod_rating_scores_entry_ui <- function(id) {
           div(style = "text-align:center;", 
               strong(textOutput(ns("total_score"), inline=TRUE))),
           div(strong(textOutput(ns("total_max"), inline=TRUE)))
+        )
+      ),
+      card(
+        id = ns("weighted_total_row"),
+        style = "display:none;",
+        layout_columns(
+          col_widths = c(5, 2, 2, 1, 2),
+          div(strong("Weighted Total")),
+          div(),
+          div(),
+          div(style = "text-align:center;", 
+              strong(textOutput(ns("weighted_total_score"), inline=TRUE))),
+          div(strong("out of 100"))
         )
       ),
       card_footer(
@@ -229,6 +244,12 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         )
       })
       
+      # Give shiny enough time to load factors before showing Total rows
+      delay(800, {
+        shinyjs::show(id = "total_row")
+        shinyjs::show(id = "weighted_total_row")
+      })
+      
       # The final accordion structure
       bslib::accordion(
         !!!accordion_items_group,
@@ -280,10 +301,17 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
       })
       
       output$total_score <- renderText({
-        fsum(factors_and_scores_for_project()$rating_score)
+        fsum(entered_scores())
       })
       output$total_max <- renderText({
         paste0("out of ", fsum(factors_and_scores_for_project()$max_point_value))
+      })
+      
+      output$weighted_total_score <- renderText({
+        denominator <- fsum(factors_and_scores_for_project()$max_point_value)
+        numerator <- fsum(entered_scores())
+        
+        round(100 * numerator/denominator, 0)
       })
     })
     
