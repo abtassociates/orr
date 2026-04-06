@@ -1342,7 +1342,7 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- Ranking 
 CREATE TABLE IF NOT EXISTS ranking (
     rank_id {id_var_attrs},
-    project_id INTEGER REFERENCES projects(project_id ON DELETE CASCADE),
+    project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     rank SMALLINT,
     coc_funding_recommendation NUMERIC(11, 2),
