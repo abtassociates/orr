@@ -45,6 +45,11 @@ td.disabled {
   height: 38vh !important;
 }
 
+th[aria-label^="Grant Number"] {
+  min-width: fit-content;
+    white-space: nowrap;
+}
+
 /*the container div of the field control dropdown on Inventory*/
 /*positioning so search bar is in line with it*/
 #inventory-field_display_control_state {
