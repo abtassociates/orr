@@ -54,7 +54,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     # Hardcodes and reactiveValues --------------
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     funding_columns <- c("coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "amount_other_public_funding", "amount_private_funding")
-    
+    renew_only_columns <- c("grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year")
     # Keep track of active observers for Add Project modals
     # Need them in a reactivevalues list so we can destroy them and avoid duplicate ones uncessarilly
     # however, we need to be able to have multiple in case they Add Another project
@@ -172,6 +172,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       initial_cols_to_hide <- setdiff(names(data), initial_cols_to_show )
       col_inds_to_hide <- match(initial_cols_to_hide, names(data)) - 1
       
+      funding_action_idx <- match("funding_action", names(data)) - 1
+      
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
@@ -182,6 +184,19 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
             targets = col_inds_to_hide, 
             className = "hidden",
             visible = FALSE
+          ),
+          list(
+            targets = which(names(data) %in% renew_only_columns) - 1,
+            render = JS(glue::glue(
+              "function(data, type, row) {{
+                if (type === 'display') {
+                if (row[{funding_action_idx}] === 'New') return 'N/A';
+                if (data === null) return '';
+                
+                // Manual currency formatting: $1,234.56
+                return '$' + data.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,');
+              }"
+            ))
           )
         ),
         formatting = list(
@@ -231,7 +246,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           ),
           function(x) formatCurrency(
             x, 
-            columns = funding_columns, 
+            columns = setdiff(funding_columns, renew_only_columns),
             currency = "$", 
             digits = 0
           ),
