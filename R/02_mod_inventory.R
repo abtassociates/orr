@@ -421,6 +421,14 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       
       col_name <- colnames(projects_data())[info$col + 1]
       
+      if(col_name == "grant_number") {
+        if (nchar(info$value) > 15) {
+          showNotification("Grant number cannot be longer than 15 characters.", type = "error")
+          revert_cell(ns("projects_table"), info, input$projects_table_rows_current, projects_data())
+          return()
+        }
+      }
+      
       # numeric validation
       if (is.numeric(projects_data()[[col_name]])) {
         is_valid <- validate_numeric_entry(projects_data(), col_name, info$value)
