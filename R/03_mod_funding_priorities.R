@@ -31,14 +31,11 @@ mod_funding_priorities_ui <- function(id) {
   ]
   
   funding_input <- function(id, label) {
-    shinyWidgets::autonumericInput(
+    shinyWidgets::currencyInput(
       ns(id), 
-      label, 
+      label,
       value = "0",
-      currencySymbol = "$", 
-      currencySymbolPlacement = "p", 
-      decimalPlaces = 0, 
-      style="font-size:1em;"
+      format = "dollar"
     )
   }
   
@@ -132,6 +129,9 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     coc_funding_priorities <- reactiveVal()
     formatted_coc_funding_priorities <- reactiveVal()
     
+    dv_ard <- reactive({ input$dv_ard })
+    dv_ard_debounced <- dv_ard %>% debounce(1000)
+    
     # Populate Funding Info -----------
     ard_field_names <- c(
       "total_ard",
@@ -145,19 +145,20 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     )
     
     hud_ard_coc_data <- reactive({
+      dv_ard <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
           adjusted_ard = round(tier_1/0.9, 0),
           tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
           yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = as.numeric(NA)
+          dv_ard = dv_ard[1]
         ) |>
         frename(estimated = "total_ard")
     })
     
     observeEvent(user_coc$coc, {
       lapply(ard_field_names, function(i) {
-        updateAutonumericInput(
+        updateCurrencyInput(
           session, 
           i, 
           value = hud_ard_coc_data()[[i]]
@@ -166,13 +167,20 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       })
     })
     
-    observeEvent(input$dv_ard, {
+    iv <- shinyvalidate::InputValidator$new()
+    iv$add_rule("dv_ard", sv_gte(0))
+    
+    observeEvent(dv_ard_debounced(), {
       req(user_coc$coc)
+      iv$enable()
+      req(iv$is_valid())
+      iv$disable()
+      
       update_dv_ard(
         get_db_pool(),
-        list(input$dv_ard, user_coc$username, user_coc$coc)
+        list(dv_ard_debounced(), user_coc$username, user_coc$coc_version_id)
       )
-    })
+    }, ignoreInit = TRUE)
     
     
     # Priorities ------------

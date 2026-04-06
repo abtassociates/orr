@@ -491,8 +491,7 @@ CREATE TABLE IF NOT EXISTS hud_ard_report (
     tier_1 INTEGER,
     coc_bonus INTEGER NULL,
     dv_bonus INTEGER,
-    coc_planning INTEGER,
-    dv_ard INTEGER
+    coc_planning INTEGER
 );
 ")
 
@@ -552,7 +551,8 @@ CREATE TABLE IF NOT EXISTS coc_versions (
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
+    dv_ard INTEGER
 );
 "))
 
