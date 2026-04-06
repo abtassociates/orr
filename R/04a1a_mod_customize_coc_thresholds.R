@@ -117,7 +117,13 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       )
     })
     
+    iv <- shinyvalidate::InputValidator$new()
+    iv$add_rule("custom_threshold_text", sv_required())
+    iv$add_rule("custom_threshold_text", ~ if(. %in% all_coc_thresholds()$threshold_text) "Threshold text must be unique.")
+    
     observeEvent(input$submit_custom_threshold, {
+      iv$enable()
+      req(iv$is_valid())
       removeModal()
       req(nchar(trimws(input$custom_threshold_text)) > 0)
       
@@ -134,6 +140,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       
       # These don't need to be tied together, but it avoids dealing with 2 different conflicts
       updated_custom_threshold_info <- NULL
+      needs_refresh2 <- FALSE
       pool::poolWithTransaction(get_db_pool(), function(p) {
         updated_custom_threshold_info <- update_thresholds_db(p, updated_custom_threshold)
         
