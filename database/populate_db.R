@@ -1291,7 +1291,7 @@ CREATE TABLE IF NOT EXISTS rating_scores (
     rating_score_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
     selected_rating_factor_id SMALLINT NULL REFERENCES selected_rating_factors(selected_rating_factor_id) ON DELETE CASCADE, --can be null if they rate outside the app
-    rating_score INTEGER,
+    rating_score NUMERIC(4, 1) NULL,
     performance VARCHAR(100) NULL,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,

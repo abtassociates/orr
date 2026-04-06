@@ -170,7 +170,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
                     max = max_points
                   )) |>
                     tagAppendAttributes(class = 'score-input', `data-group` = group_id),
-                p(paste("out of", max_points))
+                p(paste("out of", max_points), style="padding-top: 5px;")
               )
             }
           )
@@ -209,8 +209,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
           layout_columns(
             col_widths = c(5, -2, -2, 1, 2),
             strong(paste0(group_name, " Subtotal")),
-            div(style = "text-align:center;", class = "subtotal-column", strong(class = "subtotal-display", `data-subtotal-for` = group_id, "0")),
-            div(strong(paste("out of", sum(group_dt$max_point_value, na.rm = TRUE)))) # Example
+            div(style = "text-align:center;", class = "subtotal-column", 
+                strong(textOutput(ns(paste0("subtotal_", group_id)), inline = TRUE))),
+            
+            # div(style = "text-align:center;", class = "subtotal-column", strong(class = "subtotal-display", `data-subtotal-for` = group_id, "0")),
+            div(strong(textOutput(ns(paste0("subtotal_max_", group_id)), inline=TRUE))) # Example
           )
         )
       })
@@ -231,6 +234,41 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
         \(id) input[[paste0("rating_score_", id)]]
       )
     })
+    
+    # Dynamically update subgroup totals
+    observe({
+      req(nrow(factors_and_scores_for_project()) > 0)
+      
+      # Get the data and split it by group, just like in your UI
+      df <- factors_and_scores_for_project()
+      grouped_data <- split(df, by = "factor_group")
+      
+      # Loop through each group
+      lapply(names(grouped_data), function(group_name) {
+        
+        group_id <- make.names(group_name)
+        factor_ids <- grouped_data[[group_name]]$selected_rating_factor_id
+        
+        # Dynamically bind a renderText to the output
+        output[[paste0("subtotal_", group_id)]] <- renderText({
+          
+          # Grab the current values of all inputs in this specific group
+          current_scores <- sapply(factor_ids, function(id) {
+            val <- input[[paste0("rating_score_", id)]]
+            # Treat NULL, NA, or non-numeric as 0
+            if (is.null(val) || is.na(val)) 0 else as.numeric(val)
+          })
+          
+          # Return the sum
+          sum(current_scores)
+        })
+        
+        output[[paste0("subtotal_max_", group_id)]] <- renderText({
+          paste0("out of ", fsum(grouped_data[[group_name]]$max_point_value))
+        })
+      })
+    })
+    
     
     # Disable save_rating if any invalid responses
     observe({
@@ -273,7 +311,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, modul
           project_id =  selected_project()$project_id,
           weighted_score = round(100 * numerator/denominator, 0),
           username = user_coc$username,
-          date_updated = project_evaluation()$date_updated
+          date_updated = ifelse(fnrow(project_evaluation()) > 0, project_evaluation()$date_updated, NA)
         )
       )
       
