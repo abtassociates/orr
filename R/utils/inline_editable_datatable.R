@@ -105,6 +105,8 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         } else if (tableID == 'rating-alternative-alternative_rating_table') {
             colName = table.column(colIndex).header().childNodes[0].wholeText;
         }
+        
+        colName = colName.replace('Ⓘ','');
         return(colName);
       }
     ",
