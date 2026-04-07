@@ -551,7 +551,8 @@ CREATE TABLE IF NOT EXISTS coc_versions (
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
+    dv_ard INTEGER
 );
 "))
 
@@ -1290,7 +1291,7 @@ CREATE TABLE IF NOT EXISTS rating_scores (
     rating_score_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
     selected_rating_factor_id SMALLINT NULL REFERENCES selected_rating_factors(selected_rating_factor_id) ON DELETE CASCADE, --can be null if they rate outside the app
-    rating_score INTEGER,
+    rating_score NUMERIC(4, 1) NULL,
     performance VARCHAR(100) NULL,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
@@ -1341,7 +1342,7 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- Ranking 
 CREATE TABLE IF NOT EXISTS ranking (
     rank_id {id_var_attrs},
-    project_id INTEGER REFERENCES projects(project_id ON DELETE CASCADE),
+    project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     rank SMALLINT,
     tier VARCHAR(50) NULL,

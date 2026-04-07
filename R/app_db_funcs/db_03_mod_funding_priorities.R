@@ -45,15 +45,39 @@ update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding
   )
 }
 
-
 get_coc_hud_ard_data <- function(c) {
+  dv_ard <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
+  
   HUD_ARD_REPORT[coc == c] |>
     frename("total_ard" = estimated) |>
     fmutate(
       adjusted_ard = tier_1/0.9,
-      tier_2 = adjusted_ard * 0.1 + coc_bonus + dv_bonus,
-      yhdp_ard = total_ard - adjusted_ard,
-      dv_ard = as.numeric(NA)
+      tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
+      yhdp_ard = estimated - min(adjusted_ard, estimated),
+      dv_ard = dv_ard[1]
+    ) |>
+    frename(estimated = "total_ard")
+}
+
+update_dv_ard <- function(p, params) {
+  # TODO: NEED TO ADD OPTIMISITC LOCKING
+  tryCatch({
+    DBI::dbExecute(
+      p,
+      "UPDATE coc_versions 
+      SET 
+        dv_ard = $1, 
+        updated_by = $2, 
+        date_updated = CURRENT_TIMESTAMP
+      WHERE coc_version_id = $3",
+      paramify(params)
     )
-    
+    message("Saved DV ARD!")
+  }, error = function(e) {
+    # If an error occurs, do NOT reset the flag, so it will try again.
+    # Notify the user of the failure.
+    showNotification(glue::glue("Error saving dv_ard to coc_versions table: {e$message}"), type = "error", duration = 10)
+    log_error(e$message)
+    stop(e) # rethrow error so the transaction can catch it and roll back
+  })
 }

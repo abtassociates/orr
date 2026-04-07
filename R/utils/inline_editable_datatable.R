@@ -105,6 +105,8 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         } else if (tableID == 'rating-alternative-alternative_rating_table') {
             colName = table.column(colIndex).header().childNodes[0].wholeText;
         }
+        
+        colName = colName.replace('Ⓘ','');
         return(colName);
       }
     ",
@@ -173,6 +175,10 @@ debugger;
       });
   
       function formatUSD(amount) {
+        if(amount === null) return;
+        
+        amount = Number(amount);
+        
         if (typeof amount !== 'number' || isNaN(amount)) {
             throw new Error('Invalid input: amount must be a valid number.');
         }
@@ -209,7 +215,7 @@ debugger;
         Shiny.setInputValue(tableID + '_cell_edit', {
           row: cell.index().row + 1,
           col: cell.index().column,
-          value: newVal,
+          value: rawVal,
           oldValue: currentVal,
           project_id: table.cells(cell.index().row, 0).data()[0],
         }, {priority: 'event'});

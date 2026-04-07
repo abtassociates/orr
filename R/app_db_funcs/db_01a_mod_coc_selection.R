@@ -83,7 +83,8 @@ update_coc_version <- function(params) {
       SET coc_status = $1, 
           date_updated = CURRENT_TIMESTAMP, 
           updated_by = $2
-      WHERE coc_version_id = $3 AND version_id = $4", 
+      --WHERE coc_version_id = $3 AND version_id = $4
+      WHERE coc_version_id = $3",
     params = params
   )
 }

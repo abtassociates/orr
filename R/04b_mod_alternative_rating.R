@@ -9,13 +9,13 @@ mod_alternative_rating_ui <- function(id) {
       card_body(
         fillable = FALSE,
         min_height = "65vh",
-        max_height = "67vh",
+        max_height = "71vh",
         DTOutput(ns("alternative_rating_table"))
       ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("import_rating"), "Import Rating", icon = icon("upload")),
-        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary")
+        actionButton(ns("import_rating"), "Import Rating", icon = icon("upload")) #,
+        # actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary")
       )
     )
   )
@@ -28,7 +28,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
-    observeEvent(refresh_trigger(), {
+    observeEvent(c(refresh_trigger(), user_coc$projects_updated), {
       req(user_coc$coc_version_id)
       
       ratable_projects(
@@ -54,6 +54,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     }
     
     output$alternative_rating_table <- renderDT({
+      req(user_coc$coc_version_id)
       data <- isolate(ratable_projects())
 
       shiny::validate(need(
@@ -70,18 +71,43 @@ mod_alternative_rating_server <- function(id, user_coc) {
       met_coc_input_id <- ns("set_met_coc_thresholds")
       
       header_cb <- glue::glue("
-        function create_select_all_btns(th, title, id) {{
+        var thead = $(table.header());
+        
+        // We attach functions to 'window' so the HTML 'onclick' can find them
+        window.select_all_thresholds = function(e, val, colIdx, inputId) {{
+          // 1. STOP PROPAGATION: Prevents the header from sorting when the button is clicked
+          if (e && e.stopPropagation) e.stopPropagation();
+          if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+          if (e && e.preventDefault) e.preventDefault();
+          
+          // 1. Update Shiny
+          Shiny.setInputValue(inputId, val, {{priority: 'event'}});
+          
+          var cellText = (val === 1) ? 'Yes' : 'No';
+        
+          // 2. Update the internal DataTables model for all rows in this column
+          // This ensures sorting/filtering doesn't revert the values
+          table.column(colIdx).data().each(function(d, i) {{
+            table.cell(i, colIdx).data(cellText);
+          }});
+        }};
+        
+        window.create_select_all_btns = function(th, title, inputId) {{
+          var colIdx = table.column(th).index();
+          
+          // Note: We wrap inputId in single quotes within the onclick string
           $(th).html(
             `${{title}}<div style='margin-top:4px; white-space:nowrap;'>
               <button class='btn btn-xs btn-success' style='margin-right:2px;'
-                onclick=\"Shiny.setInputValue('${{id}}', '1', {{priority: 'event'}})\">✓ All</button>
+                onclick=\"window.select_all_thresholds(event, 1, ${{colIdx}}, '${{inputId}}')\">✓ All</button>
               <button class='btn btn-xs btn-danger'
-                onclick=\"Shiny.setInputValue('${{id}}', '2', {{priority: 'event'}})\">✗ None</button>
+                onclick=\"window.select_all_thresholds(event, 2, ${{colIdx}}, '${{inputId}}')\">✗ None</button>
               </div>
            `
           );
-        }}
-        var thead = $(this.api().table().header());
+        }};
+      
+        // Attach select all+none buttons
         thead.find('th').each(function() {{
           var colName = $(this).text().trim();
 debugger;
@@ -139,18 +165,29 @@ debugger;
           dom = 'frtip'
         )
       )
-    })
+    }, server=FALSE)
+    
+    alt_rating_update <- function() {
+      updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
+      needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
+      
+      if(needs_refresh)
+        refresh_trigger(\(x) x + 1)
+    }
     
     # Update alternative rating data when cell is edited
     observeEvent(input$alternative_rating_table_cell_edit, {
       info <- input$alternative_rating_table_cell_edit
+      
       req(!identical(info$value, info$oldValue))
       
-      current_data <- ratable_projects()
+      current_data <- copy(ratable_projects())
       
-      current_data[info$row, info$col + 1] <- info$value
+      current_data[info$row, (info$col + 1) := info$value]
       
       ratable_projects(current_data)
+      
+      alt_rating_update()
     }, ignoreInit = TRUE) # end alt rating table cell edit
     
     observe({
@@ -165,37 +202,26 @@ debugger;
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("alternative_rating_table"), session = session)
-    
-    observe({
-      req(ratable_projects())
-      
-      replaceData(projects_table_proxy, ratable_projects(), rownames = FALSE)
-    })
+    projects_table_proxy <- dataTableProxy("alternative_rating_table", session = session)
     
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns
-    observeEvent(input$set_met_hud_thresholds, {
-      req(input$set_met_hud_thresholds)
-      
-      visible_rows <- input$alternative_rating_table_rows_all  # indices of filtered rows
-
-      updated <- copy(ratable_projects())
-      updated[visible_rows, met_hud_thresholds := as.integer(input$set_met_hud_thresholds)]
-
-      ratable_projects(updated)
-    })
-    
-    observeEvent(input$set_met_coc_thresholds, {
-      req(input$set_met_coc_thresholds)
-      
-      visible_rows <- input$alternative_rating_table_rows_all  # indices of filtered rows
-      
-      updated <- copy(ratable_projects())
-      updated[visible_rows, met_coc_thresholds := as.integer(input$set_met_coc_thresholds)]
-      
-      ratable_projects(updated)
-    })
-    
+    set_all_thresholds_handler <- function(colname) {
+      input_name <- paste0("set_", colname)
+      observeEvent(input[[input_name]], {
+        req(input[[input_name]])
+        
+        visible_rows <- input$alternative_rating_table_rows_all  # indices of filtered rows
+        
+        updated <- copy(ratable_projects())
+        updated[visible_rows, (colname) := as.integer(input[[input_name]])]
+        
+        ratable_projects(updated)
+        
+        alt_rating_update()
+      })
+    }
+    set_all_thresholds_handler("met_hud_thresholds")
+    set_all_thresholds_handler("met_coc_thresholds")
     
     # Save ----------------------
     get_updated_project_evaluations <- function(username, ratable_projects) {
@@ -208,15 +234,10 @@ debugger;
         fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by, date_updated)
     }
     
-    observeEvent(input$save_rating, {
-      req(ratable_projects())
-      
-      updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
-      needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
-      
-      # if(needs_refresh)
-        refresh_trigger(\(x) x + 1)
-    }) # end save_rating
+    # observeEvent(input$save_rating, {
+    #   req(ratable_projects())
+    #   alt_rating_update()
+    # }, ignoreInit = TRUE) # end save_rating
     
     
     # Importing --------------------

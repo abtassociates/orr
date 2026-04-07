@@ -32,7 +32,7 @@ mod_customize_criteria_ui <- function(id) {
 #' @param id The module's unique ID.
 #' @param user_coc contains coc_version_id to capture user-selected version of the ORR
 #' @noRd
-mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_session, module_returns) {
+mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -48,8 +48,8 @@ mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_sess
     }, ignoreInit = TRUE)
     
     # Call sub-modules for each tab
-    mod_customize_coc_thresholds_server("coc_thresholds", user_coc, nav_control, module_returns)
-    mod_customize_rating_factors_server("renewal_rating_factors", user_coc, "Renew", nav_control, module_returns)
-    mod_customize_rating_factors_server("new_rating_factors", user_coc, "New", nav_control, module_returns)
+    mod_customize_coc_thresholds_server("coc_thresholds", user_coc, nav_control)
+    mod_customize_rating_factors_server("renewal_rating_factors", user_coc, "Renew", nav_control)
+    mod_customize_rating_factors_server("new_rating_factors", user_coc, "New", nav_control)
   })
 }

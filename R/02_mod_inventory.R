@@ -47,7 +47,7 @@ mod_inventory_ui <- function(id) {
   )
 }
 
-mod_inventory_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -364,8 +364,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     ## consolidated append
     inventory_append <- function(new_project_data) {
       append_to_datatable(new_project_data)
-      append_inventory_to_db(new_project_data)
+      s <- append_inventory_to_db(new_project_data)
       
+      if(isTruthy(s))
+        user_coc$projects_updated <- user_coc$projects_updated + 1
       #showNotification("Project submitted successfully.", type = "message")
     }
     
@@ -416,10 +418,17 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       
       info <- input$projects_table_cell_edit
       
-      req(info$value != "" && !is.null(info$value))
       req(!identical(info$value, info$oldValue))
       
       col_name <- colnames(projects_data())[info$col + 1]
+      
+      if(col_name == "grant_number") {
+        if (nchar(info$value) > 15) {
+          showNotification("Grant number cannot be longer than 15 characters.", type = "error")
+          revert_cell(ns("projects_table"), info, input$projects_table_rows_current, projects_data())
+          return()
+        }
+      }
       
       # numeric validation
       if (is.numeric(projects_data()[[col_name]])) {
