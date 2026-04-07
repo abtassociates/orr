@@ -63,7 +63,7 @@ update_dv_ard <- function(p, params) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
     showNotification(glue::glue("Error saving dv_ard to coc_versions table: {e$message}"), type = "error", duration = 10)
-    log_error(e$message)
+    log_error(paste0("Updating dv_ard:", e$message))
     stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }
