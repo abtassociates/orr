@@ -230,22 +230,22 @@ save_to_db <- function(p, sql, params, tbl_name) {
   if(purrr::every(paramified, is.null)) 
     return(FALSE)
   
-  save_func <- function() {
+  save_func <- function(conn) {
     if(!grepl("RETURNING ", sql)) {
-      DBI::dbExecute(p, sql, params = paramified)
+      DBI::dbExecute(conn, sql, params = paramified)
     } else {
-      DBI::dbGetQuery(p, sql, params = paramified)
+      DBI::dbGetQuery(conn, sql, params = paramified)
     }
   }
   tryCatch({
     # if not already inside a transaction (i.e. where p is a connection, wrap in transaction for speed)
     rows_changed <- if(inherits(p, "Pool")) {
       pool::poolWithTransaction(p, function(conn) {
-        save_func()
+        save_func(conn)
       })
     } else {
       # otherwise, we're in a transaction, so just save
-      save_func()
+      save_func(p)
     }
     
     if(grepl("RETURNING ", sql)) {

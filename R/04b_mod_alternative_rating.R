@@ -225,11 +225,14 @@ debugger;
     
     # Save ----------------------
     get_updated_project_evaluations <- function(username, ratable_projects) {
+      message("In get updated project evaluation, ratable_projects:\n", 
+              paste(knitr::kable(ratable_projects), collapse = "\n"))
+      
       ratable_projects |>
         fmutate(
           created_by = username,
-          met_hud_thresholds = ifelse(is.na(met_hud_thresholds), NA, ifelse(met_hud_thresholds == 'Yes', TRUE, FALSE)),
-          met_coc_thresholds = ifelse(is.na(met_coc_thresholds), NA, ifelse(met_coc_thresholds == 'Yes', TRUE, FALSE))
+          met_hud_thresholds = met_hud_thresholds == 'Yes',
+          met_coc_thresholds = met_coc_thresholds == 'Yes'
         ) |>
         fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by, date_updated)
     }
