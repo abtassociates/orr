@@ -118,7 +118,7 @@ mod_funding_priorities_ui <- function(id) {
   )
 }
 
-mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     refresh_trigger <- reactiveValues(
