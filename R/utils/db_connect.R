@@ -15,6 +15,10 @@ set_up_db_connection <- function() {
     if(Sys.getenv("RSTUDIO") == "1") set_up_tunnel()
     get_postgres_db()
   }
+  
+  # Enforce referential integrity for SQLite (PostgreSQL is automatic)
+  if(use_sqlite)
+    DBI::dbExecute(.db_env$pool, "PRAGMA foreign_keys = ON;")
 }
 
 # Create connection to RDS Postgres instance for testing purposes

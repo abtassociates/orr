@@ -63,3 +63,32 @@ generate_selected_coc_nofo_opportunities <- function(p, coc_version_id) {
     params = paramify(coc_nofo_opportunities)
   )
 }
+
+append_version_request <- function(selected_version, user_coc) {
+  request_row <- data.table(
+    #coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
+    coc_version_id = selected_version$coc_version_id,
+    request_status = get_lookup_refid('Sent','request_status'),
+    reason_for_rejection = NA
+  ) |>
+    add_user_stamp(user_coc, is_new = TRUE)
+  
+  # Add row to requests table
+  db_append("coc_version_requests", request_row)
+}
+
+update_coc_version <- function(params) {
+  db_execute( 
+    "UPDATE coc_versions 
+      SET coc_status = $1, 
+          date_updated = CURRENT_TIMESTAMP, 
+          updated_by = $2
+      --WHERE coc_version_id = $3 AND version_id = $4
+      WHERE coc_version_id = $3",
+    params = params
+  )
+}
+
+delete_coc_version <- function(coc_version_id) {
+  db_execute("DELETE FROM coc_versions WHERE coc_version_id = $1", params = coc_version_id)
+}

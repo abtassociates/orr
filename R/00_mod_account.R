@@ -33,7 +33,7 @@ mod_account_ui <- function(id){
   )
 }
 
-mod_account_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_account_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     
     output$username <- renderText({

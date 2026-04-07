@@ -16,14 +16,22 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
     className = 'factor-edit-cell'
   )
   
+  return(
+    list(
+      factor_levels = factor_levels,
+      column_defs = column_defs
+    )
+  )
+}
+
+get_numeric_info <- function(data, column_defs) {
+  
   # Add class for Numeric Validation
   # 2. Identify Numeric columns (excluding disabled ones)
-  numeric_cols <- names(data)[sapply(data, is.numeric)] |>
-    setdiff(cols_to_disable)
-
-  integer_cols <- names(data)[sapply(data, is.integer)] |>
-    setdiff(cols_to_disable)
-
+  numeric_cols <- names(data)[sapply(data, is.numeric)]
+  
+  integer_cols <- names(data)[sapply(data, is.integer)]
+  
   column_defs[[length(column_defs) + 1]] <- list(
     targets = match(integer_cols, names(data)) - 1,
     className = 'numeric-edit-cell integer-edit-cell'
@@ -34,17 +42,7 @@ get_factor_info <- function(data, column_defs, colnames, cols_to_disable) {
     className = 'numeric-edit-cell'
   )
   
-  column_defs[[length(column_defs) + 1]] <- list(
-    targets = match(cols_to_disable, names(data)) - 1,  # Vector of all indices
-    className = 'disabled dt-right'
-  )
-  
-  return(
-    list(
-      factor_levels = factor_levels,
-      column_defs = column_defs
-    )
-  )
+  return(column_defs)
 }
 
 get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
@@ -107,6 +105,8 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         } else if (tableID == 'rating-alternative-alternative_rating_table') {
             colName = table.column(colIndex).header().childNodes[0].wholeText;
         }
+        
+        colName = colName.replace('Ⓘ','');
         return(colName);
       }
     ",
@@ -118,14 +118,16 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
   numeric_js <-  
     "// HANDLER FOR NUMERIC COLUMNS
     table.on('dblclick', 'td.numeric-edit-cell', function(e) {
-      e.stopImmediatePropagation();
+      //e.stopImmediatePropagation();
       var $td = $(this);
-      if (!$td.find('input').length) return; // already editing
+      setTimeout(function() {
+      debugger;
+      //if ($td.find('input').length) return; // already editing
   
-      var cell = table.cell(this);
+      var cell = table.cell($td);
       var currentVal = cell.data();
       var colIndex = cell.index().column;
-      var colName = getColName(colIndex);
+      var colName = getColName(colIndex).toUpperCase();
 
       is_funding_col = colName.includes('FUNDING') || colName.includes('AMOUNT');
       
@@ -139,7 +141,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
       }
       
       function trim_val(colName, val, max_length = null) {
-        let c = colName.toUpperCase();
+        let c = colName;
         
         let maxLength;
         if(max_length) maxLength = max_length;
@@ -152,13 +154,12 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
       // --- 2. Get the input ---
       var isInteger = $td.hasClass('integer-edit-cell');
       var $input = $td.find('input[type=number]')
-        .attr({'min': '0', 'step': '1'});
-        //.val(currentVal);
+        .attr({'min': '0', 'max' : '9'.repeat(get_max_length(colName)), 'step': '1'});
   
       // --- 3. Enforce the Character Limit! ---
-      $input.on('input', function() {
+      $input.off('input').on('input', function() {
         var val = this.value;
-
+debugger;
         if(colName.includes('FUNDING') || colName.includes('AMOUNT')) {
           if (val.includes('.')) {
             var parts = val.split('.');
@@ -172,11 +173,12 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
           this.value = trim_val(colName, val)
         }
       });
-
-      // $td.empty().append($input);
-      // $input.focus().select();
   
       function formatUSD(amount) {
+        if(amount === null) return;
+        
+        amount = Number(amount);
+        
         if (typeof amount !== 'number' || isNaN(amount)) {
             throw new Error('Invalid input: amount must be a valid number.');
         }
@@ -189,7 +191,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         }).format(amount);
       }
 
-      $input.on('keydown', function(e) {
+      $input.off('keydown').on('keydown', function(e) {
         // Prevent '-' (minus sign) and 'e' (scientific notation)
         if (e.key === '-' || e.key === 'e' || e.key === 'E')
           e.preventDefault();
@@ -197,43 +199,28 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         // IF it's an integer cell, also prevent the decimal point
         if (isInteger && (e.key === '.' || e.key === ','))
           e.preventDefault();
-            
-        debugger;
-        if (e.key === 'Enter') $(this).blur();
-        else if (e.key === 'Escape') setCellText(cell, is_funding_col ? formatUSD(currentVal) : currentVal); // Revert UI
+          
+        if (e.key === 'Enter') $td.blur();
+        else if (e.key === 'Escape') setCellText(cell, is_funding_col ? formatUSD(currentVal) : currentVal.toLocaleString('en-US')); // Revert UI
       });
   
-      
-      /*
       // --- 4. Validation ---
-      $input.on('blur', function() {
-        var rawVal = $(this).val();
-        var newVal = isInteger ? parseInt(rawVal, 10) : parseFloat(rawVal);
-        
-        if(newVal === null) return;
-        
-        // VALIDATION LOGIC
-        let max_length = get_max_length(colName);
-        var maxVal = BigInt('9'.repeat(max_length)).toLocaleString();
-        if (newVal < 0 || newVal > maxVal) {
-          alert(`Please enter a number between 0 and ${maxVal}.`);
-          setCellText(cell, currentVal); // Revert on error
-          return;
-        }
-
-        setCellText(cell, newVal);
-        cell.data(newVal);
+      $input.off('blue').on('blur', function() {
+        var rawVal = this.value;
+        formatted_val = is_funding_col ? formatUSD(rawVal) : rawVal.toLocaleString('en-US')
+        setCellText(cell, formatted_val);
+        cell.data(rawVal);
         
         // Trigger the Shiny input
         Shiny.setInputValue(tableID + '_cell_edit', {
           row: cell.index().row + 1,
           col: cell.index().column,
-          value: newVal,
+          value: rawVal,
           oldValue: currentVal,
           project_id: table.cells(cell.index().row, 0).data()[0],
         }, {priority: 'event'});
       });
-      */
+      }, 500);
     });"
   
   factor_js <- 
@@ -327,8 +314,45 @@ initialize_inline_edit_table_ui <- function(
   factor_levels <- factor_info$factor_levels
   column_defs <- factor_info$column_defs
   
+  # assign classes to numeric cols
+  column_defs <- get_numeric_info(data, column_defs)
+  
+  # handle cols to disable
+  column_defs[[length(column_defs) + 1]] <- list(
+    targets = match(cols_to_disable, names(data)) - 1,  # Vector of all indices
+    className = 'disabled dt-right'
+  )
+  
   # use js to show the dropdowns
   init_js <- get_init_js(factor_info$factor_levels, tableID, has_double_header, header_cb)
+  
+  callback_js <- glue::glue("
+    {ifelse(callback_js != 'return table;', callback_js, '')}
+    
+    $(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
+      $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
+    }});
+    $(document).on('mouseenter', 'table.dataTable tbody td', function() {{
+      $(this).css('cursor', 'pointer');
+      $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
+    }});
+    $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
+      $(this).css('background-color', 'inherit');
+    }});
+      
+    // Start cell editing with Enter key (13)   
+    table.on('key', function(e, datatable, key, cell, originalEvent) {{
+      var targetName = originalEvent.target.localName;
+      if(key == 13 && targetName == 'body')
+        $(cell.node()).trigger('dblclick.dt');
+    }});
+    
+    // Exit cell editing with Tab (9), Enter (13), or Arrow Keys (37-40)
+    table.on('keydown', function(e) {{
+      var keys = [9,13,37,38,39,40];
+      if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1)
+        $(e.target).trigger('blur');
+    }});")
   
   # --- STEP 1: handle user-specified options ---
   default_options <- list(
@@ -387,10 +411,7 @@ initialize_inline_edit_table_ui <- function(
 }
 
 validate_numeric_entry <- function(df, col_name, val) {
-  new_val <- if(is.integer(df[[col_name]]))
-    as.integer(val)
-  else 
-    as.numeric(val)
+  new_val <- ifelse(is.integer(df[[col_name]]), as.integer(val), as.numeric(val))
   
   max_val = fcase(
     grepl("BED", toupper(col_name)), 99999,
@@ -398,7 +419,7 @@ validate_numeric_entry <- function(df, col_name, val) {
     grepl("FUNDING|AMOUNT", toupper(col_name)), 999999999
   )
   
-  if (!is.na(new_val) && (new_val < 0 || new_val > max_val)) {
+  if ((!is.na(new_val) && (new_val < 0 || new_val > max_val)) || (is.na(new_val) && !is.na(val))) {
     showNotification(glue::glue("Invalid input: Please enter a number between 0 and {prettyNum(max_val, big.mark=',')}", type = "error"))
     return(FALSE)
   }

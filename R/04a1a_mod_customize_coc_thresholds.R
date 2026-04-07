@@ -13,7 +13,13 @@ mod_customize_coc_thresholds_ui <- function(id) {
     value = id,
     card(
       em("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
-      uiOutput(ns("threshold_checkboxes_ui")),
+      checkboxGroupInput(
+        inputId = ns("threshold_checkboxes"),
+        label = "CoC Threshold Requirements",
+        choices = NULL,
+        width = "100%",
+        selected = NULL
+      ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         actionButton(ns("add_threshold_btn"), "Add Custom Threshold", icon = icon("plus")),
@@ -25,7 +31,7 @@ mod_customize_coc_thresholds_ui <- function(id) {
 
 #' @title mod_coc_thresholds_server
 #' @noRd
-mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, module_returns) {
+mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -50,24 +56,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
         selected = data[selected == 1]$threshold_id
       )
       
-      shiny::isolate(updating_from_db(FALSE))
-    })
-    
-    # Dynamically render the checkboxes based on available and selected data
-    output$threshold_checkboxes_ui <- renderUI({
-      req(user_coc$coc_version_id)
-      req(fnrow(all_coc_thresholds()) > 0)
-      
-      checkboxGroupInput(
-        inputId = ns("threshold_checkboxes"),
-        label = "CoC Threshold Requirements",
-        choices = setNames(
-          all_coc_thresholds()$threshold_id, 
-          all_coc_thresholds()$threshold_text
-        ),
-        width = "100%",
-        selected = all_coc_thresholds()[selected == TRUE]$threshold_id
-      )
+      isolate(updating_from_db(FALSE))
     })
     
     # Handle changes to the thresholds shown to the user
@@ -111,6 +100,8 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       # if(needs_refresh1)
         refresh_trigger(\(x) x + 1)
       
+      if(!needs_refresh1)
+        user_coc$customized_coc_thresholds_updated <- user_coc$customized_coc_thresholds_updated + 1
     }, ignoreInit = TRUE) # end save_thresholds observeEvent
     
     observeEvent(input$add_threshold_btn, {
@@ -126,7 +117,13 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       )
     })
     
+    iv <- shinyvalidate::InputValidator$new()
+    iv$add_rule("custom_threshold_text", sv_required())
+    iv$add_rule("custom_threshold_text", ~ if(. %in% all_coc_thresholds()$threshold_text) "Threshold text must be unique.")
+    
     observeEvent(input$submit_custom_threshold, {
+      iv$enable()
+      req(iv$is_valid())
       removeModal()
       req(nchar(trimws(input$custom_threshold_text)) > 0)
       
@@ -143,6 +140,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       
       # These don't need to be tied together, but it avoids dealing with 2 different conflicts
       updated_custom_threshold_info <- NULL
+      needs_refresh2 <- FALSE
       pool::poolWithTransaction(get_db_pool(), function(p) {
         updated_custom_threshold_info <- update_thresholds_db(p, updated_custom_threshold)
         
@@ -158,7 +156,8 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, modul
       
       refresh_trigger(\(x) x + 1)
       
+      if(!needs_refresh2)
+        user_coc$customized_coc_thresholds_updated <- user_coc$customized_coc_thresholds_updated + 1
     }) # end submit custom threhsold
-    module_returns$selected_thresholds <- input$threshold_checkboxes
   })
 }

@@ -1,4 +1,4 @@
-get_all_requests <- function(username) {
+get_all_requests_by_user <- function(username) {
   owner_role <- get_lookup_refid("Owner", ref_type = "coc_version_role")
   get_db_query(
     "SELECT DISTINCT

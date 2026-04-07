@@ -107,7 +107,7 @@ mod_rating_ui <- function(id) {
   # )
 }
 
-mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_rating_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -116,7 +116,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
       req(user_coc$auth)
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
       
-      user_previous_method <- get_user_setting('rating_method', user_coc$coc_version_id, user_coc$username)
+      user_previous_method <- get_user_setting(get_db_pool(), 'rating_method', user_coc$coc_version_id, user_coc$username)
       
       if(length(user_previous_method) > 0){
         shinyjs::click(id = glue::glue('select_{user_previous_method}'))
@@ -124,14 +124,14 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
       
         ## set up subtabs if using in-app rating method
         if(user_previous_method == 'in_app'){
-          user_previous_tab <- get_user_setting('rating_tab', user_coc$coc_version_id, user_coc$username)
+          user_previous_tab <- get_user_setting(get_db_pool(), 'rating_tab', user_coc$coc_version_id, user_coc$username)
           if(length(user_previous_tab) > 0){
             
             nav_select(id = 'rating_tabs', selected = glue::glue('rating-{user_previous_tab}'))
             
           }
           
-          user_previous_subtab <- get_user_setting('rating_subtab', user_coc$coc_version_id, user_coc$username)
+          user_previous_subtab <- get_user_setting(get_db_pool(), 'rating_subtab', user_coc$coc_version_id, user_coc$username)
           
           if(length(user_previous_subtab) > 0){
             if(length(user_previous_tab) == 0 || user_previous_tab == 'customize_criteria'){
@@ -169,21 +169,22 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, module_
       user_coc$settings$rating_tab <- gsub('rating-', '', input$rating_tabs)
     }, ignoreInit = TRUE)
     
-    # observe({
-    #   req(module_returns$rating_criteria)
-    #   
-    #   if(length(module_returns$rating_criteria) > 0) {
-    #     nav_show("nav", target = "renew_rating", session = parent_session)
-    #     nav_show("nav", target = "new_rating", session = parent_session)
-    #   } else {
-    #     nav_hide("nav", target = "renew_rating", session = parent_session)
-    #     nav_hide("nav", target = "new_rating", session = parent_session)
-    #   }
-    # })
+    # If they uncheck all factors, don't show rating entry ratbs
+    observeEvent(
+      c(user_coc$customized_rating_factors_updated, user_coc$customized_coc_thresholds_updated), {
+
+      if(user_coc$customized_rating_factors_updated > 0 && user_coc$customized_coc_thresholds_updated > 0) {
+        nav_show("nav", target = "renew_rating", session = parent_session)
+        nav_show("nav", target = "new_rating", session = parent_session)
+      } else {
+        nav_hide("nav", target = "renew_rating", session = parent_session)
+        nav_hide("nav", target = "new_rating", session = parent_session)
+      }
+    }, ignoreInit = TRUE)
     
-    mod_customize_criteria_server("customize_criteria", user_coc, nav_control, parent_session, module_returns)
-    mod_in_app_rating_server("renew", user_coc, "Renew", nav_control, module_returns)
-    mod_in_app_rating_server("new", user_coc, "New", nav_control, module_returns)
+    mod_customize_criteria_server("customize_criteria", user_coc, nav_control, parent_session)
+    mod_in_app_rating_server("renew", user_coc, "Renew", nav_control)
+    mod_in_app_rating_server("new", user_coc, "New", nav_control)
     mod_rating_summary_server("rating_summary")
     mod_alternative_rating_server("alternative", user_coc)
   })
