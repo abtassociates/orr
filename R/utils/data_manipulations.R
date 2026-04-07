@@ -230,11 +230,22 @@ save_to_db <- function(p, sql, params, tbl_name) {
   if(purrr::every(paramified, is.null)) 
     return(FALSE)
   
-  tryCatch({
-    rows_changed <- if(!grepl("RETURNING ", sql)) {
+  save_func <- function() {
+    if(!grepl("RETURNING ", sql)) {
       DBI::dbExecute(p, sql, params = paramified)
     } else {
       DBI::dbGetQuery(p, sql, params = paramified)
+    }
+  }
+  tryCatch({
+    # if not already inside a transaction (i.e. where p is a connection, wrap in transaction for speed)
+    rows_changed <- if(inherits(p, "Pool")) {
+      pool::poolWithTransaction(p, function(conn) {
+        save_func()
+      })
+    } else {
+      # otherwise, we're in a transaction, so just save
+      save_func()
     }
     
     if(grepl("RETURNING ", sql)) {
@@ -296,3 +307,49 @@ add_optimistic_locking <- function(sql) {
   
   sql_with_locking
 }
+
+## Revert cell to original value -----
+get_old_val <- function(info, visible_rows, full_data, server=TRUE) {
+  if("oldValue" %in% info) 
+    return(info$oldValue)
+  else
+    return(full_data[info$row, info$col + 1, with=FALSE])
+  #   
+  # else if(server) {
+  #   browser()
+  #   # Map displayed row -> actual row index
+  #   actual_row_index <- whichv(visible_rows, info$row)
+  #   
+  #   # Get the ID
+  #   order <- seq_row(full_data)
+  #   row_id <- order[info$row]
+  #   
+  #   # Now find the row in your full dataset using the ID
+  #   true_row <- whichv(order, order[info$row])
+  #   
+  #   return(full_data[info$row, info$col + 1, with=FALSE])
+  # } else {
+  #   browser()
+  #   return(full_data[info$row, info$col + 1, with=FALSE])
+  # }
+  
+}
+revert_cell <- function(tableID, info, visible_rows, full_data) {
+  # replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
+  # info$oldValue works when handled via js because we pass that value
+  # otherwise, when server=FALSE, we can grab from the not-yet-updated reactive
+  # if server=TRUE, then we need to determine the actual row in case user filtered 
+  
+  oldVal <- get_old_val(info, visible_rows, full_data, server=TRUE)
+  shinyjs::runjs(sprintf(
+    "
+              var table = $('#%s table').DataTable();
+              table.cell(%s, %s).data('%s').draw(false);
+            ",
+    tableID,
+    info$row - 1,
+    info$col,
+    jsonlite::toJSON(oldVal, auto_unbox = TRUE)
+  ))
+}
+

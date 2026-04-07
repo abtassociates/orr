@@ -31,14 +31,11 @@ mod_funding_priorities_ui <- function(id) {
   ]
   
   funding_input <- function(id, label) {
-    shinyWidgets::autonumericInput(
+    shinyWidgets::currencyInput(
       ns(id), 
-      label, 
+      label,
       value = "0",
-      currencySymbol = "$", 
-      currencySymbolPlacement = "p", 
-      decimalPlaces = 0, 
-      style="font-size:1em;"
+      format = "dollar"
     )
   }
   
@@ -132,6 +129,9 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     coc_funding_priorities <- reactiveVal()
     formatted_coc_funding_priorities <- reactiveVal()
     
+    dv_ard <- reactive({ input$dv_ard })
+    dv_ard_debounced <- dv_ard %>% debounce(1000)
+    
     # Populate Funding Info -----------
     ard_field_names <- c(
       "total_ard",
@@ -145,19 +145,20 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     )
     
     hud_ard_coc_data <- reactive({
+      dv_ard <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
           adjusted_ard = round(tier_1/0.9, 0),
           tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
           yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = as.numeric(NA)
+          dv_ard = dv_ard[1]
         ) |>
         frename(estimated = "total_ard")
     })
     
     observeEvent(user_coc$coc, {
       lapply(ard_field_names, function(i) {
-        updateAutonumericInput(
+        updateCurrencyInput(
           session, 
           i, 
           value = hud_ard_coc_data()[[i]]
@@ -165,6 +166,21 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         if(i != "dv_ard") shinyjs::disable(i)
       })
     })
+    
+    iv <- shinyvalidate::InputValidator$new()
+    iv$add_rule("dv_ard", sv_gte(0))
+    
+    observeEvent(dv_ard_debounced(), {
+      req(user_coc$coc)
+      iv$enable()
+      req(iv$is_valid())
+      iv$disable()
+      
+      update_dv_ard(
+        get_db_pool(),
+        list(dv_ard_debounced(), user_coc$username, user_coc$coc_version_id)
+      )
+    }, ignoreInit = TRUE)
     
     
     # Priorities ------------
@@ -309,9 +325,14 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           ),
           function(x) formatCurrency(
             x,
-            columns = seq(3, ncol(data), by = 3),
+            columns = seq(3, ncol(data), by = 3), # funding fields
             currency = "$", 
             mark = ",",
+            digits = 0
+          ),
+          function(x) formatRound(
+            x,
+            columns = seq(2, ncol(data), by = 3), # bed fields
             digits = 0
           )
         ), 
@@ -362,17 +383,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           }});
         "), 
         has_double_header = TRUE
-      ) %>% 
-        formatStyle(
-          columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
-          `border-right` = "1px solid black"
-        ) %>%
-        formatCurrency(
-          columns = seq(3, ncol(data), by = 3),
-          currency = "$", 
-          mark = ",",
-          digits = 0
-        )       
+      )      
       #end initialize_data_Table
     }, server = FALSE)
     
@@ -401,6 +412,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       # only proceed if they changed anything:
       old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE][[1]]
       req(!identical(old_val, info$value))
+      
+      col_name <- colnames(current_data)[info$col + 1]
+      
+      # numeric validation
+      # NOTE: This is redundant with the client-side validation we're doing (in the inline_editable_datatable script)
+      if (is.numeric(current_data[[col_name]])) {
+        is_valid <- validate_numeric_entry(current_data, col_name, info$value)
+        if(!is_valid) revert_cell(ns("priorities_table"), info, input$priorities_table_rows_current, current_data)
+        req(is_valid)
+      }
       
       # Update the value in the full dataset, so we can update the reactive and datatable proxy
       # The column index needs + 1 because datatable is 0 indexed

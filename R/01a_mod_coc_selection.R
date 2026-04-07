@@ -31,9 +31,12 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     all_versions_and_users <- reactiveVal()
     
-    refresh_trigger <- reactiveVal(0)
+    refresh_trigger <- reactiveValues(
+      versions = 0,
+      request_sent = 0,
+    )
     
-    observeEvent(c(user_coc$auth, refresh_trigger()), {
+    observeEvent(c(user_coc$auth, refresh_trigger$versions), {
       req(user_coc$auth)
       all_versions_and_users(
         get_all_coc_versions_and_users()
@@ -81,6 +84,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # Selected CoC Version Actions --------------
     ####
     requests_by_user <- reactive({
+      req(refresh_trigger$request_sent)
+
       get_all_requests_by_user(user_coc$username) |>
         fsubset(created_by == user_coc$username, coc_version_id, request_status)
     })
@@ -134,8 +139,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         params = list(
           get_lookup_refid("In Progress", "coc_status"), 
           user_coc$username, 
-          user_coc$coc_version_id, 
-          users_versions()[input$coc_versions_dt_rows_selected]$version_id
+          user_coc$coc_version_id #, 
+          # users_versions()[input$coc_versions_dt_rows_selected]$version_id
         )
       )
       
@@ -429,7 +434,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       shiny::showNotification('New CoC version created!', type='message')
       removeModal()
-      refresh_trigger(\(x) x + 1)
+      refresh_trigger$versions <- refresh_trigger$versions + 1
     })
     
     #####################
@@ -469,6 +474,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # Datatable of versions and user's requests 
     # shown in Create ORR and Request Access to CoC modals
     output$existing_versions <- renderDT({
+      req(input$coc_dropdown)
+      
       versions_to_show <- versions_and_requests_for_selected_coc() |>
         fselect(-coc_version_id)
       
@@ -506,14 +513,20 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       shinyjs::toggle(id = "send_request", condition = has_existing_versions)
       shinyjs::toggle(id = "existing_versions", condition = has_existing_versions)
       
-      replaceData(existing_versions_proxy, versions_and_requests_for_selected_coc(), rownames = FALSE)
+      replaceData(
+        existing_versions_proxy, 
+        versions_and_requests_for_selected_coc() |> fmutate(coc_version_id = NULL), 
+        rownames = FALSE
+      )
     })
     
     
     # Create Version Request in DB, pass success to requests module, notify user
     observeEvent(input$send_request, {
       selected_version <- versions_and_requests_for_selected_coc()[input$existing_versions_rows_selected]
-      append_version_request(selected_version, user_coc)
+      s <- append_version_request(selected_version, user_coc)
+      if(isTruthy(s))
+        refresh_trigger$request_sent <- refresh_trigger$request_sent + 1
       
       ## TODO: send email to admin of version that is requested
       

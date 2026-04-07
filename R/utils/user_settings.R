@@ -1,11 +1,17 @@
 ## retrieve individual user setting value from DB
-get_user_setting <- function(setting_nm, coc_version_id, username){
-  get_db_query(
-    "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3",
-    params = list(coc_version_id,
-                  username,
-                  setting_nm)
-  ) |> unlist(use.names = FALSE)
+get_user_setting <- function(p, setting_nm, coc_version_id, username){
+  
+  if(p$valid){
+    get_db_query(
+      "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3",
+      params = list(coc_version_id,
+                    username,
+                    setting_nm)
+    ) |> unlist(use.names = FALSE)
+  } else {
+    return(character(0))
+  }
+  
 }
 
 ## on app exit, update individual settings
@@ -50,7 +56,10 @@ update_all_user_settings <- function(user_coc, tab_name){
  
   p <- get_db_pool()
   
-  existing_settings <-  dbGetQuery(get_db_pool(),
+  if(!p$valid)
+    return(NULL)
+  
+  existing_settings <-  dbGetQuery(p,
                                    'SELECT * FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', 
                                    params = list(isolate(user_coc$coc_version_id),
                                                  isolate(user_coc$username)))
@@ -78,7 +87,7 @@ update_all_user_settings <- function(user_coc, tab_name){
   if(fnrow(disp_existing) > 0){
 
     current_selection <- isolate(user_coc$settings$cols_to_hide)
-    previous_selection <-  get_project_fields_to_hide(isolate(user_coc$coc_version_id),
+    previous_selection <-  get_project_fields_to_hide(get_db_pool(), isolate(user_coc$coc_version_id),
                                                  isolate(user_coc$username))
 
 

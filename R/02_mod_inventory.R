@@ -124,7 +124,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       initial_cols_to_hide <- setdiff(names(projects_data()), initial_cols_to_show )
       
       # retrieve user columns from user-settings table
-      user_previous_hidden <- get_project_fields_to_hide(user_coc$coc_version_id, user_coc$username)
+      user_previous_hidden <- get_project_fields_to_hide(get_db_pool(),user_coc$coc_version_id, user_coc$username)
       user_cols_to_hide <- gsub('disp_','',user_previous_hidden)
 
       if(length(user_cols_to_hide) > 0){
@@ -233,6 +233,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
             x, 
             columns = funding_columns, 
             currency = "$", 
+            digits = 0
+          ),
+          
+          function(x) formatRound(
+            x,
+            columns = grep('bed', names(data)) - 1,
             digits = 0
           )
         ),
@@ -412,15 +418,22 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       
       info <- input$projects_table_cell_edit
       
-      req(info$value != "" && !is.null(info$value))
       req(!identical(info$value, info$oldValue))
       
       col_name <- colnames(projects_data())[info$col + 1]
       
+      if(col_name == "grant_number") {
+        if (nchar(info$value) > 15) {
+          showNotification("Grant number cannot be longer than 15 characters.", type = "error")
+          revert_cell(ns("projects_table"), info, input$projects_table_rows_current, projects_data())
+          return()
+        }
+      }
+      
       # numeric validation
       if (is.numeric(projects_data()[[col_name]])) {
         is_valid <- validate_numeric_entry(projects_data(), col_name, info$value)
-        if(!is_valid) revert_cell(info)
+        if(!is_valid) revert_cell(ns("projects_table"), info, input$projects_table_rows_current, projects_data())
         req(is_valid)
       }
       
@@ -459,7 +472,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
         is_valid <- validity_pre_checks(project_data, funding_source, info$value)
         
         # If they can't Reallocate or Replace, bring back old value in table cell
-        if(!is_valid) revert_cell(info)
+        if(!is_valid) revert_cell(ns("projects_table"), info, input$projects_table_rows_current, projects_data())
         req(is_valid)
         
         ## YHDP Replacement -----
@@ -509,46 +522,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     }, ignoreInit = TRUE)
     
     # Handle replacement modal ------
-    ## Revert cell to original value -----
-    get_old_val <- function(info, server=DT_USES_SERVER) {
-      if("oldValue" %in% info) 
-        return(info$oldValue)
-      
-      else if(server) {
-        # Map displayed row -> actual row index
-        actual_row_index <- input$projects_table_rows_current[info$row]
-        
-        # Get the ID
-        order <- seq_row(projects_data())
-        row_id <- order[actual_row_index]
-        
-        # Now find the row in your full dataset using the ID
-        true_row <- which(order == order[actual_row_index])
-        
-        return(projects_data()[true_row, info$col + 1, with=FALSE])
-      } else {
-        return(projects_data()[info$row, info$col + 1, with=FALSE])
-      }
-      
-    }
-    revert_cell <- function(info) {
-      # replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
-      # info$oldValue works when handled via js because we pass that value
-      # otherwise, when server=FALSE, we can grab from the not-yet-updated reactive
-      # if server=TRUE, then we need to determine the actual row in case user filtered 
-      
-      oldVal <- get_old_val(info, server=DT_USES_SERVER)
-      shinyjs::runjs(sprintf(
-        "
-              var table = $('#%s table').DataTable();
-              table.cell(%s, %s).data('%s').draw(false);
-            ",
-        ns("projects_table"),
-        info$row - 1,
-        info$col,
-        jsonlite::toJSON(oldVal, auto_unbox = TRUE)
-      ))
-    }
     
     
     modal_trigger <- reactiveVal(0)
@@ -576,16 +549,14 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     
     ## User cancelled replacement ----
     observeEvent(input$replace_cancel, {
-      revert_cell(yhdp_replacement_info$info)
+      revert_cell(ns("projects_table"), yhdp_replacement_info$info, input$projects_table_rows_current, projects_data())
       removeModal()
       # no need to do inventory_update because we haven't modified the db or datatable yet
     })
     
     orgnames <- reactive({
       req(user_coc$coc_version_id)
-      c("Select or add Organization" = "", 
         c("Select or add Organization" = "", funique(projects_data()$organization_name, sort=TRUE))
-      )
     })
     
     # Project modal control -------------
