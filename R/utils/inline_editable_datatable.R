@@ -326,7 +326,9 @@ initialize_inline_edit_table_ui <- function(
   # use js to show the dropdowns
   init_js <- get_init_js(factor_info$factor_levels, tableID, has_double_header, header_cb)
   
-  callback_js <- paste0(callback_js, "
+  callback_js <- glue::glue("
+    {ifelse(callback_js != 'return table;', callback_js, '')}
+    
     $(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
       $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
     }});
@@ -346,13 +348,11 @@ initialize_inline_edit_table_ui <- function(
     }});
     
     // Exit cell editing with Tab (9), Enter (13), or Arrow Keys (37-40)
-    table.on('keydown', function(e){{
+    table.on('keydown', function(e) {{
       var keys = [9,13,37,38,39,40];
-      if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1){{
+      if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1)
         $(e.target).trigger('blur');
-      }}
-    }});"
-  )
+    }});")
   
   # --- STEP 1: handle user-specified options ---
   default_options <- list(
