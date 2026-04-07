@@ -326,6 +326,34 @@ initialize_inline_edit_table_ui <- function(
   # use js to show the dropdowns
   init_js <- get_init_js(factor_info$factor_levels, tableID, has_double_header, header_cb)
   
+  callback_js <- paste0(callback_js, "
+    $(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
+      $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
+    }});
+    $(document).on('mouseenter', 'table.dataTable tbody td', function() {{
+      $(this).css('cursor', 'pointer');
+      $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
+    }});
+    $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
+      $(this).css('background-color', 'inherit');
+    }});
+      
+    // Start cell editing with Enter key (13)   
+    table.on('key', function(e, datatable, key, cell, originalEvent) {{
+      var targetName = originalEvent.target.localName;
+      if(key == 13 && targetName == 'body')
+        $(cell.node()).trigger('dblclick.dt');
+    }});
+    
+    // Exit cell editing with Tab (9), Enter (13), or Arrow Keys (37-40)
+    table.on('keydown', function(e){{
+      var keys = [9,13,37,38,39,40];
+      if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1){{
+        $(e.target).trigger('blur');
+      }}
+    }});"
+  )
+  
   # --- STEP 1: handle user-specified options ---
   default_options <- list(
     dom = "tip",
