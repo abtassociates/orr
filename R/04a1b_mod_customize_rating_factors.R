@@ -430,7 +430,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
       refresh_trigger(\(x) x + 1)
       
-      module_returns$customize_rating_criteria <- TRUE
+      user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
     })
     
     ## store user settings for project type and target population
