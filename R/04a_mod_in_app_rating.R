@@ -42,7 +42,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
       updateSelectInput(
         session, 
         inputId = 'project_select', 
-        selected = if(fnrow(all_projects()) > 0 && !is.na(user_prev_project_selected)) user_prev_project_selected else character(0),
+        selected = if(fnrow(all_projects()) > 0 && !is.null(user_prev_project_selected)) user_prev_project_selected else character(0),
         choices = if(fnrow(all_projects()) > 0) setNames(all_projects()$project_id, all_projects()$project_name) else character(0)
       )
     })
