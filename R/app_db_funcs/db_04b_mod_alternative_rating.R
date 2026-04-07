@@ -23,6 +23,9 @@ get_alternative_rating <- function(coc_version_id) {
 
 
 update_project_evaluations_db <- function(p, updated_project_evaluation) {
+  message("Updated project evaluation:\n", 
+          paste(knitr::kable(updated_project_evaluation), collapse = "\n"))
+  
   save_to_db(
     p,
     "INSERT INTO project_evaluations (project_id, method, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by)

@@ -225,6 +225,9 @@ debugger;
     
     # Save ----------------------
     get_updated_project_evaluations <- function(username, ratable_projects) {
+      message("In get updated project evaluation, ratable_projects:\n", 
+              paste(knitr::kable(ratable_projects), collapse = "\n"))
+      
       ratable_projects |>
         fmutate(
           created_by = username,
