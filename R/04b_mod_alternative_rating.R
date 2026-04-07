@@ -171,7 +171,7 @@ debugger;
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
       needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
       
-      if(needs_refresh)
+      # if(needs_refresh)
         refresh_trigger(\(x) x + 1)
     }
     
