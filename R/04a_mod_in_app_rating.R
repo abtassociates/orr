@@ -75,6 +75,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     
     # Get the project to be rated from the dropdown in the sidebar
     selected_project <- reactive({
+      req(user_coc$coc_version_id)
       if (is.null(input$project_select) || input$project_select == "") return(NULL)
       
       all_projects() |> 
