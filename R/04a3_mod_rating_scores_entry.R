@@ -41,6 +41,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
     
     observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_rating_factors_updated), {
       req(user_coc$coc_version_id)
+      req(selected_project())
 
       # individual threshold entries
       factors_and_scores_for_project(
