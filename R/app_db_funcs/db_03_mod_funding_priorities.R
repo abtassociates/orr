@@ -53,10 +53,9 @@ get_coc_hud_ard_data <- function(c) {
     fmutate(
       adjusted_ard = tier_1/0.9,
       tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
-      yhdp_ard = estimated - min(adjusted_ard, estimated),
+      yhdp_ard = total_ard - min(adjusted_ard, total_ard),
       dv_ard = dv_ard[1]
-    ) |>
-    frename(estimated = "total_ard")
+    )
 }
 
 update_dv_ard <- function(p, params) {
