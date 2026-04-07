@@ -40,6 +40,9 @@ td.disabled {
 #funding_priorities-priorities_table table.dataTable td {
   text-align:center;
 }*/
+[id^="funding_priorities"].autonumeric-input {
+  font-size: 1.2rem !important; /*otherwise, default for currencyInput is 1.5rem which is too big*/
+}
 
 #inventory-projects_table .dataTables_scrollBody {
   height: 38vh !important;
