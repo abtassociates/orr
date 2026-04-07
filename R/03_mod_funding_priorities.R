@@ -118,7 +118,7 @@ mod_funding_priorities_ui <- function(id) {
   )
 }
 
-mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     refresh_trigger <- reactiveValues(
@@ -204,7 +204,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         join(
           pop_grp_toggles |> fselect(Population = full_text, pop, grp),
           on = c("target_population" = "pop", "population_group" = "grp"),
-          how = "right"
+          how = "right",
+          multiple = TRUE
         ) |>
         fselect(Population, project_type, beds, funding, priority) |>
         # For each Population, get all main project types, still in long format
@@ -248,16 +249,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       formatted_coc_funding_priorities(
         format_coc_funding_priorities(coc_funding_priorities())
       )
-      
-      ## Population toggles --------
-      selected_populations <- formatted_coc_funding_priorities() %>%
-        dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
-      
-      updateCheckboxGroupInput(
-        session,
-        "population_toggles",
-        selected = if(fnrow(selected_populations) > 0) selected_populations$Population else input$population_toggles
-      )
     })
     
     ## CoC NOFO Opportunities ------
@@ -299,8 +290,20 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     
     # Priorities section -----------------
+    observeEvent(user_coc$coc_version_id, {
+      ## Population toggles --------
+      selected_populations <- formatted_coc_funding_priorities() %>%
+        dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
+      
+      updateCheckboxGroupInput(
+        session,
+        "population_toggles",
+        selected = if(fnrow(selected_populations) > 0) selected_populations$Population else  c("General Families", "General Individuals", "Single Youth")
+      )
+    })
     output$priorities_table <- renderDT({
-      req(coc_funding_priorities())
+      req(user_coc$coc_version_id)
+      req(formatted_coc_funding_priorities())
       
       show_priorities_row <- length(input$population_toggles) > 0
       
@@ -356,43 +359,21 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           dom = 't',
           searching = FALSE,
           info = FALSE,
-          keys = TRUE
+          keys = TRUE,
+          ordering = FALSE
         ),
         filter = 'none',
-        callback_js = glue::glue(
-          "$(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
-            $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
-          }});
-          $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
-            $(this).css('background-color', 'inherit');
-          }});
-          
-          // Start cell editing with Enter key (13)
-          table.on('key', function(e, datatable, key, cell, originalEvent){{
-            var targetName = originalEvent.target.localName;
-            if(key == 13 && targetName == 'body'){{
-              $(cell.node()).trigger('dblclick.dt');
-            }}
-          }});
-          // Exit cell editing with Tab (9), Enter (13), or Arrow Keys (37-40)
-          table.on('keydown', function(e){{
-            var keys = [9,13,37,38,39,40];
-            if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1){{
-              $(e.target).trigger('blur');
-            }}
-          }});
-        "), 
         has_double_header = TRUE
       )      
       #end initialize_data_Table
     }, server = FALSE)
     
-    priorities_table_proxy <- dataTableProxy(ns("priorities_table"),session = session)
+    priorities_table_proxy <- dataTableProxy("priorities_table",session = session)
     
-    observe({
-      req(formatted_coc_funding_priorities())
-      replaceData(priorities_table_proxy, formatted_coc_funding_priorities(), resetPaging = FALSE)
-    })
+    # observe({
+    #   req(formatted_coc_funding_priorities())
+    #   replaceData(priorities_table_proxy, formatted_coc_funding_priorities(), resetPaging = FALSE)
+    # })
     
     
     # Update priorities data in table and db when cell is edited
@@ -411,6 +392,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # only proceed if they changed anything:
       old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE][[1]]
+      info$value <- DT::coerceValue(info$value, old_val)
+      
       req(!identical(old_val, info$value))
       
       col_name <- colnames(current_data)[info$col + 1]
@@ -449,7 +432,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
       
       # bed, funding, or priority
-      metric_name <- names(changed_data)[3]
+      metric_name <- names(changed_data)[3] # 3rd col is always the metric (bed/funding/priority)
       
       if(metric_name == "priority") 
         changed_data <- changed_data |>
@@ -463,7 +446,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         changed_data$population_group,
         changed_data[[metric_name]],
         user_coc$username,
-        date_updated = changed_data$date_updated
+        changed_data$date_updated
       )
       
       needs_refresh <- update_coc_funding_priorities_db(
@@ -475,7 +458,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       # if(needs_refresh)
         refresh_trigger$coc_funding_priorities <- refresh_trigger$coc_funding_priorities + 1
       
-      formatted_coc_funding_priorities(current_data)
+      # formatted_coc_funding_priorities(current_data)
     }) # end observeEvent
     
     

@@ -47,7 +47,7 @@ mod_inventory_ui <- function(id) {
   )
 }
 
-mod_inventory_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -257,12 +257,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           # p	Pagination controls
           # B	Buttons (CSV, Excel, PDF, etc.)
           dom = 'frtip'
-        ),
-        callback_js = "
-          $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
-            $(this).css('cursor', 'pointer');
-            $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
-          });"
+        )
       )
     }) # end project_Table renderDT
     
@@ -364,8 +359,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     ## consolidated append
     inventory_append <- function(new_project_data) {
       append_to_datatable(new_project_data)
-      append_inventory_to_db(new_project_data)
+      s <- append_inventory_to_db(new_project_data)
       
+      if(isTruthy(s))
+        user_coc$projects_updated <- user_coc$projects_updated + 1
       #showNotification("Project submitted successfully.", type = "message")
     }
     

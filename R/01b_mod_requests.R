@@ -30,13 +30,13 @@ mod_requests_ui <- function(id) {
   #)
 }
 
-mod_requests_server <- function(id, user_coc, module_returns) {
+mod_requests_server <- function(id, user_coc) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     cur_requests <- reactiveVal(NULL)
 
-    observeEvent(c(user_coc$auth, module_returns$updated_request), {
+    observeEvent(c(user_coc$auth, user_coc$requests_updated), {
       cur_requests(
         get_all_requests_by_user(user_coc$username) %>%
           fmutate(
