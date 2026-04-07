@@ -323,7 +323,7 @@ debugger;
             readxl::read_xlsx(input$rating_file$datapath)
           }
         }, error = function(e) {
-          log_error(e$message)
+          log_error(paste0("Importing Alt Rating...:", e$message))
           NULL
         })
         

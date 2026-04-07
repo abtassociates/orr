@@ -33,15 +33,18 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     ns <- session$ns
     
     ## restore last selected project from user_settings DB tbl
+    ## also update choices
     observe({
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      req(nrow(all_projects()) > 0)
       
       user_prev_project_selected <- get_user_setting(get_db_pool(), glue::glue('rating_{id}_project_selected'), user_coc$coc_version_id, user_coc$username)
       
-      if(length(user_prev_project_selected) > 0){
-        updateSelectInput(session, inputId = 'project_select', selected = user_prev_project_selected)
-      }
+      updateSelectInput(
+        session, 
+        inputId = 'project_select', 
+        selected = if(fnrow(all_projects()) > 0 && !is.null(user_prev_project_selected)) user_prev_project_selected else character(0),
+        choices = if(fnrow(all_projects()) > 0) setNames(all_projects()$project_id, all_projects()$project_name) else character(0)
+      )
     })
     
     # Collapse sidebar when user is on Customize Rating Criteria tab, since it's
@@ -76,20 +79,6 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
       
       all_projects() |> 
         fsubset(project_id == input$project_select)
-    })
-    
-    
-    # Update project selection choices when CoC is selected
-    observe({
-      req(user_coc$coc_version_id)
-      req(nrow(all_projects()) > 0)
-      
-      updateSelectInput(
-        session, 
-        "project_select",
-        choices = setNames(all_projects()$project_id, all_projects()$project_name),
-        selected = character(0)
-      )
     })
     
     # Show project info about the selected project
