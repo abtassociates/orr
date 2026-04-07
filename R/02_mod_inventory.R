@@ -189,13 +189,15 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
             targets = which(names(data) %in% renew_only_columns) - 1,
             render = JS(glue::glue(
               "function(data, type, row) {{
-                if (type === 'display') {
-                if (row[{funding_action_idx}] === 'New') return 'N/A';
-                if (data === null) return '';
-                
-                // Manual currency formatting: $1,234.56
-                return '$' + data.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,');
-              }"
+              debugger;
+                if (type === 'display') {{
+                  if (row[{{funding_action_idx}] == 'New') return 'N/A';
+                  if (data === null) return '';
+                  
+                  // Manual currency formatting: $1,234.56
+                  return '$' + data.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,');
+                }}
+              }}"
             ))
           )
         ),
