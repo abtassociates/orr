@@ -57,7 +57,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
 
 #' @title mod_new_factors_server
 #' @noRd
-mod_customize_rating_factors_server <- function(id, user_coc, funding_action, nav_control, module_returns) {
+mod_customize_rating_factors_server <- function(id, user_coc, funding_action, nav_control) {
   # The server logic here is identical in structure to the renewal/expansion module,
   # differing only by the `funding_action` filter ('New').
   moduleServer(id, function(input, output, session) {
@@ -155,6 +155,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
                   numericInput(ns(paste0("points_", id)), min = 1, label = NULL, value = points, step = 0.1)
                 )
                 
+                iv$add_rule(paste0("points_", id), sv_gte(0))
+                
                 layout_columns(
                   id = ns(paste0("rows_items_", gsub(" ", "-", group_name))),
                   col_widths = get_col_widths(funding_action),
@@ -191,9 +193,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             hr(),
             if(allNA(subgroup_data$rating_factor_id)) NULL else factor_rows,
             
-            # --- NEW: Add a placeholder for custom factors ---
+            # Add a placeholder for custom factors ---
             # This div will only be added for the specific subgroup.
-            # Adjust "Other/Local Priority" to match the exact name in your database.
             if (group_name == "Other and Local Criteria") {
               div(id = ns("custom_factors_placeholder"))
             }
@@ -302,7 +303,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     }
     
     # Function to generate the UI for a single custom factor row
-    
+    iv <- shinyvalidate::InputValidator$new()
+    iv$enable()
     
     output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
       data_groups_nested <- all_coc_factors_structured()
@@ -320,6 +322,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     # Observer for the "Add Custom Rating Factor" button
     # This just adds UI for the user to enter a new factor
     # It doesn't actually save until they click Save
+    iv_custom <- shinyvalidate::InputValidator$new()
+    # validate that rating_factor_text is not empty
+    iv_custom$add_rule("custom_text", sv_required())
+    iv_custom$add_rule("custom_text", ~ if(. %in% all_coc_factors()$rating_factor_text) "You already have a rating factor with this text.")
+    ## validate that max point value of >= 0
+    iv_custom$add_rule("custom_points", sv_gte(0))
+    
     observeEvent(input$add_custom_factor, {
       showModal(
         modalDialog(
@@ -355,22 +364,16 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
     }, ignoreInit = TRUE)
     
-    iv <- shinyvalidate::InputValidator$new()
-    
-    # validate that rating_factor_text is not empty
-    iv$add_rule("custom_text", sv_required())
-    ## validate that max point value of >= 0
-    iv$add_rule("custom_points", sv_gte(0))
-    
     observeEvent(input$cancel_custom_factor, {
-      iv$disable()
+      iv_custom$disable()
       removeModal()
     })
     
     observeEvent(input$submit_custom_factor, {
       
-      iv$enable()
-      req(iv$is_valid())
+      iv_custom$enable()
+      req(iv_custom$is_valid())
+      iv_custom$disable()
       removeModal()
       
       ## build new selected_rating_factors row
@@ -405,14 +408,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       inserted_custom_factor_info <- NULL
       
       pool::poolWithTransaction(get_db_pool(), function(p) {
-        
-        # insert new factor into DB, return rating_factor_id
+        # insert new factor into rating_Factor table in DB, return rating_factor_id
         inserted_custom_factor_info <- insert_custom_factor_to_db(
           p,
           custom_factor_data |>
             fselect(funding_action, coc_version_id, rating_factor_text, factor_group, goal, max_point_value, created_by, project_type, target_population)
         )
-        ## proceed only if first attempt succeeded
+        ## add to selected_rating_factor table only if first attempt succeeded
         if(length(inserted_custom_factor_info) > 0 && isTruthy(inserted_custom_factor_info)){
           # add the newly created rating factor ID to the set of selected factors (it's auto-selected)
           dbAppendTable(
@@ -428,7 +430,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
       refresh_trigger(\(x) x + 1)
       
-      module_returns$customize_rating_criteria <- TRUE
+      user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
     })
     
     ## store user settings for project type and target population
@@ -443,6 +445,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     }, ignoreInit = TRUE)
     
     observeEvent(input$save_factors, {
+      req(iv$is_valid())
+      
       updated_selected_rating_factors <- rbindlist(lapply(all_coc_factors()$rating_factor_id, function(id) {
         data.table(
           rating_factor_id = id,
@@ -502,8 +506,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
       # if(is.null(inserted_custom_factor_info) || needs_refresh2)
         refresh_trigger(\(x) x + 1)
-      
-      module_returns$customize_rating_criteria <- TRUE
+      if(!needs_refresh2)
+        user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
     }, ignoreInit = TRUE)
   })
 }

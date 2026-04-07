@@ -28,7 +28,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
-    observeEvent(refresh_trigger(), {
+    observeEvent(c(refresh_trigger(), user_coc$projects_updated), {
       req(user_coc$coc_version_id)
       
       ratable_projects(
@@ -54,6 +54,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     }
     
     output$alternative_rating_table <- renderDT({
+      req(user_coc$coc_version_id)
       data <- isolate(ratable_projects())
 
       shiny::validate(need(
@@ -322,7 +323,7 @@ debugger;
             readxl::read_xlsx(input$rating_file$datapath)
           }
         }, error = function(e) {
-          log_error(e$message)
+          log_error(paste0("Importing Alt Rating...:", e$message))
           NULL
         })
         

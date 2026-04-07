@@ -276,7 +276,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
     showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
-    log_error(e$message)
+    log_error(paste0(sql, e$message))
     stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }
@@ -312,22 +312,26 @@ add_optimistic_locking <- function(sql) {
 get_old_val <- function(info, visible_rows, full_data, server=TRUE) {
   if("oldValue" %in% info) 
     return(info$oldValue)
-  
-  else if(server) {
-    # Map displayed row -> actual row index
-    actual_row_index <- visible_rows[info$row]
-    
-    # Get the ID
-    order <- seq_row(full_data)
-    row_id <- order[actual_row_index]
-    
-    # Now find the row in your full dataset using the ID
-    true_row <- which(order == order[actual_row_index])
-    
-    return(full_data[true_row, info$col + 1, with=FALSE])
-  } else {
+  else
     return(full_data[info$row, info$col + 1, with=FALSE])
-  }
+  #   
+  # else if(server) {
+  #   browser()
+  #   # Map displayed row -> actual row index
+  #   actual_row_index <- whichv(visible_rows, info$row)
+  #   
+  #   # Get the ID
+  #   order <- seq_row(full_data)
+  #   row_id <- order[info$row]
+  #   
+  #   # Now find the row in your full dataset using the ID
+  #   true_row <- whichv(order, order[info$row])
+  #   
+  #   return(full_data[info$row, info$col + 1, with=FALSE])
+  # } else {
+  #   browser()
+  #   return(full_data[info$row, info$col + 1, with=FALSE])
+  # }
   
 }
 revert_cell <- function(tableID, info, visible_rows, full_data) {

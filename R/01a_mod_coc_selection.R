@@ -18,7 +18,7 @@ mod_coc_selection_ui <- function(id) {
   )
 }
 
-mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -139,8 +139,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
         params = list(
           get_lookup_refid("In Progress", "coc_status"), 
           user_coc$username, 
-          user_coc$coc_version_id, 
-          users_versions()[input$coc_versions_dt_rows_selected]$version_id
+          user_coc$coc_version_id #, 
+          # users_versions()[input$coc_versions_dt_rows_selected]$version_id
         )
       )
       
@@ -530,7 +530,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session, 
       
       ## TODO: send email to admin of version that is requested
       
-      module_returns$updated_request <- module_returns$updated_request + 1
+      user_coc$requests_updated <- user_coc$requests_updated + 1
       
       removeModal()
       
