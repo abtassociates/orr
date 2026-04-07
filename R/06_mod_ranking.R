@@ -430,70 +430,86 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       priorities <- get_ceilings_priorities(user_coc$coc_version_id)
       
       if (fnrow(priorities) > 0) {
-        priorities[, prio_score := fcase(priority == "High", 3, priority == "Medium", 2, priority == "Low", 1, default = 0)]
-        
-        priorities[, combo := fcase(
-          target_population == "General" & population_group == "Family", "all_fam",
-          target_population == "DV" & population_group == "Family", "dv_fam",
-          target_population == "CH" & population_group == "Family", "ch_fam",
-          target_population == "Vet" & population_group == "Family", "vet_fam",
-          target_population == "Youth" & population_group == "Family", "par_youth",
-          target_population == "General" & population_group == "Individual", "all_ind",
-          target_population == "DV" & population_group == "Individual", "dv_ind",
-          target_population == "CH" & population_group == "Individual", "ch_ind",
-          target_population == "Vet" & population_group == "Individual", "vet_ind",
-          target_population == "Youth" & population_group == "Individual", "single_youth",
-          default = "other"
-        )]
+        # priorities[, combo := fcase(
+        #   target_population == "General" & population_group == "Family", "all_fam",
+        #   target_population == "DV" & population_group == "Family", "dv_fam",
+        #   target_population == "CH" & population_group == "Family", "ch_fam",
+        #   target_population == "Vet" & population_group == "Family", "vet_fam",
+        #   target_population == "Youth" & population_group == "Family", "par_youth",
+        #   target_population == "General" & population_group == "Individual", "all_ind",
+        #   target_population == "DV" & population_group == "Individual", "dv_ind",
+        #   target_population == "CH" & population_group == "Individual", "ch_ind",
+        #   target_population == "Vet" & population_group == "Individual", "vet_ind",
+        #   target_population == "Youth" & population_group == "Individual", "single_youth",
+        #   default = "other"
+        # )]
         
         priorities <- priorities[!is.na(project_type) & combo != "other"]
-        safe_max <- function(x) { if (all(is.na(x))) NA_real_ else max(x, na.rm = TRUE) }
+        safe_max <- function(x) { if (all(is.na(x))) NA_integer_ else max(x, na.rm = TRUE) }
         
         browser() # can we switcht ocollapose?
         # Pivot Wide for Priorities
-        wide_prio <- dcast(priorities, project_type ~ combo, value.var = "prio_score", fun.aggregate = safe_max, fill = 0)
-        setnames(wide_prio, setdiff(names(wide_prio), "project_type"), paste0("prio_", setdiff(names(wide_prio), "project_type")))
-        
+        unspecified_id <- get_lookup_refid("Unspecified", "priority")
+        wide_prio <- priorities |>
+          pivot(
+            ids = "project_type",
+            values = "priority",
+            how = "wider",
+            names = c("target_population", "population_group"),
+            # na.rm=TRUE,
+            # FUN = "max",
+            transpose = TRUE,
+            fill = unspecified_id
+          ) %>%
+          setnames(colnames(.)[-1], paste0("prio_", colnames(.)[-1])) |>
+          replace_NA(unspecified_id)
+  
         # Pivot Wide for Bed Ceilings
-        wide_beds <- dcast(priorities, project_type ~ combo, value.var = "ceil_beds", fun.aggregate = safe_max, fill = NA_real_)
-        setnames(wide_beds, setdiff(names(wide_beds), "project_type"), paste0("ceil_beds_", setdiff(names(wide_beds), "project_type")))
-        
+        wide_beds <- priorities |>
+          pivot(
+            ids = "project_type",
+            values = "ceil_beds",
+            how = "wider",
+            names = c("target_population", "population_group"),
+            transpose = TRUE
+          ) %>%
+          setnames(colnames(.)[-1], paste0("ceil_beds_", colnames(.)[-1]))
+
         # Pivot Wide for Funding Ceilings
-        wide_fund <- dcast(priorities, project_type ~ combo, value.var = "ceil_fund", fun.aggregate = safe_max, fill = NA_real_)
-        setnames(wide_fund, setdiff(names(wide_fund), "project_type"), paste0("ceil_fund_", setdiff(names(wide_fund), "project_type")))
+        wide_fund <- priorities |>
+          pivot(
+            ids = "project_type",
+            values = "ceil_fund",
+            how = "wider",
+            names = c("target_population", "population_group"),
+            transpose = TRUE
+          ) %>%
+          setnames(colnames(.)[-1], paste0("ceil_fund_", colnames(.)[-1]))
         
-        dt <- merge(dt, wide_prio, by = "project_type", all.x = TRUE)
-        dt <- merge(dt, wide_beds, by = "project_type", all.x = TRUE)
-        dt <- merge(dt, wide_fund, by = "project_type", all.x = TRUE)
+        browser()
+        dt <- dt |>
+          join(wide_prio, on = "project_type") |>
+          join(wide_beds, on = "project_type") |>
+          join(wide_fund, on = "project_type")
       }
       
       # Ensure target columns exist safely
-      expected_combos <- c("all_fam", "dv_fam", "ch_fam", "vet_fam", "par_youth", "all_ind", "dv_ind", "ch_ind", "vet_ind", "single_youth")
-      for (cb in expected_combos) {
-        if (!paste0("prio_", cb) %in% names(dt)) dt[, (paste0("prio_", cb)) := 0]
-        if (!paste0("ceil_beds_", cb) %in% names(dt)) dt[, (paste0("ceil_beds_", cb)) := NA_real_]
-        if (!paste0("ceil_fund_", cb) %in% names(dt)) dt[, (paste0("ceil_fund_", cb)) := NA_real_]
-      }
-      
       bed_cols <- c("all_fam_beds", "dv_fam_beds", "ch_fam_beds", "vet_fam_beds", "par_youth_beds", 
                     "all_ind_beds", "dv_ind_beds", "total_ch_ind_beds", "vet_ind_beds", "single_youth_beds")
-      for (col in bed_cols) {
-        if (!col %in% names(dt)) { dt[, (col) := 0] } else { dt[is.na(get(col)), (col) := 0] }
-      }
-      
+
       dt[, total_beds := all_fam_beds + all_ind_beds]
       unspec_types <- c("HMIS", "HMIS Project", "OPH", "SSO", "SSO+CE", "SSO-CE", "SSO-Host Homes", "SH")
       
       # Assign Priority Based on Bed Distribution
       dt[, calc_prio_score := fcase(
         project_type %in% unspec_types, 0,
-        dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_dv_fam, prio_dv_ind, na.rm = TRUE),
+        dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_DV_family, prio_DV_Individual, na.rm = TRUE),
         
         (ch_fam_beds >= 0.5 * total_beds & total_beds > 0) | (vet_fam_beds >= 0.5 * total_beds & total_beds > 0) |
           (par_youth_beds >= 0.5 * total_beds & total_beds > 0) | (total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0) |
           (vet_ind_beds >= 0.5 * total_beds & total_beds > 0) | (single_youth_beds >= 0.5 * total_beds & total_beds > 0),
         pmax(
-          fifelse(ch_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_ch_fam, 0),
+          fifelse(ch_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_CH_Family, 0),
           fifelse(vet_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_vet_fam, 0),
           fifelse(par_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_par_youth, 0),
           fifelse(total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0, prio_ch_ind, 0),
