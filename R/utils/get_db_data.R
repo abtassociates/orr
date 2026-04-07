@@ -29,12 +29,11 @@ get_db_tbl <- function(tbl_name) {
     })
     
     tbl <- tbl |> 
-      qDT() |>
-      convert_timestamps_to_char()
+      qDT()
     
     return(tbl)
   }, error = function(e) {
-    log_error(paste0(sql, e$message))
+    log_error(paste0("Importing ", tbl_name, e$message))
     list(ok = FALSE, error = e$message)
   })
 }

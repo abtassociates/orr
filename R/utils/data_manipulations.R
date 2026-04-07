@@ -210,8 +210,7 @@ insert_and_return <- function(p, table, new_dt, return_cols) {
     ), 
     params = paramify(new_dt)
   ) |>
-    qDT() |>
-    convert_timestamps_to_char()
+    qDT()
   
   return(results)
 }
@@ -301,7 +300,7 @@ add_optimistic_locking <- function(sql) {
   sql_with_locking <- glue::glue(
     "  {trimws(sql, which = 'right')},\n
       date_updated = CURRENT_TIMESTAMP,
-      version_id = version_id + 1,
+      version_id = version_id + 1
     WHERE {tbl_name}.version_id = ${n + 1}
       OR (${n + 1} IS NULL AND {tbl_name}.version_id IS NULL)"
   )
