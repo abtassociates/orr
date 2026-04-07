@@ -415,6 +415,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # only proceed if they changed anything:
       old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE][[1]]
+      info$value <- DT::coerceValue(info$value, old_val)
+      
       req(!identical(old_val, info$value))
       
       col_name <- colnames(current_data)[info$col + 1]
