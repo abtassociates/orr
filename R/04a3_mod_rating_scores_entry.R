@@ -137,8 +137,15 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
     
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
+      selected_project_exists <- !is.null(selected_project()) && fnrow(selected_project()) > 0
+      
+      if(!selected_project_exists) {
+        shinyjs::hide(id = "total_row")
+        shinyjs::hide(id = "weighted_total_row")
+      }
+      
       shiny::validate(need(
-        !is.null(selected_project()),
+        selected_project_exists,
         "Select a project in the left-hand sidebar to begin rating"
       ))
 
