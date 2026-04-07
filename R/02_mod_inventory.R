@@ -257,12 +257,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           # p	Pagination controls
           # B	Buttons (CSV, Excel, PDF, etc.)
           dom = 'frtip'
-        ),
-        callback_js = "
-          $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
-            $(this).css('cursor', 'pointer');
-            $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
-          });"
+        )
       )
     }) # end project_Table renderDT
     
