@@ -71,8 +71,6 @@ coc_versions <- data.table(
     second_user,
     second_user
   ),
-  date_created = get_db_timestamp(),
-  date_updated = get_db_timestamp(),
   updated_by = main_user
 )
 
@@ -92,8 +90,6 @@ coc_version_users <- data.table(
     main_user,
     second_user
   ),
-  date_created = get_db_timestamp(),
-  date_updated = get_db_timestamp(),
   updated_by = main_user
 )
 
@@ -114,8 +110,8 @@ coc_version_requests <- data.table(
     main_user,
     main_user
   ),
-  date_created = format(Sys.time() - c(86400, 43200, 86300, 43200), "%Y-%m-%d %H:%M:%S"),  # 1 day ago, 12 hours ago
-  date_updated = format(Sys.time() - c(86400, 43200, 86300, 43200), "%Y-%m-%d %H:%M:%S"),
+  date_created = Sys.time() - c(86400, 43200, 86300, 43200),  # 1 day ago, 12 hours ago
+  date_updated = Sys.time() - c(86400, 43200, 86300, 43200),
   updated_by = main_user
 )
 
@@ -176,10 +172,10 @@ for (i in 1:nrow(coc_versions)) {
   filtered_data <- get_hic_data(current_row$coc, current_row$coc_version_id)
   num_projects <- fnrow(filtered_data)
 
+  ids <- if(total_projects == 0) seq(1, num_projects) else seq(total_projects + 1, total_projects + num_projects)
+  
   filtered_data <- filtered_data |>
-    fmutate(project_id = -1*
-      if(total_projects == 0) seq(1, num_projects) else seq(total_projects + 1, total_projects + num_projects)
-    )
+    fmutate(project_id = -1*ids)
   
   total_projects <- total_projects + num_projects
 

@@ -198,7 +198,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
           project_id = params$project_id
         ) |>
         fsubset(met_threshold_new != fcoalesce(as.logical(met_threshold), FALSE)) |>
-        fselect(project_id, threshold_id, met_threshold_new, created_by, date_updated)
+        fselect(project_id, threshold_id, met_threshold_new, created_by, version_id)
     }
     get_updated_project_evaluation <- function(params) {
       data.table(
@@ -206,9 +206,9 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
         met_HUD_thresholds = params$met_all_HUD_requirements,
         met_CoC_thresholds = params$met_all_CoC_requirements,
         created_by = params$username,
-        date_updated = params$date_updated
+        version_id = params$version_id
       ) |>
-        fselect(project_id, met_HUD_thresholds, met_CoC_thresholds, created_by, date_updated)
+        fselect(project_id, met_HUD_thresholds, met_CoC_thresholds, created_by, version_id)
     }
     
     observeEvent(input$save_requirements, {
@@ -230,10 +230,10 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
           met_all_HUD_requirements = input$yes_to_all_HUD,
           met_all_CoC_requirements = input$yes_to_all_CoC,
           username = user_coc$username,
-          date_updated = ifelse(
-            is_empty(project_evaluation()$date_updated), 
+          version_id = ifelse(
+            is_empty(project_evaluation()$version_id), 
             NA, 
-            project_evaluation()$date_updated
+            project_evaluation()$version_id
           )
         )
       )
