@@ -14,7 +14,8 @@ mod_in_app_rating_ui <- function(id, funding_action) {
       style = "min-height: 500px;",
       # the side bar will be 
       sidebar = sidebar(
-        width = 350,
+        width = 250,
+        open = "desktop",
         id = ns("project_selection_sidebar"),
         selectInput(ns("project_select"), label = "Select Project", choices = NULL),
         uiOutput(ns("project_info_sidebar"))
@@ -66,7 +67,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     all_projects <- reactive({
       req(user_coc$coc_version_id)
       funding_action_ids <- get_lookup_refid(
-        ifelse(funding_action == "Renew", c("Renew","Expand"), "New"),
+        if(funding_action == "Renew") c("Renew","Expand") else "New",
         "funding_action"
       )
       
