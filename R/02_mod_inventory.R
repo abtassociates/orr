@@ -173,7 +173,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       col_inds_to_hide <- match(initial_cols_to_hide, names(data)) - 1
       
       funding_action_idx <- match("funding_action", names(data)) - 1
-      
+      grant_number_idx <- match("grant_number", names(data)) - 1
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
@@ -188,15 +188,19 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           list(
             targets = which(names(data) %in% renew_only_columns) - 1,
             render = JS(glue::glue(
-              "function(data, type, row) {{
-              debugger;
-                if (type === 'display') {{
-                  if (row[{{funding_action_idx}] == 'New') return 'N/A';
-                  if (data === null) return '';
-                  
-                  // Manual currency formatting: $1,234.56
-                  return '$' + data.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,');
-                }}
+              "function(data, type, row, meta) {{
+                if(type != 'display') return data;
+                
+                if (row === undefined) return data;
+                if (row[{funding_action_idx}] == 'New') return 'N/A';
+                if (data === null) return '';
+                if(meta.col == {grant_number_idx}) return data;
+                
+                // Manual currency formatting: $1,234.56
+                // Ensure data is numeric before calling toFixed
+                var num = Number(data);
+                if (isNaN(num)) return data; 
+                return '$' + num.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,');
               }}"
             ))
           )
@@ -368,6 +372,15 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
         (col_name) := value
       ] |>
         add_calculated_fields()
+      
+      if(col_name == "funding_action" && value == "New") {
+        updated_data <- updated_data |>
+          fmutate(
+            grant_number = NA,
+            coc_amount_awarded_last_year = NA,
+            coc_amount_expended_last_year = NA
+          )
+      }
       
       projects_data(updated_data)
     }
