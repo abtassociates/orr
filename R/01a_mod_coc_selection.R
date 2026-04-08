@@ -178,6 +178,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     observeEvent(input$confirm_deletion, {
       delete_coc_version(user_coc$coc_version_id)
+      remove_modal()
+      refresh_trigger(\(x) x + 1)
     })
     
     ## Copy selected version ------------
