@@ -427,7 +427,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         ) |>
         join(
           coc_funding_priorities() |> 
-            fselect(project_type, target_population, population_group, date_updated),
+            fselect(project_type, target_population, population_group, version_id),
           on = c("project_type", "target_population", "population_group")
         )
       
@@ -446,7 +446,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         changed_data$population_group,
         changed_data[[metric_name]],
         user_coc$username,
-        changed_data$date_updated
+        changed_data$version_id
       )
       
       needs_refresh <- update_coc_funding_priorities_db(
@@ -473,7 +473,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           created_by = params$created_by
         ) |>
         fsubset(selected_new != fcoalesce(as.logical(selected), FALSE)) |>
-        fselect(coc_version_id, coc_nofo_opportunity_id, selected_new, created_by, date_updated)
+        fselect(coc_version_id, coc_nofo_opportunity_id, selected_new, created_by, version_id)
     }
     
     ## Save to db -------------

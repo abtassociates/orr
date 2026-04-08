@@ -15,7 +15,7 @@ get_rating_factors_and_scores <- function(coc_version_id, selected_project) {
       fg.factor_group, fsg.factor_subgroup, 
       sr.goal, sr.max_point_value,
       rs.rating_score, rs.performance, rs.project_id,
-      rs.date_updated
+      rs.version_id
     FROM rating_factors r
     INNER JOIN selected_rating_factors sr ON sr.rating_factor_id = r.rating_factor_id AND sr.coc_version_id = $1
     JOIN factor_groups fg ON r.factor_group = fg.factor_group_id

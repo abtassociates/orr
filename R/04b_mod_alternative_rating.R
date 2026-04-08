@@ -231,7 +231,7 @@ debugger;
           met_hud_thresholds = met_hud_thresholds == 'Yes',
           met_coc_thresholds = met_coc_thresholds == 'Yes'
         ) |>
-        fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by, date_updated)
+        fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by, version_id)
     }
     
     # observeEvent(input$save_rating, {

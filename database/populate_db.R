@@ -1353,6 +1353,16 @@ CREATE TABLE IF NOT EXISTS ranking (
 );
 "))
 
+################
+# ADD VERSION ID
+# (for optimistic locking)
+#################
+tables <- DBI::dbListTables(get_db_pool())
+tables <- setdiff(tables, c("sqlite_sequence"))
+for(t in tables) {
+  DBI::dbExecute(get_db_pool(),  glue::glue("ALTER TABLE {t} ADD COLUMN version_id INTEGER NOT NULL DEFAULT 0;"))
+}
+
 #################
 # CREATE INDEXES
 ###############

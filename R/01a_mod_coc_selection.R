@@ -60,8 +60,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ####
     output$coc_versions_dt <- renderDT({
       req(user_coc$auth)
-      datatable(users_versions(), 
-                colnames = unname(versions_variable_labels[match(names(users_versions()),  names(versions_variable_labels))]),
+      
+      data <- users_versions() |> fselect(-version_id)
+      datatable(data, 
+                colnames = unname(versions_variable_labels[match(names(data),  names(versions_variable_labels))]),
                 rownames = FALSE,
                 options = list(
                   dom = 'ftip', 

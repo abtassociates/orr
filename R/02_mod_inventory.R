@@ -281,11 +281,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("projects_table"),session = session)
+    projects_table_proxy <- dataTableProxy("projects_table",session = session)
     
     observe({
       req(projects_data())
-      replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
+      replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE, rownames = FALSE)
     })
     
     # Checks whether value is valid

@@ -1,6 +1,6 @@
 get_all_thresholds_to_enter <- function(coc_version_id, project_id) {
   get_db_query(
-    "SELECT st.selected_threshold_id, st.selected, t.type, t.threshold_text, t.threshold_id, te.met_threshold, te.threshold_entry_id, te.date_updated
+    "SELECT st.selected_threshold_id, st.selected, t.type, t.threshold_text, t.threshold_id, te.met_threshold, te.threshold_entry_id, te.version_id
     FROM thresholds t
     LEFT JOIN selected_thresholds st ON st.threshold_id = t.threshold_id 
       AND st.coc_version_id = $1

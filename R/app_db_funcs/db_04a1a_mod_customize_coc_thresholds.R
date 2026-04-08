@@ -1,17 +1,13 @@
 get_all_coc_thresholds <- function(coc_version_id) {
   get_db_query(
-    "SELECT t.threshold_id, t.threshold_text, st.selected, t.date_updated AS threshold_date_updated, st.date_updated AS selected_threshold_date_updated
+    "SELECT t.threshold_id, t.threshold_text, st.selected, t.version_id AS threshold_version_id, st.version_id AS selected_threshold_version_id
         FROM thresholds t
         LEFT JOIN selected_thresholds st ON t.threshold_id = st.threshold_id AND st.coc_version_id = $1
         WHERE t.type = 'CoC' AND 
           (t.coc_version_id = $1 OR t.coc_version_id IS NULL)
         ORDER BY t.threshold_id",
     params = list(coc_version_id)
-  ) |>
-    fmutate(
-      threshold_date_updated = as.character(threshold_date_updated, tz = "UTC"),
-      selected_threshold_date_updated = as.character(selected_threshold_date_updated, tz = "UTC")
-    )
+  )
 }
 
 update_thresholds_db <- function(p, updated_thresholds) {
@@ -23,7 +19,7 @@ update_thresholds_db <- function(p, updated_thresholds) {
             ON CONFLICT (coc_version_id, threshold_text) DO UPDATE SET
               updated_by = EXCLUDED.created_by
           " |> add_optimistic_locking(),
-      "\nRETURNING threshold_id, coc_version_id, date_updated"
+      "\nRETURNING threshold_id, coc_version_id, version_id"
     ),
     updated_thresholds,
     "thresholds"

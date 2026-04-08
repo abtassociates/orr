@@ -210,8 +210,7 @@ insert_and_return <- function(p, table, new_dt, return_cols) {
     ), 
     params = paramify(new_dt)
   ) |>
-    qDT() |>
-    convert_timestamps_to_char()
+    qDT()
   
   return(results)
 }
@@ -222,7 +221,7 @@ format_timestamp <- function(t) {
 
 
 get_db_timestamp <- function() {
-  as.character(Sys.time())
+  format_timestamp(Sys.time())
 }
 
 save_to_db <- function(p, sql, params, tbl_name) {
@@ -299,10 +298,11 @@ add_optimistic_locking <- function(sql) {
   
   # 3. Append date_updated and WHERE clause
   sql_with_locking <- glue::glue(
-    "{trimws(sql, which = 'right')},\n",
-    "            date_updated = CURRENT_TIMESTAMP",
-    "          WHERE {tbl_name}.date_updated = ${n + 1} ",
-    "OR (${n + 1} IS NULL AND {tbl_name}.date_updated IS NULL)"
+    "  {trimws(sql, which = 'right')},\n
+      date_updated = CURRENT_TIMESTAMP,
+      version_id = version_id + 1
+    WHERE {tbl_name}.version_id = ${n + 1}
+      OR (${n + 1} IS NULL AND {tbl_name}.version_id IS NULL)"
   )
   
   sql_with_locking

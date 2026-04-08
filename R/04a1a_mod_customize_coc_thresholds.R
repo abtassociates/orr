@@ -81,7 +81,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
           coc_version_id = params$coc_version_id,
           username = params$username
         ) |>
-        fselect(threshold_id, coc_version_id, selected, username, selected_threshold_date_updated)
+        fselect(threshold_id, coc_version_id, selected, username, selected_threshold_version_id)
     }
     
     observeEvent(input$save_thresholds, {
@@ -127,15 +127,15 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       removeModal()
       req(nchar(trimws(input$custom_threshold_text)) > 0)
       
-      current_date_updated_for_threshold <- all_coc_thresholds()[ 
+      current_version_id_for_threshold <- all_coc_thresholds()[ 
         threshold_text == input$custom_threshold_text
-      ]$threshold_date_updated
+      ]$threshold_version_id
       
       updated_custom_threshold <- list(
         user_coc$coc_version_id, 
         input$custom_threshold_text,
         user_coc$username,
-        if (length(current_date_updated_for_threshold) > 0) current_date_updated_for_threshold else NA
+        if (length(current_version_id_for_threshold) > 0) current_version_id_for_threshold else NA
       )
       
       # These don't need to be tied together, but it avoids dealing with 2 different conflicts
@@ -149,7 +149,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
             selected = TRUE,
             created_by = user_coc$username
           ) |>
-          fselect(threshold_id, coc_version_id, selected, created_by, date_updated)
+          fselect(threshold_id, coc_version_id, selected, created_by, version_id)
 
         needs_refresh2 <- update_selected_thresholds_db(p, updated_selected_thresholds)
       })
