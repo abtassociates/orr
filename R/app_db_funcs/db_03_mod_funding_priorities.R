@@ -54,7 +54,7 @@ update_dv_ard <- function(p, params) {
       SET 
         dv_ard = $1, 
         updated_by = $2, 
-        date_updated = CURRENT_TIMESTAMP
+        date_updated = CURRENT_TIMESTAMP,
         version_id = version_id + 1
       WHERE coc_version_id = $3",
       paramify(params)
