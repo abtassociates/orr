@@ -300,7 +300,7 @@ add_optimistic_locking <- function(sql) {
   sql_with_locking <- glue::glue(
     "  {trimws(sql, which = 'right')},\n
       date_updated = CURRENT_TIMESTAMP,
-      version_id = version_id + 1
+      version_id = {tbl_name}.version_id + 1
     WHERE {tbl_name}.version_id = ${n + 1}
       OR (${n + 1} IS NULL AND {tbl_name}.version_id IS NULL)"
   )
