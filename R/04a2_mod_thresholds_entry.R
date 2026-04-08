@@ -133,62 +133,69 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       }
     })
     
-    stop_yes_to_all_cascade <- reactiveValues()
-    stop_yes_to_all_cascade$HUD <- FALSE
-    stop_yes_to_all_cascade$CoC <- FALSE
-    
-    toggle_yes_to_all <- function(ttype) {
-      req(user_coc$coc_version_id, selected_project())
-
-      if(stop_yes_to_all_cascade[[ttype]]) {
-        stop_yes_to_all_cascade[[ttype]] <- FALSE
-        return()
-      }
+    lapply(c("HUD", "CoC"), function(ttype) {
       
-      thresholds_to_select <- thresholds_to_enter()[type == ttype, threshold_id]
-      thresholds_selected <- input[[paste0(ttype, "_requirements")]]
-
-      stop_yes_to_all_cascade[[ttype]] <- TRUE
-      updateCheckboxInput(
-        session,
-        paste0("yes_to_all_", ttype),
-        value = setequal(thresholds_to_select, thresholds_selected)
-      )
-    }
-    
-    observeEvent(input$HUD_requirements, toggle_yes_to_all("HUD"), ignoreNULL = FALSE)
-    observeEvent(input$CoC_requirements, toggle_yes_to_all("CoC"), ignoreNULL = FALSE)
-    
-    # Toggle HUD/CoC requirements when yes-to-all box is checked/unchecked
-    yes_to_all <- reactiveValues()
-    lapply(c("HUD","CoC"), function(ttype) {
+      # 1. When individual checkboxes are clicked...
+      observeEvent(input[[paste0(ttype, "_requirements")]], {
+        req(user_coc$coc_version_id, selected_project(), thresholds_to_enter())
+        
+        all_options <- thresholds_to_enter()[type == ttype, threshold_id]
+        current_selected <- input[[paste0(ttype, "_requirements")]]
+        
+        should_be_yes_to_all <- setequal(all_options, current_selected)
+        current_yes_to_all_state <- isTRUE(input[[paste0("yes_to_all_", ttype)]])
+        
+        # Update "Yes to All" only if it doesn't match what it should be
+        if (should_be_yes_to_all != current_yes_to_all_state) {
+          updateCheckboxInput(
+            session,
+            paste0("yes_to_all_", ttype),
+            value = should_be_yes_to_all
+          )
+        }
+      }, ignoreNULL = FALSE, ignoreInit = TRUE) 
+      
+      
+      # 2. When the "Yes to All" checkbox is clicked...
       observeEvent(input[[paste0("yes_to_all_", ttype)]], {
         req(user_coc$coc_version_id, selected_project())
-
-        if(stop_yes_to_all_cascade[[ttype]]) {
-          stop_yes_to_all_cascade[[ttype]] <- FALSE
-          req(FALSE)
+        
+        all_options <- thresholds_to_enter()[type == ttype, threshold_id]
+        current_selected <- input[[paste0(ttype, "_requirements")]]
+        is_yes_to_all_checked <- isTRUE(input[[paste0("yes_to_all_", ttype)]])
+        
+        # Determine what the group SHOULD look like
+        if (is_yes_to_all_checked) {
+          
+          target_group_state <- all_options
+          
+        } else {
+          # If Yes-to-all is unchecked, we must figure out WHY:
+          # Did the user click "Yes to all" to uncheck it? 
+          # Or did the system uncheck it because the user unchecked a single box?
+          
+          if (setequal(current_selected, all_options)) {
+            # The group is completely full. This means the user explicitly 
+            # clicked the "Yes to all" box to wipe the list.
+            target_group_state <- character(0)
+          } else {
+            # The group is ALREADY missing items. This means the system triggered this 
+            # event to sync the UI. We should leave the group exactly as it is.
+            target_group_state <- current_selected 
+          }
         }
         
-        new_val <- input[[paste0("yes_to_all_", ttype)]]
-        
-        stored_val <- isolate(yes_to_all[[ttype]])
-        # is_initialized <- !is.null(stored_val)
-        
-        # Only update children if the user clicked (value changed from what we last recorded)
-        if(!identical(new_val, stored_val)) {
-          yes_to_all[[ttype]] <- new_val
-          
-          stop_yes_to_all_cascade[[ttype]] <- TRUE
-          
+        # Update the group only if it doesn't already match the target
+        if (!setequal(current_selected, target_group_state)) {
           updateCheckboxGroupInput(
             session,
             paste0(ttype, "_requirements"),
-            selected = if(new_val) thresholds_to_enter()[type == ttype]$threshold_id else character(0)
+            selected = target_group_state
           )
         }
-      }, ignoreInit = TRUE)
-    }) # end yes_to_all handler
+      }, ignoreNULL = FALSE, ignoreInit = TRUE)
+      
+    })
     
     # --- Saving to db ---------------
     get_thresholds_to_enter <- function(params) {
