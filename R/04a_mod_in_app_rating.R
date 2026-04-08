@@ -14,7 +14,8 @@ mod_in_app_rating_ui <- function(id, funding_action) {
       style = "min-height: 500px;",
       # the side bar will be 
       sidebar = sidebar(
-        width = 350,
+        width = 250,
+        open = "desktop",
         id = ns("project_selection_sidebar"),
         selectInput(ns("project_select"), label = "Select Project", choices = NULL),
         uiOutput(ns("project_info_sidebar"))

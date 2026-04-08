@@ -1,6 +1,24 @@
 # UI modules for project rating
+get_col_widths <- function() {
+  # Extra small	None	<576px
+  # Small	sm	≥576px
+  # Medium	md	≥768px
+  # Large	lg	≥992px
+  # Extra large	xl	≥1200px
+  # Extra extra large	xxl	≥1400px
+  breakpoints(
+    sm = c(4, 2, 2, 2, 2),
+    md = c(4, 2, 2, 2, 2),
+    lg = c(4, 2, 2, 2, 2),
+    xl = c(5, 2, 2, 1, 2),
+    xxl = c(5, 2, 2, 1, 2)
+  )
+}
+
 mod_rating_scores_entry_ui <- function(id) {
   ns <- NS(id)
+  col_widths <- get_col_widths()
+  
   nav_panel(
     "Rating Entry",
     value = id,
@@ -24,7 +42,7 @@ mod_rating_scores_entry_ui <- function(id) {
         id = ns("total_row"),
         style = "display:none;",
         layout_columns(
-          col_widths = c(5, 2, 2, 1, 2),
+          col_widths = col_widths,
           div(strong("Total")),
           div(),
           div(),
@@ -37,7 +55,7 @@ mod_rating_scores_entry_ui <- function(id) {
         id = ns("weighted_total_row"),
         style = "display:none;",
         layout_columns(
-          col_widths = c(5, 2, 2, 1, 2),
+          col_widths = col_widths,
           div(strong("Weighted Total")),
           div(),
           div(),
@@ -154,7 +172,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
       
-      col_widths <- c(5, 2, 2, 1, 2)
+      col_widths <- get_col_widths()
       # Create a main accordion panel for each group
       accordion_items_group <- purrr::map(names(grouped_data), function(group_name) {
         group_dt <- grouped_data[[group_name]]
