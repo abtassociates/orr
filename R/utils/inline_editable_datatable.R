@@ -106,7 +106,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
             colName = table.column(colIndex).header().childNodes[0].wholeText;
         }
         
-        colName = colName.replace('Ⓘ','');
+        colName = colName.replace(' Ⓘ','');
         return(colName);
       }
     ",
