@@ -61,10 +61,11 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
     
     # Disable accordion interaction until a project is selected
     observe({
-      project_is_selected <- !is.null(selected_project())
-      shinyjs::toggle(ns("empty"), condition = !project_is_selected)
+      project_is_selected <- !is.null(selected_project()) && fnrow(selected_project()) > 0
+      
+      shinyjs::toggle("empty", condition = !project_is_selected)
       shinyjs::toggleState(selector = glue::glue("#{ns('reqs')} .accordion-button"), condition = project_is_selected)
-      shinyjs::toggleState(ns("save_requirements"), condition = project_is_selected)
+      shinyjs::toggleState("save_requirements", condition = project_is_selected)
       
       if(project_is_selected) {
         bslib::accordion_panel_open("reqs", "HUD Requirements", session = session)
