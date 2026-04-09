@@ -206,10 +206,12 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
                 p(goal),
                 div(
                   class = "input-col", 
-                  textInput(
+                  textAreaInput(
                     ns(paste0("performance_", id)), 
                     label = NULL, 
-                    value = performance
+                    value = performance,
+                    autoresize = TRUE,
+                    rows = 1
                   ) # |> 
                     #shiny::tagAppendAttributes(maxlength = performance_char_limit)
                 ),
