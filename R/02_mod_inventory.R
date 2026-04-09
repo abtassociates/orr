@@ -202,6 +202,16 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
                 if (isNaN(num)) return data; 
                 return '$' + num.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,');
               }}"
+            )),
+            createdCell = JS(glue::glue(
+              "function(td, cellData, rowData, row, col) {{
+                // Disable N/As
+                if (td.innerText == 'N/A') {{
+                  $(td).css('pointer-events', 'none');      // Disables clicks/editing
+                  $(td).css('color', '#a0a0a0');            // Grays out text
+                  $(td).css('font-style', 'italic');        // Optional
+                }}
+              }}"
             ))
           )
         ),
