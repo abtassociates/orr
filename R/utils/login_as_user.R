@@ -5,12 +5,9 @@ login_as_user <- function(user_coc, user_email = NULL) {
     "silvermana" = "alex.silverman@abtglobal.com"
   )
   
+  if(is.null(user_email)) user_email <- devs[[Sys.info()[["user"]]]]
   u <- get_db_tbl("users") |>
-    fsubset(username == fifelse(
-      is.null(user_email),
-      devs[[Sys.info()[["user"]]]],
-      user_email
-    ))
+    fsubset(username == user_email)
   
   # u <- devs[[Sys.info()[["user"]]]]
   hideElement("login_link")
