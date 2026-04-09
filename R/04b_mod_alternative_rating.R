@@ -55,8 +55,8 @@ mod_alternative_rating_server <- function(id, user_coc) {
     
     output$alternative_rating_table <- renderDT({
       req(user_coc$coc_version_id)
-      data <- isolate(ratable_projects())
-
+      data <- isolate(ratable_projects()) |> fselect(-version_id)
+      
       shiny::validate(need(
         nrow(data) > 0, 
         "No projects to rate"
