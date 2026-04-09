@@ -70,11 +70,11 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
     observeEvent(selected_project(), {
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
       
-      shinyjs::toggleState("HUD_requirements", condition = project_is_selected)
-      shinyjs::toggleState("CoC_requirements", condition = project_is_selected)
+      shinyjs::toggle("HUD_requirements", condition = project_is_selected)
+      shinyjs::toggle("CoC_requirements", condition = project_is_selected)
       
-      shinyjs::toggleState("yes_to_all_HUD", condition = project_is_selected)
-      shinyjs::toggleState("yes_to_all_CoC", condition = project_is_selected)
+      shinyjs::toggle("yes_to_all_HUD", condition = project_is_selected)
+      shinyjs::toggle("yes_to_all_CoC", condition = project_is_selected)
       
       shinyjs::toggle("empty", condition = !project_is_selected)
       # shinyjs::toggleState(selector = glue::glue("#{ns('reqs')} .accordion-button"), condition = project_is_selected)
@@ -83,6 +83,9 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       if(project_is_selected) {
         bslib::accordion_panel_open("reqs", "HUD Requirements", session = session)
         bslib::accordion_panel_open("reqs", "CoC Requirements", session = session)
+      } else {
+        bslib::accordion_panel_close("reqs", "HUD Requirements", session = session)
+        bslib::accordion_panel_close("reqs", "CoC Requirements", session = session)
       }
     }, ignoreNULL = FALSE)
     
@@ -130,7 +133,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       
       # Need a delay to allow choices to re-render
       shinyjs::delay(100, {
-        shinyjs::toggleState("CoC_requirements", condition = project_is_selected)
+        shinyjs::toggle("CoC_requirements", condition = project_is_selected)
       })
       
       shinyjs::toggle("yes_to_all_CoC", condition = isTruthy(fnrow(coc_thresholds_to_enter()) > 0))
