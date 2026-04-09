@@ -6,10 +6,7 @@ mod_thresholds_entry_ui <- function(id) {
     "Threshold Entry",
     value = id,
     card(
-      div(
-        id=ns("empty"),
-        helpText("Select a project in the left-hand sidebar to begin rating")
-      ),
+      textOutput(ns("empty")),
       accordion(
         id = ns("reqs"),
         accordion_panel(
@@ -66,6 +63,15 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
         fsubset(type == "CoC" & selected)
     })
     
+    output$empty <- renderText({
+      project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      
+      shiny::validate(need(
+        project_is_selected,
+        "Select a project in the left-hand sidebar to begin rating"
+      ))
+    })
+    
     # UI updates based on project selection
     observeEvent(selected_project(), {
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
@@ -76,13 +82,15 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       shinyjs::toggleState("yes_to_all_HUD", condition = project_is_selected)
       shinyjs::toggleState("yes_to_all_CoC", condition = project_is_selected)
       
-      shinyjs::toggle("empty", condition = !project_is_selected)
       # shinyjs::toggleState(selector = glue::glue("#{ns('reqs')} .accordion-button"), condition = project_is_selected)
       shinyjs::toggleState("save_requirements", condition = project_is_selected)
       
       if(project_is_selected) {
         bslib::accordion_panel_open("reqs", "HUD Requirements", session = session)
         bslib::accordion_panel_open("reqs", "CoC Requirements", session = session)
+      } else {
+        bslib::accordion_panel_close("reqs", "HUD Requirements", session = session)
+        bslib::accordion_panel_close("reqs", "CoC Requirements", session = session)
       }
     }, ignoreNULL = FALSE)
     
