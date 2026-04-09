@@ -88,11 +88,11 @@ mod_funding_priorities_ui <- function(id) {
             choices = dv_bonus_opportunities
           )
         )
-      ),
-      card_footer(
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("save_opportunities"), "Save CoC Nofo Opportunities", icon = icon("save"), class="btn-primary")
-      )
+      )#,
+      # card_footer(
+      #   style = "display: flex; justify-content: space-between; align-items: center;",
+      #   actionButton(ns("save_opportunities"), "Save CoC Nofo Opportunities", icon = icon("save"), class="btn-primary")
+      # )
     ), # end coc nofo opportunities card
     card(
       card_header("Funding Ceilings and Priorities by Project Type and Population"),
@@ -477,21 +477,17 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     }
     
     ## Save to db -------------
-    observeEvent(input$save_opportunities, {
-      req(user_coc$coc_version_id, user_coc$username)
-      
+    save_opportunities <- function() {
       updated_coc_nofo_opportunities <- get_updated_coc_nofo_opportunities(
         params = list(
           coc_nofo_opportunities = coc_nofo_opportunities(),
           coc_version_id = user_coc$coc_version_id,
-          nofo_opportunity_ids = as.integer(c(
-            input$coc_bonus_types_1,
-            input$coc_bonus_types_2,
-            input$dv_bonus_types
-          )),
+          nofo_opportunity_ids = as.integer(c(input$coc_bonus_types_1, input$coc_bonus_types_2, input$dv_bonus_types)),
           created_by = user_coc$username
         )
       )
+      
+      if(fnrow(updated_coc_nofo_opportunities) == 0) return()
       
       # update database
       needs_refresh <- FALSE
@@ -501,8 +497,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       )
       
       # if(needs_refresh)
-        refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
-    })
-    
+      refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
+    }
+    observeEvent(c(input$coc_bonus_types_1, input$coc_bonus_types_2, input$dv_bonus_types), {
+      shinyjs::delay(1000, save_opportunities())
+    }, ignoreInit = TRUE)
   })
 }
