@@ -155,7 +155,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
                   numericInput(ns(paste0("points_", id)), min = 1, label = NULL, value = points, step = 0.1)
                 )
                 
-                iv$add_rule(paste0("points_", id), sv_gte(0))
+                iv$add_rule(paste0("goal_", id), ~
+                  if (isTRUE(nchar(.) > 10)) "Limited to 10 characters"
+                )
+                iv$add_rule(paste0("points_", id), sv_between(0, 999.9))
                 
                 layout_columns(
                   id = ns(paste0("rows_items_", gsub(" ", "-", group_name))),
@@ -328,7 +331,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     iv_custom$add_rule("custom_text", ~ if(. %in% all_coc_factors()$rating_factor_text) "You already have a rating factor with this text.")
     ## validate that max point value of >= 0
     iv_custom$add_rule("custom_points", sv_gte(0))
-    
+    iv_custom$add_rule("custom_goal", ~
+                  if (isTRUE(nchar(.) > 10)) "Limited to 10 characters"
+    )
     observeEvent(input$add_custom_factor, {
       showModal(
         modalDialog(
