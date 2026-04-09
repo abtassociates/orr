@@ -41,9 +41,9 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
       
       updateSelectInput(
         session, 
-        inputId = 'project_select', 
-        selected = if(fnrow(all_projects()) > 0 && !is.null(user_prev_project_selected)) user_prev_project_selected else character(0),
-        choices = if(fnrow(all_projects()) > 0) setNames(all_projects()$project_id, all_projects()$project_name) else character(0)
+        'project_select', 
+        selected = if(fnrow(all_projects()) > 0 && length(user_prev_project_selected)) user_prev_project_selected else "",
+        choices = if(fnrow(all_projects()) > 0) c("Please select..." = "", setNames(all_projects()$project_id, all_projects()$project_name)) else character(0)
       )
     })
     
@@ -76,7 +76,6 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     # Get the project to be rated from the dropdown in the sidebar
     selected_project <- reactive({
       req(user_coc$coc_version_id)
-      if (is.null(input$project_select) || input$project_select == "") return(NULL)
       
       all_projects() |> 
         fsubset(project_id == input$project_select)
@@ -84,7 +83,8 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     
     # Show project info about the selected project
     output$project_info_sidebar <- renderUI({
-      req(input$project_select)
+      req(selected_project())
+      req(fnrow(selected_project()) > 0)
       
       div(
         p(strong("Organization:"), selected_project()$organization_name),
