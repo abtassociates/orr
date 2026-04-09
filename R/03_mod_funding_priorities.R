@@ -130,12 +130,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     coc_funding_priorities <- reactiveVal()
     formatted_coc_funding_priorities <- reactiveVal()
     
-    dv_ard <- reactive({ 
-      req(user_coc$coc_version_id)
-      input$dv_ard 
-    })
-    dv_ard_debounced <- dv_ard %>% debounce(1000)
-    
     # Populate Funding Info -----------
     ard_field_names <- c(
       "total_ard",
@@ -175,8 +169,13 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     iv <- shinyvalidate::InputValidator$new()
     iv$add_rule("dv_ard", sv_gte(0))
     
-    observeEvent(dv_ard_debounced(), {
-      req(dv_ard_debounced() != fcoalesce(hud_ard_coc_data()$dv_ard[[1]], 0L))
+    entered_dv_ard <- reactive({ 
+      req(user_coc$coc_version_id)
+      input$dv_ard 
+    }) %>% debounce(1000)
+    
+    observeEvent(entered_dv_ard(), {
+      req(entered_dv_ard() != fcoalesce(hud_ard_coc_data()$dv_ard[[1]], 0L))
       
       iv$enable()
       req(iv$is_valid())
@@ -184,7 +183,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       update_dv_ard(
         get_db_pool(),
-        list(dv_ard_debounced(), user_coc$username, user_coc$coc_version_id)
+        list(entered_dv_ard(), user_coc$username, user_coc$coc_version_id)
       )
       refresh_trigger$dv_ard <- refresh_trigger$dv_ard + 1
     }, ignoreInit = TRUE)
@@ -511,8 +510,19 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       # if(needs_refresh)
       refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
     }
-    observeEvent(c(input$coc_bonus_types_1, input$coc_bonus_types_2, input$dv_bonus_types), {
-      shinyjs::delay(1000, save_opportunities())
+    
+    selected_coc_nofo_opportunities <- reactive({
+      req(user_coc$coc_version_id)
+      c(input$coc_bonus_types_1, input$coc_bonus_types_2, input$dv_bonus_types)
+    }) %>% debounce(1000)
+    
+    observeEvent(selected_coc_nofo_opportunities(), {
+      req(!identical(
+        selected_coc_nofo_opportunities(), 
+        as.character(coc_nofo_opportunities()[selected == T]$coc_nofo_opportunity_id)
+      ))
+      
+      save_opportunities()
     }, ignoreInit = TRUE)
   })
 }
