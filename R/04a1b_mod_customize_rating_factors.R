@@ -155,6 +155,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
                   numericInput(ns(paste0("points_", id)), min = 1, label = NULL, value = points, step = 0.1)
                 )
                 
+                iv$add_rule(paste0("goal_", id), ~
+                  if (isTRUE(nchar(.) > 10)) "Limited to 10 characters"
+                )
                 iv$add_rule(paste0("points_", id), sv_gte(0))
                 
                 layout_columns(
