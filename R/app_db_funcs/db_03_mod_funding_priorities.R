@@ -59,7 +59,7 @@ update_dv_ard <- function(p, params) {
       paramify(params)
     )
     message("Saved DV ARD!")
-    showNotification("Saved DV ARD", type = "message")
+    showNotification("Saved DV ARD!", type = "message")
     
   }, error = function(e) {
     # If an error occurs, do NOT reset the flag, so it will try again.

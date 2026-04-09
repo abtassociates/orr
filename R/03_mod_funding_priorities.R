@@ -123,7 +123,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     ns <- session$ns
     refresh_trigger <- reactiveValues(
       coc_nofo_opportunities = 0,
-      coc_funding_priorities = 0
+      coc_funding_priorities = 0,
+      dv_ard = 0
     )
     coc_nofo_opportunities <- reactiveVal()
     coc_funding_priorities <- reactiveVal()
@@ -148,6 +149,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     )
     
     hud_ard_coc_data <- reactive({
+      req(refresh_trigger$dv_ard)
       dv_ard_db <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
@@ -159,7 +161,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         frename(estimated = "total_ard")
     })
     
-    observeEvent(user_coc$coc, {
+    observeEvent(user_coc$coc_version_id, {
       lapply(ard_field_names, function(i) {
         updateCurrencyInput(
           session, 
@@ -168,13 +170,13 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
         if(i != "dv_ard") shinyjs::disable(i)
       })
-    })
+    }, ignoreInit = TRUE)
     
     iv <- shinyvalidate::InputValidator$new()
     iv$add_rule("dv_ard", sv_gte(0))
     
     observeEvent(dv_ard_debounced(), {
-      req(user_coc$coc)
+      req(dv_ard_debounced() != fcoalesce(hud_ard_coc_data()$dv_ard[[1]], 0L))
       
       iv$enable()
       req(iv$is_valid())
@@ -184,6 +186,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         get_db_pool(),
         list(dv_ard_debounced(), user_coc$username, user_coc$coc_version_id)
       )
+      refresh_trigger$dv_ard <- refresh_trigger$dv_ard + 1
     }, ignoreInit = TRUE)
     
     
