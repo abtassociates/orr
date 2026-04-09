@@ -8,8 +8,7 @@ mod_thresholds_entry_ui <- function(id) {
     card(
       div(
         id=ns("empty"),
-        class="shiny-output-error shiny-output-error-shiny.silent.error shiny-output-error-validation",
-        "Select a project in the left-hand sidebar to begin rating"
+        helpText("Select a project in the left-hand sidebar to begin rating")
       ),
       accordion(
         id = ns("reqs"),
@@ -56,12 +55,26 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # These are the individual threshold entries
-    # These will be aggregated up to the project-level project-evaluations table
+    # updating_from_db <- reactiveVal(NA)
+    thresholds_to_enter <- reactiveVal(NULL)
+    project_evaluation <- reactiveVal(NULL)
+    refresh_trigger <- reactiveVal(0)
     
-    # Disable accordion interaction until a project is selected
-    observe({
-      project_is_selected <- !is.null(selected_project()) && fnrow(selected_project()) > 0
+    coc_thresholds_to_enter <- reactive({
+      req(thresholds_to_enter())
+      thresholds_to_enter() |>
+        fsubset(type == "CoC" & selected)
+    })
+    
+    # UI updates based on project selection
+    observeEvent(selected_project(), {
+      project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      
+      shinyjs::toggleState("HUD_requirements", condition = project_is_selected)
+      shinyjs::toggleState("CoC_requirements", condition = project_is_selected)
+      
+      shinyjs::toggleState("yes_to_all_HUD", condition = project_is_selected)
+      shinyjs::toggleState("yes_to_all_CoC", condition = project_is_selected)
       
       shinyjs::toggle("empty", condition = !project_is_selected)
       # shinyjs::toggleState(selector = glue::glue("#{ns('reqs')} .accordion-button"), condition = project_is_selected)
@@ -71,67 +84,57 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
         bslib::accordion_panel_open("reqs", "HUD Requirements", session = session)
         bslib::accordion_panel_open("reqs", "CoC Requirements", session = session)
       }
-    })
+    }, ignoreNULL = FALSE)
     
-    # updating_from_db <- reactiveVal(NA)
-    thresholds_to_enter <- reactiveVal(NULL)
-    project_evaluation <- reactiveVal(NULL)
-    refresh_trigger <- reactiveVal(0)
-    
-    coc_thresholds_to_enter <- reactive({
-      thresholds_to_enter() |>
-        fsubset(type == "CoC" & selected)
-    })
-    
+    # Updating main data
     observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_coc_thresholds_updated), {
-      req(user_coc$coc_version_id)
       req(selected_project())
-      req(fnrow(selected_project()) > 0)
-
-      # individual threshold entries
+      
+      project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      
       thresholds_to_enter(
         get_all_thresholds_to_enter(
           user_coc$coc_version_id, 
-          selected_project()$project_id
+          if(!project_is_selected) NA else selected_project()$project_id
         )
       )
       
-      # project-level evaluations
       project_evaluation(
         get_project_evaluation(
           user_coc$coc_version_id, 
-          selected_project()$project_id
+          if(!project_is_selected) NA else selected_project()$project_id
         )
       )
-
-      # Initialize threshold selections
+      
+      hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
       updateCheckboxGroupInput(
         session,
         "HUD_requirements",
-        selected = thresholds_to_enter()[type == "HUD" & met_threshold]$threshold_id
+        selected = if(fnrow(hud_reqs_met) > 0) hud_reqs_met$threshold_id else character(0)
       )
       
+      coc_reqs_met <- coc_thresholds_to_enter()[met_threshold == TRUE]
       updateCheckboxGroupInput(
         session,
         "CoC_requirements",
-        choices = setNames(
-          coc_thresholds_to_enter()$threshold_id,
-          coc_thresholds_to_enter()$threshold_text
-        ),
-        selected = coc_thresholds_to_enter()[met_threshold == TRUE]$threshold_id
+        choices = if(is.null(coc_thresholds_to_enter())) {
+          character(0)
+        } else {
+          setNames(
+            coc_thresholds_to_enter()$threshold_id,
+            coc_thresholds_to_enter()$threshold_text
+          )
+        },
+        selected = if(fnrow(coc_reqs_met) > 0) coc_reqs_met$threshold_id else character(0)
       )
       
-      has_coc_thresholds <- fnrow(thresholds_to_enter()[type == "CoC"]) > 0
-      if(has_coc_thresholds) {
-        updateCheckboxInput(
-          session,
-          "yes_to_all_CoC",
-          value = allv(thresholds_to_enter()[type == "CoC"]$met_threshold, TRUE)
-        )
-      } else {
-        shinyjs::toggle("yes_to_all_CoC", condition = has_coc_thresholds)
-      }
-    })
+      # Need a delay to allow choices to re-render
+      shinyjs::delay(100, {
+        shinyjs::toggleState("CoC_requirements", condition = project_is_selected)
+      })
+      
+      shinyjs::toggle("yes_to_all_CoC", condition = isTruthy(fnrow(coc_thresholds_to_enter()) > 0))
+    }, ignoreNULL = FALSE, priority = 1)
     
     lapply(c("HUD", "CoC"), function(ttype) {
       
