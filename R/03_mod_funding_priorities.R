@@ -88,11 +88,11 @@ mod_funding_priorities_ui <- function(id) {
             choices = dv_bonus_opportunities
           )
         )
-      ),
-      card_footer(
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("save_opportunities"), "Save CoC Nofo Opportunities", icon = icon("save"), class="btn-primary")
-      )
+      )#,
+      # card_footer(
+      #   style = "display: flex; justify-content: space-between; align-items: center;",
+      #   actionButton(ns("save_opportunities"), "Save CoC Nofo Opportunities", icon = icon("save"), class="btn-primary")
+      # )
     ), # end coc nofo opportunities card
     card(
       card_header("Funding Ceilings and Priorities by Project Type and Population"),
@@ -123,13 +123,17 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     ns <- session$ns
     refresh_trigger <- reactiveValues(
       coc_nofo_opportunities = 0,
-      coc_funding_priorities = 0
+      coc_funding_priorities = 0,
+      dv_ard = 0
     )
     coc_nofo_opportunities <- reactiveVal()
     coc_funding_priorities <- reactiveVal()
     formatted_coc_funding_priorities <- reactiveVal()
     
-    dv_ard <- reactive({ input$dv_ard })
+    dv_ard <- reactive({ 
+      req(user_coc$coc_version_id)
+      input$dv_ard 
+    })
     dv_ard_debounced <- dv_ard %>% debounce(1000)
     
     # Populate Funding Info -----------
@@ -145,18 +149,19 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     )
     
     hud_ard_coc_data <- reactive({
-      dv_ard <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
+      req(refresh_trigger$dv_ard)
+      dv_ard_db <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
           adjusted_ard = round(tier_1/0.9, 0),
           tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
           yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = dv_ard[1]
+          dv_ard = dv_ard_db[1]
         ) |>
         frename(estimated = "total_ard")
     })
     
-    observeEvent(user_coc$coc, {
+    observeEvent(user_coc$coc_version_id, {
       lapply(ard_field_names, function(i) {
         updateCurrencyInput(
           session, 
@@ -165,13 +170,14 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
         if(i != "dv_ard") shinyjs::disable(i)
       })
-    })
+    }, ignoreInit = TRUE)
     
     iv <- shinyvalidate::InputValidator$new()
     iv$add_rule("dv_ard", sv_gte(0))
     
     observeEvent(dv_ard_debounced(), {
-      req(user_coc$coc)
+      req(dv_ard_debounced() != fcoalesce(hud_ard_coc_data()$dv_ard[[1]], 0L))
+      
       iv$enable()
       req(iv$is_valid())
       iv$disable()
@@ -180,6 +186,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         get_db_pool(),
         list(dv_ard_debounced(), user_coc$username, user_coc$coc_version_id)
       )
+      refresh_trigger$dv_ard <- refresh_trigger$dv_ard + 1
     }, ignoreInit = TRUE)
     
     
@@ -321,6 +328,11 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         data = data,
         tableID = ns("priorities_table"),
         formatting = list(
+          function(x) formatStyle(
+            x,
+            columns = 1:ncol(data),
+            `border-right` = "1px solid lightgray"
+          ),
           function(x) formatStyle(
             x,
             columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
@@ -477,21 +489,17 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     }
     
     ## Save to db -------------
-    observeEvent(input$save_opportunities, {
-      req(user_coc$coc_version_id, user_coc$username)
-      
+    save_opportunities <- function() {
       updated_coc_nofo_opportunities <- get_updated_coc_nofo_opportunities(
         params = list(
           coc_nofo_opportunities = coc_nofo_opportunities(),
           coc_version_id = user_coc$coc_version_id,
-          nofo_opportunity_ids = as.integer(c(
-            input$coc_bonus_types_1,
-            input$coc_bonus_types_2,
-            input$dv_bonus_types
-          )),
+          nofo_opportunity_ids = as.integer(c(input$coc_bonus_types_1, input$coc_bonus_types_2, input$dv_bonus_types)),
           created_by = user_coc$username
         )
       )
+      
+      if(fnrow(updated_coc_nofo_opportunities) == 0) return()
       
       # update database
       needs_refresh <- FALSE
@@ -501,8 +509,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       )
       
       # if(needs_refresh)
-        refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
-    })
-    
+      refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
+    }
+    observeEvent(c(input$coc_bonus_types_1, input$coc_bonus_types_2, input$dv_bonus_types), {
+      shinyjs::delay(1000, save_opportunities())
+    }, ignoreInit = TRUE)
   })
 }

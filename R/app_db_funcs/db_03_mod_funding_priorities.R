@@ -1,8 +1,8 @@
 get_coc_funding_priorities <- function(coc_version_id) {
   get_db_query(
     "SELECT * 
-        FROM coc_funding_priorities 
-        WHERE coc_version_id = $1",
+     FROM coc_funding_priorities 
+     WHERE coc_version_id = $1",
     params = list(coc_version_id)
   )
 }
@@ -10,8 +10,8 @@ get_coc_funding_priorities <- function(coc_version_id) {
 get_coc_nofo_opportunities <- function(coc_version_id) {
   get_db_query(
     "SELECT c.coc_nofo_opportunity_id, c.bonus_type, s.selected, s.version_id
-            FROM coc_nofo_opportunities c
-            LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $1", 
+    FROM coc_nofo_opportunities c
+    LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $1", 
     params = list(coc_version_id)
   )
 }
@@ -46,7 +46,6 @@ update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding
 }
 
 update_dv_ard <- function(p, params) {
-  # TODO: NEED TO ADD OPTIMISITC LOCKING
   tryCatch({
     DBI::dbExecute(
       p,
@@ -60,6 +59,8 @@ update_dv_ard <- function(p, params) {
       paramify(params)
     )
     message("Saved DV ARD!")
+    showNotification("Saved DV ARD!", type = "message")
+    
   }, error = function(e) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
