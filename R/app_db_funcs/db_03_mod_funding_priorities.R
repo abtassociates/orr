@@ -1,8 +1,8 @@
 get_coc_funding_priorities <- function(coc_version_id) {
   get_db_query(
     "SELECT * 
-        FROM coc_funding_priorities 
-        WHERE coc_version_id = $1",
+     FROM coc_funding_priorities 
+     WHERE coc_version_id = $1",
     params = list(coc_version_id)
   )
 }
@@ -10,8 +10,8 @@ get_coc_funding_priorities <- function(coc_version_id) {
 get_coc_nofo_opportunities <- function(coc_version_id) {
   get_db_query(
     "SELECT c.coc_nofo_opportunity_id, c.bonus_type, s.selected, s.version_id
-            FROM coc_nofo_opportunities c
-            LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $1", 
+    FROM coc_nofo_opportunities c
+    LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $1", 
     params = list(coc_version_id)
   )
 }

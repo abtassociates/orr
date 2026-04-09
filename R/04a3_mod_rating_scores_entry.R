@@ -274,7 +274,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       })
       
       # Give shiny enough time to load factors before showing Total rows
-      delay(800, {
+      shinyjs::delay(800, {
         shinyjs::show(id = "total_row")
         shinyjs::show(id = "weighted_total_row")
       })
