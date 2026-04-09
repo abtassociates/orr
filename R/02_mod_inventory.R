@@ -194,7 +194,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
                 if (row === undefined) return data;
                 if (row[{funding_action_idx}] == 'New') return 'N/A';
                 if (data === null) return '';
-                if(meta.col == {grant_number_idx}) return data;
+                if (meta.col == {grant_number_idx}) return data;
                 
                 // Manual currency formatting: $1,234.56
                 // Ensure data is numeric before calling toFixed
@@ -235,10 +235,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           ),
           function(x) formatStyle(
             x,
-            columns = c(
-              "ch_beds_hh_w_only_children",
-              "total_ch_ind_beds"
-            ),
+            columns = c("ch_beds_hh_w_only_children", "total_ch_ind_beds"),
             `min-width` = "110px"
           ),
           function(x) formatStyle(
