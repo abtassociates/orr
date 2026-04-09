@@ -130,7 +130,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
             paste0("rating_score_", id),
             ~ {
               if (is.null(.) || is.na(.)) return(NULL)
-              if (!is.numeric(.) || . < 0 || . > max_pts) 
+              if (!is.numeric(.) || . < -999.9 || . > max_pts) 
                 return(paste0("Score must be a number between 0 and ", max_pts, "."))
             }
           )
