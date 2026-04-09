@@ -158,7 +158,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
                 iv$add_rule(paste0("goal_", id), ~
                   if (isTRUE(nchar(.) > 10)) "Limited to 10 characters"
                 )
-                iv$add_rule(paste0("points_", id), sv_gte(0))
+                iv$add_rule(paste0("points_", id), sv_between(0, 999.9))
                 
                 layout_columns(
                   id = ns(paste0("rows_items_", gsub(" ", "-", group_name))),
