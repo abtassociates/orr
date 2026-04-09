@@ -172,6 +172,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     observeEvent(dv_ard_debounced(), {
       req(user_coc$coc)
+      req(dv_ard_debounced() != input$dv_ard)
+      
       iv$enable()
       req(iv$is_valid())
       iv$disable()
