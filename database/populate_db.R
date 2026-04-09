@@ -581,7 +581,7 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- Advanced would allow them to select what to carry over
 CREATE TABLE IF NOT EXISTS coc_version_users (
     coc_version_user_id {id_var_attrs},
-    coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
+    coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     username VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     coc_version_role SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
