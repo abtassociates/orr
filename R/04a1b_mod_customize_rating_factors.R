@@ -122,6 +122,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       else c(1, 1, 6, 2, 2)
     }
     
+    goal_char_limit <- get_db_column_limit("rating_factors","goal")
+    
     render_nested_factor_accordion_ui <- function(ns, funding_action = "Renew", data_groups_nested, placeholder_text = "No rating factors found.") {
       if (length(data_groups_nested) == 0) {
         return(p(placeholder_text))
@@ -156,9 +158,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
                 )
                 
                 iv$add_rule(paste0("goal_", id), ~
-                  if (isTRUE(nchar(.) > 10)) "Limited to 10 characters"
+                  if (isTRUE(nchar(.) > goal_char_limit)) "Limited to 10 characters"
                 )
-                iv$add_rule(paste0("points_", id), sv_between(0, 999.9))
+                iv$add_rule(paste0("points_", id), sv_between(-999.9, 999.9))
                 
                 layout_columns(
                   id = ns(paste0("rows_items_", gsub(" ", "-", group_name))),
@@ -330,9 +332,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     iv_custom$add_rule("custom_text", sv_required())
     iv_custom$add_rule("custom_text", ~ if(. %in% all_coc_factors()$rating_factor_text) "You already have a rating factor with this text.")
     ## validate that max point value of >= 0
-    iv_custom$add_rule("custom_points", sv_gte(0))
+    iv_custom$add_rule("custom_points", sv_between(-999.9, 999.9))
     iv_custom$add_rule("custom_goal", ~
-                  if (isTRUE(nchar(.) > 10)) "Limited to 10 characters"
+                  if (isTRUE(nchar(.) > goal_char_limit)) "Limited to 10 characters"
     )
     observeEvent(input$add_custom_factor, {
       showModal(
