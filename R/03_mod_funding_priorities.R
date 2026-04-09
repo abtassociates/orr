@@ -325,6 +325,11 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         formatting = list(
           function(x) formatStyle(
             x,
+            columns = 1:ncol(data),
+            `border-right` = "1px solid lightgray"
+          ),
+          function(x) formatStyle(
+            x,
             columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
             `border-right` = "1px solid black"
           ),
