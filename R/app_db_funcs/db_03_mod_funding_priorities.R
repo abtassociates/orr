@@ -46,7 +46,6 @@ update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding
 }
 
 update_dv_ard <- function(p, params) {
-  # TODO: NEED TO ADD OPTIMISITC LOCKING
   tryCatch({
     DBI::dbExecute(
       p,
@@ -60,6 +59,8 @@ update_dv_ard <- function(p, params) {
       paramify(params)
     )
     message("Saved DV ARD!")
+    showNotification("Saved DV ARD", type = "message")
+    
   }, error = function(e) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
