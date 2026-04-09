@@ -14,5 +14,5 @@ login_as_user <- function(user_coc, user_email = NULL) {
   hideElement("signup_link")
   user_coc$auth <- TRUE
   user_coc$username <- u$username
-  user_coc$given_name <- u$given_name
+  user_coc$given_name <- u$firstname
 }
