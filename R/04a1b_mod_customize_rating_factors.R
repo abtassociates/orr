@@ -466,48 +466,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         )
       }))
       
-      if(custom_factor_counter() > 0) {
-        custom_factor_data <- rbindlist(lapply(seq(custom_factor_counter()), function(i) {
-          pt_tp_combo <- expand.grid(
-            list(
-              project_type = if(funding_action == "Renew") input[[paste0("custom_pt_", i)]] else NA,
-              target_population = input[[paste0("custom_tp_", i)]]
-            )
-          )
-          
-          data.table(
-            funding_action = funding_action_id,
-            coc_version_id = user_coc$coc_version_id,
-            rating_factor_text = input[[paste0("custom_text_", i)]],
-            factor_group_id = other_factor_group_id,
-            selected = isTRUE(input[[paste0("custom_select_", i)]]),
-            goal = input[[paste0("custom_goal_", i)]],
-            max_point_value = input[[paste0("custom_points_", i)]],
-            created_by = user_coc$username
-          ) |> cbind(pt_tp_combo)
-        }))
-      }
-      
-      inserted_custom_factor_info <- NULL
       needs_refresh2 <- FALSE
       pool::poolWithTransaction(get_db_pool(), function(p) {
-        if(custom_factor_counter() > 0) {
-          # insert new factor into DB, return rating_factor_id
-          inserted_custom_factor_info <- insert_custom_factor_to_db(
-            p, 
-            custom_factor_data |> fselect(-selected)
-          )
-         
-          # add the newly created rating factor ID to the set of selected factors (it's auto-selected)
-          updated_selected_rating_factors <- updated_selected_rating_factors |>
-            rbind(
-              custom_factor_data |> 
-                cbind(inserted_custom_factor_info),
-              fill = TRUE
-            ) |>
-            fselect(rating_factor_id, coc_version_id, selected, goal, max_point_value, created_by, version_id)
-        }
-        
         needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)
       })
       
