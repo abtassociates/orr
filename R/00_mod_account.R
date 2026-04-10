@@ -28,7 +28,10 @@ mod_account_ui <- function(id){
       
       e.preventDefault(); // stops the href navigation
       
-      hide_disconnect();
+      var style = document.createElement('style');
+      style.id = 'ss-hide-overlay-style';
+      style.innerHTML = '#ss-overlay, #ss-connect-dialog { display: none !important; }';
+      document.head.appendChild(style);
       
       window.location.href = '%s';
     });", aws_auth_logout))),
