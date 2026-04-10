@@ -30,7 +30,7 @@ page_navbar(
         text-align:center;
         padding:20px;
       ",
-      "You have been logged out. Redirecting..."
+      "Session timed out. Logging out..."
     ),
     tags$style(HTML("
       /* Change the background color of the selected row */
