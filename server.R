@@ -86,6 +86,7 @@ function(input, output, session) {
         user_coc$username <- current_user$email
         user_coc$given_name <- current_user$given_name
         nav_control("dashboard")
+        session$sendCustomMessage("auth_state", TRUE)
       }
     }
     
