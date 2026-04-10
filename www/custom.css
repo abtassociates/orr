@@ -105,3 +105,23 @@ table.dataTable .selectize-dropdown-content {
   background: var(--bs-body-bg);
 }
 
+
+/* float the accordion title totals to the right */
+#rating-renew-rating_scores_entry-main_accordion .accordion-title,
+#rating-new-rating_scores_entry-main_accordion .accordion-title {
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  width: 100%;
+  padding-right: 10px;
+}
+
+#rating-renew-rating_scores_entry-main_accordion .accordion-button.collapsed .accordion_total_display,
+#rating-new-rating_scores_entry-main_accordion .accordion-button.collapsed .accordion_total_display {
+  display:inline;
+}
+
+#rating-renew-rating_scores_entry-main_accordion .accordion-button .accordion_total_display,
+#rating-new-rating_scores_entry-main_accordion .accordion-button .accordion_total_display{
+  display:none;
+}
