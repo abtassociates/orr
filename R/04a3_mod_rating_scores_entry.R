@@ -288,6 +288,39 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       )
     }) # end render factors
     
+    # add group scores to title when closed
+    observeEvent(input$main_accordion, {
+      req(nrow(factors_and_scores_for_project()) > 0)
+      
+      # Get the data and split it by group, just like in your UI
+      df <- factors_and_scores_for_project()
+      grouped_data <- split(df, by = "factor_group")
+      
+      # Loop through each group
+      lapply(names(grouped_data), function(group_name) {
+        group_data <- grouped_data[[group_name]]
+        
+        is_open <- group_name %in% input$main_accordion
+        
+        if (!is_open) {
+          group_total <- get_group_total(group_data)
+          group_max <- fsum(group_data$max_point_value)
+          # Update the title when OPEN
+          accordion_panel_update(
+            id = "main_accordion",
+            target = group_name,
+            title = glue::glue("{group_name} ({group_total} out of {group_max})")
+          )
+        } else {
+          accordion_panel_update(
+            id = "main_accordion",
+            target = group_name,
+            title = group_name
+          )
+        }
+      })
+    }, ignoreNULL = FALSE) 
+    
     # get all entered scores
     entered_scores <- reactive({
       sapply(
@@ -295,6 +328,20 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
         \(id) input[[paste0("rating_score_", id)]]
       )
     })
+    
+    get_group_total <- function(group_data) {
+      factor_ids <- group_data$selected_rating_factor_id
+      
+      # Grab the current values of all inputs in this specific group
+      current_scores <- sapply(factor_ids, function(id) {
+        val <- input[[paste0("rating_score_", id)]]
+        # Treat NULL, NA, or non-numeric as 0
+        if (is.null(val) || is.na(val)) 0 else as.numeric(val)
+      })
+      
+      # Return the sum
+      fsum(current_scores)
+    }
     
     # Dynamically update subgroup totals
     observe({
@@ -308,29 +355,20 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       lapply(names(grouped_data), function(group_name) {
         
         group_id <- make.names(group_name)
-        factor_ids <- grouped_data[[group_name]]$selected_rating_factor_id
+        group_data <- grouped_data[[group_name]]
         
         # Dynamically bind a renderText to the output
         output[[paste0("subtotal_", group_id)]] <- renderText({
-          
-          # Grab the current values of all inputs in this specific group
-          current_scores <- sapply(factor_ids, function(id) {
-            val <- input[[paste0("rating_score_", id)]]
-            # Treat NULL, NA, or non-numeric as 0
-            if (is.null(val) || is.na(val)) 0 else as.numeric(val)
-          })
-          
-          # Return the sum
-          sum(current_scores)
+          get_group_total(group_data)
         })
         
         output[[paste0("subtotal_max_", group_id)]] <- renderText({
-          paste0("out of ", fsum(grouped_data[[group_name]]$max_point_value))
+          paste0("out of ", fsum(group_data$max_point_value))
         })
       })
       
       output$total_score <- renderText({
-        fsum(entered_scores())
+        fcoalesce(fsum(entered_scores()), 0L)
       })
       output$total_max <- renderText({
         paste0("out of ", fsum(factors_and_scores_for_project()$max_point_value))
@@ -338,7 +376,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       
       output$weighted_total_score <- renderText({
         denominator <- fsum(factors_and_scores_for_project()$max_point_value)
-        numerator <- fsum(entered_scores())
+        numerator <- fcoalesce(fsum(entered_scores()), 0L)
         
         round(100 * numerator/denominator, 0)
       })
