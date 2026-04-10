@@ -293,6 +293,15 @@ initialize_inline_edit_table_ui <- function(
     tableID, 
     initial_filter = NULL, 
     formatting = list(), 
+    editable = list(
+      target = "cell",
+      disable = list(
+        columns = match(
+          cols_to_disable, 
+          names(data)
+        ) - 1
+      )
+    ),
     colnames=NULL, 
     cols_to_disable = NULL,
     buttons = NULL,
@@ -341,10 +350,33 @@ initialize_inline_edit_table_ui <- function(
     }});
       
     // Start cell editing with Enter key (13)   
-    table.on('key', function(e, datatable, key, cell, originalEvent) {{
-      var targetName = originalEvent.target.localName;
-      if(key == 13 && targetName == 'body')
-        $(cell.node()).trigger('dblclick.dt');
+    table.on('key', function (e, datatable, key, cell, originalEvent) {{
+      const ignoredKeys = [
+        'Shift', 'Control', 'Alt', 'Meta',
+        'Tab', 'Escape',
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'
+      ];
+    
+      // ignore non-character keys
+      if (ignoredKeys.includes(e.key)) return;
+    
+      // already editing -> do nothing
+      const $cell = $(cell.node());
+      if ($cell.find('input, textarea, select').length > 0) return;
+    
+      // only trigger on printable keys (letters, numbers, symbols)
+      if (!originalEvent || originalEvent.key.length !== 1) return;
+    
+      originalEvent.preventDefault();
+    
+      // open editor (same as your dblclick approach)
+      $cell.trigger('dblclick.dt');
+    
+      // inject the typed character into the editor after it opens
+      setTimeout(() => {{
+        const input = $cell.find('input, textarea, select').first();
+        if (input.length) input.val(originalEvent.key);
+      }}, 0);
     }});
     
     // Exit cell editing with Tab (9), Enter (13), or Arrow Keys (37-40)
@@ -384,15 +416,7 @@ initialize_inline_edit_table_ui <- function(
     style = "default",
     extensions = extensions,
     colnames = colnames,
-    editable = list(
-      target = "cell",
-      disable = list(
-        columns = match(
-          cols_to_disable, 
-          names(data)
-        ) - 1
-      )
-    ),
+    editable = editable,
     options = final_options,
     filter = filter,
     escape = escape,
