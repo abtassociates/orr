@@ -1,9 +1,23 @@
 ## retrieve individual user setting value from DB
-get_user_setting <- function(p, setting_nm, coc_version_id, username){
+get_user_setting <- function(p, setting_nm, username){
   
   if(p$valid){
     get_db_query(
-      "SELECT setting_value FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3",
+      "SELECT setting_value FROM user_settings WHERE coc_user = $1 AND setting_name = $2",
+      params = list(username,
+                    setting_nm)
+    ) |> unlist(use.names = FALSE)
+  } else {
+    return(character(0))
+  }
+  
+}
+
+get_version_setting <- function(p, setting_nm, coc_version_id, username){
+  
+  if(p$valid){
+    get_db_query(
+      "SELECT setting_value FROM version_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3",
       params = list(coc_version_id,
                     username,
                     setting_nm)
@@ -15,7 +29,7 @@ get_user_setting <- function(p, setting_nm, coc_version_id, username){
 }
 
 ## on app exit, update individual settings
-update_single_user_setting <- function(p, user_coc, setting_nm, setting_val){
+update_single_version_setting <- function(p, user_coc, setting_nm, setting_val){
   
   if(is.null(isolate(setting_val)))
     return(NULL)
@@ -32,9 +46,38 @@ update_single_user_setting <- function(p, user_coc, setting_nm, setting_val){
   save_to_db(
     p,
     paste0(
-      "INSERT INTO user_settings (coc_version_id, coc_user, setting_name, setting_value, created_by, updated_by)
+      "INSERT INTO version_settings (coc_version_id, coc_user, setting_name, setting_value, created_by, updated_by)
             VALUES ($1, $2, $3, $4, $5, $5)
             ON CONFLICT (coc_version_id, coc_user, setting_name) DO UPDATE SET
+              setting_value = EXCLUDED.setting_value,
+              updated_by = EXCLUDED.created_by,
+              date_updated = CURRENT_TIMESTAMP",
+      "\nRETURNING user_setting_id, setting_name, setting_value, version_id"
+    ),
+    updated_settings,
+    "version_settings"
+  )
+}
+
+update_single_user_setting <- function(p, user_coc, setting_nm, setting_val){
+  
+  if(is.null(isolate(setting_val)))
+    return(NULL)
+  
+  ## new changes
+  updated_settings <- data.frame(
+    'coc_user' = isolate(user_coc$username),
+    'setting_name' =  setting_nm,
+    'setting_value' = isolate(setting_val),
+    'created_by' = isolate(user_coc$username)
+  )
+  
+  save_to_db(
+    p,
+    paste0(
+      "INSERT INTO user_settings (coc_user, setting_name, setting_value, created_by, updated_by)
+            VALUES ($1, $2, $3, $4, $4)
+            ON CONFLICT (coc_user, setting_name) DO UPDATE SET
               setting_value = EXCLUDED.setting_value,
               updated_by = EXCLUDED.created_by,
               date_updated = CURRENT_TIMESTAMP",
@@ -60,9 +103,8 @@ update_all_user_settings <- function(user_coc, tab_name){
     return(NULL)
   
   existing_settings <-  dbGetQuery(p,
-                                   'SELECT * FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2', 
-                                   params = list(isolate(user_coc$coc_version_id),
-                                                 isolate(user_coc$username)))
+                                   'SELECT * FROM user_settings WHERE coc_user = $2', 
+                                   params = list(isolate(user_coc$username)))
   
   
   rating_settings <- c('rating_method','rating_tab','rating_subtab', 'rating_renew_project_selected', 'rating_new_project_selected')
@@ -70,7 +112,7 @@ update_all_user_settings <- function(user_coc, tab_name){
   ## save ratings navigation user settings
   lapply(rating_settings, 
          function(x){
-           update_single_user_setting(p, user_coc, x, user_coc$settings[[x]])
+           update_single_version_setting(p, user_coc, x, user_coc$version_settings[[x]])
   })
   
   ## save current tab 
@@ -87,8 +129,7 @@ update_all_user_settings <- function(user_coc, tab_name){
   if(fnrow(disp_existing) > 0){
 
     current_selection <- isolate(user_coc$settings$cols_to_hide)
-    previous_selection <-  get_project_fields_to_hide(get_db_pool(), isolate(user_coc$coc_version_id),
-                                                 isolate(user_coc$username))
+    previous_selection <-  get_project_fields_to_hide(get_db_pool(), isolate(user_coc$username))
 
 
     to_add <- setdiff(current_selection, gsub('disp_', '', previous_selection))
@@ -106,8 +147,8 @@ update_all_user_settings <- function(user_coc, tab_name){
       sapply(to_remove,
              function(x){
                dbExecute(p,
-                 'DELETE FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3',
-                 params = list(isolate(user_coc$coc_version_id), isolate(user_coc$username), x)
+                 'DELETE FROM user_settings WHERE coc_user = $1 AND setting_name = $3',
+                 params = list(isolate(user_coc$username), x)
                )
              }
       )

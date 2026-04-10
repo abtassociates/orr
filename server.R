@@ -10,7 +10,9 @@ function(input, output, session) {
     email = NULL,  # user's email as stored and returned by cognito
     active_tab = NULL, # last active tab
     settings = list(
-      cols_to_hide = NULL, # which project columns to display
+      cols_to_hide = NULL # which project columns to display
+    ),
+    version_settings = list(
       rating_method = NULL, # in-app vs alternative rating method
       rating_tab = NULL
     ),

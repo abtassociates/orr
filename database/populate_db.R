@@ -34,6 +34,7 @@ ADMIN_USERS <- "
   ('kally.canfield@abtglobal.com', 'Kally', 'Canfield', NULL, 'tester'),
   ('Randy.McCoy@abtglobal.com', 'Randy', 'McCoy', NULL, 'tester')
 "
+SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
 
 drop_table <- function(tbl) {
 	message(glue::glue("Dropping {tbl}"))
@@ -540,6 +541,7 @@ drop_table("coc_versions")
 drop_table("coc_version_requests")
 drop_table("coc_version_users")
 drop_table("user_settings")
+drop_table("version_settings")
 
 DBI::dbExecute(get_db_pool(), glue::glue("
 --- CoC versions (CoCs can have versions, as new users may decide to create their own)
@@ -599,7 +601,6 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 
 CREATE TABLE IF NOT EXISTS user_settings (
     user_setting_id {id_var_attrs},
-    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
   	coc_user VARCHAR(255) REFERENCES users(username) ON DELETE CASCADE,
     setting_name VARCHAR(255),
     setting_value VARCHAR,
@@ -609,7 +610,25 @@ CREATE TABLE IF NOT EXISTS user_settings (
     updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
     
     -- A version user can only set one of each type of user setting
-    CONSTRAINT user_settings_unique_key UNIQUE (coc_version_id, coc_user, setting_name)
+    CONSTRAINT user_settings_unique_key UNIQUE (coc_user, setting_name)
+);
+"))
+
+DBI::dbExecute(get_db_pool(), glue::glue("
+
+CREATE TABLE IF NOT EXISTS version_settings (
+    version_setting_id {id_var_attrs},
+    coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
+  	coc_user VARCHAR(255) REFERENCES users(username) ON DELETE CASCADE,
+    setting_name VARCHAR(255),
+    setting_value VARCHAR,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
+    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
+
+    -- A version user can only set one of each type of user setting
+    CONSTRAINT version_settings_unique_key UNIQUE (coc_version_id, coc_user, setting_name)
 );
 "))
 

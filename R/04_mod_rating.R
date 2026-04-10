@@ -116,7 +116,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session) {
       req(user_coc$auth)
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
       
-      user_previous_method <- get_user_setting(get_db_pool(), 'rating_method', user_coc$coc_version_id, user_coc$username)
+      user_previous_method <- get_version_setting(get_db_pool(), 'rating_method', user_coc$coc_version_id, user_coc$username)
       
       if(length(user_previous_method) > 0){
         shinyjs::click(id = glue::glue('select_{user_previous_method}'))
@@ -124,14 +124,16 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session) {
       
         ## set up subtabs if using in-app rating method
         if(user_previous_method == 'in_app'){
-          user_previous_tab <- get_user_setting(get_db_pool(), 'rating_tab', user_coc$coc_version_id, user_coc$username)
+          user_previous_tab <- get_version_setting(get_db_pool(), 'rating_tab', user_coc$coc_version_id, user_coc$username)
           if(length(user_previous_tab) > 0){
             
             nav_select(id = 'rating_tabs', selected = glue::glue('rating-{user_previous_tab}'))
             
+          } else {
+            shinyjs::reset(id = 'rating_tabs')
           }
           
-          user_previous_subtab <- get_user_setting(get_db_pool(), 'rating_subtab', user_coc$coc_version_id, user_coc$username)
+          user_previous_subtab <- get_version_setting(get_db_pool(), 'rating_subtab', user_coc$coc_version_id, user_coc$username)
           
           if(length(user_previous_subtab) > 0){
             if(length(user_previous_tab) == 0 || user_previous_tab == 'customize_criteria'){
@@ -142,8 +144,15 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session) {
               nav_select(id = 'new-main_contents', selected = glue::glue('rating-new-{user_previous_subtab}'))
               
             }
+          } else {
           }
         }
+      } else {
+        nav_select(id = "method", selected = ns("in_app"))
+        shinyjs::removeCssClass(id='select_in_app', class='card-selected')
+        shinyjs::removeCssClass(id='select_alternative', class='card-selected')
+        shinyjs::reset(id='select_in_app')
+        shinyjs::reset(id='select_alternative')
       }
       
     })
@@ -151,14 +160,14 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session) {
     ## Rating method
     observeEvent(input$select_in_app, {
       nav_select(id = "method", selected = ns("in_app"))
-      user_coc$settings$rating_method <- 'in_app'
+      user_coc$version_settings$rating_method <- 'in_app'
       shinyjs::addClass(id = "select_in_app", class = "card-selected")
       shinyjs::removeClass(id = "select_alternative", class = "card-selected")
     })
     
     observeEvent(input$select_alternative, {
       nav_select(id = "method", selected = ns("alternative"))
-      user_coc$settings$rating_method <- 'alternative'
+      user_coc$version_settings$rating_method <- 'alternative'
       shinyjs::addClass(id = "select_alternative", class = "card-selected")
       shinyjs::removeClass(id = "select_in_app", class = "card-selected")
     })
@@ -166,7 +175,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session) {
     ## Update rating_tab user setting
     observeEvent(input$rating_tabs, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_tab <- gsub('rating-', '', input$rating_tabs)
+      user_coc$version_settings$rating_tab <- gsub('rating-', '', input$rating_tabs)
     }, ignoreInit = TRUE)
     
     # If they uncheck all factors, don't show rating entry ratbs

@@ -137,7 +137,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
       
-      update_coc_version(
+      update_coc_status(
         params = list(
           get_lookup_refid("In Progress", "coc_status"), 
           user_coc$username, 

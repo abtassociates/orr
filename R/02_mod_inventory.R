@@ -124,7 +124,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       initial_cols_to_hide <- setdiff(names(projects_data()), initial_cols_to_show )
       
       # retrieve user columns from user-settings table
-      user_previous_hidden <- get_project_fields_to_hide(get_db_pool(),user_coc$coc_version_id, user_coc$username)
+      user_previous_hidden <- get_project_fields_to_hide(get_db_pool(), user_coc$username)
       user_cols_to_hide <- gsub('disp_','',user_previous_hidden)
 
       if(length(user_cols_to_hide) > 0){

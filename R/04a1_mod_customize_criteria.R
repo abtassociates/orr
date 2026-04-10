@@ -38,12 +38,12 @@ mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_sess
     
     observeEvent(input$rating_criteria_subtabs, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_subtab <- gsub('rating-customize_criteria-', '', input$rating_criteria_subtabs)
+      user_coc$version_settings$rating_subtab <- gsub('rating-customize_criteria-', '', input$rating_criteria_subtabs)
     }, ignoreInit = TRUE)
     
     observeEvent(input$rating_factors_subtabs, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_subsubtab <- gsub('rating-customize_criteria-', '', input$rating_factors_subtabs)
+      user_coc$version_settings$rating_subsubtab <- gsub('rating-customize_criteria-', '', input$rating_factors_subtabs)
       
     }, ignoreInit = TRUE)
     

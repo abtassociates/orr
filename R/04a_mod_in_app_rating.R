@@ -38,7 +38,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     observe({
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
       
-      user_prev_project_selected <- get_user_setting(get_db_pool(), glue::glue('rating_{id}_project_selected'), user_coc$coc_version_id, user_coc$username)
+      user_prev_project_selected <- get_version_setting(get_db_pool(), glue::glue('rating_{id}_project_selected'), user_coc$coc_version_id, user_coc$username)
       
       updateSelectInput(
         session, 
@@ -53,14 +53,14 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     observeEvent(input$main_contents, {
       req(user_coc$coc_version_id & nav_control() == 'rating')
       
-      user_coc$settings$rating_subtab <- gsub(glue::glue('rating-{id}-'), '', input$main_contents)
+      user_coc$version_settings$rating_subtab <- gsub(glue::glue('rating-{id}-'), '', input$main_contents)
       toggle_sidebar(id = "project_selection_sidebar", open = input$main_contents != ns("rating_factors"))
     }, ignoreInit = TRUE)
     
     # Store selected project in user setting
     observeEvent(input$project_select, {
       req(user_coc$coc_version_id & nav_control() == 'rating')
-      user_coc$settings[[glue::glue('rating_{id}_project_selected')]] <- input$project_select
+      user_coc$version_settings[[glue::glue('rating_{id}_project_selected')]] <- input$project_select
     }, ignoreInit = TRUE)
     
     # Get all projects for the CoC and the current funding action

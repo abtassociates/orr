@@ -443,12 +443,12 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     ## store user settings for project type and target population
     observeEvent(input$project_type, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings[[glue::glue('rating_{id}_project_type')]] <- input$project_type
+      user_coc$version_settings[[glue::glue('rating_{id}_project_type')]] <- input$project_type
     }, ignoreInit = TRUE)
     
     observeEvent(input$target_population, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings[[glue::glue('rating_{id}_target_population')]] <- input$target_population
+      user_coc$version_settings[[glue::glue('rating_{id}_target_population')]] <- input$target_population
     }, ignoreInit = TRUE)
     
     observeEvent(input$save_factors, {
