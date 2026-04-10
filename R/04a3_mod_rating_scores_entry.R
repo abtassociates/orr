@@ -176,7 +176,9 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       # Create a main accordion panel for each group
       accordion_items_group <- purrr::map(names(grouped_data), function(group_name) {
         group_dt <- grouped_data[[group_name]]
-        group_id <- make.names(group_name) # Create a safe ID for JS
+        group_id <- gsub(" ", "_", group_name)
+        group_total <- get_group_total(group_dt)
+        group_max <- fsum(group_dt$max_point_value)
         
         # Now, within this group, let's create the table-like content
         # First, split by subgroup to render subgroup headers
@@ -245,8 +247,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
         
         # Create the single accordion panel for the whole group
         bslib::accordion_panel(
-          title = group_name,
-          # The single header row for the "table"
+          title = HTML(glue::glue("<span>{group_name}</span> <span class='accordion_total_display'>({group_total} out of {group_max})</span>")),
+          value = group_name,
           layout_columns(
             class = "rating-table-header",
             col_widths = col_widths,
@@ -288,39 +290,6 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       )
     }) # end render factors
     
-    # add group scores to title when closed
-    observeEvent(input$main_accordion, {
-      req(nrow(factors_and_scores_for_project()) > 0)
-      
-      # Get the data and split it by group, just like in your UI
-      df <- factors_and_scores_for_project()
-      grouped_data <- split(df, by = "factor_group")
-      
-      # Loop through each group
-      lapply(names(grouped_data), function(group_name) {
-        group_data <- grouped_data[[group_name]]
-        
-        is_open <- group_name %in% input$main_accordion
-        
-        if (!is_open) {
-          group_total <- get_group_total(group_data)
-          group_max <- fsum(group_data$max_point_value)
-          # Update the title when OPEN
-          accordion_panel_update(
-            id = "main_accordion",
-            target = group_name,
-            title = glue::glue("{group_name} ({group_total} out of {group_max})")
-          )
-        } else {
-          accordion_panel_update(
-            id = "main_accordion",
-            target = group_name,
-            title = group_name
-          )
-        }
-      })
-    }, ignoreNULL = FALSE) 
-    
     # get all entered scores
     entered_scores <- reactive({
       sapply(
@@ -354,7 +323,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       # Loop through each group
       lapply(names(grouped_data), function(group_name) {
         
-        group_id <- make.names(group_name)
+        group_id <- gsub(" ", "_", group_name)
         group_data <- grouped_data[[group_name]]
         
         # Dynamically bind a renderText to the output
