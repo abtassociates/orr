@@ -154,7 +154,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
                   div(get_lookup_label(target_population, ref_type = "target_population")),
                   div(text),
                   textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
-                  numericInput(ns(paste0("points_", id)), min = 1, label = NULL, value = points, step = 0.1)
+                  numericInput(ns(paste0("points_", id)), min = -999.9, max=999.9, label = NULL, value = points, step = 0.1)
                 )
                 
                 iv$add_rule(paste0("goal_", id), ~
@@ -360,7 +360,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           # Factor/Goal - short text
           textInput(ns("custom_goal"), label = "Factor/Goal", placeholder = "Enter goal"),
           # Max Point Value - numeric
-          numericInput(ns("custom_points"), min = 1, label = "Max Point Value", value = 0, step = 0.1),
+          numericInput(ns("custom_points"), min = -999.9, max = 999.9, label = "Max Point Value", value = 0, step = 0.1),
           
           footer = tagList(
             actionButton(ns("submit_custom_factor"), "Submit", class = "btn-primary"),
