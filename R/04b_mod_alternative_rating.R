@@ -41,7 +41,6 @@ mod_alternative_rating_server <- function(id, user_coc) {
     
     # Alternative Rating table
     # 1. Create a helper function to ensure data formatting is identical
-    # for both the initial render and subsequent proxy updates.
     format_table_data <- function(df) {
       
       df %>%
@@ -55,7 +54,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     
     output$alternative_rating_table <- renderDT({
       req(user_coc$coc_version_id)
-      data <- isolate(ratable_projects()) |> fselect(-version_id)
+      data <- ratable_projects() |> fselect(-version_id)
       
       shiny::validate(need(
         nrow(data) > 0, 
@@ -186,11 +185,6 @@ debugger;
       
       ratable_projects(data)
     })
-    
-    ## datatable proxy-----
-    # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
-    # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy("alternative_rating_table", session = session)
     
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns
     set_all_thresholds_handler <- function(colname) {
