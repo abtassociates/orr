@@ -177,7 +177,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       accordion_items_group <- purrr::map(names(grouped_data), function(group_name) {
         group_dt <- grouped_data[[group_name]]
         group_id <- gsub(" ", "_", group_name)
-        group_total <- get_group_total(group_dt)
+        group_total <- DT::coerceValue(fsum(group_dt$rating_score), 0L)
         group_max <- fsum(group_dt$max_point_value)
         
         # Now, within this group, let's create the table-like content
@@ -247,7 +247,17 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
         
         # Create the single accordion panel for the whole group
         bslib::accordion_panel(
-          title = HTML(glue::glue("<span>{group_name}</span> <span class='accordion_total_display'>({group_total} out of {group_max})</span>")),
+          title = tagList(
+            htmltools::span(group_name),
+            htmltools::span(
+              class = "accordion_total_display",
+              HTML(paste0(
+                "(",
+                textOutput(ns(paste0("title_subtotal_", group_id)), inline = TRUE),
+                " out of ", group_max, ")"
+              ))
+            )
+          ),
           value = group_name,
           layout_columns(
             class = "rating-table-header",
@@ -327,12 +337,19 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
         group_data <- grouped_data[[group_name]]
         
         # Dynamically bind a renderText to the output
+        # group total
         output[[paste0("subtotal_", group_id)]] <- renderText({
           get_group_total(group_data)
         })
         
+        # group max
         output[[paste0("subtotal_max_", group_id)]] <- renderText({
           paste0("out of ", fsum(group_data$max_point_value))
+        })
+        
+        # Accordion Title group total/max
+        output[[paste0("title_subtotal_", group_id)]] <- renderText({
+          get_group_total(group_data)
         })
       })
       
