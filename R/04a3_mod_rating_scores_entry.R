@@ -37,7 +37,7 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
-      uiOutput(ns("project_rating_factors")),
+      uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
         id = ns("total_row"),
         style = "display:none;",
