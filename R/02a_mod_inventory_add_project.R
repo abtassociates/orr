@@ -187,11 +187,11 @@ mod_inventory_add_project_server <- function(
       # Clear existing validation errors
       iv$disable() 
       
-      # Logic for 'Replace' or 'Reallocate' prepopulation
-      if (grepl("Reallocation", form_type()) && funding_source != "") {
-        updateSelectInput(session, "funding_source", selected = funding_source)
+      # Logic for 'Replace' or 'Reallocate' prepopulation 
+      if (grepl("Reallocation", form_type()) && funding_source() != "") {
+        updateSelectInput(session, "funding_source", selected = funding_source())
         updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
-        if (funding_source == "YHDP") {
+        if (funding_source() == "YHDP") {
           updateSelectInput(session, "funding_action", selected = "New")
         }
         shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
@@ -199,8 +199,8 @@ mod_inventory_add_project_server <- function(
       } else if (form_type() == "YHDP Replacement" && !is.null(project_to_replace())) {
         updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
         updateSelectInput(session, "funding_action", selected = "Replace")
-        updateNumericInput(session, "youth_beds_fam", value = project_to_replace$`Par Youth Beds`)
-        updateNumericInput(session, "youth_beds_ind", value = project_to_replace$`Single Youth Beds`)
+        updateNumericInput(session, "youth_beds_fam", value = project_to_replace$par_youth_beds)
+        updateNumericInput(session, "youth_beds_ind", value = project_to_replace$single_youth_beds)
         shinyjs::disable("funding_source")
       } else {
         reset_form()
@@ -306,7 +306,8 @@ mod_inventory_add_project_server <- function(
     iv$add_rule("project_type", sv_required())
     iv$add_rule("funding_source", sv_required())
     iv$add_rule("target_population", sv_required())
-    
+    iv$add_rule("funding_action", ~ if(. == "Replace" && funding_source != "YHDP") "Only YHDP projects can be replaced")
+
     # Grant number is only required if not New or Expand
     grant_iv <- shinyvalidate::InputValidator$new()
     grant_iv$add_rule("grant_number", sv_required())
