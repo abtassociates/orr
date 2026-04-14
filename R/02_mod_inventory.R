@@ -369,7 +369,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
       update_datatable(proj_id, col_name, info$value)
-      update_inventory_db(value, col_name, proj_id)
+      s <- update_inventory_db(value, col_name, proj_id)
+      
+      if(isTruthy(s))
+        user_coc$projects_updated <- user_coc$projects_updated + 1
     }
     
     update_datatable <- function(proj_id, col_name, value) {
@@ -520,7 +523,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
               title = "YHDP Replacement Confirmation",
               HTML("
                   Are you replacing this project with multiple projects? <br><br>
-                  If not, then click 'No'. Then update the newly highlighted fields 
+                  If not, click 'No'. Then update the newly highlighted fields 
                   for the project. Note that because this is a YHDP Replacement 
                   project, you can only edit the Project Name, Project Type, and Youth 
                   bed fields. <br><br> If you are Replacing this project with 
@@ -538,7 +541,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
                 actionButton(ns('replace_multiple'), label="Yes"),
                 actionButton(ns('replace_one'), label="No"),
                 actionButton(ns('replace_cancel'), label="Cancel"),
-              )
+              ),
+              size = "l"
             )
           ) # end showModal
         } 
@@ -546,11 +550,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
         else {
           launch_modal(paste0(funding_source, " Reallocation"), funding_source)
         }
-      }
+      } # end reallocation/replace IF-block
       # Update after non-reallocation and non-replace ------
-      else {
-        inventory_update(info, new_value)
-      }
+      inventory_update(info, new_value)
     }, ignoreInit = TRUE)
     
     # Handle replacement modal ------
@@ -563,20 +565,17 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     
     ## User wants to replace with multiple projects ----
     observeEvent(input$replace_multiple, {
-      show_project_modal(
-        "YHDP Replacement", 
-        yhdp_replacement_info$funding_source, 
-        yhdp_replacement_info$info, 
-        yhdp_replacement_info$new_value,
-        yhdp_replacement_info$project_to_replace,
-        orgnames = orgnames()
+      removeModal()
+      launch_modal(
+        type ="YHDP Replacement", 
+        source = yhdp_replacement_info$funding_source, 
+        replacement = yhdp_replacement_info$project_to_replace
       )
     })
-    
-    ## User wants to replace with one project ----
+
+        ## User wants to replace with one project ----
     observeEvent(input$replace_one, {
       removeModal()
-      inventory_update(yhdp_replacement_info$info, yhdp_replacement_info$new_value)
     })
     
     ## User cancelled replacement ----
@@ -625,7 +624,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       # If they reallocated or replaced, we need to both update the reallocated/replaced row
       # AND add the new project
       else {
-        inventory_update(info, new_value)
         inventory_append(modal_submission$project_data)
       }
     }, ignoreNULL = TRUE)

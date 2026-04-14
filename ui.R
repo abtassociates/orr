@@ -1,7 +1,7 @@
 page_navbar(
   title = "CoC Project Rating and Ranking Tool",
   id = "nav",
-  
+  fillable = FALSE,
   window_title = 'ORR',
   
   theme = orr_bslib_theme,
