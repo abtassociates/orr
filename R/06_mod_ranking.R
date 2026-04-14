@@ -32,11 +32,11 @@ mod_ranking_ui <- function(id) {
     # 1. Top Summary Widgets
     layout_columns(
       fill = FALSE,
-      mod_ranking_widget_ui(ns("coc_bonus")),
-      mod_ranking_widget_ui(ns("tier_1")),
-      mod_ranking_widget_ui(ns("tier_2")),
-      mod_ranking_widget_ui(ns("dv_bonus")),
-      mod_ranking_widget_ui(ns("exceeds"))
+      mod_ranking_widget_ui(ns("coc_bonus")) |> shinycssloaders::withSpinner(),
+      mod_ranking_widget_ui(ns("tier_1")) |> shinycssloaders::withSpinner(),
+      mod_ranking_widget_ui(ns("tier_2")) |> shinycssloaders::withSpinner(),
+      mod_ranking_widget_ui(ns("dv_bonus")) |> shinycssloaders::withSpinner(),
+      mod_ranking_widget_ui(ns("exceeds")) |> shinycssloaders::withSpinner()
     ),
     
     bslib::accordion(
@@ -50,10 +50,10 @@ mod_ranking_ui <- function(id) {
     
     
     # 4. Drag and Drop Zones
-    DTOutput(ns("ui_ranked_list")),
+    DTOutput(ns("ui_ranked_list")) |> shinycssloaders::withSpinner(),
     br(),
     br(),
-    DTOutput(ns("ui_excluded_list")),
+    DTOutput(ns("ui_excluded_list")) |> shinycssloaders::withSpinner() #,
     # br(),
     # br(),
     # DTOutput(ns("ui_yhdp_ren")),
