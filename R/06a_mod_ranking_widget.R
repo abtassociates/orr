@@ -3,7 +3,7 @@ mod_ranking_widget_ui <- function(id) {
   uiOutput(ns("widget_box"))
 }
 
-mod_ranking_widget_server <- function(id, allocated, total, title, bg_color = "blue", icon_name = "piggy-bank") {
+mod_ranking_widget_server <- function(id, allocated, total, title, icon_name = "piggy-bank") {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -69,7 +69,8 @@ mod_ranking_widget_server <- function(id, allocated, total, title, bg_color = "b
         limit_ui,
         sub_text,
         showcase = icon(icon_name),
-        theme = bslib::value_box_theme(bg = bg_color, fg = "white")
+        theme = bslib::value_box_theme(bg = glue::glue("var(--brand-{id})"), fg = "white"),
+        height = "200px"
       )
     })
   })

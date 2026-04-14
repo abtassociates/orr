@@ -15,6 +15,16 @@ color:
     # app background color
     grey_bg: '#ecf0f5'
     
+    coc_bonus: '#ad1457'
+    tier_1: '#0d47a1'
+    tier_2: '#873600'
+    dv_bonus: '#00695c'
+    exceeds: '#000000'
+    
+    # Warning color
+    overallocated: '#ffc107'
+
+    
   # theme colors  
   primary: blue
   foreground: black

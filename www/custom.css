@@ -150,42 +150,29 @@ td.drag-handle:active {
 .ranking-exceeded {
   font-size: 1em;
   margin-bottom: 0;
-  color: #ffc107; /* Bright yellow to contrast against dark backgrounds */
+  color: var(--brand-overallocated); /* Bright yellow to contrast against dark backgrounds */
   font-weight: bold;
 }
 
 /* DataTables RowGroup Header Styles */
-tr.group-tier1 td {
-  background-color: blue !important; 
-  color: white !important; 
-  font-weight: bold !important; 
-  font-size: 16px !important;
-}
-tr.group-tier2 td {
-  background-color: orange !important; 
-  color: white !important; 
-  font-weight: bold !important; 
-  font-size: 16px !important;
-}
-tr.group-exceeding td {
-  background-color: black !important; 
+tr.group_header td{
   color: white !important; 
   font-weight: bold !important; 
   font-size: 16px !important;
 }
 
 #ranking-coc_bonus-bucket {
-  background-color: pink;
+  background-color: var(--brand-coc_bonus);
 }
 #ranking-dv_bonus-bucket {
-  background-color: brown;
+  background-color: var(--brand-dv_bonus);
 }
-#ranking-tier_1-bucket {
-  background-color: blue;
+#ranking-tier_1-bucket, tr.group-tier_1 td{
+  background-color: var(--brand-tier_1);
 }
-#ranking-tier_2-bucket {
-  background-color: orange;
+#ranking-tier_2-bucket, tr.group-tier_2 td {
+  background-color: var(--brand-tier_2);
 }
-#ranking-exceeds-bucket {
-  background-color: black;
+#ranking-exceeds-bucket, tr.group-exceeds td {
+  background-color: var(--brand-exceeds);
 }

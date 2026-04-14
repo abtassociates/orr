@@ -248,11 +248,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       )
     })
     
-    mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data()$coc_bonus, "CoC Bonus", bg_color = "pink", icon_name = "plus-circle")
-    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data()$tier_1, "Tier 1 (Adj ARD * 90%)", bg_color = "blue", icon_name = "layer-group")
-    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data()$tier_2, "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)", bg_color = "orange", icon_name = "layer-group")
-    mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data()$dv_bonus, "DV Bonus", bg_color = "brown", icon_name = "heart")
-    mod_ranking_widget_server("exceeds", alloc_exceed, Inf, "Exceeding ARD", bg_color = "black", icon_name = "exclamation-triangle")
+    mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data()$coc_bonus, "CoC Bonus", icon_name = "plus-circle")
+    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data()$tier_1, "Tier 1 (Adj ARD * 90%)", icon_name = "layer-group")
+    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data()$tier_2, "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)", icon_name = "layer-group")
+    mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data()$dv_bonus, "DV Bonus", icon_name = "heart")
+    mod_ranking_widget_server("exceeds", alloc_exceed, Inf, "Exceeding ARD", icon_name = "exclamation-triangle")
     
     # ranked_project_ids <- reactiveValues(new = NULL)
     
@@ -694,15 +694,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
         formatStyle(
           'highlight',  # Replace with your actual column name
           target = 'row',
-          backgroundColor = styleEqual(c("dv", "coc"), c('brown', 'pink')),
-          color = styleEqual(c("coc", "dv"), c('white', 'black'))
+          backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
+          color = styleEqual(c("coc", "dv"), c('white', 'white'))
         )
-        # formatStyle(
-        #   1:length(colnames), 
-        #   valueColumns = 'highlight', 
-        #   backgroundColor = styleEqual(c("coc", "dv"), c('pink', 'tan')),
-        #   color = styleEqual(c("coc", "dv"), c('black', 'black'))
-        # )
       
       x
     }
