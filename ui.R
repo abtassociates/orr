@@ -14,17 +14,105 @@ page_navbar(
     tags$head(
       tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
     ),
+    tags$div(
+      id = "logout-overlay",
+      style = "
+        display:none;
+        position:fixed;
+        top:0; left:0;
+        width:100%; height:100%;
+        background:rgba(0,0,0,0.75);
+        color:white;
+        font-size:20px;
+        align-items:center;
+        justify-content:center;
+        z-index:99999;
+        text-align:center;
+        padding:20px;
+      ",
+      "Session timed out. Logging out..."
+    ),
     tags$style(HTML("
-    /* Change the background color of the selected row */
-    table.dataTable tbody tr.selected>* {
-      box-shadow: inset 0 0 0 9999px #357DAD !important;
-      color: white;
-    }
-    table.dataTable.display > tbody > tr.selected:hover>* {
-      box-shadow: inset 0 0 0 9999px #357DAD !important;
-      color: white;
-    }
-  ")),
+      /* Change the background color of the selected row */
+      table.dataTable tbody tr.selected>* {
+        box-shadow: inset 0 0 0 9999px #357DAD !important;
+        color: white;
+      }
+      table.dataTable.display > tbody > tr.selected:hover>* {
+        box-shadow: inset 0 0 0 9999px #357DAD !important;
+        color: white;
+      }
+    ")),
+    tags$script(HTML(sprintf("
+     // 1. Hide any potential disconnect overlays
+     function hide_disconnect() {
+      var style = document.createElement('style');
+      style.id = 'ss-hide-overlay-style';
+      style.innerHTML = '#ss-overlay, #ss-connect-dialog { display: none !important; }';
+      document.head.appendChild(style);
+     }
+     
+     // HANDLE LOGIN (HIDE DISCONNECT AND REDIRECT)
+     document.addEventListener('click', function(e) {
+      var el = e.target.closest('#login_link');
+      if (!el) return;
+    
+      e.preventDefault(); // stops the href navigation
+    
+      hide_disconnect();
+    
+      window.location.href = '%s';
+    });
+     
+     // AUTH STATE
+     var logged_in = null;
+     var timeout = null;
+     var idleTimeout = 1000 * 60 * 9; //9 minutes
+     
+     // OVERLAY
+     function showLogoutOverlay() {
+       document.getElementById('logout-overlay').style.display = 'flex';
+       
+       setTimeout(function() {
+         window.location.href = '%s';
+       }, 1500);
+     }
+   
+     // TIMER LOGIC (GATED)
+     function resetTimer() {
+       if (logged_in !== true) return;
+       
+       clearTimeout(timeout);
+       
+       timeout = setTimeout(function() {
+         hide_disconnect();
+         showLogoutOverlay();
+       }, idleTimeout);
+     }
+     
+     // ACTIVITY HANDLER
+     function markActivity() {
+       if (logged_in !== true) return;
+       resetTimer();
+     }
+     
+     // SHINY AUTH MESSAGE - GET WHETHER USER LOGGED IN
+     Shiny.addCustomMessageHandler('auth_state', function(l) {
+       logged_in = l;
+       
+       // arm timer only after login confirmed
+       if (logged_in === true) resetTimer(); 
+       
+       document.getElementById('ss-hide-overlay-style')?.remove();
+     });
+     
+     // USER ACTIVITY EVENTS
+     var events = ['click', 'mousemove', 'keypress', 'scroll'];
+     
+     events.forEach(function(e) {
+       document.addEventListener(e, markActivity, { passive: true });
+     });
+     ", aws_auth_redirect, aws_auth_logout))),
     ## Enable shinyjs -----
     shinyjs::useShinyjs(),
     disconnectMessage(

@@ -8,13 +8,14 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     title = paste0("Rate ", ptypes),
     value = id,
     br(),
-    helpText(paste0("Rate your ", ptypes, " against your selected criteria.", ifelse(id == "New", "Note that New YHDP projects do not get rated and thus will not appear in the Select Project dropdown below.", ""))),
+    helpText(paste0("Rate your ", ptypes, " against your selected criteria.")),
     br(),
     layout_sidebar(
       style = "min-height: 500px;",
       # the side bar will be 
       sidebar = sidebar(
-        width = 350,
+        width = 250,
+        open = "desktop",
         id = ns("project_selection_sidebar"),
         selectInput(ns("project_select"), label = "Select Project", choices = NULL),
         uiOutput(ns("project_info_sidebar"))
@@ -33,15 +34,18 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     ns <- session$ns
     
     ## restore last selected project from user_settings DB tbl
+    ## also update choices
     observe({
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      req(nrow(all_projects()) > 0)
       
       user_prev_project_selected <- get_user_setting(get_db_pool(), glue::glue('rating_{id}_project_selected'), user_coc$coc_version_id, user_coc$username)
       
-      if(length(user_prev_project_selected) > 0){
-        updateSelectInput(session, inputId = 'project_select', selected = user_prev_project_selected)
-      }
+      updateSelectInput(
+        session, 
+        'project_select', 
+        selected = if(fnrow(all_projects()) > 0 && length(user_prev_project_selected)) user_prev_project_selected else "",
+        choices = if(fnrow(all_projects()) > 0) c("Please select..." = "", setNames(all_projects()$project_id, all_projects()$project_name)) else character(0)
+      )
     })
     
     # Collapse sidebar when user is on Customize Rating Criteria tab, since it's
@@ -63,7 +67,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     all_projects <- reactive({
       req(user_coc$coc_version_id)
       funding_action_ids <- get_lookup_refid(
-        ifelse(funding_action == "Renew", c("Renew","Expand"), "New"),
+        if(funding_action == "Renew") c("Renew","Expand") else "New",
         "funding_action"
       )
       
@@ -72,29 +76,16 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
     
     # Get the project to be rated from the dropdown in the sidebar
     selected_project <- reactive({
-      if (is.null(input$project_select) || input$project_select == "") return(NULL)
+      req(user_coc$coc_version_id)
       
       all_projects() |> 
         fsubset(project_id == input$project_select)
     })
     
-    
-    # Update project selection choices when CoC is selected
-    observe({
-      req(user_coc$coc_version_id)
-      req(nrow(all_projects()) > 0)
-      
-      updateSelectInput(
-        session, 
-        "project_select",
-        choices = setNames(all_projects()$project_id, all_projects()$project_name),
-        selected = character(0)
-      )
-    })
-    
     # Show project info about the selected project
     output$project_info_sidebar <- renderUI({
-      req(input$project_select)
+      req(selected_project())
+      req(fnrow(selected_project()) > 0)
       
       div(
         p(strong("Organization:"), selected_project()$organization_name),

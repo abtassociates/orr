@@ -106,7 +106,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
             colName = table.column(colIndex).header().childNodes[0].wholeText;
         }
         
-        colName = colName.replace('Ⓘ','');
+        colName = colName.replace(' Ⓘ','');
         return(colName);
       }
     ",
@@ -293,6 +293,15 @@ initialize_inline_edit_table_ui <- function(
     tableID, 
     initial_filter = NULL, 
     formatting = list(), 
+    editable = list(
+      target = "cell",
+      disable = list(
+        columns = match(
+          cols_to_disable, 
+          names(data)
+        ) - 1
+      )
+    ),
     colnames=NULL, 
     cols_to_disable = NULL,
     buttons = NULL,
@@ -326,6 +335,57 @@ initialize_inline_edit_table_ui <- function(
   # use js to show the dropdowns
   init_js <- get_init_js(factor_info$factor_levels, tableID, has_double_header, header_cb)
   
+  callback_js <- glue::glue("
+    {ifelse(callback_js != 'return table;', callback_js, '')}
+    
+    $(document).on('mouseenter', 'table.dataTable tbody tr', function() {{
+      $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
+    }});
+    $(document).on('mouseenter', 'table.dataTable tbody td', function() {{
+      $(this).css('cursor', 'pointer');
+      $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
+    }});
+    $(document).on('mouseleave', 'table.dataTable tbody tr', function() {{
+      $(this).css('background-color', 'inherit');
+    }});
+      
+    // Start cell editing with Enter key (13)   
+    table.on('key', function (e, datatable, key, cell, originalEvent) {{
+      const ignoredKeys = [
+        'Shift', 'Control', 'Alt', 'Meta',
+        'Tab', 'Escape',
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'
+      ];
+    
+      // ignore non-character keys
+      if (ignoredKeys.includes(e.key)) return;
+    
+      // already editing -> do nothing
+      const $cell = $(cell.node());
+      if ($cell.find('input, textarea, select').length > 0) return;
+    
+      // only trigger on printable keys (letters, numbers, symbols)
+      if (!originalEvent || originalEvent.key.length !== 1) return;
+    
+      originalEvent.preventDefault();
+    
+      // open editor (same as your dblclick approach)
+      $cell.trigger('dblclick.dt');
+    
+      // inject the typed character into the editor after it opens
+      setTimeout(() => {{
+        const input = $cell.find('input, textarea, select').first();
+        if (input.length) input.val(originalEvent.key);
+      }}, 0);
+    }});
+    
+    // Exit cell editing with Tab (9), Enter (13), or Arrow Keys (37-40)
+    table.on('keydown', function(e) {{
+      var keys = [9,13,37,38,39,40];
+      if(e.target.localName == 'input' && keys.indexOf(e.keyCode) > -1)
+        $(e.target).trigger('blur');
+    }});")
+  
   # --- STEP 1: handle user-specified options ---
   default_options <- list(
     dom = "tip",
@@ -356,15 +416,7 @@ initialize_inline_edit_table_ui <- function(
     style = "default",
     extensions = extensions,
     colnames = colnames,
-    editable = list(
-      target = "cell",
-      disable = list(
-        columns = match(
-          cols_to_disable, 
-          names(data)
-        ) - 1
-      )
-    ),
+    editable = editable,
     options = final_options,
     filter = filter,
     escape = escape,

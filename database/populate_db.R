@@ -25,14 +25,14 @@ HUD_ARD_DATA_FILEPATH <- here("database/HUD_ard_report.csv")
 # Ideally, this get dynamically populated with data from Cognito
 # But not a huge deal since this won't be run after we're live
 ADMIN_USERS <- "
-  ('alex.silverman@abtglobal.com', 'Alex', 'Silverman', NULL),
-  ('marschall.furman@abtglobal.com', 'Marschall', 'Furman', NULL),
-  ('Victoria.Lopez@abtglobal.com', 'Victoria', 'Lopez', NULL),
-  ('anthony.appau@abtglobal.com', 'Anthony', 'Appau', NULL),
-  ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL),
-  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL),
-  ('kally.canfield@abtglobal.com', 'Kally', 'Canfield', NULL),
-  ('Randy.McCoy@abtglobal.com', 'Randy', 'McCoy', NULL)
+  ('alex.silverman@abtglobal.com', 'Alex', 'Silverman', NULL, 'admin'),
+  ('marschall.furman@abtglobal.com', 'Marschall', 'Furman', NULL, 'admin'),
+  ('Victoria.Lopez@abtglobal.com', 'Victoria', 'Lopez', NULL, 'tester'),
+  ('anthony.appau@abtglobal.com', 'Anthony', 'Appau', NULL, 'admin'),
+  ('orr_service@abtglobal.com', 'ORR', 'Service Account', NULL, NULL),
+  ('louise.rothschild@abtglobal.com', 'Louise', 'Rothschild', NULL, 'tester'),
+  ('kally.canfield@abtglobal.com', 'Kally', 'Canfield', NULL, 'tester'),
+  ('Randy.McCoy@abtglobal.com', 'Randy', 'McCoy', NULL, 'tester')
 "
 
 drop_table <- function(tbl) {
@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(100) PRIMARY KEY, -- email?
     firstname VARCHAR(255),
     lastname VARCHAR(255),
+    role VARCHAR(20) NULL,
 	date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -62,7 +63,7 @@ CREATE TABLE IF NOT EXISTS users (
 ")
 
 DBI::dbExecute(get_db_pool(), glue::glue("
-INSERT INTO users (username, firstname, lastname, created_by)
+INSERT INTO users (username, firstname, lastname, created_by, role)
 VALUES {ADMIN_USERS};
 "))
 
@@ -581,7 +582,7 @@ DBI::dbExecute(get_db_pool(), glue::glue("
 --- Advanced would allow them to select what to carry over
 CREATE TABLE IF NOT EXISTS coc_version_users (
     coc_version_user_id {id_var_attrs},
-    coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id),
+    coc_version_id SMALLINT REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     username VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     coc_version_role SMALLINT REFERENCES lookups(reference_id), -- Changed to reference lookups
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1353,6 +1354,16 @@ CREATE TABLE IF NOT EXISTS ranking (
     updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
+
+################
+# ADD VERSION ID
+# (for optimistic locking)
+#################
+tables <- DBI::dbListTables(get_db_pool())
+tables <- setdiff(tables, c("sqlite_sequence"))
+for(t in tables) {
+  DBI::dbExecute(get_db_pool(),  glue::glue("ALTER TABLE {t} ADD COLUMN version_id INTEGER NOT NULL DEFAULT 0;"))
+}
 
 #################
 # CREATE INDEXES

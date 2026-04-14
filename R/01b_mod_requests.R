@@ -73,12 +73,13 @@ mod_requests_server <- function(id, user_coc) {
     output$requests_dt <- renderDT({
       req(user_coc$auth)
       
+      data <- cur_requests_filtered() |> fselect(-version_id)
       # create "sent to " field when category is Sent
-      cols_to_hide <- which(names(cur_requests()) %in% c('coc_request_id', 'coc_version_id')) - 1
+      cols_to_hide <- which(names(data) %in% c('coc_request_id', 'coc_version_id')) - 1
       
       datatable(
-        cur_requests_filtered(),
-        colnames = unname(requests_variable_labels[names(cur_requests())]),
+        data,
+        colnames = unname(requests_variable_labels[names(data)]),
         escape=-1,
         style = 'default',
         options = list(
@@ -132,7 +133,7 @@ mod_requests_server <- function(id, user_coc) {
           username,
           reason_for_rejection,
           coc_request_id,
-          date_updated
+          version_id
         )
       
       pool::poolWithTransaction(get_db_pool(), function(p) {

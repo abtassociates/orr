@@ -21,6 +21,20 @@ mod_account_ui <- function(id){
     #   value = "sign_up",
     #   tags$a("Create Account", id = "submit_sign_up", href = aws_auth_signup)
     # ),
+    tags$script(HTML(sprintf("
+    document.addEventListener('click', function(e) {
+      var el = e.target.closest('#submit_sign_out');
+      if (!el) return;
+      
+      e.preventDefault(); // stops the href navigation
+      
+      var style = document.createElement('style');
+      style.id = 'ss-hide-overlay-style';
+      style.innerHTML = '#ss-overlay, #ss-connect-dialog { display: none !important; }';
+      document.head.appendChild(style);
+      
+      window.location.href = '%s';
+    });", aws_auth_logout))),
     nav_item(
       value = "user_details",
       textOutput(ns('username'))

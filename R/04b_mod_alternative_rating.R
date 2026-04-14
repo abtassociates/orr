@@ -55,8 +55,8 @@ mod_alternative_rating_server <- function(id, user_coc) {
     
     output$alternative_rating_table <- renderDT({
       req(user_coc$coc_version_id)
-      data <- isolate(ratable_projects())
-
+      data <- isolate(ratable_projects()) |> fselect(-version_id)
+      
       shiny::validate(need(
         nrow(data) > 0, 
         "No projects to rate"
@@ -171,7 +171,7 @@ debugger;
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
       needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
       
-      if(needs_refresh)
+      # if(needs_refresh)
         refresh_trigger(\(x) x + 1)
     }
     
@@ -228,10 +228,10 @@ debugger;
       ratable_projects |>
         fmutate(
           created_by = username,
-          met_hud_thresholds = ifelse(is.na(met_hud_thresholds), NA, ifelse(met_hud_thresholds == 'Yes', TRUE, FALSE)),
-          met_coc_thresholds = ifelse(is.na(met_coc_thresholds), NA, ifelse(met_coc_thresholds == 'Yes', TRUE, FALSE))
+          met_hud_thresholds = met_hud_thresholds == 'Yes',
+          met_coc_thresholds = met_coc_thresholds == 'Yes'
         ) |>
-        fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by, date_updated)
+        fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score, created_by, version_id)
     }
     
     # observeEvent(input$save_rating, {
@@ -323,7 +323,7 @@ debugger;
             readxl::read_xlsx(input$rating_file$datapath)
           }
         }, error = function(e) {
-          log_error(e$message)
+          log_error(paste0("Importing Alt Rating...:", e$message))
           NULL
         })
         

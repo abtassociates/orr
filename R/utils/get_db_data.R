@@ -1,14 +1,4 @@
 
-convert_timestamps_to_char <- function(dt) {
-  if("date_created" %in% names(dt)) 
-    dt[, date_created := as.character(date_created, tz = "UTC")]
-  
-  if("date_updated" %in% names(dt)) 
-    dt[, date_updated := as.character(date_updated, tz = "UTC")]
-  
-  return(dt)
-}
-
 # Get DB data ------------------
 get_db_query <- function(sql, params = NULL) {
   tryCatch({
@@ -18,15 +8,12 @@ get_db_query <- function(sql, params = NULL) {
         sql,
         params = params
       )
-    })
-    
-    dt <- dt |> 
-      qDT() |>
-      convert_timestamps_to_char()
+    }) |> 
+      qDT()
     
     return(dt)
   }, error = function(e) {
-    log_error(e$message)
+    log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -42,12 +29,11 @@ get_db_tbl <- function(tbl_name) {
     })
     
     tbl <- tbl |> 
-      qDT() |>
-      convert_timestamps_to_char()
+      qDT()
     
     return(tbl)
   }, error = function(e) {
-    log_error(e$message)
+    log_error(paste0("Importing ", tbl_name, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -61,7 +47,7 @@ db_execute <- function(sql, params) {
       DBI::dbExecute(get_db_pool(), sql, params = params)
     })
   }, error = function(e) {
-    log_error(e$message)
+    log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -72,7 +58,7 @@ db_append <- function(tbl, data) {
       DBI::dbAppendTable(get_db_pool(), tbl, data)
     })
   }, error = function(e) {
-    log_error(e$message)
+    log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }

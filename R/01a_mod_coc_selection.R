@@ -60,8 +60,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ####
     output$coc_versions_dt <- renderDT({
       req(user_coc$auth)
-      datatable(users_versions(), 
-                colnames = unname(versions_variable_labels[match(names(users_versions()),  names(versions_variable_labels))]),
+      
+      data <- users_versions() |> fselect(-version_id)
+      datatable(data, 
+                colnames = unname(versions_variable_labels[match(names(data),  names(versions_variable_labels))]),
                 rownames = FALSE,
                 options = list(
                   dom = 'ftip', 
@@ -105,7 +107,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     ## Selecting a version ------------
     observeEvent(input$coc_versions_dt_rows_selected, {
-      current_coc_info <- users_versions()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
+      current_coc_info <- users_versions()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id, coc_version_role)]
       user_coc$coc <- current_coc_info$coc
       user_coc$coc_version_id <- current_coc_info$coc_version_id
       user_coc$date_updated <- current_coc_info$date_updated
@@ -114,7 +116,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       toggle_navs_on_coc_selection()
       
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
-      shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+      shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0 && current_coc_info$coc_version_role == "Owner")
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
     }, ignoreNULL = FALSE)
     
@@ -176,6 +178,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     observeEvent(input$confirm_deletion, {
       delete_coc_version(user_coc$coc_version_id)
+      removeModal()
+      refresh_trigger$versions <- refresh_trigger$versions + 1
     })
     
     ## Copy selected version ------------

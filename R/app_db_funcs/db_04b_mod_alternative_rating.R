@@ -12,7 +12,7 @@ get_alternative_rating <- function(coc_version_id) {
       pe.met_hud_thresholds,
       pe.met_coc_thresholds,
       pe.weighted_score,
-      pe.date_updated
+      pe.version_id
     FROM projects p
     LEFT JOIN project_evaluations pe ON p.project_id = pe.project_id
     LEFT JOIN lookups l ON p.funding_action = l.reference_id

@@ -1,6 +1,24 @@
 # UI modules for project rating
+get_col_widths <- function() {
+  # Extra small	None	<576px
+  # Small	sm	≥576px
+  # Medium	md	≥768px
+  # Large	lg	≥992px
+  # Extra large	xl	≥1200px
+  # Extra extra large	xxl	≥1400px
+  breakpoints(
+    sm = c(4, 2, 2, 2, 2),
+    md = c(4, 2, 2, 2, 2),
+    lg = c(4, 2, 2, 2, 2),
+    xl = c(5, 2, 2, 1, 2),
+    xxl = c(5, 2, 2, 1, 2)
+  )
+}
+
 mod_rating_scores_entry_ui <- function(id) {
   ns <- NS(id)
+  col_widths <- get_col_widths()
+  
   nav_panel(
     "Rating Entry",
     value = id,
@@ -19,12 +37,12 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
-      uiOutput(ns("project_rating_factors")),
+      uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
         id = ns("total_row"),
         style = "display:none;",
         layout_columns(
-          col_widths = c(5, 2, 2, 1, 2),
+          col_widths = col_widths,
           div(strong("Total")),
           div(),
           div(),
@@ -37,7 +55,7 @@ mod_rating_scores_entry_ui <- function(id) {
         id = ns("weighted_total_row"),
         style = "display:none;",
         layout_columns(
-          col_widths = c(5, 2, 2, 1, 2),
+          col_widths = col_widths,
           div(strong("Weighted Total")),
           div(),
           div(),
@@ -68,7 +86,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
     observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_rating_factors_updated), {
       req(user_coc$coc_version_id)
       req(selected_project())
-
+      req(fnrow(selected_project()) > 0)
+      
       # individual threshold entries
       factors_and_scores_for_project(
         get_rating_factors_and_scores(
@@ -111,7 +130,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
             paste0("rating_score_", id),
             ~ {
               if (is.null(.) || is.na(.)) return(NULL)
-              if (!is.numeric(.) || . < 0 || . > max_pts) 
+              if (!is.numeric(.) || . < -999.9 || . > max_pts) 
                 return(paste0("Score must be a number between 0 and ", max_pts, "."))
             }
           )
@@ -136,8 +155,15 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
     
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
+      selected_project_exists <- !is.null(selected_project()) && fnrow(selected_project()) > 0
+      
+      if(!selected_project_exists) {
+        shinyjs::hide(id = "total_row")
+        shinyjs::hide(id = "weighted_total_row")
+      }
+      
       shiny::validate(need(
-        !is.null(selected_project()),
+        selected_project_exists,
         "Select a project in the left-hand sidebar to begin rating"
       ))
 
@@ -146,11 +172,13 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
       
-      col_widths <- c(5, 2, 2, 1, 2)
+      col_widths <- get_col_widths()
       # Create a main accordion panel for each group
       accordion_items_group <- purrr::map(names(grouped_data), function(group_name) {
         group_dt <- grouped_data[[group_name]]
-        group_id <- make.names(group_name) # Create a safe ID for JS
+        group_id <- gsub(" ", "_", group_name)
+        group_total <- DT::coerceValue(fsum(group_dt$rating_score), 0L)
+        group_max <- fsum(group_dt$max_point_value)
         
         # Now, within this group, let's create the table-like content
         # First, split by subgroup to render subgroup headers
@@ -180,10 +208,12 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
                 p(goal),
                 div(
                   class = "input-col", 
-                  textInput(
+                  textAreaInput(
                     ns(paste0("performance_", id)), 
                     label = NULL, 
-                    value = performance
+                    value = performance,
+                    autoresize = TRUE,
+                    rows = 1
                   ) # |> 
                     #shiny::tagAppendAttributes(maxlength = performance_char_limit)
                 ),
@@ -217,8 +247,18 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
         
         # Create the single accordion panel for the whole group
         bslib::accordion_panel(
-          title = group_name,
-          # The single header row for the "table"
+          title = tagList(
+            htmltools::span(group_name),
+            htmltools::span(
+              class = "accordion_total_display",
+              HTML(paste0(
+                "(",
+                textOutput(ns(paste0("title_subtotal_", group_id)), inline = TRUE),
+                " out of ", group_max, ")"
+              ))
+            )
+          ),
+          value = group_name,
           layout_columns(
             class = "rating-table-header",
             col_widths = col_widths,
@@ -246,7 +286,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       })
       
       # Give shiny enough time to load factors before showing Total rows
-      delay(800, {
+      shinyjs::delay(800, {
         shinyjs::show(id = "total_row")
         shinyjs::show(id = "weighted_total_row")
       })
@@ -268,6 +308,20 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       )
     })
     
+    get_group_total <- function(group_data) {
+      factor_ids <- group_data$selected_rating_factor_id
+      
+      # Grab the current values of all inputs in this specific group
+      current_scores <- sapply(factor_ids, function(id) {
+        val <- input[[paste0("rating_score_", id)]]
+        # Treat NULL, NA, or non-numeric as 0
+        if (is.null(val) || is.na(val)) 0 else as.numeric(val)
+      })
+      
+      # Return the sum
+      fsum(current_scores)
+    }
+    
     # Dynamically update subgroup totals
     observe({
       req(nrow(factors_and_scores_for_project()) > 0)
@@ -279,30 +333,28 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       # Loop through each group
       lapply(names(grouped_data), function(group_name) {
         
-        group_id <- make.names(group_name)
-        factor_ids <- grouped_data[[group_name]]$selected_rating_factor_id
+        group_id <- gsub(" ", "_", group_name)
+        group_data <- grouped_data[[group_name]]
         
         # Dynamically bind a renderText to the output
+        # group total
         output[[paste0("subtotal_", group_id)]] <- renderText({
-          
-          # Grab the current values of all inputs in this specific group
-          current_scores <- sapply(factor_ids, function(id) {
-            val <- input[[paste0("rating_score_", id)]]
-            # Treat NULL, NA, or non-numeric as 0
-            if (is.null(val) || is.na(val)) 0 else as.numeric(val)
-          })
-          
-          # Return the sum
-          sum(current_scores)
+          get_group_total(group_data)
         })
         
+        # group max
         output[[paste0("subtotal_max_", group_id)]] <- renderText({
-          paste0("out of ", fsum(grouped_data[[group_name]]$max_point_value))
+          paste0("out of ", fsum(group_data$max_point_value))
+        })
+        
+        # Accordion Title group total/max
+        output[[paste0("title_subtotal_", group_id)]] <- renderText({
+          get_group_total(group_data)
         })
       })
       
       output$total_score <- renderText({
-        fsum(entered_scores())
+        fcoalesce(fsum(entered_scores()), 0L)
       })
       output$total_max <- renderText({
         paste0("out of ", fsum(factors_and_scores_for_project()$max_point_value))
@@ -310,7 +362,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       
       output$weighted_total_score <- renderText({
         denominator <- fsum(factors_and_scores_for_project()$max_point_value)
-        numerator <- fsum(entered_scores())
+        numerator <- fcoalesce(fsum(entered_scores()), 0L)
         
         round(100 * numerator/denominator, 0)
       })
@@ -329,7 +381,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
         project_id = params$project_id,
         weighted_score = params$weighted_score,
         created_by = params$username,
-        date_updated = params$date_updated
+        version_id = params$version_id
       )
     }
     
@@ -345,7 +397,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
         rating_scores               = sapply(selected_ids, \(id) input[[paste0("rating_score_", id)]]),
         performances                = sapply(selected_ids, \(id) input[[paste0("performance_", id)]]),
         created_bys                 = alloc(user_coc$username, num_selected),
-        date_updated                = df$date_updated
+        version_id                = df$version_id
       )
       
       
@@ -358,7 +410,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
           project_id =  selected_project()$project_id,
           weighted_score = round(100 * numerator/denominator, 0),
           username = user_coc$username,
-          date_updated = ifelse(fnrow(project_evaluation()) > 0, project_evaluation()$date_updated, NA)
+          version_id = ifelse(fnrow(project_evaluation()) > 0, project_evaluation()$version_id, NA)
         )
       )
       

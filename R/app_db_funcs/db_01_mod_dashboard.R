@@ -5,6 +5,7 @@ get_all_coc_versions_and_users <- function(username) {
     LEFT JOIN coc_version_users u ON v.coc_version_id = u.coc_version_id
     LEFT JOIN cocs c ON v.coc = c.coc_code"
   ) |>
+    fselect(-dv_ard) |>
     fmutate(
       coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
       coc_status = get_lookup_label(coc_status, 'coc_status')

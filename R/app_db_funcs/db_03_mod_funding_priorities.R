@@ -1,17 +1,17 @@
 get_coc_funding_priorities <- function(coc_version_id) {
   get_db_query(
     "SELECT * 
-        FROM coc_funding_priorities 
-        WHERE coc_version_id = $1",
+     FROM coc_funding_priorities 
+     WHERE coc_version_id = $1",
     params = list(coc_version_id)
   )
 }
 
 get_coc_nofo_opportunities <- function(coc_version_id) {
   get_db_query(
-    "SELECT c.coc_nofo_opportunity_id, c.bonus_type, s.selected, s.date_updated
-            FROM coc_nofo_opportunities c
-            LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $1", 
+    "SELECT c.coc_nofo_opportunity_id, c.bonus_type, s.selected, s.version_id
+    FROM coc_nofo_opportunities c
+    LEFT JOIN selected_coc_nofo_opportunities s ON c.coc_nofo_opportunity_id = s.coc_nofo_opportunity_id AND coc_version_id = $1", 
     params = list(coc_version_id)
   )
 }
@@ -59,7 +59,6 @@ get_coc_hud_ard_data <- function(c) {
 }
 
 update_dv_ard <- function(p, params) {
-  # TODO: NEED TO ADD OPTIMISITC LOCKING
   tryCatch({
     DBI::dbExecute(
       p,
@@ -67,16 +66,19 @@ update_dv_ard <- function(p, params) {
       SET 
         dv_ard = $1, 
         updated_by = $2, 
-        date_updated = CURRENT_TIMESTAMP
+        date_updated = CURRENT_TIMESTAMP,
+        version_id = version_id + 1
       WHERE coc_version_id = $3",
       paramify(params)
     )
     message("Saved DV ARD!")
+    showNotification("Saved DV ARD!", type = "message")
+    
   }, error = function(e) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
     showNotification(glue::glue("Error saving dv_ard to coc_versions table: {e$message}"), type = "error", duration = 10)
-    log_error(e$message)
+    log_error(paste0("Updating dv_ard:", e$message))
     stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }

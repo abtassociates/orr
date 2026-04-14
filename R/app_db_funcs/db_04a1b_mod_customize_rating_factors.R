@@ -1,7 +1,7 @@
 get_all_coc_factors <- function(funding_action_id, coc_version_id) {
   get_db_query(
     "SELECT rf.rating_factor_id, rf.funding_action, srf.selected, rf.project_type, rf.target_population, rf.rating_factor_text, COALESCE(srf.goal, rf.goal) AS goal,
-           COALESCE(srf.max_point_value, rf.max_point_value) AS max_point_value, fg.factor_group, fsg.factor_subgroup, srf.date_updated
+           COALESCE(srf.max_point_value, rf.max_point_value) AS max_point_value, fg.factor_group, fsg.factor_subgroup, srf.version_id
     FROM rating_factors rf
     FULL JOIN factor_groups fg ON rf.factor_group = fg.factor_group_id
     LEFT JOIN factor_subgroups fsg ON rf.factor_subgroup = fsg.factor_subgroup_id

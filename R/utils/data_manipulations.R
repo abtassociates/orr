@@ -210,8 +210,7 @@ insert_and_return <- function(p, table, new_dt, return_cols) {
     ), 
     params = paramify(new_dt)
   ) |>
-    qDT() |>
-    convert_timestamps_to_char()
+    qDT()
   
   return(results)
 }
@@ -222,7 +221,7 @@ format_timestamp <- function(t) {
 
 
 get_db_timestamp <- function() {
-  as.character(Sys.time())
+  format_timestamp(Sys.time())
 }
 
 save_to_db <- function(p, sql, params, tbl_name) {
@@ -230,22 +229,22 @@ save_to_db <- function(p, sql, params, tbl_name) {
   if(purrr::every(paramified, is.null)) 
     return(FALSE)
   
-  save_func <- function() {
+  save_func <- function(conn) {
     if(!grepl("RETURNING ", sql)) {
-      DBI::dbExecute(p, sql, params = paramified)
+      DBI::dbExecute(conn, sql, params = paramified)
     } else {
-      DBI::dbGetQuery(p, sql, params = paramified)
+      DBI::dbGetQuery(conn, sql, params = paramified)
     }
   }
   tryCatch({
     # if not already inside a transaction (i.e. where p is a connection, wrap in transaction for speed)
     rows_changed <- if(inherits(p, "Pool")) {
       pool::poolWithTransaction(p, function(conn) {
-        save_func()
+        save_func(conn)
       })
     } else {
       # otherwise, we're in a transaction, so just save
-      save_func()
+      save_func(p)
     }
     
     if(grepl("RETURNING ", sql)) {
@@ -276,7 +275,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
     showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
-    log_error(e$message)
+    log_error(paste0(sql, e$message))
     stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }
@@ -299,10 +298,11 @@ add_optimistic_locking <- function(sql) {
   
   # 3. Append date_updated and WHERE clause
   sql_with_locking <- glue::glue(
-    "{trimws(sql, which = 'right')},\n",
-    "            date_updated = CURRENT_TIMESTAMP",
-    "          WHERE {tbl_name}.date_updated = ${n + 1} ",
-    "OR (${n + 1} IS NULL AND {tbl_name}.date_updated IS NULL)"
+    "  {trimws(sql, which = 'right')},\n
+      date_updated = CURRENT_TIMESTAMP,
+      version_id = {tbl_name}.version_id + 1
+    WHERE {tbl_name}.version_id = ${n + 1}
+      OR (${n + 1} IS NULL AND {tbl_name}.version_id IS NULL)"
   )
   
   sql_with_locking

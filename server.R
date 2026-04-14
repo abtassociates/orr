@@ -41,7 +41,7 @@ function(input, output, session) {
     query <- parseQueryString(session$clientData$url_search)
     
     if(IN_DEV_MODE) {
-      login_as_dev(user_coc)
+      login_as_user(user_coc)
       nav_control("dashboard")
       req(FALSE)
     }
@@ -86,6 +86,7 @@ function(input, output, session) {
         user_coc$username <- current_user$email
         user_coc$given_name <- current_user$given_name
         nav_control("dashboard")
+        session$sendCustomMessage("auth_state", TRUE)
       }
     }
     

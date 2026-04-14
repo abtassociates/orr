@@ -1,7 +1,7 @@
 # Used to pull project-evaluation info for a given project
 get_project_evaluation <- function(coc_version_id, project_id) {
   get_db_query(
-    "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, pe.date_updated 
+    "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, pe.version_id 
     FROM project_evaluations pe
     LEFT JOIN projects p ON pe.project_id = p.project_id
     WHERE p.coc_version_id = $1 and pe.project_id = $2",
@@ -16,8 +16,7 @@ get_projects_by_funding_action <- function(coc_version_id, funding_action_ids) {
     WHERE 
       coc_version_id = {coc_version_id} AND 
       funding_action IN ({funding_action_ids*}) AND 
-      mckinneyvento = TRUE AND
-      mckinneyventoyhdp = FALSE
+      mckinneyvento = TRUE
     ORDER BY project_name",
     .con=get_db_pool()
   )) |>

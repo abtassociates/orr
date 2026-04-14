@@ -54,7 +54,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     # Hardcodes and reactiveValues --------------
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
     funding_columns <- c("coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "amount_other_public_funding", "amount_private_funding")
-    
+    renew_only_columns <- c("grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year")
     # Keep track of active observers for Add Project modals
     # Need them in a reactivevalues list so we can destroy them and avoid duplicate ones uncessarilly
     # however, we need to be able to have multiple in case they Add Another project
@@ -172,6 +172,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       initial_cols_to_hide <- setdiff(names(data), initial_cols_to_show )
       col_inds_to_hide <- match(initial_cols_to_hide, names(data)) - 1
       
+      funding_action_idx <- match("funding_action", names(data)) - 1
+      grant_number_idx <- match("grant_number", names(data)) - 1
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
@@ -182,6 +184,35 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
             targets = col_inds_to_hide, 
             className = "hidden",
             visible = FALSE
+          ),
+          list(
+            targets = which(names(data) %in% renew_only_columns) - 1,
+            render = JS(glue::glue(
+              "function(data, type, row, meta) {{
+                if(type != 'display') return data;
+                
+                if (row === undefined) return data;
+                if (row[{funding_action_idx}] == 'New') return 'N/A';
+                if (data === null) return '';
+                if (meta.col == {grant_number_idx}) return data;
+                
+                // Manual currency formatting: $1,234.56
+                // Ensure data is numeric before calling toFixed
+                var num = Number(data);
+                if (isNaN(num)) return data; 
+                return '$' + num.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,');
+              }}"
+            )),
+            createdCell = JS(glue::glue(
+              "function(td, cellData, rowData, row, col) {{
+                // Disable N/As
+                if (td.innerText == 'N/A') {{
+                  $(td).css('pointer-events', 'none');      // Disables clicks/editing
+                  $(td).css('color', '#a0a0a0');            // Grays out text
+                  $(td).css('font-style', 'italic');        // Optional
+                }}
+              }}"
+            ))
           )
         ),
         formatting = list(
@@ -204,10 +235,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           ),
           function(x) formatStyle(
             x,
-            columns = c(
-              "ch_beds_hh_w_only_children",
-              "total_ch_ind_beds"
-            ),
+            columns = c("ch_beds_hh_w_only_children", "total_ch_ind_beds"),
             `min-width` = "110px"
           ),
           function(x) formatStyle(
@@ -231,7 +259,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           ),
           function(x) formatCurrency(
             x, 
-            columns = funding_columns, 
+            columns = setdiff(funding_columns, renew_only_columns),
             currency = "$", 
             digits = 0
           ),
@@ -257,23 +285,18 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           # p	Pagination controls
           # B	Buttons (CSV, Excel, PDF, etc.)
           dom = 'frtip'
-        ),
-        callback_js = "
-          $(document).on('mouseenter', '#projects_table table.dataTable tbody td', function() {
-            $(this).css('cursor', 'pointer');
-            $(this).attr('title', 'Double-click a cell to edit'); // Set tooltip
-          });"
+        )
       )
     }) # end project_Table renderDT
     
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("projects_table"),session = session)
+    projects_table_proxy <- dataTableProxy("projects_table",session = session)
     
     observe({
       req(projects_data())
-      replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
+      replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE, rownames = FALSE)
     })
     
     # Checks whether value is valid
@@ -356,6 +379,15 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
         (col_name) := value
       ] |>
         add_calculated_fields()
+      
+      if(col_name == "funding_action" && value == "New") {
+        updated_data <- updated_data |>
+          fmutate(
+            grant_number = NA,
+            coc_amount_awarded_last_year = NA,
+            coc_amount_expended_last_year = NA
+          )
+      }
       
       projects_data(updated_data)
     }
