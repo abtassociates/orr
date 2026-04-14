@@ -82,8 +82,16 @@ table.dataTable tbody th.focus, table.dataTable tbody td.focus {
 #rating-alternative-alternative_rating_table .dt-buttons {
   display: none;
 }
-#rating-alternative-alternative_rating_table .dataTables_scrollBody {
-  height: 46vh !important;
+
+@media (min-width: 1440px) {
+  #rating-alternative-alternative_rating_table .dataTables_scrollBody {
+    height: 35vh !important;
+  }
+}
+@media (min-width: 2000px) {
+  #rating-alternative-alternative_rating_table .dataTables_scrollBody {
+    height: 46vh !important;
+  }
 }
 
 

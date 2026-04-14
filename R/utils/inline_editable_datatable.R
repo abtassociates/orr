@@ -95,10 +95,12 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
       // Function to set cell value
       function setCellText(cell, val) {
         var $td = $(cell.node());
-        $td.empty().text(val); // Remove dropdown, restore text
+        let formatted_val = getFormattedVal(getColName(cell), val);
+        $td.empty().text(formatted_val); // Remove dropdown, restore text
       }
       
-      function getColName(colIndex) {
+      function getColName(cell) {
+        var colIndex = cell.index().column;
         let colName = table.column(colIndex).header().innerText.toUpperCase();
         if (has_double_header == 'TRUE') {
             colName = getCompoundColName(colIndex);
@@ -109,37 +111,31 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         colName = colName.replace(' Ⓘ','');
         return(colName);
       }
-    ",
-    jsonlite::toJSON(factor_levels), 
-    tableID,
-    has_double_header
-  )
-  
-  numeric_js <-  
-    "// HANDLER FOR NUMERIC COLUMNS
-    table.on('dblclick', 'td.numeric-edit-cell', function(e) {
-      //e.stopImmediatePropagation();
-      var $td = $(this);
-      setTimeout(function() {
-      debugger;
-      //if ($td.find('input').length) return; // already editing
-  
-      var cell = table.cell($td);
-      var currentVal = cell.data();
-      var colIndex = cell.index().column;
-      var colName = getColName(colIndex).toUpperCase();
-
-      is_funding_col = colName.includes('FUNDING') || colName.includes('AMOUNT');
       
-      // --- 1. Trim Values by Max input length ---
+      function noDataChange(val, cell) {
+        return(getRawVal(val) == getRawVal(cell.data()));
+      }
+      function getRawVal(val) {
+        if(val === null) return(val);
+        let rv = parseFloat(val.toString().replace(/[^\\d.]/g, ''));
+        return(rv);
+      }
+      
+      function getFormattedVal(colName, val) {
+        let fv = is_funding_col(colName) ? formatUSD(val) : val.toLocaleString('en-US');
+        return(fv);
+      }
+      
+      // used to trim values that are longer than they shoul dbe
       function get_max_length(colName) {
         let maxLength;
-        if(colName.includes('BED')) maxLength = 5;
-        else if(colName == 'weighted_score') maxLength = 3;
-        else if(is_funding_col) maxLength = 9;
+        if(colName.toUpperCase().includes('BED')) maxLength = 5;
+        else if(colName.toUpperCase() == 'WEIGHTED_SCORE') maxLength = 3;
+        else if(is_funding_col(colName)) maxLength = 9;
         return(maxLength);
       }
       
+      // trim values
       function trim_val(colName, val, max_length = null) {
         let c = colName;
         
@@ -150,29 +146,6 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         if (val.length > maxLength) val = val.slice(0, maxLength);
         return(val);
       }
-      
-      // --- 2. Get the input ---
-      var isInteger = $td.hasClass('integer-edit-cell');
-      var $input = $td.find('input[type=number]')
-        .attr({'min': '0', 'max' : '9'.repeat(get_max_length(colName)), 'step': '1'});
-  
-      // --- 3. Enforce the Character Limit! ---
-      $input.off('input').on('input', function() {
-        var val = this.value;
-debugger;
-        if(colName.includes('FUNDING') || colName.includes('AMOUNT')) {
-          if (val.includes('.')) {
-            var parts = val.split('.');
-            parts[0] = trim_val(colName, parts[0]);
-            parts[1] = trim_val(colName, parts[1], 2);
-            this.value = parts[0] + '.' + parts[1]; // stitch back together
-          } else {
-            this.value = trim_val(colName, val)
-          }
-        } else {
-          this.value = trim_val(colName, val)
-        }
-      });
   
       function formatUSD(amount) {
         if(amount === null) return;
@@ -190,36 +163,140 @@ debugger;
             maximumFractionDigits: 0
         }).format(amount);
       }
-
-      $input.off('keydown').on('keydown', function(e) {
-        // Prevent '-' (minus sign) and 'e' (scientific notation)
-        if (e.key === '-' || e.key === 'e' || e.key === 'E')
-          e.preventDefault();
-            
-        // IF it's an integer cell, also prevent the decimal point
-        if (isInteger && (e.key === '.' || e.key === ','))
-          e.preventDefault();
-          
-        if (e.key === 'Enter') $td.blur();
-        else if (e.key === 'Escape') setCellText(cell, is_funding_col ? formatUSD(currentVal) : currentVal.toLocaleString('en-US')); // Revert UI
-      });
-  
-      // --- 4. Validation ---
-      $input.off('blue').on('blur', function() {
-        var rawVal = this.value;
-        formatted_val = is_funding_col ? formatUSD(rawVal) : rawVal.toLocaleString('en-US')
-        setCellText(cell, formatted_val);
-        cell.data(rawVal);
-        
-        // Trigger the Shiny input
+      
+      function is_funding_col(colName) {
+        let c = colName.toUpperCase();
+        return(c.includes('FUNDING') || c.includes('AMOUNT'));
+      }
+      
+      function revertCell(cell) {
+        oldVal = cell.data();
+        setCellText(cell, oldVal);
+      }
+      
+      // If user makes a change, we update in several ways:
+      // 1. set the text of the cell to whatever dropdown value they select
+      // 2. trigger a cell_edit event on the server, which will:
+          // 1. update the underlying datatable data (so that the new value will be preserved in sorting and filtering)
+          // 2. update the database
+      // 3. set the cell data to the same value. This is so if they double-click the cell again, the new value will appear as the default selection
+      function updateTableAndShiny(cell, val) {
+        var colName = getColName(cell).toUpperCase();
+        setCellText(cell, val);
+        alertShiny(cell, val);
+        cell.data(val);
+      }
+      
+      function alertShiny(cell, val) {
         Shiny.setInputValue(tableID + '_cell_edit', {
-          row: cell.index().row + 1,
-          col: cell.index().column,
-          value: rawVal,
-          oldValue: currentVal,
-          project_id: table.cells(cell.index().row, 0).data()[0],
-        }, {priority: 'event'});
-      });
+            row: cell.index().row + 1,
+            col: cell.index().column,
+            value: val,
+            oldValue: cell.data(),
+            project_id: table.cells(cell.index().row, 0).data()[0],
+          }, {priority: 'event'});
+      }
+      
+      function isNumeric(str) {
+        str = str.replace(/[^\\d.]/g, '');
+        if (typeof str !== 'string' || str.trim() === '') return false; // reject empty/whitespace
+        const num = Number(str);
+        return !Number.isNaN(num);
+      }
+      
+      // Handle keyboard pasting directly to cell
+      document.addEventListener('paste', function(e) {
+        // 1. Check if your specific cell is currently 'focused' by Shiny
+        var $td = $('td.focus');
+        
+        // If no such cell is focused, ignore the paste and let it act normally
+        if ($td.length === 0 || $td.find('input').length) return;
+        
+        e.preventDefault();
+        
+        var cell = table.cell($td);
+        
+        // 3. Get the clipboard data. 
+        var clipboardData = e.clipboardData || window.clipboardData;
+        var pastedValue = clipboardData.getData('text/plain');
+        
+        // If they tried pasting a number into a non-numeric cell, revert
+        if(isNumeric(pastedValue) && !$td.hasClass('numeric-edit-cell')) return;
+        
+        // If they tried pasting an invlaid value into a factor cell, revert
+        if($td.hasClass('factor-edit-cell')) {
+          var colName = getColName(cell);
+          if (!factorInfo[colName].includes(pastedValue)) return;
+        }
+        
+        // Don't process unchanged data
+        if(noDataChange(pastedValue, cell)) return;
+        
+        if($td.hasClass('numeric-edit-cell')) pastedValue = getRawVal(pastedValue);
+        
+        updateTableAndShiny(cell, pastedValue);
+      }, true);
+    ",
+    jsonlite::toJSON(factor_levels), 
+    tableID,
+    has_double_header
+  )
+  
+  numeric_js <-  "
+    table.on('dblclick', 'td.numeric-edit-cell', function(e) {
+      //e.stopImmediatePropagation();
+      var $td = $(this);
+      setTimeout(function() {
+        //if ($td.find('input').length) return; // already editing
+    
+        var cell = table.cell($td);
+        var colName = getColName(cell).toUpperCase();
+  
+        // --- 1. Get the input ---
+        var isInteger = $td.hasClass('integer-edit-cell');
+        var $input = $td.find('input[type=number]')
+          .attr({'min': '0', 'max' : '9'.repeat(get_max_length(colName)), 'step': '1'});
+    
+        // --- 2. Enforce the Character Limit! ---
+        $input.off('input').on('input', function() {
+          var val = this.value;
+          
+          if(is_funding_col(colName)) {
+            if (val.includes('.')) {
+              var parts = val.split('.');
+              parts[0] = trim_val(colName, parts[0]);
+              parts[1] = trim_val(colName, parts[1], 2);
+              this.value = parts[0] + '.' + parts[1]; // stitch back together
+            } else {
+              this.value = trim_val(colName, val);
+            }
+          } else {
+            this.value = trim_val(colName, val);
+          }
+        });
+        
+        $input.off('keydown').on('keydown', function(e) {
+          // --- Validation ---
+          // Prevent '-' (minus sign) and 'e' (scientific notation)
+          if (e.key === '-' || e.key === 'e' || e.key === 'E')
+            e.preventDefault();
+              
+          // IF it's an integer cell, also prevent the decimal point
+          if (isInteger && (e.key === '.' || e.key === ','))
+            e.preventDefault();
+            
+          // Enter = Save, Escape = Cancel
+          if (e.key === 'Enter') $td.blur();
+          else if (e.key === 'Escape') revertCell(cell);
+        });
+    
+        // --- Update ---
+        $input.off('blur').on('blur', function() {
+          if(noDataChange(this.value, cell)) 
+            setCellText(cell, cell.data());
+          
+          updateTableAndShiny(cell, this.value);
+        });
       }, 500);
     });"
   
@@ -232,10 +309,9 @@ debugger;
       
       var $td = $(this);
       if ($td.find('select').length) return; // already editing
-debugger;
+      
       var cell = table.cell(this);
-      var colIndex = cell.index().column;
-      var colName = getColName(colIndex);
+      var colName = getColName(cell);
   
       if (factorInfo[colName]) {
         var choices = factorInfo[colName];
@@ -248,35 +324,23 @@ debugger;
           if (value == currentVal) $opt.prop('selected', true);
           $select.append($opt);
         });
-debugger;
+        
         // Add the dropdown to the cell
         $td.empty().append($select);
         $select.focus();
         
-        // If user makes a change, we update the cell in several ways:
-        // 1. set the text of the cell to whatever dropdown value they select
-        // 2. set the cell data to the same value. This is so if they double-click the cell again, the new value will appear as the default selection
-        // 3. trigger a cell_edit event on the server, which will:
-            // 1. update the underlying datatable data (so that the new value will be preserved in sorting and filtering)
-            // 2. update the database
         $select.off('change blur').on('change blur', function(e) {
           if(isEscaping) return;
-          setCellText(cell, this.value); // Update cell text
-          cell.data(this.value); // Update cell data
-          Shiny.setInputValue(tableID + '_cell_edit', { // Trigger cell_edit server event
-            row: cell.index().row + 1,
-            col: cell.index().column,
-            value: this.value,
-            oldValue: currentVal,
-            project_id: table.cells(cell.index().row, 0).data()[0],
-          }, {priority: 'event'});
+          if(noDataChange(this.value, cell))
+            setCellText(cell, cell.data());
+          
+          updateTableAndShiny(cell, this.value);
         });
         
         $select.on('keydown', function(e) {
-          debugger;
           if (e.key === 'Escape') {
             isEscaping = true;
-            setCellText(cell, currentVal); // On escape, revert to old value
+            revertCell(cell);
           } else if (e.key === 'Enter') {
             $(this).blur(); // Trigger the change/blur event
           }

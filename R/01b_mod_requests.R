@@ -187,8 +187,14 @@ mod_requests_server <- function(id, user_coc) {
       showModal(
         modalDialog(
           title = 'Confirm Rejection',
-          radioButtons(ns('rej_reason'), label = 'Please specify a reason for rejection and confirm.',
-                      choices = LOOKUPS[reference_type == "request_rejection_reason"]$value),
+          radioButtons(
+            ns('rej_reason'), 
+            label = 'Please specify a reason for rejection and confirm.',
+            choices = setNames(
+              LOOKUPS[reference_type == "request_rejection_reason"]$reference_id,
+              LOOKUPS[reference_type == "request_rejection_reason"]$value
+            )
+          ),
           # conditionalPanel(
           #   condition = 'input.rej_reason == "Other"',
           #   textInput('rej_other_specify', "Other - please specify:"),
