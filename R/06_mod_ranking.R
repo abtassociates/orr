@@ -54,12 +54,12 @@ mod_ranking_ui <- function(id) {
     br(),
     br(),
     DTOutput(ns("ui_excluded_list")),
-    br(),
-    br(),
-    DTOutput(ns("ui_yhdp_ren")),
-    br(),
-    br(),
-    DTOutput(ns("ui_yhdp_oth"))
+    # br(),
+    # br(),
+    # DTOutput(ns("ui_yhdp_ren")),
+    # br(),
+    # br(),
+    # DTOutput(ns("ui_yhdp_oth"))
   )
 }
 
@@ -78,8 +78,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       # limits = list(tier1 = 0, tier2 = 0, dv = 0),
       # RankedProjects = NULL,
       ranked = NULL,
-      yhdp_ren = NULL,
-      yhdp_oth = NULL,
+      # yhdp_ren = NULL,
+      # yhdp_oth = NULL,
       excluded = NULL
     )
     
@@ -423,7 +423,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       dt[is_over_target == FALSE, highlight := fcase(coc_selected, "coc", dv_selected, "dv", default = "none")]
       
       return(dt)
-    }
+    } #end recalc ranking
     
     calculate_priority <- function(dt) {
       # 2. Fetch Priorities and convert lookup IDs to standard string values
@@ -545,12 +545,12 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       raw_data <- raw_data |> colorder(` `)
       
       # Partition data
-      rv$yhdp_ren <- raw_data[mckinneyventoyhdp & funding_action == "Renew"]
-      rv$yhdp_oth <- raw_data[mckinneyventoyhdp & funding_action %in% c("Replace", "Reallocate", "Expand")]
-      rv$excluded <- raw_data[!mckinneyventoyhdp & funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
+      # rv$yhdp_ren <- raw_data[mckinneyventoyhdp & funding_action == "Renew"]
+      # rv$yhdp_oth <- raw_data[mckinneyventoyhdp & funding_action %in% c("Replace", "Reallocate", "Expand")]
+      rv$excluded <- raw_data[!mckinneyvento & funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
       
       # Get valid ranked projects 
-      ranked_data <- raw_data[!mckinneyventoyhdp & !funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
+      ranked_data <- raw_data[!mckinneyvento & !funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
       
       # Step 1: Default Sorted Logic Pre-Ranking
       if (force_reset || all(is.na(ranked_data$rank))) {
@@ -578,7 +578,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       
       # Store clean ranked rows to UI
       rv$ranked <- ranked_data[is_over_target == FALSE]
-    }
+    } # end process_data
     
     format_ranked_tbl <-function(dt) {
       cols_to_remove <- c(
@@ -755,8 +755,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
         options = list(dom = 't', paging = FALSE, scrollY = NULL)
       ) |> formatCurrency(c('coc_funding_requested', 'coc_funding_recommendation'), currency = "$", digits = 0)
     }
-    output$ui_yhdp_ren_list <- renderDT({ render_minor_dt(rv$yhdp_ren) })
-    output$ui_yhdp_oth_list <- renderDT({ render_minor_dt(rv$yhdp_oth) })
+    # output$ui_yhdp_ren_list <- renderDT({ render_minor_dt(rv$yhdp_ren) })
+    # output$ui_yhdp_oth_list <- renderDT({ render_minor_dt(rv$yhdp_oth) })
     output$ui_excluded_list <- renderDT({ render_minor_dt(rv$excluded) })
     
     
@@ -770,8 +770,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       req(user_coc$coc_version_id)
       all_rankings <- rbindlist(list(
         rv$ranked[, .(project_id, rank, tier, coc_funding_recommendation)],
-        rv$yhdp_ren[, .(project_id, rank = NA_integer_, tier = "YHDP", coc_funding_recommendation)],
-        rv$yhdp_oth[, .(project_id, rank = NA_integer_, tier = "YHDP", coc_funding_recommendation)],
+        # rv$yhdp_ren[, .(project_id, rank = NA_integer_, tier = "YHDP", coc_funding_recommendation)],
+        # rv$yhdp_oth[, .(project_id, rank = NA_integer_, tier = "YHDP", coc_funding_recommendation)],
         rv$excluded[, .(project_id, rank = NA_integer_, tier = "Excluded", coc_funding_recommendation)]
       ), fill = TRUE)
       
