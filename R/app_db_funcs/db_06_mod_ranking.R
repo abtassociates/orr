@@ -44,6 +44,7 @@ get_projects_to_rank <- function(coc_version_id) {
     fmutate(
       funding_action = convert_to_factor(., "funding_action"),
       project_type = convert_to_factor(., "project_type"),
+      target_population = convert_to_factor(., "target_population"),
       dv_renewal = factor_yesno(dv_renewal),
       is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
       is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
