@@ -444,8 +444,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
         #   default = "other"
         # )]
         
-        priorities <- priorities[!is.na(project_type) & combo != "other"]
-        safe_max <- function(x) { if (all(is.na(x))) NA_integer_ else max(x, na.rm = TRUE) }
+        priorities <- priorities[!is.na(project_type)]
         
         browser() # can we switcht ocollapose?
         # Pivot Wide for Priorities
@@ -491,7 +490,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
           join(wide_prio, on = "project_type") |>
           join(wide_beds, on = "project_type") |>
           join(wide_fund, on = "project_type")
-      }
+      } 
       
       # Ensure target columns exist safely
       bed_cols <- c("all_fam_beds", "dv_fam_beds", "ch_fam_beds", "vet_fam_beds", "par_youth_beds", 
@@ -501,35 +500,42 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       unspec_types <- c("HMIS", "HMIS Project", "OPH", "SSO", "SSO+CE", "SSO-CE", "SSO-Host Homes", "SH")
       
       # Assign Priority Based on Bed Distribution
-      dt[, calc_prio_score := fcase(
+      dt[, priority := if(fnrow(priorites) == 0) 0 else 
+        fcase(
         project_type %in% unspec_types, 0,
-        dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_DV_family, prio_DV_Individual, na.rm = TRUE),
+        dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_DV_Family, prio_DV_Individual, na.rm = TRUE),
         
         (ch_fam_beds >= 0.5 * total_beds & total_beds > 0) | (vet_fam_beds >= 0.5 * total_beds & total_beds > 0) |
           (par_youth_beds >= 0.5 * total_beds & total_beds > 0) | (total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0) |
           (vet_ind_beds >= 0.5 * total_beds & total_beds > 0) | (single_youth_beds >= 0.5 * total_beds & total_beds > 0),
         pmax(
           fifelse(ch_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_CH_Family, 0),
-          fifelse(vet_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_vet_fam, 0),
-          fifelse(par_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_par_youth, 0),
-          fifelse(total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0, prio_ch_ind, 0),
-          fifelse(vet_ind_beds >= 0.5 * total_beds & total_beds > 0, prio_vet_ind, 0),
-          fifelse(single_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_single_youth, 0), na.rm = TRUE),
+          fifelse(vet_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_Veteran_Family, 0),
+          fifelse(par_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_Youth_Family, 0),
+          fifelse(total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0, prio_CH_Individual, 0),
+          fifelse(vet_ind_beds >= 0.5 * total_beds & total_beds > 0, prio_Veteran_Individual, 0),
+          fifelse(single_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_Youth_Individual, 0), na.rm = TRUE),
         
         (ch_fam_beds + total_ch_ind_beds + vet_fam_beds + vet_ind_beds + par_youth_beds + single_youth_beds) >= 0.5 * total_beds & total_beds > 0, 0,
-        all_fam_beds > all_ind_beds, prio_all_fam,
-        all_ind_beds > all_fam_beds, prio_all_ind,
-        all_fam_beds == all_ind_beds & total_beds > 0, pmax(prio_all_fam, prio_all_ind, na.rm = TRUE),
+        all_fam_beds > all_ind_beds, prio_General_Family,
+        all_ind_beds > all_fam_beds, prio_General_Individual,
+        all_fam_beds == all_ind_beds & total_beds > 0, pmax(prio_General_Family, prio_General_Individual, na.rm = TRUE),
         default = 0
-      )]
+      )] %>%
+        fmutate(priority = convert_to_Factor(., "priority"))
       
-      dt[, priority := factor(fcase(calc_prio_score == 3, "High", calc_prio_score == 2, "Medium", calc_prio_score == 1, "Low", default = "Unspecified"), levels = c("High", "Medium", "Low", "Unspecified"))]
+      combos <-  expand.grid(
+        target_population = LOOKUPS[reference_type == "target_population"]$value,
+        population_group = LOOKUPS[reference_type == "population_group"]$value
+      ) |>
+        fsubset(target_population != "NA") |>
+        fmutate(combo = paste0(target_population, "_", population_group))
       
-      cols_to_drop <- c(paste0("prio_", expected_combos), "calc_prio_score")
+      cols_to_drop <- c(paste0("prio_", combos$combo))
       dt[, (cols_to_drop) := NULL]
       
       return(dt)
-    }
+    } # end calculate_priority
     
     # Process Initial Data on Load or Reset
     process_data <- function(force_reset = FALSE) {
