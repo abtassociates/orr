@@ -508,6 +508,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       showNotification("Custom rating factor added!", type = 'message')
       
       refresh_trigger(refresh_trigger() + 1)
+      browser()
       
       user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
     })

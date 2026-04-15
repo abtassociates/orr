@@ -65,6 +65,7 @@ mod_rating_scores_entry_ui <- function(id) {
         )
       ),
       card_footer(
+        class="sticky-save",
         style = "display: flex; justify-content: space-between; align-items: center;",
         actionButton(ns("save_rating"), "Save Rating", icon = icon("save"))
       )
@@ -422,7 +423,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       })
 
       # if(needs_refresh1 || needs_refresh2)
-        refresh_trigger(\(x) x + 1)
+        refresh_trigger(refresh_trigger() + 1)
     })
   }) #end module server
 }
