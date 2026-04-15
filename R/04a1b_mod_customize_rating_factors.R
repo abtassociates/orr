@@ -421,11 +421,11 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             multiple = TRUE
           ),
           # Rating Factor Text
-          textInput(ns("custom_text"), label = "Rating Factor", placeholder = "Enter custom factor text"),
+          textInput(ns("custom_text"), label = "Rating Factor*", placeholder = "Enter custom factor text"),
           # Factor/Goal - short text
           textInput(ns("custom_goal"), label = "Factor/Goal", placeholder = "Enter goal"),
           # Max Point Value - numeric
-          numericInput(ns("custom_points"), min = -999.9, max = 999.9, label = "Max Point Value", value = 0, step = 0.1),
+          numericInput(ns("custom_points"), min = -999.9, max = 999.9, label = "Max Point Value*", value = 0, step = 0.1),
           
           footer = tagList(
             actionButton(ns("submit_custom_factor"), "Submit", class = "btn-primary"),
@@ -501,7 +501,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       showNotification("Custom rating factor added!", type = 'message')
       
       refresh_trigger(refresh_trigger() + 1)
-      browser()
       
       user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
     })
