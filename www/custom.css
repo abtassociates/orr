@@ -105,3 +105,12 @@ table.dataTable .selectize-dropdown-content {
   background: var(--bs-body-bg);
 }
 
+/* STICKY CARD FOOTER*/
+.sticky-footer {
+  position: sticky; 
+  bottom: 0; 
+  z-index: 1020; 
+  background-color: var(--bs-card-cap-bg, #f8f9fa); 
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+  box-shadow: 0px -4px 10px rgba(0,0,0,0.05);", # Shadow so it looks like it's floating
+}
