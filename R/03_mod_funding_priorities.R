@@ -377,19 +377,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     observeEvent(input$priorities_table_cell_edit, {
       info <- input$priorities_table_cell_edit
       
-      # Update the full dataset 
       current_data <- formatted_coc_funding_priorities()
 
-      # Get the population name from the row that was displayed
-      # This is trickier because the view is filtered. We need to map the
-      # viewed row index back to the full data index.
-      browser()
-      displayed_data <- current_data
-      population_to_update <- displayed_data[info$row, Population]
-      full_data_row_index <- which(current_data$Population == population_to_update)
-      
       # only proceed if they changed anything:
-      old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE][[1]]
+      old_val <- current_data[info$row, (info$col + 1), with=FALSE][[1]]
       info$value <- DT::coerceValue(info$value, old_val)
       
       req(!identical(old_val, info$value))
@@ -406,10 +397,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # Update the value in the full dataset, so we can update the reactive and datatable proxy
       # The column index needs + 1 because datatable is 0 indexed
-      current_data[full_data_row_index, (info$col + 1) := info$value]
+      current_data[info$row, (info$col + 1) := info$value]
 
       ## Update database -------------
-      changed_data <- current_data[full_data_row_index, c(1, info$col + 1), with=FALSE] |>
+      changed_data <- current_data[info$row, c(1, info$col + 1), with=FALSE] |>
         tidyr::pivot_longer(
           cols = -Population,
           names_to = c("project_type", ".value"), # ".value" tells it to keep the second part as column headers
