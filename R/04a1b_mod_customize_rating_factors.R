@@ -396,6 +396,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     iv_custom$add_rule("custom_text", sv_required())
     iv_custom$add_rule("custom_text", ~ if(. %in% all_coc_factors()$rating_factor_text) "You already have a rating factor with this text.")
     ## validate that max point value of >= 0
+    iv_custom$add_rule("custom_points",  ~ if(is.na(.)) "Please input a numeric value")
     iv_custom$add_rule("custom_points", sv_between(-999.9, 999.9))
     iv_custom$add_rule("custom_goal", ~
                   if (isTRUE(nchar(.) > goal_char_limit)) "Limited to 10 characters"
