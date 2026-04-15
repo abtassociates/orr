@@ -225,7 +225,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
                     label = NULL, 
                     value = rating_score,
                     min = 0,
-                    max = max_points
+                    max = max_points,
+                    updateOn = "blur"
                   )) |>
                     tagAppendAttributes(class = 'score-input', `data-group` = group_id),
                 p(paste("out of", max_points), style="padding-top: 5px;")
