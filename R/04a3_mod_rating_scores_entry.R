@@ -354,7 +354,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       })
       
       output$total_score <- renderText({
-        fcoalesce(fsum(entered_scores()), 0L)
+        DT::coerceValue(fsum(entered_scores()), 0)
       })
       output$total_max <- renderText({
         paste0("out of ", fsum(factors_and_scores_for_project()$max_point_value))
@@ -362,7 +362,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       
       output$weighted_total_score <- renderText({
         denominator <- fsum(factors_and_scores_for_project()$max_point_value)
-        numerator <- fcoalesce(fsum(entered_scores()), 0L)
+        numerator <- DT::coerceValue(fsum(entered_scores()), 0)
         
         round(100 * numerator/denominator, 0)
       })
