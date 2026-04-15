@@ -139,25 +139,25 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       tp_selectors, tolower(as.character(is.null(tp_filter)))))
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
-    get_col_widths <- function(funding_action, adding_custom_factor = FALSE) {
-      if(funding_action == "Renew")
-        breakpoints(
-          sm = c(1, 1, 1, 5, 2, 2),
-          md = c(1, 1, 1, 5, 2, 2),
-          lg = c(1, 1, 1, 5, 2, 2),
-          xl = c(1, 1, 1, 5, 2, 2),
-          xxl = c(1, 1, 1, 7, 1, 1)
-        )
-      else if(!adding_custom_factor)
-        breakpoints(
-          sm = c(1, 1, 6, 2, 2),
-          md = c(1, 1, 6, 2, 2),
-          lg = c(1, 1, 6, 2, 2),
-          xl = c(1, 1, 6, 2, 2),
-          xxl = c(1, 1, 8, 1, 1)
-        )
-      else c(1, 1, 6, 2, 2)
-    }
+    # get_col_widths <- function(funding_action, adding_custom_factor = FALSE) {
+    #   if(funding_action == "Renew")
+    #     breakpoints(
+    #       sm = c(1, 1, 1, 5, 2, 2),
+    #       md = c(1, 1, 1, 5, 2, 2),
+    #       lg = c(1, 1, 1, 5, 2, 2),
+    #       xl = c(1, 1, 1, 5, 2, 2),
+    #       xxl = c(1, 1, 1, 7, 1, 1)
+    #     )
+    #   else if(!adding_custom_factor)
+    #     breakpoints(
+    #       sm = c(1, 1, 6, 2, 2),
+    #       md = c(1, 1, 6, 2, 2),
+    #       lg = c(1, 1, 6, 2, 2),
+    #       xl = c(1, 1, 6, 2, 2),
+    #       xxl = c(1, 1, 8, 1, 1)
+    #     )
+    #   else c(1, 1, 6, 2, 2)
+    # }
     # Helper to make a single row - much faster than layout_columns
     make_factor_row <- function(id, project_type, target_population, text, goal, points, selected, group_name) {
       iv$add_rule(paste0("goal_", id), ~if (isTRUE(nchar(.) > goal_char_limit)) glue::glue("Limited to {goal_char_limit} characters"))
