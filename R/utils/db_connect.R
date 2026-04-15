@@ -131,7 +131,9 @@ db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1") {
   set_up_db_connection()
 }
 
-run_app <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1") {
+run_app <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", user_email = NULL) {
   USE_SQLITE <<- use_sqlite
+  DEV_USER_LOGIN <<- user_email
+    
   runApp()
 }
