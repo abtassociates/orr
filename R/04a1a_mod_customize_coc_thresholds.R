@@ -22,8 +22,8 @@ mod_customize_coc_thresholds_ui <- function(id) {
       ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("add_threshold_btn"), "Add Custom Threshold", icon = icon("plus")),
-        actionButton(ns("save_thresholds"), "Save CoC Threshold Selections", icon = icon("save"), class = "btn-primary")
+        actionButton(ns("add_threshold_btn"), "Add Custom Threshold", icon = icon("plus"))#,
+        # actionButton(ns("save_thresholds"), "Save CoC Threshold Selections", icon = icon("save"), class = "btn-primary")
       )
     )
   )
@@ -37,14 +37,11 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
     
     refresh_trigger <- reactiveVal(0)
     all_coc_thresholds <- reactiveVal()
-    updating_from_db <- reactiveVal(FALSE)
     
     # Fetch currently selected thresholds for the active profile
     observe({
       req(user_coc$coc_version_id)
       req(refresh_trigger())
-      
-      updating_from_db(TRUE)
       
       data <- get_all_coc_thresholds(user_coc$coc_version_id)
       all_coc_thresholds(data)
@@ -55,41 +52,25 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
         choices = setNames(data$threshold_id, data$threshold_text),
         selected = data[selected == 1]$threshold_id
       )
-      
-      isolate(updating_from_db(FALSE))
     })
-    
-    # Handle changes to the thresholds shown to the user
-    observeEvent(input$threshold_checkboxes, {
-      req(!isolate(updating_from_db()))
-      req(!is.null(isolate(all_coc_thresholds())))
-    
-      all_coc_thresholds(
-        isolate(all_coc_thresholds()) |>
-          fmutate(
-            selected = fifelse(
-              threshold_id %in% as.integer(input$threshold_checkboxes), 1, 0
-            )
-          )
-      )
-    }, ignoreNULL = FALSE)
     
     # Save logic for threshold selections
     get_updated_selected_thresholds <- function(params) {
       all_coc_thresholds() |>
         fmutate(
           coc_version_id = params$coc_version_id,
-          username = params$username
+          username = params$username,
+          selected_new = threshold_id %in% params$selected_threshold_ids
         ) |>
-        fselect(threshold_id, coc_version_id, selected, username, selected_threshold_version_id)
+        fsubset(selected_new != fcoalesce(as.logical(selected), FALSE)) |>
+        fselect(threshold_id, coc_version_id, selected_new, username, selected_threshold_version_id)
     }
     
-    observeEvent(input$save_thresholds, {
-      req(user_coc$coc_version_id) 
-      
+    save_thresholds <- function() {
       updated_selected_thresholds <- get_updated_selected_thresholds(
         list(
           thresholds = all_coc_thresholds(),
+          selected_threshold_ids = input$threshold_checkboxes,
           coc_version_id = user_coc$coc_version_id,
           username = user_coc$username
         )
@@ -98,11 +79,24 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       needs_refresh1 <- update_selected_thresholds_db(get_db_pool(), updated_selected_thresholds)
       
       # if(needs_refresh1)
-        refresh_trigger(refresh_trigger() + 1)
+      refresh_trigger(refresh_trigger() + 1)
       
       if(!needs_refresh1)
         user_coc$customized_coc_thresholds_updated <- user_coc$customized_coc_thresholds_updated + 1
-    }, ignoreInit = TRUE) # end save_thresholds observeEvent
+    }
+    
+    
+    # Handle changes to the thresholds shown to the user
+    selected_thresholds <- reactive({
+      req(user_coc$coc_version_id)
+      input$threshold_checkboxes}) %>% debounce(1000)
+    
+    observeEvent(selected_thresholds(), {
+      req(!identical(selected_thresholds(), as.character(all_coc_thresholds()[selected == T]$threshold_id)))
+      
+      save_thresholds()
+    }, ignoreNULL = FALSE, ignoreInit = TRUE)
+    
     
     observeEvent(input$add_threshold_btn, {
       showModal(
