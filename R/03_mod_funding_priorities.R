@@ -96,24 +96,12 @@ mod_funding_priorities_ui <- function(id) {
     ), # end coc nofo opportunities card
     card(
       card_header("Funding Ceilings and Priorities by Project Type and Population"),
-      fill = FALSE,
-      layout_sidebar(
-        fillable = TRUE,
-        sidebar = sidebar(
-          width = "22%",
-          checkboxGroupInput(
-            ns("population_toggles"),
-            label = "Enable/Disable Populations",
-            choices = pop_grp_toggles$full_text,
-            selected =  c("General Families", "General Individuals", "Single Youth")
-          )
-        ),
-        div(
-          id = ns("priorities_help"),
-          helpText("Double-click a cell to edit")
-        ),
-        DTOutput(ns("priorities_table"))
-      )
+      div(
+        id = ns("priorities_help"),
+        helpText("Double-click a cell to edit")
+      ),
+      DTOutput(ns("priorities_table"), fill = FALSE),
+      fill = FALSE
     )
   )
 }
@@ -173,16 +161,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
         if(i != "dv_ard") shinyjs::disable(i)
       })
-      
-      ## Population toggles --------
-      selected_populations <- formatted_coc_funding_priorities() %>%
-        dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
-      
-      updateCheckboxGroupInput(
-        session,
-        "population_toggles",
-        selected = if(fnrow(selected_populations) > 0) selected_populations$Population else  c("General Families", "General Individuals", "Single Youth")
-      )
     }, ignoreInit = TRUE)
     
     iv <- shinyvalidate::InputValidator$new()
@@ -314,17 +292,20 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       req(user_coc$coc_version_id)
       req(formatted_coc_funding_priorities())
       
-      show_priorities_row <- length(input$population_toggles) > 0
+      data <- formatted_coc_funding_priorities()
       
-      shinyjs::toggle("priorities_help", condition = show_priorities_row)
+      selected_populations <- data %>%
+        dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
       
-      shiny::validate(need(
-        show_priorities_row == TRUE,
-        "Click population in the left-hand sidebar to enter priorities for that population"
-      ))
+      default_population_filter <- if(fnrow(selected_populations) > 0) 
+        selected_populations$Population 
+      else
+        c("General Families", "General Individuals", "Single Youth")
       
-      data <- formatted_coc_funding_priorities() |>
-        fsubset(Population %in% input$population_toggles)
+      initial_filter <- vector("list", ncol(data))
+      initial_filter[[which(names(selected_populations) == "Population")]] <- list(
+        search = paste0('["', paste(default_population_filter, collapse = '","'), '"]')
+      )
       
       initialize_inline_edit_table_ui(
         data = data,
@@ -371,16 +352,18 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         ),
         options = list(
           dom = 't',
-          searching = FALSE,
           info = FALSE,
           keys = TRUE,
           ordering = FALSE
         ),
-        filter = 'none',
+        initial_filter = initial_filter,
+        filter = 'top',
+        column_defs = list(
+          list(searchable = FALSE, targets = which(names(data) != "Population") - 1)
+        ),
         has_double_header = TRUE
       )      
-      #end initialize_data_Table
-    }, server = FALSE)
+    }, server = FALSE) #end initialize_data_Table
     
     priorities_table_proxy <- dataTableProxy("priorities_table",session = session)
     
@@ -400,7 +383,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       # Get the population name from the row that was displayed
       # This is trickier because the view is filtered. We need to map the
       # viewed row index back to the full data index.
-      displayed_data <- current_data[Population %in% input$population_toggles]
+      browser()
+      displayed_data <- current_data
       population_to_update <- displayed_data[info$row, Population]
       full_data_row_index <- which(current_data$Population == population_to_update)
       

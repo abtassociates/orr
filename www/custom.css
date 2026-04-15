@@ -35,11 +35,15 @@ td.disabled {
 }*/
 
 /*FUNDING PRIORITIES*/
-/*
-#funding_priorities-priorities_table table.dataTable th, 
-#funding_priorities-priorities_table table.dataTable td {
-  text-align:center;
-}*/
+#funding_priorities-priorities_table table.dataTable thead tr:nth-child(3) td:nth-child(3n+4) {
+  border-right: 1px solid black;
+}
+#funding_priorities-priorities_table table.dataTable thead tr:nth-child(3) td:not(:first-child):not(:nth-child(3n+4)) {
+  border-right: 1px solid lightgray;
+}
+border-right` = "1px solid lightgray"
+
+
 [id^="funding_priorities"].autonumeric-input {
   font-size: 1.2rem !important; /*otherwise, default for currencyInput is 1.5rem which is too big*/
 }
