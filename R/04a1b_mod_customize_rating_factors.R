@@ -380,16 +380,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     # Function to generate the UI for a single custom factor row
     
     iv <- shinyvalidate::InputValidator$new()
+    iv$enable()
     
     output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
-      data_groups_nested <- all_coc_factors_structured()
-      iv$disable()
-      
-      ui <- render_nested_factor_accordion_ui(data_groups_nested)
-      
-      iv$enable()
-      
-      ui
+      render_nested_factor_accordion_ui(all_coc_factors_structured())
     })
     
     handle_check_all_box_functionality(input)
