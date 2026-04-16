@@ -8,7 +8,7 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     title = paste0("Rate ", ptypes),
     value = id,
     br(),
-    helpText(paste0("Rate your ", ptypes, " against your selected criteria.", ifelse(id == "New", "Note that New YHDP projects do not get rated and thus will not appear in the Select Project dropdown below.", ""))),
+    helpText(paste0("Rate your ", ptypes, " against your selected criteria.")),
     br(),
     layout_sidebar(
       style = "min-height: 500px;",

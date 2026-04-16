@@ -75,9 +75,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       req(funding_action, user_coc$coc_version_id, refresh_trigger())
       
       # Fetch data from DB
-      isolate(
-        get_all_coc_factors(funding_action_id, user_coc$coc_version_id)
-      )
+      get_all_coc_factors(funding_action_id, user_coc$coc_version_id)
     })
     
     # ------- Project Type and Target Pop filters -------------
@@ -107,7 +105,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     
     # ------- Render the Factors -------------
     ## Validation rules
-    iv <- shinyvalidate::InputValidator$new()
     
     all_coc_factors_structured <- reactive({
       req(user_coc$coc_version_id)
@@ -220,14 +217,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       )
     }
     
-    output$factors_ui <- renderUI({ 
-      data_groups_nested <- all_coc_factors_structured()
-      iv$disable()
-      ui <- render_nested_factor_accordion_ui(data_groups_nested)
-      iv$enable()
-      ui
-    })
-    
     # -------- Check All by Group ------------------
     handle_check_all_box_functionality <- function(input) {
       all_possible_subgroups <- get_subgroups_by_funding_action(funding_action_id)
@@ -288,6 +277,14 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         }
       })
     }
+
+    # Function to generate the UI for a single custom factor row
+    iv <- shinyvalidate::InputValidator$new()
+    iv$enable()
+    
+    output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
+      render_nested_factor_accordion_ui(all_coc_factors_structured())
+    })
     
     handle_check_all_box_functionality(input)
     
@@ -296,6 +293,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     iv_custom <- shinyvalidate::InputValidator$new()
     iv_custom$add_rule("custom_text", sv_required())
     iv_custom$add_rule("custom_text", ~ if(. %in% all_coc_factors()$rating_factor_text) "You already have a rating factor with this text.")
+    ## validate that max point value of >= 0
+    iv_custom$add_rule("custom_points",  ~ if(is.na(.)) "Please input a numeric value")
     iv_custom$add_rule("custom_points", sv_between(-999.9, 999.9))
     iv_custom$add_rule("custom_goal", ~ if (isTRUE(nchar(.) > goal_char_limit)) "Limited to 10 characters")
     
@@ -312,9 +311,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             inputId = ns("custom_tp"), label = "Target Population",
             choices = c("Select an option below" = "", get_labelled_lookups("target_population")[c("DV", "General", "NA")]), multiple = TRUE
           ),
-          textInput(ns("custom_text"), label = "Rating Factor", placeholder = "Enter custom factor text"),
+
+          textInput(ns("custom_text"), label = "Rating Factor*", placeholder = "Enter custom factor text"),
           textInput(ns("custom_goal"), label = "Factor/Goal", placeholder = "Enter goal"),
-          numericInput(ns("custom_points"), min = -999.9, max = 999.9, label = "Max Point Value", value = 0, step = 0.1),
+          numericInput(ns("custom_points"), min = -999.9, max = 999.9, label = "Max Point Value*", value = 0, step = 0.1),
           
           footer = tagList(
             actionButton(ns("submit_custom_factor"), "Submit", class = "btn-primary"),
@@ -382,6 +382,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       showNotification("Custom rating factor added!", type = 'message')
       
       refresh_trigger(refresh_trigger() + 1)
+      
       user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
     })
     
