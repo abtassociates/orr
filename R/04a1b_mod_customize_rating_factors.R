@@ -423,11 +423,15 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       req(baseline_state())
       
       inputs <- reactiveValuesToList(input)
+      rating_entry_inputs <- inputs[grep("select|goal|points", names(inputs), value = TRUE)] 
       
-      inputs[grep("select|goal|points", names(inputs), value = TRUE)] |>
+      req(length(rating_entry_inputs) > 0)
+      
+      rating_entry_inputs |>
         unlist2d(DT = TRUE) %>%
         add_vars(tstrsplit(.$.id, "_",fixed = TRUE, names = c("var", "rating_factor_id"))) |>
-        pivot(ids = "rating_factor_id", names = "var", values = "V1", how="wider")
+        pivot(ids = "rating_factor_id", names = "var", values = "V1", how="wider") |>
+        frename("selected" = select, "max_point_value" = points)
     })
     
     # 3. Difference Engine: Find only what changed
