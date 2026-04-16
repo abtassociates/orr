@@ -159,7 +159,7 @@ debugger;
       needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
       
       # if(needs_refresh)
-        refresh_trigger(\(x) x + 1)
+        refresh_trigger(refresh_trigger() + 1)
     }
     
     # Update alternative rating data when cell is edited

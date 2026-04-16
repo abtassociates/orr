@@ -98,7 +98,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       needs_refresh1 <- update_selected_thresholds_db(get_db_pool(), updated_selected_thresholds)
       
       # if(needs_refresh1)
-        refresh_trigger(\(x) x + 1)
+        refresh_trigger(refresh_trigger() + 1)
       
       if(!needs_refresh1)
         user_coc$customized_coc_thresholds_updated <- user_coc$customized_coc_thresholds_updated + 1
@@ -154,7 +154,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
         needs_refresh2 <- update_selected_thresholds_db(p, updated_selected_thresholds)
       })
       
-      refresh_trigger(\(x) x + 1)
+      refresh_trigger(refresh_trigger() + 1)
       
       if(!needs_refresh2)
         user_coc$customized_coc_thresholds_updated <- user_coc$customized_coc_thresholds_updated + 1
