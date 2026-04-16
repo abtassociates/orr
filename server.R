@@ -41,7 +41,7 @@ function(input, output, session) {
     query <- parseQueryString(session$clientData$url_search)
     
     if(IN_DEV_MODE) {
-      login_as_user(user_coc)
+      login_as_user(user_coc, get0("DEV_USER_LOGIN", envir=.GlobalEnv))
       nav_control("dashboard")
       req(FALSE)
     }
