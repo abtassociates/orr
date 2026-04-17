@@ -225,26 +225,6 @@ get_db_timestamp <- function() {
 }
 
 save_to_db <- function(p, sql, params, tbl_name) {
-  # 1. Start with a pure, un-masked base R print
-  cat(file = stderr(), "DEBUG: save_to_dv execution started\n")
-  write(
-    x = paste(Sys.time(), "- f() is definitely running!"), 
-    file = "/var/log/shiny-server/shiny_f_debug.txt", 
-    append = TRUE
-  )
-  # 2. Safely attempt the notification by explicitly passing the session
-  session <- shiny::getDefaultReactiveDomain()
-  if (is.null(session)) {
-    cat(file = stderr(), "DEBUG: NO SHINY SESSION FOUND! showNotification will fail.\n")
-  } else {
-    tryCatch({
-      showNotification("Starting save...", session = session)
-      cat(file = stderr(), "DEBUG: showNotification succeeded\n")
-    }, error = function(e) {
-      cat(file = stderr(), paste("DEBUG: showNotification crashed:", e$message, "\n"))
-    })
-  }
-  
   paramified <- paramify(params)
   if(purrr::every(paramified, is.null)) 
     return(FALSE)
@@ -256,15 +236,10 @@ save_to_db <- function(p, sql, params, tbl_name) {
       DBI::dbGetQuery(conn, sql, params = paramified)
     }
   }
-  message("initialized")
-  logger::log_info("initialized")
   
-  flush.console()
   tryCatch({
     # if not already inside a transaction (i.e. where p is a connection, wrap in transaction for speed)
     rows_changed <- if(inherits(p, "Pool")) {
-      message("transacting")
-      logger::log_info("transacting")
       pool::poolWithTransaction(p, function(conn) {
         save_func(conn)
       })
@@ -283,11 +258,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
       return(rows_changed)
     } 
     
-    message(paste0("rows_changed = ", rows_changed))
-    logger::log_info(paste0("rows_changed = ", rows_changed))
     num_rows <- ifelse("list" %in% class(params), length(params[[1]]), fnrow(params))
-    message(paste0("num_rows = ", num_rows))
-    logger::log_info(paste0("num_rows = ", num_rows))
     if(rows_changed == 0) {
       msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
       needs_refresh <- TRUE
@@ -298,7 +269,6 @@ save_to_db <- function(p, sql, params, tbl_name) {
       msg <- glue::glue("{tbl_name} saved successfully!")
       needs_refresh <- FALSE
     }
-    message(msg)
     logger::log_info(msg)
     showNotification(msg, type = "message")
     return(needs_refresh)
@@ -306,7 +276,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
     # If an error occurs, do NOT reset the flag, so it will try again.
     # Notify the user of the failure.
     showNotification(glue::glue("Error saving {tbl_name}: {e$message}"), type = "error", duration = 10)
-    log_error(paste0(sql, e$message))
+    logger::log_error(paste0(sql, e$message))
     stop(e) # rethrow error so the transaction can catch it and roll back
   })
 }
