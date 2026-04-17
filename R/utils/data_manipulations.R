@@ -236,9 +236,11 @@ save_to_db <- function(p, sql, params, tbl_name) {
       DBI::dbGetQuery(conn, sql, params = paramified)
     }
   }
+  message("initialized")
   tryCatch({
     # if not already inside a transaction (i.e. where p is a connection, wrap in transaction for speed)
     rows_changed <- if(inherits(p, "Pool")) {
+      message("transacting")
       pool::poolWithTransaction(p, function(conn) {
         save_func(conn)
       })
