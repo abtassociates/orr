@@ -229,7 +229,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
   cat(file = stderr(), "DEBUG: save_to_dv execution started\n")
   write(
     x = paste(Sys.time(), "- f() is definitely running!"), 
-    file = "/tmp/shiny_f_debug.txt", 
+    file = "/var/log/shiny-server/shiny_f_debug.txt", 
     append = TRUE
   )
   # 2. Safely attempt the notification by explicitly passing the session
