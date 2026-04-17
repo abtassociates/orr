@@ -16,6 +16,15 @@ get_coc_nofo_opportunities <- function(coc_version_id) {
   )
 }
 
+get_dv_ard <- function(coc_version_id) {
+  get_db_query(
+    "SELECT dv_ard, version_id 
+    FROM coc_versions 
+    WHERE coc_version_id = $1", 
+    params = coc_version_id
+  )
+} 
+
 update_coc_nofo_opportunities_db <- function(p, updated_coc_nofo_opportunities) {
   save_to_db(
     p,
