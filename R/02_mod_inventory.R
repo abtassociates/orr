@@ -98,8 +98,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     
     # Initialize projects_data ------
     observe({
-      req(user_coc$coc_version_id, refresh_trigger)
-
+      req(user_coc$coc_version_id, refresh_trigger())
       data <- get_coc_projects(user_coc$coc_version_id) |>
         fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
@@ -374,6 +373,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       if(!needs_refresh) {
         user_coc$projects_updated <- user_coc$projects_updated + 1
         update_datatable(proj_id, col_name, info$value)
+        projects_data()[
+          project_id == proj_id,
+          version_id := version_id + 1
+        ]
       } else {
         refresh_trigger(refresh_trigger() + 1)
       }
