@@ -28,7 +28,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
-    observeEvent(c(refresh_trigger(), user_coc$projects_updated), {
+    observeEvent(c(user_coc$coc_version_id, refresh_trigger(), user_coc$projects_updated), {
       req(user_coc$coc_version_id)
       
       ratable_projects(
@@ -158,8 +158,14 @@ debugger;
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
       needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
       
-      # if(needs_refresh)
+      if(!needs_refresh) {
+        ratable_projects()[
+          project_id %in% updated_project_evaluations$project_id,
+          version_id := version_id + 1
+        ]
+      } else {
         refresh_trigger(refresh_trigger() + 1)
+      }
     }
     
     # Update alternative rating data when cell is edited
@@ -176,16 +182,7 @@ debugger;
       
       alt_rating_update()
     }, ignoreInit = TRUE) # end alt rating table cell edit
-    
-    observe({
-      req(user_coc$coc_version_id)
-      
-      data <- get_alternative_rating(user_coc$coc_version_id) %>% 
-                format_table_data()
-      
-      ratable_projects(data)
-    })
-    
+
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns
     set_all_thresholds_handler <- function(colname) {
       input_name <- paste0("set_", colname)
