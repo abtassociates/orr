@@ -137,7 +137,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     )
     
     hud_ard_coc_data <- reactive({
-      req(refresh_trigger$dv_ard)
+      req(refresh_trigger$dv_ard, user_coc$coc_version_id)
+      
       dv_ard_db <- get_dv_ard(user_coc$coc_version_id)
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
@@ -186,6 +187,13 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       refresh_trigger$dv_ard <- refresh_trigger$dv_ard + 1
     }, ignoreInit = TRUE)
     
+    observeEvent(hud_ard_coc_data(), {
+      updateCurrencyInput(
+        session,
+        "dv_ard",
+        value = hud_ard_coc_data()$dv_ard
+      )
+    })
     
     # Priorities ------------
     format_coc_funding_priorities <- function(coc_funding_priorities_db) {
