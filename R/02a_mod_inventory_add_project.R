@@ -223,7 +223,7 @@ mod_inventory_add_project_server <- function(
         else LOOKUP_CHOICES$all_project_types
       
       updateSelectInput(session, "project_type", choices = c("Select Funding Source first" = "", proj_type_choices), selected = input$project_type)
-    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update visibility based on funding action
     observeEvent(input$funding_action, {
@@ -242,7 +242,7 @@ mod_inventory_add_project_server <- function(
       vis_beds <- visible_bed_groups()
       all_bed_groups <- c("total_beds", "ch_beds", "vet_beds", "youth_beds")
       lapply(all_bed_groups, function(group) shinyjs::toggle(group, condition = group %in% vis_beds))
-    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update DV checkbox and related elements
     observeEvent(c(input$funding_action, input$project_type, current_target_pop()), {
@@ -264,7 +264,7 @@ mod_inventory_add_project_server <- function(
       
       # Missing organization_name state control
       shinyjs::toggleState("organization_name", condition = form_type() != "YHDP Replacement")
-    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update Target Population Selection
     observeEvent(current_target_pop(), {
@@ -273,7 +273,7 @@ mod_inventory_add_project_server <- function(
       shinyjs::toggleState("target_population", condition = TRUE) # start by enabling so we can set the value
       if (current_funding_source() != "CoC") updateSelectInput(session, "target_population", selected = tp)
       shinyjs::toggleState("target_population", condition = current_funding_source() %in% c("", "CoC"))
-    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # --- PSH Checkbox Logic ---
     observeEvent(input$targeted_ch_fam, 
@@ -288,11 +288,11 @@ mod_inventory_add_project_server <- function(
     observeEvent(c(input$total_beds_fam, input$ch_beds_fam), {
       is_equal <- input$total_beds_fam > 0 && input$total_beds_fam == input$ch_beds_fam
       updateCheckboxInput(session, "targeted_ch_fam", value = is_equal)
-    }, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     observeEvent(c(input$total_beds_ind, input$ch_beds_ind), {
       is_equal <- input$total_beds_ind > 0 && input$total_beds_ind == input$ch_beds_ind
       updateCheckboxInput(session, "targeted_ch_ind", value = is_equal)
-    }, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # =================================================================
     # Validation & Submission
