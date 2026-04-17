@@ -29,6 +29,11 @@ update_inventory_db <- function(new_value, col_name, proj_id, version_id) {
         version_id = version_id + 1
       WHERE project_id = $2 AND version_id = $3")
   }
-  
-  db_execute(sql, params = list(new_value, proj_id, version_id))
+  save_to_db(
+    get_db_pool(),
+    sql,
+    list(new_value, proj_id, version_id),
+    "projects"
+  )
+  # db_execute(sql, params = list(new_value, proj_id, version_id))
 }
