@@ -221,23 +221,20 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       req(thresholds_to_enter(), fnrow(selected_project()) > 0, made_a_change() == T)
       
       # 1. Diff the checkboxes against the baseline
-      updated_thresholds <- thresholds_to_enter() |>
+      updated_thresholds <- get_threshold_data_to_save(thresholds_to_enter(), "threshold_id", "met_threshold", c(input$HUD_requirements, input$CoC_requirements))
+      if(is.null(updated_thresholds)) return(NULL)
+      
+      updated_thresholds <- updated_thresholds |>
         fmutate(
           created_by = user_coc$username,
-          met_threshold_to_save = threshold_id %in% c(input$HUD_requirements, input$CoC_requirements),
           project_id = selected_project()$project_id
         ) |>
-        fsubset(met_threshold_to_save != fcoalesce(as.logical(met_threshold), FALSE)) |>
         fselect(project_id, threshold_id, met_threshold_to_save, created_by, version_id)
-      
-      # Stop if they haven't made any changes
-      if(fnrow(updated_thresholds) == 0) return(NULL)
       
       # 2. Diff the project evaluations against the baseline
       eval_changed <- is_empty(project_evaluation()) || 
         !identical(isTRUE(project_evaluation()$met_HUD_thresholds), isTRUE(input$yes_to_all_HUD)) ||
         !identical(isTRUE(project_evaluation()$met_CoC_thresholds), isTRUE(input$yes_to_all_CoC))
-      
      
       updated_project_evaluation <-  if (eval_changed) {
         data.table(

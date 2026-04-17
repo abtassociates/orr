@@ -446,44 +446,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       base <- all_coc_factors_rv()
       req(fnrow(base) > 0)
       
-      current_ui_state <- rbindlist(lapply(base$rating_factor_id, function(id) {
-        sel <- input[[paste0("select_", id)]]
-        gol <- input[[paste0("goal_", id)]]
-        pts <- input[[paste0("points_", id)]]
-        
-        # If UI hasn't fully rendered yet, return NULL
-        if (is.null(sel) || is.null(gol) || is.null(pts)) return(NULL)
-        
-        data.table(
-          rating_factor_id = as.integer(id),
-          selected = as.logical(sel),
-          goal = as.character(gol),
-          max_point_value = as.numeric(pts)
-        )
-      }))
+      updated_rating_factors <- get_rating_data_to_save(input, base, "rating_factor_id", c("selected", "goal", "max_point_value"))
+      if(is.null(updated_rating_factors)) return(NULL)
       
-      if(is_empty(current_ui_state)) return(NULL)
-      
-      # Merge current UI values with baseline version_ids
-      diffs <- join(
-        current_ui_state, 
-        base,
-        on = "rating_factor_id"
-      ) |>
-        fsubset(
-          not_equal_na(selected, selected_base) | 
-          not_equal_na(goal, goal_base) |
-          not_equal_na(max_point_value, max_point_value_base)
-        )
-      
-      if (fnrow(diffs) == 0) return(NULL)
-
-      # Return table formatted for your update_selected_rating_factors_db function
-      # The SQL expects $1..$6, then version_id as $7 (n+1)
-      diffs |>
+      updated_rating_factors |>
         fmutate(
-          coc_version_id = user_coc$coc_version_id,
-          created_by = user_coc$username
+          created_by = user_coc$username,
+          coc_version_id = user_coc$coc_version_id
         ) |>
         fselect(
           rating_factor_id, 

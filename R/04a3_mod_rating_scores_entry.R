@@ -63,11 +63,6 @@ mod_rating_scores_entry_ui <- function(id) {
               strong(textOutput(ns("weighted_total_score"), inline=TRUE))),
           div(strong("out of 100"))
         )
-      ),
-      card_footer(
-        class="sticky-save",
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"))
       )
     )
   )
@@ -382,40 +377,13 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       base <- factors_and_scores_for_project()
       req(fnrow(base) > 0, fnrow(selected_project()) > 0)
       
-      current_ui_state <- rbindlist(lapply(base$selected_rating_factor_id, function(id) {
-        score <- input[[paste0("rating_score_", id)]]
-        perf <- input[[paste0("performance_", id)]]
-        
-        # If UI hasn't fully rendered yet, return NULL
-        if (is.null(score) || is.null(perf)) return(NULL)
-        
-        data.table(
-          selected_rating_factor_id = id,
-          rating_score = score,
-          performance = perf
-        )
-      })) |>
-        fmutate(performance = fifelse(performance == "", NA, performance))
+      updated_rating_scores <- get_rating_data_to_save(input, base, "selected_rating_factor_id", c("rating_score", "performance"))
+      if(is.null(updated_rating_scores)) return(NULL)
       
-      if(is_empty(current_ui_state)) return(NULL)
-      
-      updated_rating_scores <- join(
-        current_ui_state, 
-        base,
-        on = "selected_rating_factor_id"
-      ) |>
-        fsubset(
-          not_equal_na(rating_score, rating_score_base) |
-            not_equal_na(performance, performance_base)
-        )
-      
-      if (fnrow(updated_rating_scores) == 0) return(NULL)
-      
-      # Return table formatted for your update_selected_rating_factors_db function
-      # The SQL expects $1..$6, then version_id as $7 (n+1)
       updated_rating_scores <- updated_rating_scores |>
         fmutate(
           created_by = user_coc$username,
+          performance = fifelse(performance == "", NA, performance),
           project_id = selected_project()$project_id
         ) |>
         fselect(
