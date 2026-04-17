@@ -124,8 +124,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     
     make_factor_row <- function(id, project_type, target_population, text, goal, points, selected, group_name) {
       iv$add_rule(paste0("goal_", id), ~if (isTRUE(nchar(.) > goal_char_limit)) glue::glue("Limited to {goal_char_limit} characters"))
-      iv$add_rule(paste0("points_", id), sv_numeric())
-      iv$add_rule(paste0("points_", id), sv_between(-999.9, 999.9))
+      iv$add_rule(paste0("max_point_value_", id), sv_numeric())
+      iv$add_rule(paste0("max_point_value_", id), sv_between(-999.9, 999.9))
       
       pt_class <- if(is.na(project_type)) "pt-all" else paste0("pt-", project_type)
       tp_class <- if(is.na(target_population)) "tp-all" else paste0("tp-", target_population)
@@ -135,13 +135,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         style = "display: flex; gap: 15px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0;",
         div(
           style = "flex: 0 0 100px; margin-bottom: 0px; display: flex; justify-content: center;",
-          checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected, width = "100%")
+          checkboxInput(ns(paste0("selected_", id)), label = NULL, value = selected, width = "100%")
         ),
         if(funding_action == "Renew") div(style = "flex: 1;", get_lookup_label(project_type, "project_type")) else NULL,
         div(style = "flex: 1;", get_lookup_label(target_population, "target_population")),
         div(style = "flex: 3; font-size: 0.9rem;", text),
         div(style = "flex: 1;", textInput(ns(paste0("goal_", id)), NULL, value = goal, width = "100%", updateOn = "blur")),
-        div(style = "flex: 0 0 80px;", numericInput(ns(paste0("points_", id)), NULL, value = points, step = 0.1, width = "100%", updateOn = "blur"))
+        div(style = "flex: 0 0 80px;", numericInput(ns(paste0("max_point_value_", id)), NULL, value = points, step = 0.1, width = "100%", updateOn = "blur"))
       )
     }
     
@@ -239,7 +239,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             
             if (!is.null(subgroup_factors) && nrow(subgroup_factors) > 0) {
               for (factor_id in subgroup_factors$rating_factor_id) {
-                checkbox_id <- paste0("select_", factor_id)
+                checkbox_id <- paste0("selected_", factor_id)
                 if (!identical(input[[checkbox_id]], new_val)) {
                   updateCheckboxInput(session, checkbox_id, value = new_val)
                 }
@@ -263,7 +263,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             
             if (length(factor_ids) == 0 || all(is.na(factor_ids))) next
             
-            factor_selections <- sapply(factor_ids, function(id) input[[paste0("select_", id)]])
+            factor_selections <- sapply(factor_ids, function(id) input[[paste0("selected_", id)]])
             if (any(sapply(factor_selections, is.null))) next
             
             parent_should_be_checked <- all(unlist(factor_selections))
