@@ -257,7 +257,10 @@ save_to_db <- function(p, sql, params, tbl_name) {
       return(rows_changed)
     } 
     
+    message(paste0("rows_changed = ", rows_changed))
+    
     num_rows <- ifelse("list" %in% class(params), length(params[[1]]), fnrow(params))
+    message(paste0("num_rows = ", num_rows))
     if(rows_changed == 0) {
       msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
       needs_refresh <- TRUE
@@ -268,6 +271,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
       msg <- glue::glue("{tbl_name} saved successfully!")
       needs_refresh <- FALSE
     }
+    message(msg)
     logger::log_info(msg)
     showNotification(msg, type = "message")
     return(needs_refresh)
