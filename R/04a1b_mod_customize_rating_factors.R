@@ -50,7 +50,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
         uiOutput(ns("factors_ui")) |> withSpinner(),
         
         card_footer(
-          class = "d-flex justify-content-between align-items-center",
+          class = "sticky-footer d-flex justify-content-between align-items-center",
           actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus"))
         )
       )
