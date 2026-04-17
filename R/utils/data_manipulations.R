@@ -238,6 +238,8 @@ save_to_db <- function(p, sql, params, tbl_name) {
   }
   message("initialized")
   logger::log_info("initialized")
+  
+  flush.console()
   tryCatch({
     # if not already inside a transaction (i.e. where p is a connection, wrap in transaction for speed)
     rows_changed <- if(inherits(p, "Pool")) {
