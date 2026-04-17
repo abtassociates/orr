@@ -54,27 +54,17 @@ update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding
   )
 }
 
-update_dv_ard <- function(p, params) {
-  tryCatch({
-    DBI::dbExecute(
-      p,
-      "UPDATE coc_versions 
+update_dv_ard <- function(p, updated_dv_ard) {
+  save_to_db(
+    p, 
+    "UPDATE coc_versions 
       SET 
         dv_ard = $1, 
         updated_by = $2, 
         date_updated = CURRENT_TIMESTAMP,
         version_id = version_id + 1
-      WHERE coc_version_id = $3",
-      paramify(params)
-    )
-    message("Saved DV ARD!")
-    showNotification("Saved DV ARD!", type = "message")
-    
-  }, error = function(e) {
-    # If an error occurs, do NOT reset the flag, so it will try again.
-    # Notify the user of the failure.
-    showNotification(glue::glue("Error saving dv_ard to coc_versions table: {e$message}"), type = "error", duration = 10)
-    log_error(paste0("Updating dv_ard:", e$message))
-    stop(e) # rethrow error so the transaction can catch it and roll back
-  })
+      WHERE coc_version_id = $3 AND version_id = $4",
+    updated_dv_ard,
+    "coc_versions"
+  )
 }
