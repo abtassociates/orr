@@ -373,10 +373,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       if(!needs_refresh) {
         user_coc$projects_updated <- user_coc$projects_updated + 1
         update_datatable(proj_id, col_name, info$value)
-        projects_data()[
-          project_id == proj_id,
-          version_id := version_id + 1
-        ]
       } else {
         refresh_trigger(refresh_trigger() + 1)
       }
@@ -386,7 +382,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       # update the reactiveVal that updates the proxy
       updated_data <- copy(projects_data())[
         project_id == proj_id, 
-        (col_name) := value
+        c(col_name, "version_id") := list(value, version_id + 1)
       ] |>
         add_calculated_fields()
       
