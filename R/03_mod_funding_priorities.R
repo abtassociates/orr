@@ -178,7 +178,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       update_dv_ard(
         get_db_pool(),
         list(
-          entered_dv_ard(), 
+          dv_ard_debounced(), 
           user_coc$username, 
           user_coc$coc_version_id, 
           hud_ard_coc_data()$version_id
