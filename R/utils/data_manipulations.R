@@ -237,10 +237,12 @@ save_to_db <- function(p, sql, params, tbl_name) {
     }
   }
   message("initialized")
+  logger::log_info("initialized")
   tryCatch({
     # if not already inside a transaction (i.e. where p is a connection, wrap in transaction for speed)
     rows_changed <- if(inherits(p, "Pool")) {
       message("transacting")
+      logger::log_info("transacting")
       pool::poolWithTransaction(p, function(conn) {
         save_func(conn)
       })
@@ -260,9 +262,10 @@ save_to_db <- function(p, sql, params, tbl_name) {
     } 
     
     message(paste0("rows_changed = ", rows_changed))
-    
+    logger::log_info(paste0("rows_changed = ", rows_changed))
     num_rows <- ifelse("list" %in% class(params), length(params[[1]]), fnrow(params))
     message(paste0("num_rows = ", num_rows))
+    logger::log_info(paste0("num_rows = ", num_rows))
     if(rows_changed == 0) {
       msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
       needs_refresh <- TRUE
