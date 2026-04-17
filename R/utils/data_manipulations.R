@@ -353,3 +353,6 @@ revert_cell <- function(tableID, info, visible_rows, full_data) {
   ))
 }
 
+not_equal_na <- function(x, y) {
+  x != y | is.na(x) != is.na(y)
+}

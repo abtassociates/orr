@@ -124,6 +124,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     
     make_factor_row <- function(id, project_type, target_population, text, goal, points, selected, group_name) {
       iv$add_rule(paste0("goal_", id), ~if (isTRUE(nchar(.) > goal_char_limit)) glue::glue("Limited to {goal_char_limit} characters"))
+      iv$add_rule(paste0("points_", id), sv_numeric())
       iv$add_rule(paste0("points_", id), sv_between(-999.9, 999.9))
       
       pt_class <- if(is.na(project_type)) "pt-all" else paste0("pt-", project_type)
@@ -399,59 +400,84 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     
     
     # ------- Auto-Save Engine ---------------
-    # baseline_state Stores the 'last known good' state from DB
+    # all_coc_factors_rv Stores the 'last known good' state from DB
     # we are essentially maintaining three versions of the truth:
     # The Database: The ultimate source of truth.
     # The UI State: What the user has typed (but maybe not saved yet).
     # The Baseline: What we *think* is currently in the database.
-    # After a save to the db, we can update baseline_state, rather than re-pulling from the db
-    baseline_state <- reactiveVal(NULL) 
+    # After a save to the db, we can update all_coc_factors_rv, rather than re-pulling from the db
+    all_coc_factors_rv <- reactiveVal(NULL) 
     
     # 1. Update baseline whenever data is fetched from the DB
     observeEvent(all_coc_factors(), {
       data <- all_coc_factors()
       req(fnrow(data))
       
-      baseline_state(
+      all_coc_factors_rv(
         data |>
           fsubset(!is.na(rating_factor_id), rating_factor_id, selected, goal, max_point_value, version_id)
       )
     }, priority = 10)
     
     # 2. Scrape current UI state
-    current_ui_state <- reactive({
-      req(baseline_state())
-      
-      inputs <- reactiveValuesToList(input)
-      rating_entry_inputs <- inputs[grep("select|goal|points", names(inputs), value = TRUE)] 
-      
-      req(length(rating_entry_inputs) > 0)
-      
-      rating_entry_inputs |>
-        unlist2d(DT = TRUE) %>%
-        add_vars(tstrsplit(.$.id, "_",fixed = TRUE, names = c("var", "rating_factor_id"))) |>
-        pivot(ids = "rating_factor_id", names = "var", values = "V1", how="wider") |>
-        frename("selected" = select, "max_point_value" = points)
-    })
+    # current_ui_state <- reactive({
+    #   
+    #   req(user_coc$coc_version_id)
+    #   
+    #   inputs <- reactiveValuesToList(input)
+    #   rating_entry_inputs <- inputs[grep("select|goal|points", names(inputs), value = TRUE)] 
+    #   
+    #   req(length(rating_entry_inputs) > 0)
+    #   
+    #   rating_entry_inputs |>
+    #     unlist2d(DT = TRUE) %>%
+    #     add_vars(tstrsplit(.$.id, "_",fixed = TRUE, names = c("var", "rating_factor_id"))) |>
+    #     pivot(ids = "rating_factor_id", names = "var", values = "V1", how="wider") |>
+    #     frename("selected" = select, "max_point_value" = points) |>
+    #     fmutate(
+    #       rating_factor_id = as.integer(rating_factor_id),
+    #       selected = as.logical(selected),
+    #       max_point_value = as.numeric(max_point_value)
+    #     )
+    # })
     
     # 3. Difference Engine: Find only what changed
-    changes_to_save <- reactive({
-      req(current_ui_state(), baseline_state())
+    rating_factors_to_save <- reactive({
+      base <- all_coc_factors_rv()
+      req(fnrow(base) > 0)
+      
+      current_ui_state <- rbindlist(lapply(base$rating_factor_id, function(id) {
+        sel <- input[[paste0("select_", id)]]
+        gol <- input[[paste0("goal_", id)]]
+        pts <- input[[paste0("points_", id)]]
+        
+        # If UI hasn't fully rendered yet, return NULL
+        if (is.null(sel) || is.null(gol) || is.null(pts)) return(NULL)
+        
+        data.table(
+          rating_factor_id = as.integer(id),
+          selected = as.logical(sel),
+          goal = as.character(gol),
+          max_point_value = as.numeric(pts)
+        )
+      }))
+      
+      if(is_empty(current_ui_state)) return(NULL)
       
       # Merge current UI values with baseline version_ids
       diffs <- join(
-        current_ui_state(), 
-        baseline_state(),
+        current_ui_state, 
+        base,
         on = "rating_factor_id"
       ) |>
         fsubset(
-          selected != selected_baseline_state | 
-          goal != goal_baseline_state | 
-          max_point_value != max_point_value_baseline_state
+          not_equal_na(selected, selected_base) | 
+          not_equal_na(goal, goal_base) |
+          not_equal_na(max_point_value, max_point_value_base)
         )
       
       if (fnrow(diffs) == 0) return(NULL)
-      
+
       # Return table formatted for your update_selected_rating_factors_db function
       # The SQL expects $1..$6, then version_id as $7 (n+1)
       diffs |>
@@ -468,41 +494,30 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           created_by,
           version_id
         )
-    })
-    
-    # 4. Debounce the changes (2 seconds)
-    # i.e., wait 2 seconds for additional changes
-    debounced_changes <- debounce(changes_to_save, 2000)
+    }) |> debounce(2000) # wait 2 seconds for additional changes
     
     # 5. Auto-Save Observer
-    observeEvent(debounced_changes(), {
-      to_save <- debounced_changes()
-      req(to_save)
-      
-      # Validate before saving
-      req(iv$is_valid())
+    observeEvent(rating_factors_to_save(), {
+      to_save <- rating_factors_to_save()
+      req(to_save, iv$is_valid())
       
       # Update the db
       needs_refresh <- update_selected_rating_factors_db(get_db_pool(), to_save)
       
       if (!needs_refresh) {
         # SUCCESS
-        # Update baseline_state in memory to match what we just saved 
+        # Update all_coc_factors_rv in memory to match what we just saved 
         #    and increment version_ids so next save works.
-        new_baseline <- baseline_state() |>
-          join(to_save, on="rating_factor_id") |>
-          ftransform(
-            selected = fcoalesce(selected_to_save, selected),
-            goal = fcoalesce(goal_to_save, goal),
-            max_point_value = fcoalesce(max_point_value_to_save, max_point_value),
-            version_id = version_id + 1,
-            selected_to_save = NULL,
-            goal_to_save = NULL,
-            max_point_value_to_save = NULL,
-            version_id_to_save = NULL
+        all_coc_factors_rv()[
+          to_save, 
+          on = "rating_factor_id", 
+          `:=`(
+            selected = as.integer(i.selected),
+            goal = i.goal,
+            max_point_value = i.max_point_value,
+            version_id = version_id + 1
           )
-        
-        baseline_state(new_baseline)
+        ]
         
         user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
         
