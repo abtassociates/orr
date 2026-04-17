@@ -266,7 +266,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           
           function(x) formatRound(
             x,
-            columns = grep('bed', names(data)) - 1,
+            columns = grep('bed', names(data)),
             digits = 0
           )
         ),
