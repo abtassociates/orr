@@ -227,7 +227,11 @@ get_db_timestamp <- function() {
 save_to_db <- function(p, sql, params, tbl_name) {
   # 1. Start with a pure, un-masked base R print
   cat(file = stderr(), "DEBUG: save_to_dv execution started\n")
-  
+  write(
+    x = paste(Sys.time(), "- f() is definitely running!"), 
+    file = "/tmp/shiny_f_debug.txt", 
+    append = TRUE
+  )
   # 2. Safely attempt the notification by explicitly passing the session
   session <- shiny::getDefaultReactiveDomain()
   if (is.null(session)) {
