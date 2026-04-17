@@ -368,11 +368,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       col_name <- colnames(projects_data())[info$col + 1]
       
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
-      update_datatable(proj_id, col_name, info$value)
-      s <- update_inventory_db(value, col_name, proj_id)
-      
+      s <- update_inventory_db(value, col_name, proj_id, project_data$version_id)
       if(isTruthy(s))
         user_coc$projects_updated <- user_coc$projects_updated + 1
+      
+      update_datatable(proj_id, col_name, info$value)
     }
     
     update_datatable <- function(proj_id, col_name, value) {
