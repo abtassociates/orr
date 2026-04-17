@@ -225,6 +225,22 @@ get_db_timestamp <- function() {
 }
 
 save_to_db <- function(p, sql, params, tbl_name) {
+  # 1. Start with a pure, un-masked base R print
+  cat(file = stderr(), "DEBUG: save_to_dv execution started\n")
+  
+  # 2. Safely attempt the notification by explicitly passing the session
+  session <- shiny::getDefaultReactiveDomain()
+  if (is.null(session)) {
+    cat(file = stderr(), "DEBUG: NO SHINY SESSION FOUND! showNotification will fail.\n")
+  } else {
+    tryCatch({
+      showNotification("Starting save...", session = session)
+      cat(file = stderr(), "DEBUG: showNotification succeeded\n")
+    }, error = function(e) {
+      cat(file = stderr(), paste("DEBUG: showNotification crashed:", e$message, "\n"))
+    })
+  }
+  
   paramified <- paramify(params)
   if(purrr::every(paramified, is.null)) 
     return(FALSE)
