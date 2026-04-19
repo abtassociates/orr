@@ -43,8 +43,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
       req(fnrow(projects) > 0)
       
       # Query DB for all projects that have a weighted_score
-      # Using DISTINCT in case there are multiple evaluation records per project
-      evaluated <- get_project_evaluation_scores()
+      evaluated <- get_project_evaluation_scores(projects$project_id)
       
       if (is.null(evaluated) || fnrow(evaluated) == 0) return(character(0))
       
@@ -88,12 +87,20 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
       if (fnrow(projects) > 0) {
         rated <- rated_projects()
         
+        # Sort projects so that unrated (FALSE/0) come first, and rated (TRUE/1) go to the bottom.
+        # seq_len(nrow(projects)) acts as a tie-breaker so original relative sorting is preserved.
+        is_rated <- projects$project_id %in% rated
+        sort_order <- order(is_rated, tolower(projects$project_name))
+        projects <- projects[sort_order, ]
+        
+        # Update our flag based on the newly sorted dataframe
+        is_rated_sorted <- projects$project_id %in% rated
+        
         # Prepend a checkmark to the names of the completed projects
         choices_labels <- projects$project_name
-        is_rated <- projects$project_id %in% rated
         
-        if (any(is_rated)) {
-          choices_labels[is_rated] <- paste0("✔ ", choices_labels[is_rated])
+        if (any(is_rated_sorted)) {
+          choices_labels[is_rated_sorted] <- paste0("✔ ", choices_labels[is_rated_sorted])
         }
         
         choices_list <- c("Please select..." = "", setNames(projects$project_id, choices_labels))
