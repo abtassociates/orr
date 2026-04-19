@@ -473,40 +473,70 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     build_report <- function(data, project_name, total, max_pts, file) {
       tempReport <- file.path(tempdir(), "report_card.Rmd")
       
+      # Note the use of results='asis' in the chunk, which allows us to use a loop 
+      # to dynamically generate Headers and Tables for each Factor Group.
       rmd_content <- c(
         "---",
         paste0("title: 'Rating Report Card: ", project_name, "'"),
-        "output: html_document",   # <--- CHANGED THIS
+        "output: ",
+        "  html_document:",
+        "    theme: flatly", # Gives it a clean, modern Bootstrap look
         "params:",
         "  report_data: NA", 
         "---",
-        "---",
         "```{r setup, include=FALSE}",
-        "knitr::opts_chunk$set(echo = FALSE)",
+        "knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)",
         "```",
-        "### Summary",
-        paste0("**Total Score:** ", total, " out of ", max_pts),
         "",
-        "### Rating Details",
-        "```{r}",
+        "## **Overall Score:** <span style='color:blue;'>", total, " out of ", max_pts, "</span>",
+        "***",
+        "",
+        "```{r, results='asis'}",
         "library(dplyr)",
         "library(knitr)",
-        "params_data <- readRDS('temp_data.rds')",
-        "params_data %>%",
-        "  select(`Factor Group` = factor_group, `Factor` = rating_factor_text, ",
-        "         `Goal` = goal, `Score` = rating_score, ",
-        "         `Max Pts` = max_point_value, `Performance` = performance) %>%",
-        "  kable(format = 'markdown')",
+        "",
+        "# Split the data by Factor Group",
+        "grouped_data <- split(params$report_data, params$report_data$factor_group)",
+        "",
+        "for (group_name in names(grouped_data)) {",
+        "  group_df <- grouped_data[[group_name]]",
+        "  ",
+        "  # Calculate subtotals for this specific group",
+        "  subtotal_score <- sum(as.numeric(group_df$rating_score), na.rm = TRUE)",
+        "  subtotal_max <- sum(as.numeric(group_df$max_point_value), na.rm = TRUE)",
+        "  ",
+        "  # Print an HTML Header for the group and its subtotal",
+        "  cat(sprintf('### %s (Subtotal: %s / %s)\\n\\n', group_name, subtotal_score, subtotal_max))",
+        "  ",
+        "  # Select and rename columns for a clean table",
+        "  table_output <- group_df %>%",
+        "    select(",
+        "      `Subgroup` = factor_subgroup,",
+        "      `Factor` = rating_factor_text, ",
+        "      `Goal` = goal, ",
+        "      `Performance` = performance, ",
+        "      `Score` = rating_score, ",
+        "      `Max Pts` = max_point_value",
+        "    ) %>%",
+        "    # Convert NA to blanks for cleaner reading",
+        "    mutate(across(everything(), ~ifelse(is.na(.), '', .))) %>%",
+        "    kable(format = 'markdown')",
+        "  ",
+        "  # Print the table",
+        "  print(table_output)",
+        "  ",
+        "  # Add a horizontal line separator between groups",
+        "  cat('\\n\\n***\\n\\n')",
+        "}",
         "```"
       )
       
       writeLines(rmd_content, tempReport)
-      saveRDS(data, file.path(tempdir(), "temp_data.rds"))
       
-      # Render the document
       rmarkdown::render(
         tempReport, 
         output_file = file,
+        params = list(report_data = data), 
         envir = new.env(parent = globalenv())
       )
     }
