@@ -71,7 +71,8 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
     
     observeEvent(thresholds_to_save(), {
       to_save <- thresholds_to_save()
-      if(is.null(to_save)) return(NULL)
+      req(to_save)
+      req(fnrow(to_save) > 0)
       
       needs_refresh1 <- update_selected_thresholds_db(get_db_pool(), to_save)
       

@@ -475,7 +475,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     # 5. Auto-Save Observer
     observeEvent(rating_factors_to_save(), {
       to_save <- rating_factors_to_save()
-      req(to_save, iv$is_valid())
+      req(to_save)
+      req(fnrow(to_save) > 0, iv$is_valid())
       
       # Update the db
       needs_refresh <- update_selected_rating_factors_db(get_db_pool(), to_save)
