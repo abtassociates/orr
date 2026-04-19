@@ -37,6 +37,28 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
+      # --- Compact Dropdown Header for Downloads ---
+      card_header(
+        class = "d-flex justify-content-between align-items-center",
+        "Project Rating",
+        div(
+          class = "dropdown",
+          tags$button(
+            class = "btn btn-outline-primary dropdown-toggle btn-sm",
+            type = "button",
+            `data-bs-toggle` = "dropdown",
+            icon("download"), " Download Reports"
+          ),
+          tags$ul(
+            class = "dropdown-menu dropdown-menu-end",
+            tags$li(downloadLink(ns("dl_current"), "Current Project Report Card (HTML)", class = "dropdown-item")),
+            tags$li(downloadLink(ns("dl_blank"), "Blank Rating Template (HTML)", class = "dropdown-item")),
+            tags$hr(class="dropdown-divider"),
+            tags$li(downloadLink(ns("dl_all_tabular"), "All Projects Summary (CSV)", class = "dropdown-item"))
+          )
+        )
+      ),
+      
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
         id = ns("total_row"),
@@ -443,6 +465,103 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
-    })
+    }) # end save
+    
+    # -------- Download Handlers --------------
+    
+    ## Helper to generate RMarkdown for HTML dynamically -----
+    build_report <- function(data, project_name, total, max_pts, file) {
+      tempReport <- file.path(tempdir(), "report_card.Rmd")
+      
+      rmd_content <- c(
+        "---",
+        paste0("title: 'Rating Report Card: ", project_name, "'"),
+        "output: html_document",   # <--- CHANGED THIS
+        "params:",
+        "  report_data: NA", 
+        "---",
+        "---",
+        "```{r setup, include=FALSE}",
+        "knitr::opts_chunk$set(echo = FALSE)",
+        "```",
+        "### Summary",
+        paste0("**Total Score:** ", total, " out of ", max_pts),
+        "",
+        "### Rating Details",
+        "```{r}",
+        "library(dplyr)",
+        "library(knitr)",
+        "params_data <- readRDS('temp_data.rds')",
+        "params_data %>%",
+        "  select(`Factor Group` = factor_group, `Factor` = rating_factor_text, ",
+        "         `Goal` = goal, `Score` = rating_score, ",
+        "         `Max Pts` = max_point_value, `Performance` = performance) %>%",
+        "  kable(format = 'markdown')",
+        "```"
+      )
+      
+      writeLines(rmd_content, tempReport)
+      saveRDS(data, file.path(tempdir(), "temp_data.rds"))
+      
+      # Render the document
+      rmarkdown::render(
+        tempReport, 
+        output_file = file,
+        envir = new.env(parent = globalenv())
+      )
+    }
+    
+    ## 1. Download Current Project ------------
+    output$dl_current <- downloadHandler(
+      filename = function() {
+        req(selected_project())
+        paste0("Report_Card_", gsub("[^A-Za-z0-9]", "_", selected_project()$project_name), ".html")
+      },
+      content = function(file) {
+        df <- factors_and_scores_for_project()
+        req(df, selected_project())
+        
+        # Use currently active data
+        # Overwrite scores/performance with what is currently typed in the UI
+        df$rating_score <- sapply(df$selected_rating_factor_id, function(id) input[[paste0("rating_score_", id)]])
+        df$performance <- sapply(df$selected_rating_factor_id, function(id) input[[paste0("performance_", id)]])
+        
+        total <- sum(as.numeric(df$rating_score), na.rm = TRUE)
+        max_pts <- sum(as.numeric(df$max_point_value), na.rm = TRUE)
+        
+        build_report(df, selected_project()$project_name, total, max_pts, file)
+      }
+    )
+    
+    ## 2. Download Blank Template------------
+    output$dl_blank <- downloadHandler(
+      filename = function() {
+        "Blank_Rating_Template.html"
+      },
+      content = function(file) {
+        df <- factors_and_scores_for_project()
+        req(df)
+        
+        # Create a blank version of the current criteria
+        df$rating_score <- NA
+        df$performance <- NA
+        
+        max_pts <- fsum(as.numeric(df$max_point_value))
+        
+        build_report(df, "BLANK TEMPLATE", 0, max_pts, file)
+      }
+    )
+    
+    ## 3. Download All Projects Summary (Tabular CSV) ------------
+    output$dl_all_tabular <- downloadHandler(
+      filename = function() {
+        paste0("All_Projects_Ratings_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        req(user_coc$coc_version_id)
+        all_data <- get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action)
+        write.csv(all_data, file, row.names = FALSE)
+      }
+    )
   }) #end module server
 }
