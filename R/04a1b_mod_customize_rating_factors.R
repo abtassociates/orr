@@ -446,6 +446,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       base <- all_coc_factors_rv()
       req(fnrow(base) > 0)
       
+      expected_inputs <- c(
+        paste0("selected_", base$rating_factor_id), 
+        paste0("goal_", base$rating_factor_id), 
+        paste0("max_point_value_", base$rating_factor_id)
+      )
+      req(all(expected_inputs %in% names(input)))
+      
       updated_rating_factors <- get_rating_data_to_save(input, base, "rating_factor_id", c("selected", "goal", "max_point_value"))
       if(is.null(updated_rating_factors)) return(NULL)
       
