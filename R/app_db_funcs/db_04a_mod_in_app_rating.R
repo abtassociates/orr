@@ -32,8 +32,11 @@ get_projects_by_funding_action <- function(coc_version_id, funding_action_ids) {
     )
 }
 
-get_project_evaluation_scores <- function() {
-  get_db_query(
-    "SELECT DISTINCT project_id FROM project_evaluations WHERE weighted_score > 0"
-  )
+get_project_evaluation_scores <- function(project_ids) {
+  get_db_query(glue::glue_sql(
+    "SELECT project_id 
+    FROM project_evaluations 
+    WHERE weighted_score IS NOT NULL AND project_id IN ({project_ids*})",
+    .con=get_db_pool()
+  ))
 }
