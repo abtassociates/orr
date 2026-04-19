@@ -68,7 +68,7 @@ mod_rating_scores_entry_ui <- function(id) {
   )
 }
 
-mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
+mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -79,7 +79,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
     performance_char_limit <- get_db_column_limit("rating_scores","performance")
     
     
-    observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_rating_factors_updated), {
+    observeEvent(c(selected_project(), refresh_trigger(), user_coc[[paste0("customized_rating_factors_updated_", funding_action)]]), {
       req(user_coc$coc_version_id)
       req(selected_project())
       req(fnrow(selected_project()) > 0)

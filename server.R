@@ -17,8 +17,11 @@ function(input, output, session) {
     
     requests_updated = 0,
     projects_updated = 0,
-    customized_rating_factors_updated = 0,
-    customized_coc_thresholds_updated = 0
+    
+    # Incrementing trigger for refreshing other views
+    customized_rating_factors_updated_Renew = 0,
+    customized_rating_factors_updated_New = 0,
+    customized_coc_thresholds_updated = 0,
   )
   nav_control <- reactiveVal("about")
   

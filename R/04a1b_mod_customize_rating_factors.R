@@ -384,7 +384,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
       refresh_trigger(refresh_trigger() + 1)
       
-      user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
+      user_coc[[paste0("customized_rating_factors_updated_", funding_action)]] <- user_coc[[paste0("customized_rating_factors_updated_", funding_action)]] + 1
     })
     
     # ------- Save filters to User settings --------------
@@ -488,8 +488,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           )
         ]
         
-        user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
-        
+        user_coc[[paste0("customized_rating_factors_updated_", funding_action)]] <- user_coc[[paste0("customized_rating_factors_updated_", funding_action)]] + 1
       } else {
         # COLLISION OR ERROR (save_to_db already showed notification)
         refresh_trigger(refresh_trigger() + 1)
