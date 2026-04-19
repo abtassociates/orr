@@ -69,7 +69,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
       # Inject custom background color (a Bootstrap-like success green)
       css_rule <- paste(
         paste(css_selectors, collapse = ",\n"),
-        "{ background-color: #4BB543 !important; color: white}"
+        "{ background-color: #4BB543 !important; color: black !important;}"
       )
       
       tags$style(HTML(css_rule))
