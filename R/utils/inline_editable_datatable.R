@@ -236,6 +236,14 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
         
         updateTableAndShiny(cell, pastedValue);
       }, true);
+      
+      table.on('dblclick', 'td', function(e) {
+        var cell = table.cell(this);
+        Shiny.setInputValue(tableID + '_cell_being_edited', {
+          row: cell.index().row + 1,
+          col: cell.index().column
+        }, {priority: 'event'});
+      });
     ",
     jsonlite::toJSON(factor_levels), 
     tableID,

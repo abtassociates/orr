@@ -34,7 +34,8 @@ mod_inventory_ui <- function(id) {
                       )
           )
         ),
-        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
+        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
+        mod_user_presence_ui(ns("projects_table_presence"))
         # br(),
         # textOutput(ns("projects_table_counts")),
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
@@ -675,6 +676,21 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       )
     })
     
+    record_being_edited <- reactiveVal(NULL)
+    observeEvent(input$projects_table_cell_being_edited, {
+      record_being_edited(
+        list(
+          record_id = projects_data()[input$projects_table_cell_clicked$row]$project_id,
+          field = names(projects_data())[[input$projects_table_cell_clicked$col + 1]]
+        )
+      )
+    })
+    
+    mod_user_presence_server(
+      id = ns("projects_table_presence"),
+      user_coc = user_coc,
+      record = record_being_edited
+    )
     # output$projects_table_counts <- renderText({
     #   req(projects_data())
     #   paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
