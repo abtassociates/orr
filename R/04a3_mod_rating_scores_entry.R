@@ -162,8 +162,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         selected_project_exists,
         "Select a project in the left-hand sidebar to begin rating"
       ))
-
-      req(nrow(factors_and_scores_for_project()) > 0)
+      
+      shiny::validate(need(
+        fnrow(factors_and_scores_for_project()) > 0,
+        "You must select 1 or more rating factors in the Customize Rating Criteria tab in order to rate this project"
+      ))
       
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
