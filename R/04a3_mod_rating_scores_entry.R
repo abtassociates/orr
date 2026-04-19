@@ -368,14 +368,6 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       })
     })
     
-    
-    # Disable save_rating if any invalid responses
-    observe({
-      # for reactive dependency on the inputs so we can ensure this triggers.
-      req(entered_scores())
-      shinyjs::toggleState("save_rating", condition = iv$is_valid())
-    }, label = "toggle_save_rating_observe")
-    
     rating_scores_to_save <- reactive({
       base <- isolate(factors_and_scores_for_project())
       req(fnrow(base) > 0, fnrow(isolate(selected_project())) > 0)
@@ -448,21 +440,9 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           )
 
       } else {
-        browser()
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
-    })
-    
-    observeEvent(input$save_rating, {
-      # rating scores prep
-      
-      
-      needs_refresh1 <- FALSE
-      needs_refresh2 <- FALSE
-      
-      # if(needs_refresh1 || needs_refresh2)
-        refresh_trigger(refresh_trigger() + 1)
     })
   }) #end module server
 }

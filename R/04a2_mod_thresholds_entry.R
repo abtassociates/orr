@@ -286,7 +286,6 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
           )
 
       } else {
-        browser()
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }

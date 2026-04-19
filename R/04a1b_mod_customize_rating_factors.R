@@ -419,28 +419,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       )
     }, priority = 10)
     
-    # 2. Scrape current UI state
-    # current_ui_state <- reactive({
-    #   
-    #   req(user_coc$coc_version_id)
-    #   
-    #   inputs <- reactiveValuesToList(input)
-    #   rating_entry_inputs <- inputs[grep("select|goal|points", names(inputs), value = TRUE)] 
-    #   
-    #   req(length(rating_entry_inputs) > 0)
-    #   
-    #   rating_entry_inputs |>
-    #     unlist2d(DT = TRUE) %>%
-    #     add_vars(tstrsplit(.$.id, "_",fixed = TRUE, names = c("var", "rating_factor_id"))) |>
-    #     pivot(ids = "rating_factor_id", names = "var", values = "V1", how="wider") |>
-    #     frename("selected" = select, "max_point_value" = points) |>
-    #     fmutate(
-    #       rating_factor_id = as.integer(rating_factor_id),
-    #       selected = as.logical(selected),
-    #       max_point_value = as.numeric(max_point_value)
-    #     )
-    # })
-    
     # 3. Difference Engine: Find only what changed
     rating_factors_to_save <- reactive({
       base <- all_coc_factors_rv()
