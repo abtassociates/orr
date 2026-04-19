@@ -374,8 +374,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     }, label = "toggle_save_rating_observe")
     
     rating_scores_to_save <- reactive({
-      base <- factors_and_scores_for_project()
-      req(fnrow(base) > 0, fnrow(selected_project()) > 0)
+      base <- isolate(factors_and_scores_for_project())
+      req(fnrow(base) > 0, fnrow(isolate(selected_project())) > 0)
       
       updated_rating_scores <- get_rating_data_to_save(input, base, "selected_rating_factor_id", c("rating_score", "performance"))
       if(is.null(updated_rating_scores)) return(NULL)
