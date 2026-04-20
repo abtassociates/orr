@@ -105,9 +105,12 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     build_report <- function(data, project_name, total, max_pts, file) {
       tempReport <- file.path(tempdir(), "report_card.Rmd")
       
+      # Ensure total is a number (fallback to 0 if NA)
+      safe_total <- ifelse(is.na(total), 0, total)
+      
       rmd_content <- c(
         "---",
-        paste0("title: ' '"), # Hide default title, we will build a custom one
+        paste0("title: ' '"), 
         "output: ",
         "  html_document:",
         "    theme: default",
@@ -120,7 +123,6 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         "",
         "<!-- CUSTOM STYLING TO MIMIC SHINY APP UI -->",
         "<style>",
-        "  /* Force browsers to print the background colors to PDF */",
         "  @media print {",
         "    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
         "  }",
@@ -128,7 +130,6 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         "    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; ",
         "    color: #212529;",
         "  }",
-        "  /* Overall Score Card Style */",
         "  .overall-score-card {",
         "    background-color: #f8f9fa; border-left: 5px solid #0d6efd;",
         "    padding: 1.5rem; border-radius: 0.5rem; margin-bottom: 2rem;",
@@ -141,7 +142,6 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         "    background-color: #0d6efd; color: white; padding: 0.5rem 1rem;",
         "    border-radius: 0.5rem; font-weight: bold; font-size: 1.25rem;",
         "  }",
-        "  /* Accordion Header Mimic */",
         "  .accordion-mimic {",
         "    background-color: #e7f1ff; color: #0c63e4;",
         "    padding: 1rem 1.25rem; margin-top: 2rem; margin-bottom: 1rem;",
@@ -149,7 +149,6 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         "    display: flex; justify-content: space-between; align-items: center;",
         "    border: 1px solid #b6d4fe;",
         "  }",
-        "  /* Table Styling */",
         "  .table thead th { ",
         "    background-color: #f8f9fa; color: #495057; ",
         "    font-size: 0.85rem; text-transform: uppercase; ",
@@ -159,12 +158,13 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         "</style>",
         "",
         "<!-- MAIN HEADER CONTENT -->",
+        "<!-- NO LEADING SPACES HERE TO PREVENT MARKDOWN CODE BLOCKS -->",
         "<div class='overall-score-card'>",
-        "  <div>",
-        "    <h2>Rating Report Card</h2>",
-        paste0("    <div class='subtitle'>Project: <strong>", project_name, "</strong></div>"),
-        "  </div>",
-        paste0("  <div class='score-badge'>", total, " / ", max_pts, " Points</div>"),
+        "<div>",
+        "<h2>Rating Report Card</h2>",
+        paste0("<div class='subtitle'>Project: <strong>", project_name, "</strong></div>"),
+        "</div>",
+        paste0("<div class='score-badge'>", safe_total, " / ", max_pts, " Points</div>"),
         "</div>",
         "",
         "<!-- DYNAMIC GROUPS AND TABLES -->",
@@ -172,22 +172,19 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         "library(dplyr)",
         "library(knitr)",
         "",
-        "# Split the data by Factor Group",
         "grouped_data <- split(params$report_data, params$report_data$factor_group)",
         "",
         "for (group_name in names(grouped_data)) {",
         "  group_df <- grouped_data[[group_name]]",
         "  ",
-        "  # Calculate subtotals",
+        "  # Subtotals (Treat NAs as 0 so it displays nicely)",
         "  subtotal_score <- sum(as.numeric(group_df$rating_score), na.rm = TRUE)",
         "  subtotal_max <- sum(as.numeric(group_df$max_point_value), na.rm = TRUE)",
         "  ",
-        "  # Print the 'Accordion-style' Header",
         "  cat(sprintf('<div class=\"accordion-mimic\"><span>%s</span><span>Subtotal: %s / %s</span></div>\\n', ",
         "              group_name, subtotal_score, subtotal_max))",
         "  ",
-        "  # Prepare Table Data",
-        "  table_output <- group_df %>%",
+        "  table_df <- group_df %>%",
         "    select(",
         "      `Subgroup` = factor_subgroup,",
         "      `Factor` = rating_factor_text, ",
@@ -195,10 +192,17 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         "      `Performance` = performance, ",
         "      `Score` = rating_score, ",
         "      `Max Pts` = max_point_value",
-        "    ) %>%",
+        "    )",
+        "  ",
+        "  # Check if Subgroup is completely empty/NA. If so, remove the column.",
+        "  if (all(is.na(table_df$Subgroup) | table_df$Subgroup == '' | table_df$Subgroup == 'NA')) {",
+        "    table_df <- table_df %>% select(-Subgroup)",
+        "  }",
+        "  ",
+        "  # Render the table",
+        "  table_output <- table_df %>%",
         "    mutate(across(everything(), ~ifelse(is.na(.), '', .))) %>%",
-        "    # kable with raw HTML format to inject Bootstrap table classes",
-        "    kable(format = 'html', table.attr = 'class=\"table table-sm table-bordered table-striped\"')",
+        "    kable(format = 'html', table.attr = 'class=\"table table-sm table-bordered table-striped\"', escape = FALSE)",
         "  ",
         "  print(table_output)",
         "}",
@@ -224,14 +228,9 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       content = function(file) {
         df <- factors_and_scores_for_project()
         req(df, selected_project())
-        
-        # Use currently active data
-        # Overwrite scores/performance with what is currently typed in the UI
-        df$rating_score <- sapply(df$selected_rating_factor_id, function(id) input[[paste0("rating_score_", id)]])
-        df$performance <- sapply(df$selected_rating_factor_id, function(id) input[[paste0("performance_", id)]])
-        
-        total <- sum(as.numeric(df$rating_score), na.rm = TRUE)
-        max_pts <- sum(as.numeric(df$max_point_value), na.rm = TRUE)
+
+        total <- fsum(df$rating_score)
+        max_pts <- fsum(df$max_point_value)
         
         build_report(df, selected_project()$project_name, total, max_pts, file)
       }
@@ -250,7 +249,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         df$rating_score <- NA
         df$performance <- NA
         
-        max_pts <- fsum(as.numeric(df$max_point_value))
+        max_pts <- fsum(df$max_point_value)
         
         build_report(df, "BLANK TEMPLATE", 0, max_pts, file)
       }
