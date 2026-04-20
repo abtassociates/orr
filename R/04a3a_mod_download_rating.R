@@ -8,7 +8,7 @@ mod_download_rating_ui <- function(id) {
     div(
       class = "dropdown",
       tags$button(
-        class = "btn btn-outline-primary dropdown-toggle btn-sm",
+        class = "btn btn-primary dropdown-toggle btn-sm",
         type = "button",
         `data-bs-toggle` = "dropdown",
         icon("download"), " Download Reports"
