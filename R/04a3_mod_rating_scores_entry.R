@@ -37,6 +37,7 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
+      mod_user_presence_ui(ns("presence")),
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
         id = ns("total_row"),
@@ -73,7 +74,7 @@ mod_rating_scores_entry_ui <- function(id) {
   )
 }
 
-mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
+mod_rating_scores_entry_server <- function(id, user_coc, selected_project, active) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -425,5 +426,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       # if(needs_refresh1 || needs_refresh2)
         refresh_trigger(refresh_trigger() + 1)
     })
+    
+    # --- User PResence ----
+    mod_user_presence_server(
+      id = "presence", # Internal ID for this leaf module
+      user_coc = user_coc,
+      # We use the project ID because we are rating a specific project
+      record_id = reactive({ selected_project()$project_id }), 
+      active = active
+    )
   }) #end module server
 }

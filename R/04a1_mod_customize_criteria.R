@@ -47,9 +47,38 @@ mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_sess
       
     }, ignoreInit = TRUE)
     
+    # ---------------------------------------------------------
+    # 1. Define internal "Active" reactives for each sub-tab
+    # ---------------------------------------------------------
+    
+    # Thresholds is active IF:
+    # - Parent module is active AND 
+    # - Level 1 tab is 'coc_thresholds'
+    is_thresholds_active <- reactive({
+      input$rating_criteria_subtabs == ns("coc_thresholds")
+    })
+    
+    # Renewal Factors is active IF:
+    # - Parent module is active AND 
+    # - Level 1 tab is 'rating_factors' AND
+    # - Level 2 tab is 'renewal_rating_factors'
+    is_renewal_active <- reactive({
+      input$rating_criteria_subtabs == ns("rating_factors") && 
+      input$rating_factors_subtabs == ns("renewal_rating_factors")
+    })
+    
+    # New Factors is active IF:
+    # - Parent module is active AND 
+    # - Level 1 tab is 'rating_factors' AND
+    # - Level 2 tab is 'new_rating_factors'
+    is_new_active <- reactive({
+      input$rating_criteria_subtabs == ns("rating_factors") && 
+      input$rating_factors_subtabs == ns("new_rating_factors")
+    })
+    
     # Call sub-modules for each tab
-    mod_customize_coc_thresholds_server("coc_thresholds", user_coc, nav_control)
-    mod_customize_rating_factors_server("renewal_rating_factors", user_coc, "Renew", nav_control)
-    mod_customize_rating_factors_server("new_rating_factors", user_coc, "New", nav_control)
+    mod_customize_coc_thresholds_server("coc_thresholds", user_coc, nav_control, active = is_thresholds_active)
+    mod_customize_rating_factors_server("renewal_rating_factors", user_coc, "Renew", nav_control, active = is_renewal_active)
+    mod_customize_rating_factors_server("new_rating_factors", user_coc, "New", nav_control, active =is_new_active)
   })
 }

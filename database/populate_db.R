@@ -1320,6 +1320,7 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
 );
 "))
 
+drop_table("user_presence")
 DBI::dbExecute(get_db_pool(), glue::glue("
 --- Project_Evaluations
 CREATE TABLE IF NOT EXISTS project_evaluations (
@@ -1354,7 +1355,7 @@ CREATE TABLE IF NOT EXISTS ranking (
 "))
 
 #### USER PRESENCE #####
-DBI::dbExecute(get_db_pool(), glue::glue("
+DBI::dbExecute(get_db_pool(), "
 CREATE TABLE user_presence (
     session_id VARCHAR(100),
     context VARCHAR(100),  -- We will pass the module 'id' here
@@ -1362,8 +1363,8 @@ CREATE TABLE user_presence (
     record_id VARCHAR(100),
     field VARCHAR(100),    -- The new field column
     last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (session_id, context) 
-);"))
+    PRIMARY KEY (session_id, context)
+);")
 
 ################
 # ADD VERSION ID

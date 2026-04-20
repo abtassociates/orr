@@ -44,6 +44,7 @@ mod_funding_priorities_ui <- function(id) {
     "Funding Ceilings + Priorities",
     value = id,
     icon = icon("usd"),
+    mod_user_presence_ui(ns("presence")),
     card(
       min_height=300,
       card_header("General Funding Information"),
@@ -505,5 +506,17 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     observeEvent(c(input$coc_bonus_types_1, input$coc_bonus_types_2, input$dv_bonus_types), {
       shinyjs::delay(1000, save_opportunities())
     }, ignoreInit = TRUE)
+    
+    
+    # -- User PResence ---------
+    mod_user_presence_server(
+      id = "presence",
+      user_coc = user_coc,
+      # All inputs on this page are tied to the version ID
+      record_id = reactive({ user_coc$coc_version_id }),
+      # Only pulse if the main navbar is on 'funding_priorities'
+      active = reactive({ nav_control() == "funding_priorities" })
+    )
+    
   })
 }
