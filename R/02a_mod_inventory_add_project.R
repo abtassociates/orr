@@ -306,7 +306,7 @@ mod_inventory_add_project_server <- function(
     iv$add_rule("project_type", sv_required())
     iv$add_rule("funding_source", sv_required())
     iv$add_rule("target_population", sv_required())
-    iv$add_rule("funding_action", ~ if(. == "Replace" && funding_source != "YHDP") "Only YHDP projects can be replaced")
+    iv$add_rule("funding_action", ~ if(. == "Replace" && current_funding_source() != "YHDP") "Only YHDP projects can be replaced")
 
     # Grant number is only required if not New or Expand
     grant_iv <- shinyvalidate::InputValidator$new()
