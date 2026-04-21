@@ -373,6 +373,17 @@ mod_inventory_add_project_server <- function(
         iv$add_validator(v)
       })
     }
+    
+    iv$add_rule(
+      "total_beds_fam", 
+      ~ if(sum(input$ch_beds_fam, input$vet_beds_fam, input$youth_beds_fam, na.rm=TRUE) > .)
+        "Family bed fields cannot sum to more than the Total Family beds."
+    )
+    iv$add_rule(
+      "total_beds_ind", 
+      ~ if(sum(input$ch_beds_ind, input$vet_beds_ind, input$youth_beds_ind, na.rm=TRUE) > .)
+        "Individual bed fields cannot sum to more than the Total Individual beds."
+    )
 
     
     # =================================================================
