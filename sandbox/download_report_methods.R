@@ -1,64 +1,65 @@
+# ##################################
 # ## --- Grid ---------
 # # Pros: Super lightweight
 # # Cons: report looks awful
-# 
+# ################################### 
 # library(grid)
 # library(gridExtra)
 # library(gtable)
 # library(dplyr)
 # 
 # build_report <- function(data, project_name, total, max_pts, file) {
-#   
+# 
 #   # --- Helper Function: Manual Word Wrap ---
 #   # gridExtra tables won't wrap text, so we must insert \n manually
 #   wrapper <- function(x, width) {
 #     if (is.na(x) | x == "") return("")
 #     paste(strwrap(x, width = width), collapse = "\n")
 #   }
-#   
+# 
 #   # Prepare the PDF device
 #   pdf(file, width = 8.5, height = 11)
-#   
+# 
 #   # Start drawing at the top of the page
-#   y_pos <- 0.95 
-#   
+#   y_pos <- 0.95
+# 
 #   # --- 1. Draw the Header Box ---
 #   # Blue Background
-#   grid.rect(x = 0.5, y = y_pos, width = 0.9, height = 0.08, 
+#   grid.rect(x = 0.5, y = y_pos, width = 0.9, height = 0.08,
 #             gp = gpar(fill = "#4A90E2", col = NA))
 #   # Title Text
-#   grid.text("Rating Report Card", x = 0.1, y = y_pos + 0.015, 
+#   grid.text("Rating Report Card", x = 0.1, y = y_pos + 0.015,
 #             just = "left", gp = gpar(col = "white", fontsize = 18, fontface = "bold"))
 #   # Score Text
-#   grid.text(paste0(total, " / ", max_pts, " Points"), x = 0.9, y = y_pos + 0.015, 
+#   grid.text(paste0(total, " / ", max_pts, " Points"), x = 0.9, y = y_pos + 0.015,
 #             just = "right", gp = gpar(col = "white", fontsize = 14, fontface = "bold"))
 #   # Project Name
-#   grid.text(paste0("Project: ", project_name), x = 0.1, y = y_pos - 0.015, 
+#   grid.text(paste0("Project: ", project_name), x = 0.1, y = y_pos - 0.015,
 #             just = "left", gp = gpar(col = "white", fontsize = 10))
-#   
+# 
 #   y_pos <- y_pos - 0.08
-#   
+# 
 #   # --- 2. Process Groups ---
 #   grouped_data <- split(data, data$factor_group)
-#   
+# 
 #   for (group_name in names(grouped_data)) {
 #     df <- grouped_data[[group_name]]
-#     
+# 
 #     # Calculate Subtotals
 #     sub_score <- fsum(df$rating_score)
 #     sub_max <- fsum(df$max_point_value)
-#     
+# 
 #     # Draw Group Header Row
 #     y_pos <- y_pos - 0.02
-#     grid.rect(x = 0.5, y = y_pos, width = 0.9, height = 0.03, 
+#     grid.rect(x = 0.5, y = y_pos, width = 0.9, height = 0.03,
 #               gp = gpar(fill = "#EBF5FB", col = "#4A90E2", lwd = 0.5))
-#     grid.text(group_name, x = 0.06, y = y_pos, just = "left", 
+#     grid.text(group_name, x = 0.06, y = y_pos, just = "left",
 #               gp = gpar(fontsize = 10, fontface = "bold", col = "#2E86C1"))
-#     grid.text(paste0("Subtotal: ", sub_score, " / ", sub_max), x = 0.94, y = y_pos, 
+#     grid.text(paste0("Subtotal: ", sub_score, " / ", sub_max), x = 0.94, y = y_pos,
 #               just = "right", gp = gpar(fontsize = 10, fontface = "bold", col = "#2E86C1"))
-#     
+# 
 #     y_pos <- y_pos - 0.02
-#     
+# 
 #     # Format the table data
 #     table_df <- df %>%
 #       mutate(
@@ -66,9 +67,9 @@
 #         Goal = sapply(goal, wrapper, width = 15),
 #         Performance = sapply(performance, wrapper, width = 15)
 #       ) %>%
-#       select(Subgroup = factor_subgroup, Factor, Goal, Perf = Performance, 
+#       select(Subgroup = factor_subgroup, Factor, Goal, Perf = Performance,
 #              Score = rating_score, Max = max_point_value)
-#     
+# 
 #     # Create Table Graphical Object (Grob)
 #     # Theme defines the look of the table
 #     tt <- ttheme_default(
@@ -78,26 +79,28 @@
 #                   bg_params = list(fill = c("white", "#F9F9F9"), col=NA)),
 #       colhead = list(fg_params = list(fontface="bold", hjust=0, x=0.05))
 #     )
-#     
+# 
 #     tg <- tableGrob(table_df, rows = NULL, theme = tt)
-#     
+# 
 #     # Check if table fits on page (Basic implementation)
 #     # If y_pos is too low, you'd normally call grid.newpage()
 #     # Draw the table
 #     pushViewport(viewport(x = 0.5, y = y_pos, width = 0.9, just = "top"))
 #     grid.draw(tg)
 #     popViewport()
-#     
+# 
 #     # Move y_pos down based on table height
 #     y_pos <- y_pos - (convertHeight(sum(tg$heights), "npc", valueOnly = TRUE) + 0.02)
 #   }
-#   
+# 
 #   dev.off()
 # }
 # 
 # 
+# ######################################
 # # HTML ----------------
 # # Easy + lightweight, but not a PDF
+# ##################################
 # build_report <- function(data, project_name, total, max_pts, file) {
 #   tempReport <- file.path(tempdir(), "report_card.Rmd")
 # 
@@ -215,8 +218,38 @@
 #   )
 # }
 # 
-# # -------- LaTeX ---------
-# # 300MB + Fragile (Heavyweight)
+# ##################################
+# # # -------- LaTeX ---------
+# # # 300MB + Fragile (Heavyweight)
+# # # Need to run install script when first tarting up the app
+# ##################################
+# # Check for tinytex package
+# if (!requireNamespace("tinytex", quietly = TRUE)) install.packages("tinytex")
+# 
+# # Install TinyTeX if not already present
+# if (!tinytex::is_tinytex()) {
+#   tinytex::install_tinytex()
+# }
+# 
+# # Pre-install all required LaTeX packages
+# # These are the packages your specific report uses
+# pkgs <- c(
+#   "tcolorbox",
+#   "xcolor",
+#   "booktabs",
+#   "longtable",
+#   "environ",
+#   "fp",
+#   "pgf",
+#   "trimspaces",
+#   "unicode-math", # Needed for modern Unicode support
+#   "colortbl"      # Needed for colored tables
+# )
+# 
+# tinytex::tlmgr_install(pkgs)
+# 
+# message("LaTeX environment is ready.")
+# 
 # library(tinytex)
 # library(kableExtra)
 # build_report <- function(data, project_name, total, max_pts, file) {
@@ -316,4 +349,188 @@
 #     params = list(report_data = data),
 #     envir = new.env(parent = globalenv())
 #   )
+# }
+# 
+# ####################################
+# ## Quarto + Typst (gt)
+# ###################################
+# build_report <- function(data, project_name, total, max_pts, file) {
+#   library(quarto)
+#   library(gt)
+#   library(dplyr)
+#   
+#   # Handle NULL project name
+#   p_name_display <- ifelse(is.null(project_name), "Blank Template", project_name)
+#   
+#   # Create a temporary .qmd file
+#   temp_qmd <- tempfile(fileext = ".qmd")
+#   
+#   # Define the Quarto content
+#   # We use Typst-specific syntax for the blue header box
+#   qmd_content <- c(
+#     "---",
+#     "format: ",
+#     "  typst:",
+#     "    papersize: us-letter",
+#     "    margin:",
+#     "      x: 0.5in",
+#     "      y: 0.5in",
+#     "execute:",
+#     "  echo: false",
+#     "  warning: false",
+#     "---",
+#     "",
+#     "```{typst}",
+#     paste0("#rect(fill: rgb(\"#4A90E2\"), width: 100%, radius: 5pt, inset: 12pt)[",
+#            "#set text(fill: white, weight: \"bold\")",
+#            "#text(size: 18pt)[Rating Report Card] #h(1fr) #text(size: 14pt)[", total, " / ", max_pts, " Points] \\",
+#            "Project: ", p_name_display, 
+#            "]"),
+#     "```",
+#     "",
+#     "```{r}",
+#     "library(gt)",
+#     "library(dplyr)",
+#     "",
+#     "# Prepare Data",
+#     "table_data <- params$report_data %>%",
+#     "  mutate(across(everything(), ~ifelse(is.na(.) | . == 'NA', '', as.character(.))))",
+#     "",
+#     "# Build Table",
+#     "table_data %>%",
+#     "  gt(groupname_col = 'factor_group') %>%",
+#     "  summary_rows(",
+#     "    groups = TRUE,",
+#     "    columns = c(rating_score, max_point_value),",
+#     "    fns = list(label = 'Subtotal', fn = ~sum(as.numeric(.), na.rm = TRUE)),",
+#     "    side = 'top'",
+#     "  ) %>%",
+#     "  tab_options(",
+#     "    table.width = pct(100),",
+#     "    table.font.size = px(10),", # Typst fonts render slightly larger
+#     "    row_group.background.color = '#EBF5FB',",
+#     "    row_group.font.weight = 'bold',",
+#     "    summary_row.background.color = '#F4F6F7'",
+#     "  ) %>%",
+#     "  cols_label(",
+#     "    factor_subgroup = 'Subgroup',",
+#     "    piping_text = 'Factor',",
+#     "    goal = 'Goal',",
+#     "    performance = 'Performance',",
+#     "    rating_score = 'Score',",
+#     "    max_point_value = 'Max Pts'",
+#     "  ) %>%",
+#     "  cols_width(",
+#     "    factor_subgroup ~ px(80),",
+#     "    piping_text ~ px(280),",
+#     "    goal ~ px(70),",
+#     "    performance ~ px(70),",
+#     "    rating_score ~ px(50),",
+#     "    max_point_value ~ px(50)",
+#     "  ) %>%",
+#     "  text_transform(",
+#     "    locations = cells_body(columns = factor_subgroup),",
+#     "    fn = function(x) ifelse(x == '', 'N/A', x)",
+#     "  )",
+#     "```"
+#   )
+#   
+#   writeLines(qmd_content, temp_qmd)
+#   
+#   # Render the report
+#   quarto::quarto_render(
+#     input = temp_qmd,
+#     output_file = basename(file),
+#     execute_params = list(report_data = data)
+#   )
+#   
+#   # Move file to final location if necessary
+#   file.copy(basename(file), file, overwrite = TRUE)
+#   return(file)
+# }
+# 
+# 
+# 
+# 
+# 
+# #################################################
+# ### gt + pagedown
+# ###############################################
+# build_report <- function(data, project_name, total, max_pts, file) {
+#   
+#   # Handle NULL project name for the Blank Template
+#   p_name_display <- ifelse(is.null(project_name), "Blank Template", project_name)
+#   
+#   # 1. Prepare Data
+#   table_data <- data |>
+#     fselect(
+#       factor_group,
+#       Subgroup = factor_subgroup,
+#       Factor = piping_text,
+#       Goal = goal,
+#       Performance = performance,
+#       Score = rating_score,
+#       `Max Pts` = max_point_value
+#     ) %>%
+#     mutate(across(everything(), ~ifelse(is.na(.) | . == "NA", "", as.character(.))))
+#   
+#   # 2. Build the gt Table
+#   gt_table <- table_data %>%
+#     gt(groupname_col = "factor_group") %>%
+#     tab_header(
+#       title = md(paste0("<div style='background-color:#4A90E2; color:white; padding:10px; border-radius:5px;'>",
+#                         "<span style='font-size:24px; font-weight:bold;'>Rating Report Card</span>",
+#                         "<span style='float:right;'>", total, " / ", max_pts, " Points</span>",
+#                         "</div>")),
+#       subtitle = md(paste0("<div style='padding-top:10px;'>Project: **", p_name_display, "**</div>"))
+#     ) %>%
+#     summary_rows(
+#       groups = TRUE,
+#       columns = c(Score, `Max Pts`),
+#       fns = list(label = "Subtotal", fn = ~sum(as.numeric(.), na.rm = TRUE)),
+#       side = "top"
+#     ) %>%
+#     tab_options(
+#       table.width = pct(100),
+#       table.font.size = px(12),
+#       row_group.background.color = "#EBF5FB", 
+#       row_group.font.weight = "bold",
+#       summary_row.background.color = "#F4F6F7",
+#       heading.align = "left",
+#       column_labels.font.weight = "bold"
+#     ) %>%
+#     cols_width(
+#       Subgroup ~ px(100),
+#       Factor ~ px(300),
+#       Goal ~ px(80),
+#       Performance ~ px(80),
+#       Score ~ px(60),
+#       `Max Pts` ~ px(60)
+#     ) %>%
+#     cols_align(align = "center", columns = c(Score, `Max Pts`)) %>%
+#     
+#     # 1. CHANGED: Handle the "Empty Subgroup" logic to show N/A
+#     text_transform(
+#       locations = cells_body(columns = Subgroup),
+#       fn = function(x) ifelse(x == "", "N/A", x)
+#     )
+#   
+#   # 3. Save as PDF
+#   tmp_pdf <- tempfile(fileext = ".pdf")
+#   tmp_html <- tempfile(fileext = ".html")
+#   
+#   # gt_table %>%
+#   #   as_raw_html() %>%
+#   #   writeLines(tmp_html)
+#   gt::gtsave(gt_table, tmp_html)
+#   
+#   # Use pagedown to "print" the HTML to PDF
+#   pagedown::chrome_print(
+#     input = tmp_html,
+#     output = file,
+#     extra_args = c("--no-sandbox", "--disable-gpu"),
+#     timeout = 60
+#   )
+#   
+#   return(file)
 # }
