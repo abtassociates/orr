@@ -166,6 +166,7 @@ get_init_js <- function(factor_levels, tableID, has_double_header, header_cb) {
       
       function is_funding_col(colName) {
         let c = colName.toUpperCase();
+        if(c == 'FUNDING ACTION') return(false);
         return(c.includes('FUNDING') || c.includes('AMOUNT'));
       }
       
