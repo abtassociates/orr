@@ -469,11 +469,11 @@ mod_inventory_add_project_server <- function(
         )
       } else {
         show_alert(
-          title = "Missing Required Fields",
+          title = "Submission Error",
           text = "Please correct the errors before submitting.",
           type = "error"
         )
-        # modal_submission_outcome <- NULL
+        modal_submission_outcome$status <- "error"
       }
       print(paste0('done with input$submit, status=', modal_submission_outcome$status))
     }, ignoreInit = TRUE, ignoreNULL = TRUE)

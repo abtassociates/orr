@@ -620,6 +620,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     # Handle user's add project submission
     observeEvent(modal_submission$status, {
       req(modal_submission$status)
+      req(modal_submission$status != "error")
       
       if(current_form_type() == "New") {
         inventory_append(modal_submission$project_data)
