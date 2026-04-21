@@ -464,7 +464,7 @@ debugger;
     
     # --- User PResence ----
     mod_user_presence_server(
-      id = "presence",
+      id = ns("presence"),
       user_coc = user_coc,
       # All inputs on this page are tied to the version ID
       record_id = reactive({ input$alternative_rating_table_rows_selected }),

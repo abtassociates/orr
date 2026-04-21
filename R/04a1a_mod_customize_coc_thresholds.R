@@ -163,7 +163,7 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, activ
     
     # -- User Presence ---
     mod_user_presence_server(
-      id = "presence",
+      id = ns("presence"),
       user_coc = user_coc,
       # Record is the CoC Version
       record_id = reactive({ user_coc$coc_version_id }),

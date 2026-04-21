@@ -1320,7 +1320,6 @@ CREATE TABLE IF NOT EXISTS threshold_entries (
 );
 "))
 
-drop_table("user_presence")
 DBI::dbExecute(get_db_pool(), glue::glue("
 --- Project_Evaluations
 CREATE TABLE IF NOT EXISTS project_evaluations (
@@ -1355,6 +1354,7 @@ CREATE TABLE IF NOT EXISTS ranking (
 "))
 
 #### USER PRESENCE #####
+drop_table("user_presence")
 DBI::dbExecute(get_db_pool(), "
 CREATE TABLE user_presence (
     session_id VARCHAR(100),

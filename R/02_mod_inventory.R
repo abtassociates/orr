@@ -34,8 +34,8 @@ mod_inventory_ui <- function(id) {
                       )
           )
         ),
-        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
-        mod_user_presence_ui(ns("presence"))
+        mod_user_presence_ui(ns("presence")),
+        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
         # br(),
         # textOutput(ns("projects_table_counts")),
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
@@ -687,7 +687,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, acti
     })
     
     mod_user_presence_server(
-      id = "presence", # Internal ID for this leaf module
+      id = ns("presence"), # Internal ID for this leaf module
       user_coc = user_coc,
       # We use the project ID because we are rating a specific project
       record_id = reactive({ record_being_edited()$record_id }), 
