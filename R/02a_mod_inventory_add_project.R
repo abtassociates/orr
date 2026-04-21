@@ -327,7 +327,6 @@ mod_inventory_add_project_server <- function(
       force(max_val_formula)
       max_val_func <- rlang::as_function(max_val_formula)
       function(value) {
-        # Use rlang::eval_tidy() to get the CURRENT value from the formula
         max_val <- max_val_func()
         
         # Don't show an error if either value is missing
@@ -346,7 +345,6 @@ mod_inventory_add_project_server <- function(
     for (group_name in names(bed_groups_to_validate)) {
       # Use local() to capture the current value of 'group_name' for the condition formula
       local({
-        # 'current_group' is a new variable for each loop iteration
         current_group <- group_name
         
         # Create a new validator for this group
@@ -400,7 +398,6 @@ mod_inventory_add_project_server <- function(
     observeEvent(c(input$submit, input$add_another_link), {
       req(isTruthy(input$submit) || isTruthy(input$add_another_link))
       iv$enable()
-      print('observed input$submit')
       
       if (iv$is_valid()) {
         vis_beds <- visible_bed_groups()
