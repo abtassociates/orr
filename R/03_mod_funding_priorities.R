@@ -137,14 +137,16 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     )
     
     hud_ard_coc_data <- reactive({
-      req(refresh_trigger$dv_ard)
-      dv_ard_db <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
+      req(refresh_trigger$dv_ard, user_coc$coc_version_id)
+      
+      dv_ard_db <- get_dv_ard(user_coc$coc_version_id)
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
           adjusted_ard = round(tier_1/0.9, 0),
           tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
           yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = dv_ard_db[1]
+          dv_ard = dv_ard_db$dv_ard[1],
+          version_id = dv_ard_db$version_id[1]
         ) |>
         frename(estimated = "total_ard")
     })
@@ -175,11 +177,23 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       update_dv_ard(
         get_db_pool(),
-        list(dv_ard_debounced(), user_coc$username, user_coc$coc_version_id)
+        list(
+          dv_ard_debounced(), 
+          user_coc$username, 
+          user_coc$coc_version_id, 
+          hud_ard_coc_data()$version_id
+        )
       )
       refresh_trigger$dv_ard <- refresh_trigger$dv_ard + 1
     }, ignoreInit = TRUE)
     
+    observeEvent(hud_ard_coc_data(), {
+      updateCurrencyInput(
+        session,
+        "dv_ard",
+        value = hud_ard_coc_data()$dv_ard
+      )
+    })
     
     # Priorities ------------
     format_coc_funding_priorities <- function(coc_funding_priorities_db) {

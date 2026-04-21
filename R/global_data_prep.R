@@ -45,9 +45,9 @@ TABS_AFTER_PROJECTS_EXIST <- c(
 )
 
 RATABLE_PROJECT_TYPES <- list(
-  "New" = c("RRH","PSH", "TH+RRH"),
+  "New" = c("RRH","PSH", "TH+RRH", "TH"),
   "Renew" = c("RRH", "PSH", "TH","TH+RRH","OPH","DEM"),
-  "Expand" = c("RRH","PSH")
+  "Expand" = c("RRH","PSH", "TH")
 )
 
 

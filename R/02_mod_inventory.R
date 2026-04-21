@@ -74,6 +74,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       funding_source = NULL
     )
     
+    refresh_trigger <- reactiveVal(0)
+    
     # Add fields only displayed in Inventory
     add_calculated_fields <- function(project_data, is_new = FALSE) {
       project_data <- project_data |>
@@ -96,8 +98,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     
     # Initialize projects_data ------
     observe({
-      req(user_coc$coc_version_id)
-
+      req(user_coc$coc_version_id, refresh_trigger())
       data <- get_coc_projects(user_coc$coc_version_id) |>
         fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
@@ -369,18 +370,20 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       col_name <- colnames(projects_data())[info$col + 1]
       
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
-      update_datatable(proj_id, col_name, info$value)
-      s <- update_inventory_db(value, col_name, proj_id)
-      
-      if(isTruthy(s))
+      needs_refresh <- update_inventory_db(value, col_name, proj_id, project_data$version_id)
+      if(!needs_refresh) {
         user_coc$projects_updated <- user_coc$projects_updated + 1
+        update_datatable(proj_id, col_name, info$value)
+      } else {
+        refresh_trigger(refresh_trigger() + 1)
+      }
     }
     
     update_datatable <- function(proj_id, col_name, value) {
       # update the reactiveVal that updates the proxy
       updated_data <- copy(projects_data())[
         project_id == proj_id, 
-        (col_name) := value
+        c(col_name, "version_id") := list(value, version_id + 1)
       ] |>
         add_calculated_fields()
       
@@ -618,6 +621,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     # Handle user's add project submission
     observeEvent(modal_submission$status, {
       req(modal_submission$status)
+      req(modal_submission$status != "error")
       
       if(current_form_type() == "New") {
         inventory_append(modal_submission$project_data)

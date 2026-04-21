@@ -1,4 +1,29 @@
+/*As of rlang 1.2.0, the sort icons on datatables look weird. This fixes that
 
+The Change: rlang 1.2.0 (released in late 2024) introduced significant internal changes to how R handles encoding and UTF-8 strings
+The Conflict: When DT prepares its CSS, it includes those arrow characters (▲). If rlang 1.2.0 changed the way it "marks" strings as UTF-8 or how it passes them to the htmltools package (which Shiny uses to build your app), the browser might receive the CSS without the proper "I am UTF-8" flag.
+The Result: The browser defaults to Latin-1, and your UTF-8 arrows (▲/▼) turn into the "Mojibake" (â–²).
+*/
+/* Fix the Up Arrow (:before) */
+table.dataTable thead > tr > th.sorting:before,
+table.dataTable thead > tr > th.sorting_asc:before,
+table.dataTable thead > tr > td.sorting:before,
+table.dataTable thead > tr > td.sorting_asc:before {
+    content: "\25B2" / "" !important;
+}
+
+/* Fix the Down Arrow (:after) */
+table.dataTable thead > tr > th.sorting_desc:after,
+table.dataTable thead > tr > td.sorting_desc:after {
+    content: "\25BC" / "" !important;
+}
+
+/* Clean up: ensure no 'broken' characters remain on the :after elements of unsorted columns */
+table.dataTable thead > tr > th.sorting:after,
+table.dataTable thead > tr > td.sorting:after {
+    content: "\25BC" / "" !important;
+}
+    
 #submit_sign_out {
   font-weight: bold;
   /*background-color: red;
