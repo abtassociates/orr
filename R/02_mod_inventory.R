@@ -330,8 +330,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       req(projects_data())
       
-      bed_fields <- grep('bed', names(projects_data())) - 1
-      bed_field_names <- names(projects_data())[bed_fields + 1]
+      bed_fields <- grep('bed', names(projects_data()))
+      bed_field_names <- names(projects_data())[bed_fields]
       
       if(input$toggle_bed_fields){
         updatePickerInput(session, inputId = 'projects_col_selections', selected = union(input$projects_col_selections, bed_field_names))
