@@ -1,24 +1,28 @@
 mod_download_rating_ui <- function(id) {
   ns <- NS(id)
   
-  # --- Compact Dropdown Header for Downloads ---
   card_header(
     class = "d-flex justify-content-between align-items-center",
     "Project Rating",
     div(
-      class = "dropdown",
-      tags$button(
-        class = "btn btn-primary dropdown-toggle btn-sm",
-        type = "button",
-        `data-bs-toggle` = "dropdown",
-        icon("download"), " Download Reports"
-      ),
-      tags$ul(
-        class = "dropdown-menu dropdown-menu-end",
-        tags$li(downloadLink(ns("dl_current"), "Current Project Report Card (HTML)", class = "dropdown-item")),
-        tags$li(downloadLink(ns("dl_blank"), "Blank Rating Template (HTML)", class = "dropdown-item")),
-        tags$hr(class="dropdown-divider"),
-        tags$li(downloadLink(ns("dl_all_tabular"), "All Projects Summary (CSV)", class = "dropdown-item"))
+      class = "d-flex align-items-center",
+      # This will show the spinner or the download link when ready
+      uiOutput(ns("download_status"), inline = TRUE),
+      div(
+        class = "dropdown ms-2",
+        tags$button(
+          class = "btn btn-primary dropdown-toggle btn-sm",
+          type = "button",
+          `data-bs-toggle` = "dropdown",
+          icon("download"), " Download"
+        ),
+        tags$ul(
+          class = "dropdown-menu dropdown-menu-end",
+          tags$li(actionLink(ns("dl_current"), "Current Project (PDF)", class = "dropdown-item")),
+          tags$li(actionLink(ns("dl_blank"), "Blank Template (PDF)", class = "dropdown-item")),
+          tags$hr(class="dropdown-divider"),
+          tags$li(actionLink(ns("dl_all"), "All Projects Summary (ZIP)", class = "dropdown-item"))
+        )
       )
     )
   )
@@ -28,244 +32,222 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # -------- Download Handlers --------------
+    # Stores the final background file path and desired filename
+    dl_state <- reactiveVal("idle")
     
-    ## Helper to generate RMarkdown for HTML dynamically -----
+    ready_file <- reactiveValues(path = NULL, filename = NULL)
     
-    # build_report <- function(data, project_name, total, max_pts, file) {
-    #   tempReport <- file.path(tempdir(), "report_card.Rmd")
-    #   
-    #   # Note the use of results='asis' in the chunk, which allows us to use a loop 
-    #   # to dynamically generate Headers and Tables for each Factor Group.
-    #   rmd_content <- c(
-    #     "---",
-    #     paste0("title: 'Rating Report Card: ", project_name, "'"),
-    #     "output: ",
-    #     "  html_document:",
-    #     "    theme: flatly", # Gives it a clean, modern Bootstrap look
-    #     "params:",
-    #     "  report_data: NA", 
-    #     "---",
-    #     "```{r setup, include=FALSE}",
-    #     "knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)",
-    #     "```",
-    #     "",
-    #     "## **Overall Score:** <span style='color:blue;'>", total, " out of ", max_pts, "</span>",
-    #     "***",
-    #     "",
-    #     "```{r, results='asis'}",
-    #     "library(dplyr)",
-    #     "library(knitr)",
-    #     "",
-    #     "# Split the data by Factor Group",
-    #     "grouped_data <- split(params$report_data, params$report_data$factor_group)",
-    #     "",
-    #     "for (group_name in names(grouped_data)) {",
-    #     "  group_df <- grouped_data[[group_name]]",
-    #     "  ",
-    #     "  # Calculate subtotals for this specific group",
-    #     "  subtotal_score <- sum(as.numeric(group_df$rating_score), na.rm = TRUE)",
-    #     "  subtotal_max <- sum(as.numeric(group_df$max_point_value), na.rm = TRUE)",
-    #     "  ",
-    #     "  # Print an HTML Header for the group and its subtotal",
-    #     "  cat(sprintf('### %s (Subtotal: %s / %s)\\n\\n', group_name, subtotal_score, subtotal_max))",
-    #     "  ",
-    #     "  # Select and rename columns for a clean table",
-    #     "  table_output <- group_df %>%",
-    #     "    select(",
-    #     "      `Subgroup` = factor_subgroup,",
-    #     "      `Factor` = rating_factor_text, ",
-    #     "      `Goal` = goal, ",
-    #     "      `Performance` = performance, ",
-    #     "      `Score` = rating_score, ",
-    #     "      `Max Pts` = max_point_value",
-    #     "    ) %>%",
-    #     "    # Convert NA to blanks for cleaner reading",
-    #     "    mutate(across(everything(), ~ifelse(is.na(.), '', .))) %>%",
-    #     "    kable(format = 'markdown')",
-    #     "  ",
-    #     "  # Print the table",
-    #     "  print(table_output)",
-    #     "  ",
-    #     "  # Add a horizontal line separator between groups",
-    #     "  cat('\\n\\n***\\n\\n')",
-    #     "}",
-    #     "```"
-    #   )
-    #   
-    #   writeLines(rmd_content, tempReport)
-    #   
-    #   rmarkdown::render(
-    #     tempReport, 
-    #     output_file = file,
-    #     params = list(report_data = data), 
-    #     envir = new.env(parent = globalenv())
-    #   )
-    # }
-    build_report <- function(data, project_name, total, max_pts, file) {
-      tempReport <- file.path(tempdir(), "report_card.Rmd")
-      
-      # Ensure total is a number (fallback to 0 if NA)
-      safe_total <- ifelse(is.na(total), 0, total)
-      
-      rmd_content <- c(
-        "---",
-        paste0("title: ' '"), 
-        "output: ",
-        "  html_document:",
-        "    theme: default",
-        "params:",
-        "  report_data: NA", 
-        "---",
-        "```{r setup, include=FALSE}",
-        "knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)",
-        "```",
-        "",
-        "<!-- CUSTOM STYLING TO MIMIC SHINY APP UI -->",
-        "<style>",
-        "  @media print {",
-        "    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
-        "  }",
-        "  body { ",
-        "    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; ",
-        "    color: #212529;",
-        "  }",
-        "  .overall-score-card {",
-        "    background-color: #f8f9fa; border-left: 5px solid #0d6efd;",
-        "    padding: 1.5rem; border-radius: 0.5rem; margin-bottom: 2rem;",
-        "    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);",
-        "    display: flex; justify-content: space-between; align-items: center;",
-        "  }",
-        "  .overall-score-card h2 { margin: 0; font-size: 1.5rem; color: #212529; font-weight: 600; }",
-        "  .overall-score-card .subtitle { color: #6c757d; font-size: 1rem; font-weight: normal; margin-top: 5px;}",
-        "  .score-badge {",
-        "    background-color: #0d6efd; color: white; padding: 0.5rem 1rem;",
-        "    border-radius: 0.5rem; font-weight: bold; font-size: 1.25rem;",
-        "  }",
-        "  .accordion-mimic {",
-        "    background-color: #e7f1ff; color: #0c63e4;",
-        "    padding: 1rem 1.25rem; margin-top: 2rem; margin-bottom: 1rem;",
-        "    border-radius: 0.375rem; font-weight: 600; font-size: 1.1rem;",
-        "    display: flex; justify-content: space-between; align-items: center;",
-        "    border: 1px solid #b6d4fe;",
-        "  }",
-        "  .table thead th { ",
-        "    background-color: #f8f9fa; color: #495057; ",
-        "    font-size: 0.85rem; text-transform: uppercase; ",
-        "    border-bottom: 2px solid #dee2e6; ",
-        "  }",
-        "  .table td { vertical-align: middle; }",
-        "</style>",
-        "",
-        "<!-- MAIN HEADER CONTENT -->",
-        "<!-- NO LEADING SPACES HERE TO PREVENT MARKDOWN CODE BLOCKS -->",
-        "<div class='overall-score-card'>",
-        "<div>",
-        "<h2>Rating Report Card</h2>",
-        paste0("<div class='subtitle'>Project: <strong>", project_name, "</strong></div>"),
-        "</div>",
-        paste0("<div class='score-badge'>", safe_total, " / ", max_pts, " Points</div>"),
-        "</div>",
-        "",
-        "<!-- DYNAMIC GROUPS AND TABLES -->",
-        "```{r, results='asis'}",
-        "library(dplyr)",
-        "library(knitr)",
-        "",
-        "grouped_data <- split(params$report_data, params$report_data$factor_group)",
-        "",
-        "for (group_name in names(grouped_data)) {",
-        "  group_df <- grouped_data[[group_name]]",
-        "  ",
-        "  # Subtotals (Treat NAs as 0 so it displays nicely)",
-        "  subtotal_score <- sum(as.numeric(group_df$rating_score), na.rm = TRUE)",
-        "  subtotal_max <- sum(as.numeric(group_df$max_point_value), na.rm = TRUE)",
-        "  ",
-        "  cat(sprintf('<div class=\"accordion-mimic\"><span>%s</span><span>Subtotal: %s / %s</span></div>\\n', ",
-        "              group_name, subtotal_score, subtotal_max))",
-        "  ",
-        "  table_df <- group_df %>%",
-        "    select(",
-        "      `Subgroup` = factor_subgroup,",
-        "      `Factor` = rating_factor_text, ",
-        "      `Goal` = goal, ",
-        "      `Performance` = performance, ",
-        "      `Score` = rating_score, ",
-        "      `Max Pts` = max_point_value",
-        "    )",
-        "  ",
-        "  # Check if Subgroup is completely empty/NA. If so, remove the column.",
-        "  if (all(is.na(table_df$Subgroup) | table_df$Subgroup == '' | table_df$Subgroup == 'NA')) {",
-        "    table_df <- table_df %>% select(-Subgroup)",
-        "  }",
-        "  ",
-        "  # Render the table",
-        "  table_output <- table_df %>%",
-        "    mutate(across(everything(), ~ifelse(is.na(.), '', .))) %>%",
-        "    kable(format = 'html', table.attr = 'class=\"table table-sm table-bordered table-striped\"', escape = FALSE)",
-        "  ",
-        "  print(table_output)",
-        "}",
-        "```"
+    # ----------------------------------------------------
+    # THE BACKGROUND TASK
+    # ----------------------------------------------------
+    report_task <- shiny::ExtendedTask$new(function(payload) {
+      # mirai() must be converted to a promise for ExtendedTask to track it
+      promises::as.promise(
+        mirai::mirai({
+          # This code runs in the background worker
+          tmp_dir <- tempdir()
+          
+          if (payload$type == "single") {
+            out_file <- tempfile(fileext = ".pdf", tmpdir = tmp_dir)
+            
+            build_report(
+              data = payload$data,
+              project_name = payload$project_name,
+              total = payload$total,
+              max_pts = payload$max_pts,
+              file = out_file
+            )
+            return(out_file)
+            
+          } else if (payload$type == "zip") {
+            projects <- payload$data |> split(by = "project_id")
+            names(projects) <- sapply(projects, function(x) x$project_name[1])
+            
+            files_to_zip <- character()
+            
+            for (i in seq_along(projects)) {
+              df <- projects[[i]]
+              proj_name <- names(projects)[i]
+              safe_name <- gsub("[^A-Za-z0-9]", "_", proj_name) 
+              out_file <- file.path(tmp_dir, paste0(safe_name, ".pdf"))
+              
+              build_report(
+                data = df,
+                project_name = proj_name,
+                total = fsum(df$rating_score),
+                max_pts = fsum(df$max_point_value),
+                file = out_file
+              )
+              files_to_zip <- c(files_to_zip, out_file)
+            }
+            
+            zip_path <- tempfile(fileext = ".zip", tmpdir = tmp_dir)
+            zip::zipr(zipfile = zip_path, files = files_to_zip)
+            return(zip_path)
+          }
+        }, payload = payload)
       )
+    })
+    
+    # ----------------------------------------------------
+    # DYNAMIC STATUS UI (Inline in the Header)
+    # ----------------------------------------------------
+    output$download_status <- renderUI({
+      state <- dl_state()
       
-      writeLines(rmd_content, tempReport)
-      
-      rmarkdown::render(
-        tempReport, 
-        output_file = file,
-        params = list(report_data = data), 
-        envir = new.env(parent = globalenv())
-      )
+      if (state == "busy") {
+        # Show a small spinner next to the button
+        span(class = "text-muted small", icon("spinner", class = "fa-spin"), " Generating...")
+      } else if (state == "ready") {
+        # Show a green download link
+        downloadLink(ns("dl_final"), 
+                     span(icon("file-arrow-down"), " Click to Download"), 
+                     class = "btn btn-outline-success btn-sm border-0"
+        )
+      } else {
+        NULL # Idle state
+      }
+    })
+    
+    # ----------------------------------------------------
+    # TRIGGERS (Invokes background task)
+    # ----------------------------------------------------
+    get_project_df <- function() {
+      factors_and_scores_for_project() |>
+        fselect(
+          factor_group,
+          factor_subgroup,
+          piping_text,
+          goal,
+          performance,
+          rating_score,
+          max_point_value
+        )
     }
+    observeEvent(input$dl_current, {
+      dl_state("busy")
+      showNotification("PDF generation started in the background...", type = "message")
+      
+      df <- get_project_df()
+      
+      payload <- list(
+        type = "single",
+        filename = paste0(selected_project()$project_name, ".pdf"),
+        data = df,
+        project_name = selected_project()$project_name,
+        total = fsum(df$rating_score),
+        max_pts = fsum(df$max_point_value)
+      )
+      
+      ready_file$filename <- payload$filename
+      report_task$invoke(payload)
+    })
     
-    ## 1. Download Current Project ------------
-    output$dl_current <- downloadHandler(
-      filename = function() {
-        req(selected_project())
-        paste0("Report_Card_", gsub("[^A-Za-z0-9]", "_", selected_project()$project_name), ".html")
-      },
+    observeEvent(input$dl_blank, {
+      dl_state("busy")
+      showNotification("PDF generation started in the background...", type = "message")
+      
+      df <- get_project_df()
+      payload <- list(
+        type = "single",
+        filename = "Blank_Template.pdf",
+        data = df[0,],
+        project_name = "Blank Template",
+        total = 0, max_pts = 0
+      )
+      
+      ready_file$filename <- payload$filename
+      report_task$invoke(payload)
+    })
+    
+    observeEvent(input$dl_all, {
+      funding_action_id <- get_lookup_refid(funding_action, "funding_action")
+      all_factors_and_scores <- get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action_id)
+      
+      shiny::validate(
+        need(
+          fnrow(all_factors_and_scores) > 0,
+          "No projects with scores"
+        )
+      )
+      
+      showNotification("PDF generation started in the background...", type = "message")
+      
+      payload <- list(
+        type = "zip",
+        filename = "All_Reports.zip",
+        data = all_factors_and_scores
+      )
+      
+      ready_file$filename <- payload$filename
+      report_task$invoke(payload)
+    })
+    
+    # ----------------------------------------------------
+    # HANDLE TASK COMPLETION
+    # ----------------------------------------------------
+    
+    # Watch for Success
+    observeEvent(report_task$result(), {
+      ready_file$path <- report_task$result()
+      
+      # Update the modal to show the download button
+      showModal(modalDialog(
+        title = "Files Ready!",
+        div(
+          class = "text-center",
+          shiny::icon("check-circle", class = "fa-3x text-success"),
+          tags$br(), tags$br(),
+          p("Your file has been successfully generated and is ready to download.")
+        ),
+        footer = tagList(
+          modalButton("Close"),
+          # This is the ACTUAL download button
+          downloadButton(ns("dl_final"), "Download File", class = "btn btn-success")
+        ),
+        easyClose = FALSE
+      ))
+    })
+    
+    # # Watch for Errors (Crucial for debugging background tasks)
+    # observeEvent(report_task$debug(), {
+    #   browser()
+    #   showNotification(paste("Error generating file:", report_task$error()$message), type="error", duration = 10)
+    #   removeModal()
+    # })
+    
+    # ----------------------------------------------------
+    # TASK SUCCESS
+    # ----------------------------------------------------
+    observeEvent(report_task$result, {
+      ready_file$path <- report_task$result
+      dl_state("ready")
+      
+      # Inform user via a non-blocking notification
+      showNotification("Your report is ready for download!", type = "default", duration = 10)
+    }, ignoreInit = TRUE)
+    
+    # TASK ERROR
+    observeEvent(report_task$error, {
+      dl_state("idle")
+      showNotification(paste("Error:", report_task$error), type = "error")
+    }, ignoreInit = TRUE)
+    
+    # ----------------------------------------------------
+    # ACTUAL DOWNLOAD HANDLER
+    # ----------------------------------------------------
+    output$dl_final <- downloadHandler(
+      filename = ready_file$filename,
       content = function(file) {
-        df <- factors_and_scores_for_project()
-        req(df, selected_project())
-
-        total <- fsum(df$rating_score)
-        max_pts <- fsum(df$max_point_value)
+        # Optionally close the modal automatically after they click download
+        removeModal()
         
-        build_report(df, selected_project()$project_name, total, max_pts, file)
+        # Instant copy since the file is already generated
+        file.copy(ready_file$path, file)
+        
+       
       }
     )
     
-    ## 2. Download Blank Template------------
-    output$dl_blank <- downloadHandler(
-      filename = function() {
-        "Blank_Rating_Template.html"
-      },
-      content = function(file) {
-        df <- factors_and_scores_for_project()
-        req(df)
-        
-        # Create a blank version of the current criteria
-        df$rating_score <- NA
-        df$performance <- NA
-        
-        max_pts <- fsum(df$max_point_value)
-        
-        build_report(df, "BLANK TEMPLATE", 0, max_pts, file)
-      }
-    )
-    
-    ## 3. Download All Projects Summary (Tabular CSV) ------------
-    output$dl_all_tabular <- downloadHandler(
-      filename = function() {
-        paste0("All_Projects_Ratings_", Sys.Date(), ".csv")
-      },
-      content = function(file) {
-        req(user_coc$coc_version_id)
-        all_data <- get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action)
-        write.csv(all_data, file, row.names = FALSE)
-      }
-    )
   })
-  
 }

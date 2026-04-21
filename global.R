@@ -23,6 +23,10 @@ library(httr2)
 library(jsonlite)
 library(shinyWidgets)
 
+# For Rating Report Cards
+library(mirai)
+library(promises)
+
 # ENVIRONMENT DETECTION -----------
 IN_DEV_MODE <- Sys.getenv("RSTUDIO") == "1" && !isTRUE(getOption("shiny.testmode"))
 
@@ -101,5 +105,19 @@ shiny::onStop( function(){
   if (shiny::isRunning()) {
     try(tools::pskill(tunnel), silent = TRUE)
   }
+  
+  daemons(0)
 })
+
+# For Rating Report Cards
+daemons(2, output = TRUE, sync = TRUE)
+mirai::everywhere({
+  library(gt)
+  library(pagedown)
+  library(dplyr)
+  library(zip)
+  
+  source(here("R/utils/build_report.R"))
+}, .options = list(seed = TRUE))
+
 # shiny::runApp(port = 4000, launch.browser = T)

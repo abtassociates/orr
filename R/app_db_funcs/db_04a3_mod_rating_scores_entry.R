@@ -68,27 +68,18 @@ update_rating_score_project_evaluation_db <- function(p, updated_project_evaluat
 }
 
 # ------------ Downloads -------------
-get_all_rating_factors_and_scores <- function(coc_version_id, funding_action) {
+get_all_rating_factors_and_scores <- function(coc_version_id, funding_action_id) {
   get_db_query(
-    "SELECT r.rating_factor_id, 
-      r.rating_factor_text, 
-      CASE WHEN r.rating_factor_text_short IS NOT NULL THEN r.rating_factor_text_short ELSE r.rating_factor_text END AS rating_factor_text_short, 
-      r.piping_text, r.project_type, r.target_population, sr.selected_rating_factor_id, 
-      fg.factor_group, fsg.factor_subgroup, 
-      sr.goal, sr.max_point_value,
-      rs.rating_score, rs.performance, rs.project_id,
-      rs.version_id
+    "SELECT p.project_id, p.project_name, fg.factor_group, fsg.factor_subgroup, r.piping_text, sr.goal, rs.performance, rs.rating_score, sr.max_point_value
     FROM rating_factors r
     INNER JOIN selected_rating_factors sr ON sr.rating_factor_id = r.rating_factor_id AND sr.coc_version_id = $1 AND selected = 1
     JOIN factor_groups fg ON r.factor_group = fg.factor_group_id
     LEFT JOIN factor_subgroups fsg ON r.factor_subgroup = fsg.factor_subgroup_id
     LEFT JOIN rating_scores rs ON rs.selected_rating_factor_id = sr.selected_rating_factor_id
-    INNER JOIN project_evaluations pe ON rs.project_id = pe.project_id
-    WHERE 
-      r.funding_action = $3 AND
-      (r.project_type = $4 OR r.project_type IS NULL) AND
-      pe.weighted_score > 0
-    ", 
-    params = list(coc_version_id, funding_action)
+    LEFT JOIN projects p ON sr.coc_version_id = p.coc_version_id AND p.funding_action = r.funding_action AND r.project_type = p.project_type
+    WHERE r.funding_action = $2  AND p.project_id IS NOT NULL
+    ORDER BY p.project_id, fg.factor_group_id, fsg.factor_subgroup_id", 
+    params = list(coc_version_id, funding_action_id)
   )
 }
+
