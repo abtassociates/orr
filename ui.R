@@ -40,7 +40,8 @@ page_navbar(
       ),
       overlayColour = '#F5F5F5',
       refresh = ""
-    )
+    ),
+    mod_slide_in_instructions_ui("instructions")
   ),
 
   nav_panel(
