@@ -178,7 +178,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
-        tableID = ns("projects_table"), 
         initial_filter = initial_filter,
         column_defs = list(
           list(

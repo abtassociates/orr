@@ -323,7 +323,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       initialize_inline_edit_table_ui(
         data = data,
-        tableID = ns("priorities_table"),
         formatting = list(
           function(x) formatStyle(
             x,
@@ -374,8 +373,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         filter = 'top',
         column_defs = list(
           list(searchable = FALSE, targets = which(names(data) != "Population") - 1)
-        ),
-        has_double_header = TRUE
+        )
       )      
     }, server = FALSE) #end initialize_data_Table
     
