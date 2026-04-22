@@ -429,7 +429,10 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       input_names <- lapply(input_prefixes, paste0, "_", factors$rating_factor_id) |> unlist()
       req(all(input_names %in% names(input)))
       
-      mget(input_names, envir = as.environment(input))
+      setNames(
+        lapply(input_names, function(i) input[[i]]), 
+        input_names
+      )
     })
     
     # 3. Difference Engine: Find only what changed
