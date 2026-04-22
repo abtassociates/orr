@@ -180,9 +180,9 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
         help_id(paste0(input$rating_tabs, "-thresholds_entry"))
     }, ignoreInit = TRUE)
     
-    mod_customize_criteria_server("customize_criteria", user_coc, nav_control, parent_session)
-    mod_in_app_rating_server("renew", user_coc, "Renew", nav_control)
-    mod_in_app_rating_server("new", user_coc, "New", nav_control)
+    mod_customize_criteria_server("customize_criteria", user_coc, nav_control, parent_session, help_id)
+    mod_in_app_rating_server("renew", user_coc, "Renew", nav_control, help_id)
+    mod_in_app_rating_server("new", user_coc, "New", nav_control, help_id)
     mod_rating_summary_server("rating_summary")
     mod_alternative_rating_server("alternative", user_coc)
   })
