@@ -267,7 +267,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           
           function(x) formatRound(
             x,
-            columns = grep('bed', names(data)) - 1,
+            columns = grep('bed', names(data)),
             digits = 0
           )
         ),
@@ -294,6 +294,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
     projects_table_proxy <- dataTableProxy("projects_table",session = session)
+    projects_table_proxy$id <- "projects_table" # setting id to raw_id seems to fix auto-scrolling
     
     observe({
       req(projects_data())
@@ -329,8 +330,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       req(projects_data())
       
-      bed_fields <- grep('bed', names(projects_data())) - 1
-      bed_field_names <- names(projects_data())[bed_fields + 1]
+      bed_fields <- grep('bed', names(projects_data()))
+      bed_field_names <- names(projects_data())[bed_fields]
       
       if(input$toggle_bed_fields){
         updatePickerInput(session, inputId = 'projects_col_selections', selected = union(input$projects_col_selections, bed_field_names))
@@ -341,24 +342,25 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     
     # Update DT table with column changes made in dropdown (pickerInput)
     observeEvent(input$projects_col_selections, {
-      
-       req(user_coc$auth)
-       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
-       req(projects_data())
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      req(projects_data())
         
-       cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
-       cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
-       # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+      cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
+      cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
+      # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+      
+      ## show and hide columns as needed
+      projects_table_proxy$id <- ns("projects_table")
+      if(length(cols_to_hide) > 0) {
+        hideCols(projects_table_proxy, hide = cols_to_hide)
+      }
+      if(length(cols_to_show) > 0) {
+        showCols(projects_table_proxy, show = cols_to_show)
+      }
+      projects_table_proxy$id <- "projects_table"
        
-       ## show and hide columns as needed
-        if(length(cols_to_hide) > 0){
-          hideCols(projects_table_proxy, hide = cols_to_hide)
-        }
-        if(length(cols_to_show) > 0){
-          showCols(projects_table_proxy, show = cols_to_show)
-        }
-       
-       user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
+      user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
     })
     
     # Update projects -----
