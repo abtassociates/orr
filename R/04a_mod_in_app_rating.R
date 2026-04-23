@@ -67,7 +67,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     
     # Get all projects for the CoC and the current funding action
     all_projects <- reactive({
-      req(user_coc$coc_version_id)
+      req(user_coc$coc_version_id, user_coc$projects_updated)
       funding_action_ids <- get_lookup_refid(
         if(funding_action == "Renew") c("Renew","Expand") else "New",
         "funding_action"

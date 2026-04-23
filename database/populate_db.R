@@ -2,6 +2,17 @@ populate_db <- function(
     add_demo_data = basename(getwd()) != "ORR", 
     USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
 ) {
+  ans <- readline(
+    prompt = "If you proceed, you will erase all database data. Proceed? (Y/N): "
+  )
+  
+  if (toupper(trimws(ans)) != "Y") {
+    message("Cancelled.")
+    return(invisible(NULL))
+  }
+  
+  message("Proceeding...")
+  
 library(here)
 library(DBI)
 library(data.table)
