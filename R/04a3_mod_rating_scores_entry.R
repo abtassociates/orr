@@ -157,21 +157,17 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
       selected_project_exists <- !is.null(selected_project()) && fnrow(selected_project()) > 0
+      has_factors <- fnrow(factors_and_scores_for_project()) > 0
       
-      if(!selected_project_exists) {
+      if(!selected_project_exists && !has_factors) {
         shinyjs::hide(id = "total_row")
         shinyjs::hide(id = "weighted_total_row")
       }
       
-      shiny::validate(need(
-        selected_project_exists,
-        "Select a project in the left-hand sidebar to begin rating"
-      ))
-      
-      shiny::validate(need(
-        fnrow(factors_and_scores_for_project()) > 0,
-        "You must select 1 or more rating factors in the Customize Rating Criteria tab in order to rate this project"
-      ))
+      shiny::validate(
+        need(selected_project_exists, "Select a project in the left-hand sidebar to begin rating"),
+        need(fnrow(factors_and_scores_for_project()) > 0, "You must select 1 or more rating factors in the Customize Rating Criteria tab in order to rate this project")
+      )
       
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
