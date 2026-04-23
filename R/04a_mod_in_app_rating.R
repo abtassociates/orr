@@ -29,7 +29,7 @@ mod_in_app_rating_ui <- function(id, funding_action) {
   )
 }
 
-mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) {
+mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, help_id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -55,6 +55,8 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control) 
       
       user_coc$settings$rating_subtab <- gsub(glue::glue('rating-{id}-'), '', input$main_contents)
       toggle_sidebar(id = "project_selection_sidebar", open = input$main_contents != ns("rating_factors"))
+      
+      help_id(input$main_contents)
     }, ignoreInit = TRUE)
     
     # Store selected project in user setting

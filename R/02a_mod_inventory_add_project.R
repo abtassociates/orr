@@ -306,7 +306,7 @@ mod_inventory_add_project_server <- function(
     iv$add_rule("project_type", sv_required())
     iv$add_rule("funding_source", sv_required())
     iv$add_rule("target_population", sv_required())
-    iv$add_rule("funding_action", ~ if(. == "Replace" && funding_source != "YHDP") "Only YHDP projects can be replaced")
+    iv$add_rule("funding_action", ~ if(. == "Replace" && current_funding_source() != "YHDP") "Only YHDP projects can be replaced")
 
     # Grant number is only required if not New or Expand
     grant_iv <- shinyvalidate::InputValidator$new()
@@ -327,7 +327,6 @@ mod_inventory_add_project_server <- function(
       force(max_val_formula)
       max_val_func <- rlang::as_function(max_val_formula)
       function(value) {
-        # Use rlang::eval_tidy() to get the CURRENT value from the formula
         max_val <- max_val_func()
         
         # Don't show an error if either value is missing
@@ -346,7 +345,6 @@ mod_inventory_add_project_server <- function(
     for (group_name in names(bed_groups_to_validate)) {
       # Use local() to capture the current value of 'group_name' for the condition formula
       local({
-        # 'current_group' is a new variable for each loop iteration
         current_group <- group_name
         
         # Create a new validator for this group
@@ -373,6 +371,17 @@ mod_inventory_add_project_server <- function(
         iv$add_validator(v)
       })
     }
+    
+    iv$add_rule(
+      "total_beds_fam", 
+      ~ if(sum(input$ch_beds_fam, input$vet_beds_fam, input$youth_beds_fam, na.rm=TRUE) > .)
+        "Family bed fields cannot sum to more than the Total Family beds."
+    )
+    iv$add_rule(
+      "total_beds_ind", 
+      ~ if(sum(input$ch_beds_ind, input$vet_beds_ind, input$youth_beds_ind, na.rm=TRUE) > .)
+        "Individual bed fields cannot sum to more than the Total Individual beds."
+    )
 
     
     # =================================================================
@@ -389,7 +398,6 @@ mod_inventory_add_project_server <- function(
     observeEvent(c(input$submit, input$add_another_link), {
       req(isTruthy(input$submit) || isTruthy(input$add_another_link))
       iv$enable()
-      print('observed input$submit')
       
       if (iv$is_valid()) {
         vis_beds <- visible_bed_groups()
@@ -458,11 +466,11 @@ mod_inventory_add_project_server <- function(
         )
       } else {
         show_alert(
-          title = "Missing Required Fields",
+          title = "Submission Error",
           text = "Please correct the errors before submitting.",
           type = "error"
         )
-        # modal_submission_outcome <- NULL
+        modal_submission_outcome$status <- "error"
       }
       print(paste0('done with input$submit, status=', modal_submission_outcome$status))
     }, ignoreInit = TRUE, ignoreNULL = TRUE)

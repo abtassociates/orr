@@ -32,19 +32,26 @@ mod_customize_criteria_ui <- function(id) {
 #' @param id The module's unique ID.
 #' @param user_coc contains coc_version_id to capture user-selected version of the ORR
 #' @noRd
-mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_session) {
+mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_session, help_id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     observeEvent(input$rating_criteria_subtabs, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_subtab <- gsub('rating-customize_criteria-', '', input$rating_criteria_subtabs)
+      user_coc$settings$rating_subtab <- gsub(ns(''), '', input$rating_criteria_subtabs)
+      
+      if(input$rating_criteria_subtabs == ns("rating_factors"))
+        help_id(ns("renewal_rating_factors"))
+      else
+        help_id(input$rating_criteria_subtabs)
+      
     }, ignoreInit = TRUE)
     
     observeEvent(input$rating_factors_subtabs, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_subsubtab <- gsub('rating-customize_criteria-', '', input$rating_factors_subtabs)
+      user_coc$settings$rating_subsubtab <- gsub(ns(''), '', input$rating_factors_subtabs)
       
+      help_id(input$rating_factors_subtabs)
     }, ignoreInit = TRUE)
     
     # ---------------------------------------------------------
