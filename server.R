@@ -35,7 +35,7 @@ function(input, output, session) {
       nav_insert("nav", get(glue::glue("mod_{t}_ui"))(t), select = t == "dashboard")
       
       # Server
-      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc, session)
+      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc, session, help_id = help_id)
     })
   })
   
@@ -106,6 +106,9 @@ function(input, output, session) {
     nav_select("nav", selected = nav_control())
   })
 
+  # --- Slide-In Sidebar ----
+  help_id <- mod_slide_in_instructions_server("instructions", user_coc, nav_control)
+  
   shiny::onStop( function(){
     cat("Running onStop")
     
