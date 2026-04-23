@@ -29,7 +29,7 @@ build_report <- function(data, project_name, total, max_pts, file) {
     summary_rows(
       groups = TRUE,
       columns = c(Score, `Max Pts`),
-      fns = list(label = "Subtotal", fn = ~sum(as.numeric(.), na.rm = TRUE)),
+      fns = list(label = "Subtotal", fn = fsum),
       side = "top"
     ) %>%
     tab_options(
@@ -57,16 +57,12 @@ build_report <- function(data, project_name, total, max_pts, file) {
       fn = function(x) ifelse(x == "", "N/A", x)
     )
   
-  # 3. Save as PDF
-  tmp_pdf <- tempfile(fileext = ".pdf")
+  
+  # Save as HTML And use pagedown to "print" the HTML to PDF
   tmp_html <- tempfile(fileext = ".html")
   
-  # gt_table %>%
-  #   as_raw_html() %>%
-  #   writeLines(tmp_html)
   gt::gtsave(gt_table, tmp_html)
   
-  # Use pagedown to "print" the HTML to PDF
   pagedown::chrome_print(
     input = tmp_html,
     output = file,

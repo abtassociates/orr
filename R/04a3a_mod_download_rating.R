@@ -14,7 +14,7 @@ mod_download_rating_ui <- function(id) {
           class = "btn btn-primary dropdown-toggle btn-sm",
           type = "button",
           `data-bs-toggle` = "dropdown",
-          icon("download"), " Download"
+          icon("download"), " Generate Report Card"
         ),
         tags$ul(
           class = "dropdown-menu dropdown-menu-end",
@@ -36,6 +36,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     dl_state <- reactiveVal("idle")
     
     ready_file <- reactiveValues(path = NULL, filename = NULL)
+    funding_action_id <- get_lookup_refid(funding_action, "funding_action")
     
     # ----------------------------------------------------
     # THE BACKGROUND TASK
@@ -97,12 +98,13 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       
       if (state == "busy") {
         # Show a small spinner next to the button
-        span(class = "text-muted small", icon("spinner", class = "fa-spin"), " Generating...")
+        span(class = "text-muted small", style = "color: white !important;", icon("spinner", class = "fa-spin"), " Generating...")
       } else if (state == "ready") {
         # Show a green download link
-        downloadLink(ns("dl_final"), 
-                     span(icon("file-arrow-down"), " Click to Download"), 
-                     class = "btn btn-outline-success btn-sm border-0"
+        downloadLink(
+          ns("dl_final"), 
+          span(icon("file-arrow-down"), style = "color: white !important", " Download"), 
+          class = "btn btn-outline-success btn-sm"
         )
       } else {
         NULL # Idle state
@@ -140,28 +142,74 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       )
       
       ready_file$filename <- payload$filename
-      report_task$invoke(payload)
+      
+      later::later(function() {
+        report_task$invoke(payload)
+      }, delay = 0)
+      
     })
     
+    iv <- shinyvalidate::InputValidator$new()
+    iv$add_rule("project_type_filter", sv_required())
+    iv$add_rule("target_population_filter", sv_required())
     observeEvent(input$dl_blank, {
-      dl_state("busy")
-      showNotification("PDF generation started in the background...", type = "message")
+      showModal(
+        modalDialog(
+          title = 'Blank Report Card Specifications',
+          project_type_dropdown <- selectInput(
+            inputId = ns("project_type_filter"),
+            label = "Select project type",
+            choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES]
+          ),
+          
+         if(funding_action == "Renew") 
+           target_pop_dropdown <- selectInput(
+            inputId = ns("target_population_filter"),
+            label = "Select special populations",
+            choices = get_labelled_lookups("target_population")[c("DV", "General")]
+          )
+         else
+           NULL,
+          footer = tagList(
+            actionButton(ns('blank_download'), label='Confirm', class='btn-primary'),
+            modalButton(label='Cancel')
+          )
+        )
+      )
+    }, ignoreInit = TRUE)
+    
+    observeEvent(input$blank_download, {
+      iv$enable()
+      req(iv$is_valid())
       
-      df <- get_project_df()
+      dl_state("busy")
+      
+      removeModal()
+      
+      df <- get_rating_factors_by_pop_target_type(
+        user_coc$coc_version_id, 
+        funding_action_id, 
+        input$project_type_filter, 
+        input$target_population_filter
+      )
+      
       payload <- list(
         type = "single",
         filename = "Blank_Template.pdf",
-        data = df[0,],
+        data = df,
         project_name = "Blank Template",
         total = 0, max_pts = 0
       )
       
       ready_file$filename <- payload$filename
-      report_task$invoke(payload)
+      
+      later::later(function() {
+        report_task$invoke(payload)
+      }, delay = 0)
+      
     })
     
     observeEvent(input$dl_all, {
-      funding_action_id <- get_lookup_refid(funding_action, "funding_action")
       all_factors_and_scores <- get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action_id)
       
       shiny::validate(
@@ -180,7 +228,11 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       )
       
       ready_file$filename <- payload$filename
-      report_task$invoke(payload)
+      
+      later::later(function() {
+        report_task$invoke(payload)
+      }, delay = 0)
+      
     })
     
     # ----------------------------------------------------
@@ -190,48 +242,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     # Watch for Success
     observeEvent(report_task$result(), {
       ready_file$path <- report_task$result()
-      
-      # Update the modal to show the download button
-      showModal(modalDialog(
-        title = "Files Ready!",
-        div(
-          class = "text-center",
-          shiny::icon("check-circle", class = "fa-3x text-success"),
-          tags$br(), tags$br(),
-          p("Your file has been successfully generated and is ready to download.")
-        ),
-        footer = tagList(
-          modalButton("Close"),
-          # This is the ACTUAL download button
-          downloadButton(ns("dl_final"), "Download File", class = "btn btn-success")
-        ),
-        easyClose = FALSE
-      ))
-    })
-    
-    # # Watch for Errors (Crucial for debugging background tasks)
-    # observeEvent(report_task$debug(), {
-    #   browser()
-    #   showNotification(paste("Error generating file:", report_task$error()$message), type="error", duration = 10)
-    #   removeModal()
-    # })
-    
-    # ----------------------------------------------------
-    # TASK SUCCESS
-    # ----------------------------------------------------
-    observeEvent(report_task$result, {
-      ready_file$path <- report_task$result
       dl_state("ready")
-      
-      # Inform user via a non-blocking notification
-      showNotification("Your report is ready for download!", type = "default", duration = 10)
-    }, ignoreInit = TRUE)
-    
-    # TASK ERROR
-    observeEvent(report_task$error, {
-      dl_state("idle")
-      showNotification(paste("Error:", report_task$error), type = "error")
-    }, ignoreInit = TRUE)
+    })
     
     # ----------------------------------------------------
     # ACTUAL DOWNLOAD HANDLER
@@ -239,13 +251,10 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     output$dl_final <- downloadHandler(
       filename = ready_file$filename,
       content = function(file) {
-        # Optionally close the modal automatically after they click download
-        removeModal()
+        dl_state("idle")
         
         # Instant copy since the file is already generated
         file.copy(ready_file$path, file)
-        
-       
       }
     )
     
