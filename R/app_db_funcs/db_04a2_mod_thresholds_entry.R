@@ -41,3 +41,18 @@ update_threshold_project_evaluation_db <- function(p, updated_project_evaluation
     "project_evaluation"
   )
 }
+
+
+update_threshold_complete <- function(p, updated_threshold_complete) {
+  save_to_db(
+    p,
+    "UPDATE project_evaluations (project_id, threshold_complete, updated_by)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (project_id) DO UPDATE SET 
+          threshold_complete = EXCLUDED.threshold_complete
+          updated_by = EXCLUDED.updated_by
+        " |> add_optimistic_locking(),
+    updated_threshold_complete,
+    "project_evaluations"
+  ) 
+}

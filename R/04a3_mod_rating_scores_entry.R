@@ -67,7 +67,8 @@ mod_rating_scores_entry_ui <- function(id) {
       card_footer(
         class="sticky-save",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"))
+        actionButton(ns("save_rating"), "Save Rating", icon = icon("save")),
+        checkboxInput(ns("rating_complete"), "Complete?")
       )
     )
   )
@@ -104,6 +105,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
           selected_project()$project_id
         )
       )
+
+      shinyjs::toggleState("rating_complete", condition = !anyNA(factors_and_scores_for_project()$rating_score))
     })
     
     # ---------------------------------------------------------------------------
@@ -425,5 +428,25 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       # if(needs_refresh1 || needs_refresh2)
         refresh_trigger(refresh_trigger() + 1)
     })
+    
+    observeEvent(input$rating_complete, {
+      # only proceed if all scores are entered
+      req(!anyNA(factors_and_scores_for_project()$rating_score))
+      
+      # Disable/Enable individual score fields
+      lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
+        shinyjs::toggleState(paste0("performance_", i), condition = input$rating_complete)
+        shinyjs::toggleState(paste0("rating_score_", i), condition = input$rating_complete)
+      })
+      
+      # Update db
+      data <- factors_and_scores_for_project() |>
+        fselect(project_id) |>
+        fmutate(
+          rating_complete = input$rating_complete,
+          updated_by = user_coc$username
+        )
+      update_rating_complete(get_db_pool(), data)
+    }, ignoreInit = TRUE)
   }) #end module server
 }

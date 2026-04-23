@@ -42,7 +42,8 @@ mod_thresholds_entry_ui <- function(id) {
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
         div(),
-        actionButton(ns("save_requirements"), "Save Thresholds", icon = icon("save"), class="btn-primary")
+        actionButton(ns("save_requirements"), "Save Thresholds", icon = icon("save"), class="btn-primary"),
+        checkboxInput(ns("threshold_complete"), "Complete?")
       )
     ) # end card
   ) # end nav_panel
@@ -142,6 +143,8 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       })
       
       shinyjs::toggle("yes_to_all_CoC", condition = isTruthy(fnrow(coc_thresholds_to_enter()) > 0))
+      
+      shinyjs::toggleState("threshold_complete", condition = !anyNA(thresholds_to_enter()$met_threshold))
     }, ignoreNULL = FALSE, priority = 1)
     
     lapply(c("HUD", "CoC"), function(ttype) {
@@ -269,5 +272,23 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
         refresh_trigger(refresh_trigger() + 1)
       
     }, ignoreInit = TRUE) # end save_requirements
+    
+    observeEvent(input$threshold_complete, {
+      # only proceed if all thresholds are non-null
+      req(!anyNA(thresholds_to_enter()$met_threshold))
+      shinyjs::toggleState("yes_to_all_HUD", condition = input$threshold_complete)
+      shinyjs::toggleState("yes_to_all_CoC", condition = input$threshold_complete)
+      shinyjs::toggleState("HUD_requirements", condition = input$threshold_complete)
+      shinyjs::toggleState("CoC_requirements", condition = input$threshold_complete)
+      
+      # Update db
+      data <- thresholds_to_enter() |>
+        fselect(project_id) |>
+        fmutate(
+          threshold_complete = input$threshold_complete,
+          updated_by = user_coc$username
+        )
+      update_threshold_complete(get_db_pool(), data)
+    }, ignoreInit = TRUE)
   }) # end moduleServer
 }

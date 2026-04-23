@@ -66,3 +66,17 @@ update_rating_score_project_evaluation_db <- function(p, updated_project_evaluat
     "project_evaluations"
   )
 }
+
+update_rating_complete <- function(p, updated_rating_complete) {
+  save_to_db(
+    p,
+    "UPDATE project_evaluations (project_id, rating_complete, updated_by)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (project_id) DO UPDATE SET 
+          rating_complete = EXCLUDED.rating_complete
+          updated_by = EXCLUDED.updated_by
+        " |> add_optimistic_locking(),
+    updated_rating_complete,
+    "project_evaluations"
+  ) 
+}
