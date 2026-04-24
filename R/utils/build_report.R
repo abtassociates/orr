@@ -14,7 +14,7 @@ build_report <- function(data, project_name, total, max_pts, file) {
       Score = rating_score,
       `Max Pts` = max_point_value
     ) %>%
-    mutate(across(everything(), ~ifelse(is.na(.) | . == "NA", "", as.character(.))))
+    dplyr::mutate(dplyr::across(dplyr::everything(), ~ifelse(is.na(.) | . == "NA", "", as.character(.))))
   
   # 2. Build the gt Table
   gt_table <- table_data %>%
