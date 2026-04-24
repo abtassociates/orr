@@ -30,7 +30,10 @@ mod_inventory_ui <- function(id) {
                       
                       options = pickerOptions(
                         selectedTextFormat = 'count',
-                        countSelectedText = '{0} Fields Displayed'
+                        countSelectedText = '{0} Fields Displayed',
+                        selectAllText = 'Select All',
+                        deselectAllText = 'De-select All',
+                        actionsBox = TRUE
                       )
           )
         ),
