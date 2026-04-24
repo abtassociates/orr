@@ -139,15 +139,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     hud_ard_coc_data <- reactive({
       req(refresh_trigger$dv_ard, user_coc$coc_version_id)
       
-      dv_ard_db <- get_dv_ard(user_coc$coc_version_id)
-      HUD_ARD_REPORT[coc == user_coc$coc] |>
-        fmutate(
-          adjusted_ard = round(tier_1/0.9, 0),
-          tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
-          yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = dv_ard_db$dv_ard[1],
-          version_id = dv_ard_db$version_id[1]
-        ) |>
+      get_coc_hud_ard_data(user_coc) |>
         frename(estimated = "total_ard")
     })
     
