@@ -57,14 +57,15 @@ mod_ranking_ui <- function(id) {
   )
 }
 
-mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     unspec_types <- c("HMIS Project", "OPH", "SSO", "SSO-CE", "SSO-Host Homes", "SH")
     
     coc_ard_data <- reactive({
-      get_coc_hud_ard_data(user_coc$coc)
+      req(user_coc$coc)
+      get_coc_hud_ard_data(user_coc)
     })
     
     # Reactive values to store the data and bucket limits
