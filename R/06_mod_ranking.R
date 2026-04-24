@@ -545,9 +545,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
       raw_data <- get_projects_to_rank(user_coc$coc_version_id) |>
         calculate_priority()
       
-      raw_data[, coc_funding_requested := as.integer(fcoalesce(coc_funding_requested, as.numeric(sample(10000:1000000, fnrow(raw_data)))))]
-      raw_data[, coc_funding_recommendation := as.integer(fcoalesce(as.numeric(coc_funding_recommendation), as.numeric(coc_funding_requested)))]
-      raw_data[, weighted_score := as.integer(fcoalesce(as.numeric(weighted_score), as.numeric(sample(100, fnrow(raw_data)))))]
+      if(IN_DEV_MODE) {
+        raw_data[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, fnrow(raw_data)), coc_funding_requested))]
+        raw_data[, coc_funding_recommendation := fcoalesce(coc_funding_recommendation, coerceValue(coc_funding_requested, coc_funding_recommendation))]
+        raw_data[, weighted_score := fcoalesce(weighted_score, DT::coerceValue(sample(100, fnrow(raw_data)), weighted_score))]
+      }
       
       # add empty column to front for drag-and-drop control
       raw_data[, ` ` := as.character(icon("grip-vertical"))]
