@@ -9,12 +9,6 @@ mod_ranking_ui <- function(id) {
       fill = FALSE,
       col_widths = c(4, 4, 4),
       actionButton(
-        ns("btn_conduct_ranking"), 
-        "Conduct Ranking / Reset",
-        class = "btn-primary btn-lg w-100", 
-        icon = icon("calculator")
-      ),
-      actionButton(
         ns("btn_adjust_tiers"), 
         "Adjust Tiers after Funding Changes", 
         class = "btn-info btn-lg w-100", 
@@ -287,7 +281,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, module
     # ranked_project_ids <- reactiveValues(new = NULL)
     
     observeEvent(user_coc$coc_version_id, { process_data(force_reset = FALSE) }, ignoreInit = TRUE)
-    observeEvent(input$btn_conduct_ranking, { process_data(force_reset = TRUE) })
     
     # Core Function: Recalculate Tiers and Bonuses
     check_over_targets <- function(dt) {
