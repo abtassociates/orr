@@ -354,3 +354,56 @@ revert_cell <- function(tableID, info, visible_rows, full_data) {
   ))
 }
 
+not_equal_na <- function(x, y) {
+  if (is.character(x)) x[x == ""] <- NA_character_
+  if (is.character(y)) y[y == ""] <- NA_character_
+  
+  is.na(x) != is.na(y) | (!is.na(x) & !is.na(y) & x != y)
+}
+
+get_rating_data_to_save <- function(input_vals, base, id_col, input_prefixes) {
+  new_data <- base |> fselect(id_col)
+  for (prefix in input_prefixes) {
+    input_name <- paste0(prefix, "_", base[[id_col]])
+    new_data[[prefix]] <- unlist(input_vals[input_name])
+  }
+  
+  if(!any(input_prefixes %in% names(new_data))) return(NULL)
+  
+  diffs <- join(
+    new_data, 
+    base,
+    on = id_col
+  ) %>%
+    fsubset(
+      Reduce(
+        `|`,
+        lapply(input_prefixes, function(col) {
+          not_equal_na(.[[col]], .[[paste0(col, "_base")]])
+        })
+      )
+    ) |>
+    fselect(
+      c(id_col, input_prefixes, "version_id")
+    )
+  
+  if(fnrow(diffs) == 0) return(NULL)
+  
+  diffs |>
+    fselect(
+      c(id_col, input_prefixes, "version_id")
+    )
+}
+
+get_threshold_data_to_save <- function(base, id_col, valuecol, selections) {
+  new_val <- as.integer(base[[id_col]] %in% selections)
+  diff <- base |> 
+    fmutate(new_val = new_val) %>%
+    fsubset(new_val != .[[valuecol]])
+  
+  diff[[valuecol]] <- diff$new_val
+  diff$new_val <- NULL
+  
+  if(fnrow(diff) == 0) return(NULL)
+  return(diff)
+}
