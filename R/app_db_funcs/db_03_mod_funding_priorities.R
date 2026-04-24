@@ -54,16 +54,18 @@ update_coc_funding_priorities_db <- function(p, metric_name, updated_coc_funding
   )
 }
 
-get_coc_hud_ard_data <- function(c) {
-  dv_ard <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
+get_coc_hud_ard_data <- function(user_coc) {
+  dv_ard_db <- get_dv_ard(user_coc$coc_version_id)
   
-  HUD_ARD_REPORT[coc == c] |>
+  HUD_ARD_REPORT[coc == user_coc$coc] |>
     frename("total_ard" = estimated) |>
     fmutate(
       adjusted_ard = tier_1/0.9,
       tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
       yhdp_ard = total_ard - min(adjusted_ard, total_ard),
-      dv_ard = dv_ard[1]
+      dv_ard = dv_ard_db$dv_ard[1],
+      version_id = dv_ard_db$version_id[1],
+      exceeds = Inf
     )
 }
 
