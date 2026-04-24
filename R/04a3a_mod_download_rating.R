@@ -11,10 +11,11 @@ mod_download_rating_ui <- function(id) {
       div(
         class = "dropdown ms-2",
         tags$button(
+          id = ns("generate_report_btn"),
           class = "btn btn-primary dropdown-toggle btn-sm",
           type = "button",
           `data-bs-toggle` = "dropdown",
-          icon("download"), " Generate Report Card"
+          icon("file"), " Generate Report Card"
         ),
         tags$ul(
           class = "dropdown-menu dropdown-menu-end",
@@ -37,6 +38,15 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     
     ready_file <- reactiveValues(path = NULL, filename = NULL)
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
+    
+    all_factors_and_scores <- reactive({
+      get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action_id)
+    })
+    
+    observeEvent(c(selected_project(), all_factors_and_scores()), {
+      shinyjs::toggle(id = "dl_current", condition = fnrow(selected_project()) > 0)
+      shinyjs::toggle(id = "dl_all", condition = fnrow(all_factors_and_scores) > 0)
+    }, ignoreInit = TRUE)
     
     # ----------------------------------------------------
     # THE BACKGROUND TASK
@@ -84,6 +94,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
             
             zip_path <- tempfile(fileext = ".zip", tmpdir = tmp_dir)
             zip::zipr(zipfile = zip_path, files = files_to_zip)
+            browser()
             return(zip_path)
           }
         }, payload = payload)
@@ -103,8 +114,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         # Show a green download link
         downloadLink(
           ns("dl_final"), 
-          span(icon("file-arrow-down"), style = "color: white !important", " Download"), 
-          class = "btn btn-outline-success btn-sm"
+          span(icon("download"), style = "color: white !important", " Download"), 
+          class = "btn btn-success btn-sm"
         )
       } else {
         NULL # Idle state
@@ -128,7 +139,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     }
     observeEvent(input$dl_current, {
       dl_state("busy")
-      showNotification("PDF generation started in the background...", type = "message")
+      # showNotification("PDF generation started in the background...", type = "message")
       
       df <- get_project_df()
       
@@ -210,16 +221,11 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     })
     
     observeEvent(input$dl_all, {
-      all_factors_and_scores <- get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action_id)
+      if(fnrow(all_factors_and_scores) == 0)
+        showNotification("No projects have scores!", type = "error")
+      req(FALSE)
       
-      shiny::validate(
-        need(
-          fnrow(all_factors_and_scores) > 0,
-          "No projects with scores"
-        )
-      )
-      
-      showNotification("PDF generation started in the background...", type = "message")
+      dl_state("busy")
       
       payload <- list(
         type = "zip",
