@@ -96,29 +96,17 @@ mod_funding_priorities_ui <- function(id) {
     ), # end coc nofo opportunities card
     card(
       card_header("Funding Ceilings and Priorities by Project Type and Population"),
-      fill = FALSE,
-      layout_sidebar(
-        fillable = TRUE,
-        sidebar = sidebar(
-          width = "22%",
-          checkboxGroupInput(
-            ns("population_toggles"),
-            label = "Enable/Disable Populations",
-            choices = pop_grp_toggles$full_text,
-            selected =  c("General Families", "General Individuals", "Single Youth")
-          )
-        ),
-        div(
-          id = ns("priorities_help"),
-          helpText("Double-click a cell to edit")
-        ),
-        DTOutput(ns("priorities_table"))
-      )
+      div(
+        id = ns("priorities_help"),
+        helpText("Double-click a cell to edit")
+      ),
+      DTOutput(ns("priorities_table"), fill = FALSE),
+      fill = FALSE
     )
   )
 }
 
-mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session) {
+mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_session, help_id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     refresh_trigger <- reactiveValues(
@@ -149,19 +137,24 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     )
     
     hud_ard_coc_data <- reactive({
-      req(refresh_trigger$dv_ard)
-      dv_ard_db <- get_db_query("SELECT dv_ard FROM coc_versions WHERE coc_version_id = $1", params = user_coc$coc_version_id)
+      req(refresh_trigger$dv_ard, user_coc$coc_version_id)
+      
+      dv_ard_db <- get_dv_ard(user_coc$coc_version_id)
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
           adjusted_ard = round(tier_1/0.9, 0),
           tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
           yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = dv_ard_db[1]
+          dv_ard = dv_ard_db$dv_ard[1],
+          version_id = dv_ard_db$version_id[1]
         ) |>
         frename(estimated = "total_ard")
     })
     
+    
+    # Coc Version updates ---------
     observeEvent(user_coc$coc_version_id, {
+      ## ARD buckets --------
       lapply(ard_field_names, function(i) {
         updateCurrencyInput(
           session, 
@@ -184,11 +177,23 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       update_dv_ard(
         get_db_pool(),
-        list(dv_ard_debounced(), user_coc$username, user_coc$coc_version_id)
+        list(
+          dv_ard_debounced(), 
+          user_coc$username, 
+          user_coc$coc_version_id, 
+          hud_ard_coc_data()$version_id
+        )
       )
       refresh_trigger$dv_ard <- refresh_trigger$dv_ard + 1
     }, ignoreInit = TRUE)
     
+    observeEvent(hud_ard_coc_data(), {
+      updateCurrencyInput(
+        session,
+        "dv_ard",
+        value = hud_ard_coc_data()$dv_ard
+      )
+    })
     
     # Priorities ------------
     format_coc_funding_priorities <- function(coc_funding_priorities_db) {
@@ -256,7 +261,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       formatted_coc_funding_priorities(
         format_coc_funding_priorities(coc_funding_priorities())
       )
-    })
+    }, priority = 1)
     
     ## CoC NOFO Opportunities ------
     observeEvent(c(
@@ -297,32 +302,24 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     
     # Priorities section -----------------
-    observeEvent(user_coc$coc_version_id, {
-      ## Population toggles --------
-      selected_populations <- formatted_coc_funding_priorities() %>%
-        dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
-      
-      updateCheckboxGroupInput(
-        session,
-        "population_toggles",
-        selected = if(fnrow(selected_populations) > 0) selected_populations$Population else  c("General Families", "General Individuals", "Single Youth")
-      )
-    })
     output$priorities_table <- renderDT({
       req(user_coc$coc_version_id)
       req(formatted_coc_funding_priorities())
       
-      show_priorities_row <- length(input$population_toggles) > 0
+      data <- formatted_coc_funding_priorities()
       
-      shinyjs::toggle("priorities_help", condition = show_priorities_row)
+      selected_populations <- data %>%
+        dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
       
-      shiny::validate(need(
-        show_priorities_row == TRUE,
-        "Click population in the left-hand sidebar to enter priorities for that population"
-      ))
+      default_population_filter <- if(fnrow(selected_populations) > 0) 
+        selected_populations$Population 
+      else
+        c("General Families", "General Individuals", "Single Youth")
       
-      data <- formatted_coc_funding_priorities() |>
-        fsubset(Population %in% input$population_toggles)
+      initial_filter <- vector("list", ncol(data))
+      initial_filter[[which(names(selected_populations) == "Population")]] <- list(
+        search = paste0('["', paste(default_population_filter, collapse = '","'), '"]')
+      )
       
       initialize_inline_edit_table_ui(
         data = data,
@@ -369,16 +366,18 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         ),
         options = list(
           dom = 't',
-          searching = FALSE,
           info = FALSE,
           keys = TRUE,
           ordering = FALSE
         ),
-        filter = 'none',
+        initial_filter = initial_filter,
+        filter = 'top',
+        column_defs = list(
+          list(searchable = FALSE, targets = which(names(data) != "Population") - 1)
+        ),
         has_double_header = TRUE
       )      
-      #end initialize_data_Table
-    }, server = FALSE)
+    }, server = FALSE) #end initialize_data_Table
     
     priorities_table_proxy <- dataTableProxy("priorities_table",session = session)
     
@@ -392,18 +391,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     observeEvent(input$priorities_table_cell_edit, {
       info <- input$priorities_table_cell_edit
       
-      # Update the full dataset 
       current_data <- formatted_coc_funding_priorities()
 
-      # Get the population name from the row that was displayed
-      # This is trickier because the view is filtered. We need to map the
-      # viewed row index back to the full data index.
-      displayed_data <- current_data[Population %in% input$population_toggles]
-      population_to_update <- displayed_data[info$row, Population]
-      full_data_row_index <- which(current_data$Population == population_to_update)
-      
       # only proceed if they changed anything:
-      old_val <- current_data[full_data_row_index, (info$col + 1), with=FALSE][[1]]
+      old_val <- current_data[info$row, (info$col + 1), with=FALSE][[1]]
       info$value <- DT::coerceValue(info$value, old_val)
       
       req(!identical(old_val, info$value))
@@ -420,10 +411,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # Update the value in the full dataset, so we can update the reactive and datatable proxy
       # The column index needs + 1 because datatable is 0 indexed
-      current_data[full_data_row_index, (info$col + 1) := info$value]
+      current_data[info$row, (info$col + 1) := info$value]
 
       ## Update database -------------
-      changed_data <- current_data[full_data_row_index, c(1, info$col + 1), with=FALSE] |>
+      changed_data <- current_data[info$row, c(1, info$col + 1), with=FALSE] |>
         tidyr::pivot_longer(
           cols = -Population,
           names_to = c("project_type", ".value"), # ".value" tells it to keep the second part as column headers

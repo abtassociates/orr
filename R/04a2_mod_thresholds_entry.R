@@ -266,7 +266,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       })
       
       # if(needs_refresh1 || needs_refresh2)
-        refresh_trigger(\(x) x + 1)
+        refresh_trigger(refresh_trigger() + 1)
       
     }, ignoreInit = TRUE) # end save_requirements
   }) # end moduleServer

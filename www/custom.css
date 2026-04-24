@@ -1,4 +1,29 @@
+/*As of rlang 1.2.0, the sort icons on datatables look weird. This fixes that
 
+The Change: rlang 1.2.0 (released in late 2024) introduced significant internal changes to how R handles encoding and UTF-8 strings
+The Conflict: When DT prepares its CSS, it includes those arrow characters (▲). If rlang 1.2.0 changed the way it "marks" strings as UTF-8 or how it passes them to the htmltools package (which Shiny uses to build your app), the browser might receive the CSS without the proper "I am UTF-8" flag.
+The Result: The browser defaults to Latin-1, and your UTF-8 arrows (▲/▼) turn into the "Mojibake" (â–²).
+*/
+/* Fix the Up Arrow (:before) */
+table.dataTable thead > tr > th.sorting:before,
+table.dataTable thead > tr > th.sorting_asc:before,
+table.dataTable thead > tr > td.sorting:before,
+table.dataTable thead > tr > td.sorting_asc:before {
+    content: "\25B2" / "" !important;
+}
+
+/* Fix the Down Arrow (:after) */
+table.dataTable thead > tr > th.sorting_desc:after,
+table.dataTable thead > tr > td.sorting_desc:after {
+    content: "\25BC" / "" !important;
+}
+
+/* Clean up: ensure no 'broken' characters remain on the :after elements of unsorted columns */
+table.dataTable thead > tr > th.sorting:after,
+table.dataTable thead > tr > td.sorting:after {
+    content: "\25BC" / "" !important;
+}
+    
 #submit_sign_out {
   font-weight: bold;
   /*background-color: red;
@@ -25,6 +50,18 @@ td.disabled {
   display: none;
 }
 
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 /*CUSTOMIZE RATING CRITERIA*/
 /*
 [id*="_main_accordion"] .accordion-button {
@@ -35,11 +72,15 @@ td.disabled {
 }*/
 
 /*FUNDING PRIORITIES*/
-/*
-#funding_priorities-priorities_table table.dataTable th, 
-#funding_priorities-priorities_table table.dataTable td {
-  text-align:center;
-}*/
+#funding_priorities-priorities_table table.dataTable thead tr:nth-child(3) td:nth-child(3n+4) {
+  border-right: 1px solid black;
+}
+#funding_priorities-priorities_table table.dataTable thead tr:nth-child(3) td:not(:first-child):not(:nth-child(3n+4)) {
+  border-right: 1px solid lightgray;
+}
+border-right` = "1px solid lightgray"
+
+
 [id^="funding_priorities"].autonumeric-input {
   font-size: 1.2rem !important; /*otherwise, default for currencyInput is 1.5rem which is too big*/
 }
@@ -82,8 +123,16 @@ table.dataTable tbody th.focus, table.dataTable tbody td.focus {
 #rating-alternative-alternative_rating_table .dt-buttons {
   display: none;
 }
-#rating-alternative-alternative_rating_table .dataTables_scrollBody {
-  height: 46vh !important;
+
+@media (min-width: 1440px) {
+  #rating-alternative-alternative_rating_table .dataTables_scrollBody {
+    height: 35vh !important;
+  }
+}
+@media (min-width: 2000px) {
+  #rating-alternative-alternative_rating_table .dataTables_scrollBody {
+    height: 46vh !important;
+  }
 }
 
 
@@ -175,4 +224,69 @@ tr.group_header td{
 }
 #ranking-exceeds-bucket, tr.group-exceeds td {
   background-color: var(--brand-exceeds);
+}
+
+/* STICKY CARD FOOTER*/
+.sticky-footer {
+  position: sticky; 
+  bottom: 0; 
+  z-index: 1020; 
+  background-color: var(--bs-card-cap-bg, #f8f9fa); 
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+  box-shadow: 0px -4px 10px rgba(0,0,0,0.05);", # Shadow so it looks like it's floating
+}
+
+
+/* HELP SIDEBAR*/
+/* The Help Sidebar sliding panel */
+#instructions-help_sidebar {
+  display: none; /*Initially hidden until user logs in*/
+  position: fixed;
+  top: 0;
+  right: -400px; /* Hidden completely off-screen */
+  width: 400px;
+  max-width: 100vw;
+  height: 100vh;
+  background-color: #ffffff;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+  z-index: 99998; 
+  transition: right 0.4s ease-in-out; 
+  
+  /* CRITICAL: Must be visible so the attached button shows outside the box */
+  overflow: visible; 
+}
+
+#instructions-help_sidebar.open {
+  right: 0; 
+}
+
+/* The button that sticks out the left side of the panel */
+#instructions-toggle_help {
+  position: absolute;
+  top: 80px; /* Distance from the top of the screen */
+  left: -50px; /* Pulls it entirely out of the left side of the panel */
+  width: 50px;
+  height: 50px;
+  background-color: #0d6efd; /* Bootstrap Primary Blue - adjust to your theme */
+  color: white;
+  border-radius: 8px 0 0 8px; /* Round only the left corners */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: -2px 0px 5px rgba(0,0,0,0.2);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+#instructions-toggle_help:hover, #toggle_help:focus {
+  color: white;
+  background-color: #0b5ed7;
+}
+
+/* Scrollable container inside for the actual content */
+#instructions-help_sidebar_content {
+  height: 100vh;
+  padding: 20px;
+  overflow-y: auto; /* Handles scrolling for the text */
 }

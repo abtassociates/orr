@@ -287,8 +287,10 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
             choices = choiceList,
             width = "100%"
           ),
-          fileInput(ns('hic_file_upload'), label = 'Upload your HIC data',
-                    accept = c('csv')),
+          conditionalPanel(
+            condition = sprintf("input['%s'] == 'upload'", ns('hic_import_select')),
+            fileInput(ns('hic_file_upload'), label = 'Upload your HIC data', accept = c('csv'))
+          ),
           footer = tagList(
             actionButton(inputId=ns('name_version'),label='Continue', class="btn-primary"),
             modalButton(label='Cancel')
@@ -296,11 +298,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
         ),
         session = session
       )
-    })
-    
-    ### Toggle HIC File upload --------------
-    observeEvent(input$hic_import_select, {
-      shinyjs::toggle("hic_file_upload", condition = input$hic_import_select == 'upload')
     })
     
     ## Name coc version -----------

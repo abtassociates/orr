@@ -47,7 +47,7 @@ mod_inventory_ui <- function(id) {
   )
 }
 
-mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
+mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help_id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -74,6 +74,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       funding_source = NULL
     )
     
+    refresh_trigger <- reactiveVal(0)
+    
     # Add fields only displayed in Inventory
     add_calculated_fields <- function(project_data, is_new = FALSE) {
       project_data <- project_data |>
@@ -96,8 +98,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     
     # Initialize projects_data ------
     observe({
-      req(user_coc$coc_version_id)
-
+      req(user_coc$coc_version_id, refresh_trigger())
       data <- get_coc_projects(user_coc$coc_version_id) |>
         fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
@@ -266,7 +267,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
           
           function(x) formatRound(
             x,
-            columns = grep('bed', names(data)) - 1,
+            columns = grep('bed', names(data)),
             digits = 0
           )
         ),
@@ -293,6 +294,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
     projects_table_proxy <- dataTableProxy("projects_table",session = session)
+    projects_table_proxy$id <- "projects_table" # setting id to raw_id seems to fix auto-scrolling
     
     observe({
       req(projects_data())
@@ -328,8 +330,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       req(projects_data())
       
-      bed_fields <- grep('bed', names(projects_data())) - 1
-      bed_field_names <- names(projects_data())[bed_fields + 1]
+      bed_fields <- grep('bed', names(projects_data()))
+      bed_field_names <- names(projects_data())[bed_fields]
       
       if(input$toggle_bed_fields){
         updatePickerInput(session, inputId = 'projects_col_selections', selected = union(input$projects_col_selections, bed_field_names))
@@ -340,24 +342,25 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     
     # Update DT table with column changes made in dropdown (pickerInput)
     observeEvent(input$projects_col_selections, {
-      
-       req(user_coc$auth)
-       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
-       req(projects_data())
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      req(projects_data())
         
-       cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
-       cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
-       # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+      cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
+      cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
+      # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+      
+      ## show and hide columns as needed
+      projects_table_proxy$id <- ns("projects_table")
+      if(length(cols_to_hide) > 0) {
+        hideCols(projects_table_proxy, hide = cols_to_hide)
+      }
+      if(length(cols_to_show) > 0) {
+        showCols(projects_table_proxy, show = cols_to_show)
+      }
+      projects_table_proxy$id <- "projects_table"
        
-       ## show and hide columns as needed
-        if(length(cols_to_hide) > 0){
-          hideCols(projects_table_proxy, hide = cols_to_hide)
-        }
-        if(length(cols_to_show) > 0){
-          showCols(projects_table_proxy, show = cols_to_show)
-        }
-       
-       user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
+      user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
     })
     
     # Update projects -----
@@ -368,15 +371,20 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       col_name <- colnames(projects_data())[info$col + 1]
       
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
-      update_datatable(proj_id, col_name, info$value)
-      update_inventory_db(value, col_name, proj_id)
+      needs_refresh <- update_inventory_db(value, col_name, proj_id, project_data$version_id)
+      if(!needs_refresh) {
+        user_coc$projects_updated <- user_coc$projects_updated + 1
+        update_datatable(proj_id, col_name, info$value)
+      } else {
+        refresh_trigger(refresh_trigger() + 1)
+      }
     }
     
     update_datatable <- function(proj_id, col_name, value) {
       # update the reactiveVal that updates the proxy
       updated_data <- copy(projects_data())[
         project_id == proj_id, 
-        (col_name) := value
+        c(col_name, "version_id") := list(value, version_id + 1)
       ] |>
         add_calculated_fields()
       
@@ -520,7 +528,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
               title = "YHDP Replacement Confirmation",
               HTML("
                   Are you replacing this project with multiple projects? <br><br>
-                  If not, then click 'No'. Then update the newly highlighted fields 
+                  If not, click 'No'. Then update the newly highlighted fields 
                   for the project. Note that because this is a YHDP Replacement 
                   project, you can only edit the Project Name, Project Type, and Youth 
                   bed fields. <br><br> If you are Replacing this project with 
@@ -538,7 +546,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
                 actionButton(ns('replace_multiple'), label="Yes"),
                 actionButton(ns('replace_one'), label="No"),
                 actionButton(ns('replace_cancel'), label="Cancel"),
-              )
+              ),
+              size = "l"
             )
           ) # end showModal
         } 
@@ -546,11 +555,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
         else {
           launch_modal(paste0(funding_source, " Reallocation"), funding_source)
         }
-      }
+      } # end reallocation/replace IF-block
       # Update after non-reallocation and non-replace ------
-      else {
-        inventory_update(info, new_value)
-      }
+      inventory_update(info, new_value)
     }, ignoreInit = TRUE)
     
     # Handle replacement modal ------
@@ -563,20 +570,17 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     
     ## User wants to replace with multiple projects ----
     observeEvent(input$replace_multiple, {
-      show_project_modal(
-        "YHDP Replacement", 
-        yhdp_replacement_info$funding_source, 
-        yhdp_replacement_info$info, 
-        yhdp_replacement_info$new_value,
-        yhdp_replacement_info$project_to_replace,
-        orgnames = orgnames()
+      removeModal()
+      launch_modal(
+        type ="YHDP Replacement", 
+        source = yhdp_replacement_info$funding_source, 
+        replacement = yhdp_replacement_info$project_to_replace
       )
     })
-    
-    ## User wants to replace with one project ----
+
+        ## User wants to replace with one project ----
     observeEvent(input$replace_one, {
       removeModal()
-      inventory_update(yhdp_replacement_info$info, yhdp_replacement_info$new_value)
     })
     
     ## User cancelled replacement ----
@@ -618,6 +622,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
     # Handle user's add project submission
     observeEvent(modal_submission$status, {
       req(modal_submission$status)
+      req(modal_submission$status != "error")
       
       if(current_form_type() == "New") {
         inventory_append(modal_submission$project_data)
@@ -625,7 +630,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session) {
       # If they reallocated or replaced, we need to both update the reallocated/replaced row
       # AND add the new project
       else {
-        inventory_update(info, new_value)
         inventory_append(modal_submission$project_data)
       }
     }, ignoreNULL = TRUE)

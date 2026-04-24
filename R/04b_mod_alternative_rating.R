@@ -28,7 +28,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
-    observeEvent(c(refresh_trigger(), user_coc$projects_updated), {
+    observeEvent(c(user_coc$coc_version_id, refresh_trigger(), user_coc$projects_updated), {
       req(user_coc$coc_version_id)
       
       ratable_projects(
@@ -41,7 +41,6 @@ mod_alternative_rating_server <- function(id, user_coc) {
     
     # Alternative Rating table
     # 1. Create a helper function to ensure data formatting is identical
-    # for both the initial render and subsequent proxy updates.
     format_table_data <- function(df) {
       
       df %>%
@@ -55,7 +54,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     
     output$alternative_rating_table <- renderDT({
       req(user_coc$coc_version_id)
-      data <- isolate(ratable_projects()) |> fselect(-version_id)
+      data <- isolate(ratable_projects() |> fselect(-version_id))
       
       shiny::validate(need(
         nrow(data) > 0, 
@@ -124,21 +123,9 @@ debugger;
         tableID = ns("alternative_rating_table"),
         column_defs = list(
           list(
-            targets =c(which(names(data) %in% c("funding_action", "date_updated")) - 1),
+            targets = which(names(data) %in% c("funding_action", "date_updated")) - 1,
             className = "hidden",
             visible = FALSE
-          ),
-          list(
-            targets =c(which(names(data) == "project_id") - 1),
-            width = '90px'
-          ),
-          list(
-            targets =c(which(names(data) == "weighted_score") - 1),
-            width = '120px'
-          ),
-          list(
-            targets =c(which(names(data) %in% c("met_hud_thresholds", "met_coc_thresholds")) - 1),
-            width = '153px'
           )
         ),
         formatting = list(
@@ -167,12 +154,24 @@ debugger;
       )
     }, server=FALSE)
     
+    alt_rating_proxy <- dataTableProxy("alternative_rating_table", session=session)
+    alt_rating_proxy$id <- "alternative_rating_table"
+    observeEvent(ratable_projects(), {
+      replaceData(alt_rating_proxy, ratable_projects() |> fselect(-version_id), resetPaging=FALSE, rownames = FALSE)
+    })
+    
     alt_rating_update <- function() {
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
       needs_refresh <- update_project_evaluations_db(get_db_pool(), updated_project_evaluations)
       
-      # if(needs_refresh)
-        refresh_trigger(\(x) x + 1)
+      if(!needs_refresh) {
+        ratable_projects()[
+          project_id %in% updated_project_evaluations$project_id,
+          version_id := version_id + 1
+        ]
+      } else {
+        refresh_trigger(refresh_trigger() + 1)
+      }
     }
     
     # Update alternative rating data when cell is edited
@@ -189,21 +188,7 @@ debugger;
       
       alt_rating_update()
     }, ignoreInit = TRUE) # end alt rating table cell edit
-    
-    observe({
-      req(user_coc$coc_version_id)
-      
-      data <- get_alternative_rating(user_coc$coc_version_id) %>% 
-                format_table_data()
-      
-      ratable_projects(data)
-    })
-    
-    ## datatable proxy-----
-    # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
-    # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy("alternative_rating_table", session = session)
-    
+
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns
     set_all_thresholds_handler <- function(colname) {
       input_name <- paste0("set_", colname)

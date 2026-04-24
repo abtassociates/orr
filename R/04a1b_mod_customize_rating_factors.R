@@ -37,6 +37,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
     paste0(display_funding_action, " Rating Factors"),
     value = id,
     layout_sidebar(
+      style = "overflow: visible !important;", 
       sidebar = sidebar(
         title = "Filters",
         id = ns("sidebar"),
@@ -44,9 +45,12 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
         project_and_pop_dropdowns(ns)
       ),
       card(
+        style = "overflow: visible !important;", 
+        
         uiOutput(ns("factors_ui")) |> withSpinner(),
+        
         card_footer(
-          style = "display: flex; justify-content: space-between; align-items: center;",
+          class = "sticky-footer d-flex justify-content-between align-items-center",
           actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus")),
           actionButton(ns("save_factors"), paste0("Save ", display_funding_action, " Criteria"), icon = icon("save"), class = "btn-primary")
         )
@@ -65,32 +69,25 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
     other_factor_group_id <- get_other_factor_group_id(funding_action_id) #used to ensure the custom factor goes in the Other group
+    goal_char_limit <- get_db_column_limit("rating_factors","goal")
     
     refresh_trigger <- reactiveVal(0)
-    # Counter for unique IDs for custom factor rows
-    custom_factor_counter <- reactiveVal(0)
-    # Store observers for remove buttons to manage them
-    custom_factor_observers <- reactiveValues()
     subgroup_check_all_values <- reactiveValues()
-
+    current_versions <- reactiveValues()
+    
     all_coc_factors <- reactive({
       req(funding_action, user_coc$coc_version_id, refresh_trigger())
       
+      # Fetch data from DB
       get_all_coc_factors(funding_action_id, user_coc$coc_version_id)
-    })
-    
-    all_coc_factors_filtered <- reactive({
-      f <- all_coc_factors()
-      if(!is.null(input$project_type_filter)) f <- f[project_type %in% c(input$project_type_filter, NA)]
-      if(!is.null(input$target_population_filter)) f <- f[target_population %in% c(input$target_population_filter, NA)]
-      
-      f
     })
     
     all_coc_factors_structured <- reactive({
       req(user_coc$coc_version_id)
       
-      f <- all_coc_factors_filtered()
+      # Use the unfiltered data here
+      f <- all_coc_factors() 
+      
       nested_data <- list()
       unique_groups <- unique(f$factor_group)
       
@@ -101,33 +98,109 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       
       nested_data
     })
+
+    # Handle filters
+    observeEvent(c(input$project_type_filter, input$target_population_filter), {
+      # This observer depends on the filters
+      pt_filter <- input$project_type_filter
+      tp_filter <- input$target_population_filter
+      
+      # We use JS for speed to avoid 100+ server-to-client messages
+      # Construct a CSS selector that hides everything, then shows matches
+      # Or simply iterate through the classes
+      
+      # Logic:
+      # 1. Hide all rows with class 'factor-row'
+      # 2. Show rows where (class contains a selected PT OR pt-all) 
+      #    AND (class contains a selected TP OR tp-all)
+      
+      pt_selectors <- if(is.null(pt_filter)) "'.pt-all'" else paste0("'.pt-all, ", paste0(".pt-", pt_filter, collapse = ", "), "'")
+      tp_selectors <- if(is.null(tp_filter)) "'.tp-all'" else paste0("'.tp-all, ", paste0(".tp-", tp_filter, collapse = ", "), "'")
+      
+      shinyjs::runjs(sprintf("
+        $('.factor-row').hide();
+        $('.factor-row').filter(function() {
+        debugger;
+        
+           var hasPT = $(this).is(%s) || %s;
+           var hasTP = $(this).is(%s) || %s;
+           return hasPT && hasTP;
+        }).show();
+        
+        // Hide the whole accordion if all subfactors are hidden
+        $('.bslib-accordion-panel').each(function() {
+          var visibleChildren = $(this).find('.factor-row:visible').length;
+          $(this).toggle(visibleChildren !== 0);
+        });
+      ", 
+      pt_selectors, tolower(as.character(is.null(pt_filter))), 
+      tp_selectors, tolower(as.character(is.null(tp_filter)))))
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
-    get_col_widths <- function(funding_action, adding_custom_factor = FALSE) {
-      if(funding_action == "Renew")
-        breakpoints(
-          sm = c(1, 1, 1, 5, 2, 2),
-          md = c(1, 1, 1, 5, 2, 2),
-          lg = c(1, 1, 1, 5, 2, 2),
-          xl = c(1, 1, 1, 5, 2, 2),
-          xxl = c(1, 1, 1, 7, 1, 1)
-        )
-      else if(!adding_custom_factor)
-        breakpoints(
-          sm = c(1, 1, 6, 2, 2),
-          md = c(1, 1, 6, 2, 2),
-          lg = c(1, 1, 6, 2, 2),
-          xl = c(1, 1, 6, 2, 2),
-          xxl = c(1, 1, 8, 1, 1)
-        )
-      else c(1, 1, 6, 2, 2)
+    # get_col_widths <- function(funding_action, adding_custom_factor = FALSE) {
+    #   if(funding_action == "Renew")
+    #     breakpoints(
+    #       sm = c(1, 1, 1, 5, 2, 2),
+    #       md = c(1, 1, 1, 5, 2, 2),
+    #       lg = c(1, 1, 1, 5, 2, 2),
+    #       xl = c(1, 1, 1, 5, 2, 2),
+    #       xxl = c(1, 1, 1, 7, 1, 1)
+    #     )
+    #   else if(!adding_custom_factor)
+    #     breakpoints(
+    #       sm = c(1, 1, 6, 2, 2),
+    #       md = c(1, 1, 6, 2, 2),
+    #       lg = c(1, 1, 6, 2, 2),
+    #       xl = c(1, 1, 6, 2, 2),
+    #       xxl = c(1, 1, 8, 1, 1)
+    #     )
+    #   else c(1, 1, 6, 2, 2)
+    # }
+    # Helper to make a single row - much faster than layout_columns
+    make_factor_row <- function(id, project_type, target_population, text, goal, points, selected, group_name) {
+      iv$add_rule(paste0("goal_", id), ~if (isTRUE(nchar(.) > goal_char_limit)) glue::glue("Limited to {goal_char_limit} characters"))
+      iv$add_rule(paste0("points_", id), sv_between(-999.9, 999.9))
+
+
+      # Metadata classes for the JS Filtering
+      pt_class <- if(is.na(project_type)) "pt-all" else paste0("pt-", project_type)
+      tp_class <- if(is.na(target_population)) "tp-all" else paste0("tp-", target_population)
+
+      div(
+        class = paste("factor-row", pt_class, tp_class),
+        style = "display: flex; gap: 15px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0;",
+        # Use inline-styles or a CSS file to define these widths
+        div(
+          # 40px forces it to stay narrow. margin-bottom: 0px removes Shiny's default spacing
+          style = "flex: 0 0 100px; margin-bottom: 0px; display: flex; justify-content: center;",
+          checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected, width = "100%")
+        ),
+        if(funding_action == "Renew") div(style = "flex: 1;", get_lookup_label(project_type, "project_type")) else NULL,
+        div(style = "flex: 1;", get_lookup_label(target_population, "target_population")),
+        div(style = "flex: 3; font-size: 0.9rem;", text),
+        div(style = "flex: 1;", textInput(ns(paste0("goal_", id)), NULL, value = goal, width = "100%")),
+        div(style = "flex: 0 0 80px;", numericInput(ns(paste0("points_", id)), NULL, value = points, step = 0.1, width = "100%"))
+      )
+      # 
+      # row_items <- list(
+      #   checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
+      #   if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")) else NULL,
+      #   div(get_lookup_label(target_population, ref_type = "target_population")),
+      #   div(text),
+      #   textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
+      #   numericInput(ns(paste0("points_", id)), min = -999.9, max=999.9, label = NULL, value = points, step = 0.1)
+      # )
+      # 
+      # layout_columns(
+      #   class = paste("factor-row", pt_class, tp_class),
+      #   id = ns(paste0("rows_items_", janitor::make_clean_names(group_name))),
+      #   col_widths = get_col_widths(funding_action),
+      #   !!!purrr::compact(row_items)
+      # )
     }
     
-    goal_char_limit <- get_db_column_limit("rating_factors","goal")
-    
-    render_nested_factor_accordion_ui <- function(ns, funding_action = "Renew", data_groups_nested, placeholder_text = "No rating factors found.") {
-      if (length(data_groups_nested) == 0) {
-        return(p(placeholder_text))
-      }
+    render_nested_factor_accordion_ui <- function(data_groups_nested) {
+      if (length(data_groups_nested) == 0) return(p("No rating factors found."))
       
       accordion_items_group <- lapply(names(data_groups_nested), function(group_name) {
         group_data_subgroups <- data_groups_nested[[group_name]]
@@ -135,65 +208,62 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         sub_accordion_items <- lapply(names(group_data_subgroups), function(subgroup_name) {
           subgroup_data <- group_data_subgroups[[subgroup_name]]
           
-          factor_rows <- if(allNA(subgroup_data$rating_factor_id))
-            NULL
-          else
-            purrr::pmap(
-              list(
-                subgroup_data$rating_factor_id, 
-                subgroup_data$project_type, 
-                subgroup_data$target_population, 
-                subgroup_data$rating_factor_text, 
-                subgroup_data$goal, 
-                subgroup_data$max_point_value, 
-                subgroup_data$selected
-              ), function(id, project_type, target_population, text, goal, points, selected) {
-                row_items <- list(
-                  checkboxInput(ns(paste0("select_", id)), label = NULL, value = selected),
-                  if(funding_action == "Renew") div(get_lookup_label(project_type, ref_type = "project_type")) else NULL,
-                  div(get_lookup_label(target_population, ref_type = "target_population")),
-                  div(text),
-                  textInput(ns(paste0("goal_", id)), label = NULL, value = goal),
-                  numericInput(ns(paste0("points_", id)), min = 1, label = NULL, value = points, step = 0.1)
-                )
-                
-                iv$add_rule(paste0("goal_", id), ~
-                  if (isTRUE(nchar(.) > goal_char_limit)) "Limited to 10 characters"
-                )
-                iv$add_rule(paste0("points_", id), sv_between(-999.9, 999.9))
-                
-                layout_columns(
-                  id = ns(paste0("rows_items_", gsub(" ", "-", group_name))),
-                  col_widths = get_col_widths(funding_action),
-                  !!!purrr::compact(row_items)
-                )
-              }
-            ) # end purrr::pmap
+          ## Build the rows ---------
+          factor_rows <- if(allNA(subgroup_data$rating_factor_id)) NULL else {
+            purrr::pmap(list(
+              subgroup_data$rating_factor_id, 
+              subgroup_data$project_type, 
+              subgroup_data$target_population, 
+              subgroup_data$rating_factor_text, 
+              subgroup_data$goal, 
+              subgroup_data$max_point_value, 
+              subgroup_data$selected,
+              group_name
+            ), make_factor_row)
+          }
           
           all_subgroup_factors_selected <- nrow(subgroup_data) == nrow(subgroup_data[selected == TRUE])
+          ## Build the header --------
+          # header_items <- list(
+          #   div(
+          #     tags$b("Use in rating?"),
+          #     checkboxInput(
+          #       ns(janitor:::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))),
+          #       label = NULL,
+          #       value = all_subgroup_factors_selected
+          #     )
+          #   ),
+          #   # Use if() normally; compact() will remove the NULLs later
+          #   if(funding_action == "Renew") tags$b("Project Type") else NULL,
+          #   tags$b("Target Population", style="word-wrap: normal;"),
+          #   tags$b("Rating Factor"),
+          #   tags$b("Factor/\nGoal", style="word-wrap: normal;"),
+          #   tags$b("Max Point Value")
+          # )
           
-          header_items <- list(
-            div(
-              tags$b("Use in rating?"),
-              checkboxInput(
-                ns(janitor:::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))),
-                label = NULL,
-                value = all_subgroup_factors_selected
-              )
-            ),
-            # Use if() normally; compact() will remove the NULLs later
-            if(funding_action == "Renew") tags$b("Project Type") else NULL,
-            tags$b("Target Population", style="word-wrap: normal;"),
-            tags$b("Rating Factor"),
-            tags$b("Factor/\nGoal", style="word-wrap: normal;"),
-            tags$b("Max Point Value")
-          )
+          header_id <- 
           
           bslib::accordion_panel(
             title = ifelse(subgroup_name == "NA", "", subgroup_name),
-            layout_columns(
-              col_widths = get_col_widths(funding_action),
-              !!!purrr::compact(header_items)
+            # layout_columns(
+            #   col_widths = get_col_widths(funding_action),
+            #   !!!purrr::compact(header_items)
+            # )
+            div(style = "display: flex; gap: 15px; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #ddd;",
+                div(
+                  style = "flex: 0 0 100px; margin-bottom: 0px; display: flex; justify-content: center;", 
+                  checkboxInput(
+                    ns(janitor::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))), 
+                    label = "Use in Rating?", 
+                    value = all_subgroup_factors_selected, 
+                    width = "100%"
+                  )
+                ),
+                if(funding_action == "Renew") div(style = "flex: 1;", "Project Type") else NULL,
+                div(style = "flex: 1;", "Target Population"),
+                div(style = "flex: 3;", "Rating Factor"),
+                div(style = "flex: 1;", "Goal"),
+                div(style = "flex: 0 0 80px;", "Max Points")
             ),
             hr(),
             if(allNA(subgroup_data$rating_factor_id)) NULL else factor_rows,
@@ -204,7 +274,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               div(id = ns("custom_factors_placeholder"))
             }
           )
-        }) # end subaccordion items
+        })
         
         bslib::accordion_panel(
           title = group_name,
@@ -215,89 +285,90 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             open = names(group_data_subgroups)[1]
           )
         )
-      }) #end group accordion items
+      })
       
-      bslib::accordion(
-        !!!accordion_items_group,
-        id = ns("main_accordion"),
-        multiple = TRUE,
-        open = names(data_groups_nested)[1]
-      )
+      bslib::accordion(!!!accordion_items_group, id = ns("main_accordion"), multiple = TRUE)
     }
     
     handle_check_all_box_functionality <- function(input) {
       # 1. Fetch ALL possible subgroup names ONCE at the start.
-      #    This decouples observer creation from the reactive data flow.
-      #    We query the source table directly for this static list.
       all_possible_subgroups <- get_subgroups_by_funding_action(funding_action_id)
-
+      
       # PARENT -> CHILDREN
       # observe changes to check-all boxes
-      lapply(seq_row(all_possible_subgroups), function(i) {
+      lapply(seq_len(nrow(all_possible_subgroups)), function(i) {
         group <- all_possible_subgroups$factor_group[i]
+        
+        # Ensure NA subgroups are handled correctly as "NA" strings to match the UI
         subgroup <- all_possible_subgroups$factor_subgroup[i]
-        subgroup_check_all_input <- janitor:::make_clean_names(paste0(group, "_check_all_", subgroup))
+        subgroup_str <- if(is.na(subgroup)) "NA" else as.character(subgroup)
+        
+        subgroup_check_all_input <- janitor::make_clean_names(paste0(group, "_check_all_", subgroup_str))
         
         observeEvent(input[[subgroup_check_all_input]], {
           new_val <- input[[subgroup_check_all_input]]
-
           if (is.null(new_val)) return()
           
           stored_val <- isolate(subgroup_check_all_values[[subgroup_check_all_input]])
-          is_initialized <- !is.null(stored_val)
           
           # Only update children if the user clicked (value changed from what we last recorded)
-          if(!identical(new_val, stored_val) && is_initialized) {
+          # We don't need 'is_initialized' because ignoreInit = TRUE prevents initial fire
+          if (!identical(new_val, stored_val)) {
+            
+            # Store in memory to prevent infinite loops
             subgroup_check_all_values[[subgroup_check_all_input]] <- new_val
             
-            subgroup_factors <- isolate(all_coc_factors_structured())[[group]][[toString(subgroup)]]
+            # Extract child factors safely
+            subgroup_factors <- isolate(all_coc_factors_structured())[[group]][[subgroup_str]]
             
-            lapply(subgroup_factors$rating_factor_id, function(factor_id) {
-              checkbox_id <- paste0("select_", factor_id)
-              if (!identical(input[[checkbox_id]], new_val)) {
-                updateCheckboxInput(session, checkbox_id, value = new_val)
+            if (!is.null(subgroup_factors) && nrow(subgroup_factors) > 0) {
+              for (factor_id in subgroup_factors$rating_factor_id) {
+                checkbox_id <- paste0("select_", factor_id)
+                # Only update if different
+                if (!identical(input[[checkbox_id]], new_val)) {
+                  updateCheckboxInput(session, checkbox_id, value = new_val)
+                }
               }
-            })
+            }
           }
           
         }, ignoreInit = TRUE, ignoreNULL = TRUE)
       })
       
       # CHILDREN -> PARENT
-      # Update subgroup check-all-that-apply boxes based on underlying factor boxes ------
+      # Update subgroup check-all-that-apply boxes based on underlying factor boxes
       observe({
         data <- all_coc_factors_structured()
         req(data)
-        # This part checks the children and updates the parent "check all" box.
         
         # Loop through only the groups and subgroups currently visible on the UI.
         for (i in seq_along(data)) {
           group_data <- data[[i]]
           group_name <- names(data)[i]
+          
           for (subgroup_name in names(group_data)) {
             
             subgroup_data <- group_data[[subgroup_name]]
             factor_ids <- subgroup_data$rating_factor_id
             
+            # Skip if this subgroup has no real factors
+            if (length(factor_ids) == 0 || all(is.na(factor_ids))) next
+            
             # Read the current values of all child factor checkboxes for this subgroup.
-            # The `req(input[[...]])` is crucial to prevent this from running before
-            # the child checkboxes are rendered and available in the `input` object.
             factor_selections <- sapply(factor_ids, function(id) input[[paste0("select_", id)]])
             if (any(sapply(factor_selections, is.null))) next
             
-            # message(paste0("Selected factors for ", subgroup_name, ": ", paste0(factor_selections, collapse=", ")))
             # Determine the new state for the parent "check all" box.
-            # It should be checked if and only if all its children are checked.
             parent_should_be_checked <- all(unlist(factor_selections))
             
-            # Get the ID of the parent checkbox
-            subgroup_check_all_input <- janitor:::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))
-
+            # Get the ID of the parent checkbox (FIXED: 2 colons instead of 3)
+            subgroup_check_all_input <- janitor::make_clean_names(paste0(group_name, "_check_all_", subgroup_name))
+            
+            current_parent_val <- isolate(input[[subgroup_check_all_input]])
+            
             # Update the parent checkbox ONLY if its state needs to change.
-            # This avoids unnecessary updates and potential infinite loops.
-            if (!identical(isolate(input[[subgroup_check_all_input]]), parent_should_be_checked)) {
-              # CRITICAL: Also update our memory so that this programmatic change
-              # doesn't re-trigger the `check_all -> factors` logic above.
+            if (!identical(current_parent_val, parent_should_be_checked)) {
+              # CRITICAL: Update memory so programmatic change doesn't re-trigger logic
               subgroup_check_all_values[[subgroup_check_all_input]] <- parent_should_be_checked
               
               updateCheckboxInput(session, subgroup_check_all_input, value = parent_should_be_checked)
@@ -306,20 +377,13 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         }
       })
     }
-    
     # Function to generate the UI for a single custom factor row
+    
     iv <- shinyvalidate::InputValidator$new()
     iv$enable()
     
     output$factors_ui <- renderUI({ # Assuming you have a UI output for 'new' factors
-      data_groups_nested <- all_coc_factors_structured()
-      
-      render_nested_factor_accordion_ui(
-        ns = ns,
-        funding_action = funding_action,
-        data_groups_nested = data_groups_nested,
-        placeholder_text = "No rating factors found"
-      )
+      render_nested_factor_accordion_ui(all_coc_factors_structured())
     })
     
     handle_check_all_box_functionality(input)
@@ -332,6 +396,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     iv_custom$add_rule("custom_text", sv_required())
     iv_custom$add_rule("custom_text", ~ if(. %in% all_coc_factors()$rating_factor_text) "You already have a rating factor with this text.")
     ## validate that max point value of >= 0
+    iv_custom$add_rule("custom_points",  ~ if(is.na(.)) "Please input a numeric value")
     iv_custom$add_rule("custom_points", sv_between(-999.9, 999.9))
     iv_custom$add_rule("custom_goal", ~
                   if (isTRUE(nchar(.) > goal_char_limit)) "Limited to 10 characters"
@@ -356,11 +421,11 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
             multiple = TRUE
           ),
           # Rating Factor Text
-          textInput(ns("custom_text"), label = "Rating Factor", placeholder = "Enter custom factor text"),
+          textInput(ns("custom_text"), label = "Rating Factor*", placeholder = "Enter custom factor text"),
           # Factor/Goal - short text
           textInput(ns("custom_goal"), label = "Factor/Goal", placeholder = "Enter goal"),
           # Max Point Value - numeric
-          numericInput(ns("custom_points"), min = 1, label = "Max Point Value", value = 0, step = 0.1),
+          numericInput(ns("custom_points"), min = -999.9, max = 999.9, label = "Max Point Value*", value = 0, step = 0.1),
           
           footer = tagList(
             actionButton(ns("submit_custom_factor"), "Submit", class = "btn-primary"),
@@ -435,7 +500,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       })
       showNotification("Custom rating factor added!", type = 'message')
       
-      refresh_trigger(\(x) x + 1)
+      refresh_trigger(refresh_trigger() + 1)
       
       user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
     })
@@ -451,10 +516,30 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       user_coc$settings[[glue::glue('rating_{id}_target_population')]] <- input$target_population
     }, ignoreInit = TRUE)
     
+    
+    # Initialize version_ids from db.
+    # These will only be updated after a save
+    observeEvent(user_coc$coc_version_id, {
+      data <- all_coc_factors() |>
+        fsubset(!is.na(rating_factor_id))
+      
+      req(data)
+      for (i in seq_row(data)) {
+        rid <- as.character(data$rating_factor_id[[i]])
+        vid <- data$version_id[[i]]
+        current_versions[[rid]] <- vid
+      }
+    }, ignoreInit = TRUE)
+    
+    # Save --------
     observeEvent(input$save_factors, {
       req(iv$is_valid())
+      data <- isolate(all_coc_factors())
+      if (nrow(data) == 0) return()
       
-      updated_selected_rating_factors <- rbindlist(lapply(all_coc_factors()$rating_factor_id, function(id) {
+      updated_selected_rating_factors <- rbindlist(lapply(data$rating_factor_id, function(id) {
+        current_v <- current_versions[[as.character(id)]]
+        
         data.table(
           rating_factor_id = id,
           coc_version_id = user_coc$coc_version_id,
@@ -462,19 +547,24 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           goal = as.character(input[[paste0("goal_", id)]]),
           max_point_value = as.numeric(input[[paste0("points_", id)]]),
           created_by = user_coc$username,
-          version_id = all_coc_factors()[rating_factor_id == id]$version_id
+          version_id = current_v
         )
       }))
       
-      needs_refresh2 <- FALSE
-      pool::poolWithTransaction(get_db_pool(), function(p) {
-        needs_refresh2 <- update_selected_rating_factors_db(p, updated_selected_rating_factors)
+      needs_refresh <- pool::poolWithTransaction(get_db_pool(), function(p) {
+        update_selected_rating_factors_db(p, updated_selected_rating_factors)
       })
       
-      # if(is.null(inserted_custom_factor_info) || needs_refresh2)
-        refresh_trigger(\(x) x + 1)
-      if(!needs_refresh2)
+      if(!needs_refresh) {
+        for (id in data$rating_factor_id) {
+          rid <- as.character(id)
+          current_versions[[rid]] <- current_versions[[rid]] + 1
+        }
+        
         user_coc$customized_rating_factors_updated <- user_coc$customized_rating_factors_updated + 1
+      } else {
+        refresh_trigger(refresh_trigger() + 1)
+      }
     }, ignoreInit = TRUE)
   })
 }

@@ -48,11 +48,31 @@ TABS_AFTER_PROJECTS_EXIST <- c(
 )
 
 RATABLE_PROJECT_TYPES <- list(
-  "New" = c("RRH","PSH", "TH+RRH"),
+  "New" = c("RRH","PSH", "TH+RRH", "TH"),
   "Renew" = c("RRH", "PSH", "TH","TH+RRH","OPH","DEM"),
-  "Expand" = c("RRH","PSH")
+  "Expand" = c("RRH","PSH", "TH")
 )
 
 
 HUD_THRESHOLD_REQUIREMENTS <- get_db_tbl("thresholds") |> 
   fsubset(type == "HUD")
+
+
+POP_GRP_TOGGLES <- expand.grid(
+  pop = get_labelled_lookups("target_population", lookup_col = "value_long"),
+  grp = get_labelled_lookups("population_group", lookup_col = "value_long")
+) |>
+  qDT() |>
+  fmutate(
+    pop_txt = gsub("Domestic Violence", "DV", names(pop)),
+    grp_txt = names(grp)
+  ) |>
+  fsubset(!pop_txt %in% c("Not Applicable", "Human Immunodeficiency Virus")) |>
+  setorder(-grp, pop) |>
+  fmutate(
+    full_text = fcase(
+      pop_txt == "Youth" & grp_txt == "Families", "Parenting Youth",
+      pop_txt == "Youth" & grp_txt == "Individuals", "Single Youth",
+      default = paste(pop_txt, grp_txt)
+    )
+  )

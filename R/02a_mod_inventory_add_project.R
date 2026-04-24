@@ -187,11 +187,11 @@ mod_inventory_add_project_server <- function(
       # Clear existing validation errors
       iv$disable() 
       
-      # Logic for 'Replace' or 'Reallocate' prepopulation
-      if (grepl("Reallocation", form_type()) && funding_source != "") {
-        updateSelectInput(session, "funding_source", selected = funding_source)
+      # Logic for 'Replace' or 'Reallocate' prepopulation 
+      if (grepl("Reallocation", form_type()) && funding_source() != "") {
+        updateSelectInput(session, "funding_source", selected = funding_source())
         updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
-        if (funding_source == "YHDP") {
+        if (funding_source() == "YHDP") {
           updateSelectInput(session, "funding_action", selected = "New")
         }
         shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
@@ -199,8 +199,8 @@ mod_inventory_add_project_server <- function(
       } else if (form_type() == "YHDP Replacement" && !is.null(project_to_replace())) {
         updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
         updateSelectInput(session, "funding_action", selected = "Replace")
-        updateNumericInput(session, "youth_beds_fam", value = project_to_replace$`Par Youth Beds`)
-        updateNumericInput(session, "youth_beds_ind", value = project_to_replace$`Single Youth Beds`)
+        updateNumericInput(session, "youth_beds_fam", value = project_to_replace$par_youth_beds)
+        updateNumericInput(session, "youth_beds_ind", value = project_to_replace$single_youth_beds)
         shinyjs::disable("funding_source")
       } else {
         reset_form()
@@ -223,7 +223,7 @@ mod_inventory_add_project_server <- function(
         else LOOKUP_CHOICES$all_project_types
       
       updateSelectInput(session, "project_type", choices = c("Select Funding Source first" = "", proj_type_choices), selected = input$project_type)
-    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update visibility based on funding action
     observeEvent(input$funding_action, {
@@ -242,7 +242,7 @@ mod_inventory_add_project_server <- function(
       vis_beds <- visible_bed_groups()
       all_bed_groups <- c("total_beds", "ch_beds", "vet_beds", "youth_beds")
       lapply(all_bed_groups, function(group) shinyjs::toggle(group, condition = group %in% vis_beds))
-    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update DV checkbox and related elements
     observeEvent(c(input$funding_action, input$project_type, current_target_pop()), {
@@ -264,7 +264,7 @@ mod_inventory_add_project_server <- function(
       
       # Missing organization_name state control
       shinyjs::toggleState("organization_name", condition = form_type() != "YHDP Replacement")
-    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update Target Population Selection
     observeEvent(current_target_pop(), {
@@ -273,7 +273,7 @@ mod_inventory_add_project_server <- function(
       shinyjs::toggleState("target_population", condition = TRUE) # start by enabling so we can set the value
       if (current_funding_source() != "CoC") updateSelectInput(session, "target_population", selected = tp)
       shinyjs::toggleState("target_population", condition = current_funding_source() %in% c("", "CoC"))
-    }, ignoreInit = FALSE, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # --- PSH Checkbox Logic ---
     observeEvent(input$targeted_ch_fam, 
@@ -288,11 +288,11 @@ mod_inventory_add_project_server <- function(
     observeEvent(c(input$total_beds_fam, input$ch_beds_fam), {
       is_equal <- input$total_beds_fam > 0 && input$total_beds_fam == input$ch_beds_fam
       updateCheckboxInput(session, "targeted_ch_fam", value = is_equal)
-    }, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     observeEvent(c(input$total_beds_ind, input$ch_beds_ind), {
       is_equal <- input$total_beds_ind > 0 && input$total_beds_ind == input$ch_beds_ind
       updateCheckboxInput(session, "targeted_ch_ind", value = is_equal)
-    }, ignoreNULL = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # =================================================================
     # Validation & Submission
@@ -306,7 +306,8 @@ mod_inventory_add_project_server <- function(
     iv$add_rule("project_type", sv_required())
     iv$add_rule("funding_source", sv_required())
     iv$add_rule("target_population", sv_required())
-    
+    iv$add_rule("funding_action", ~ if(. == "Replace" && current_funding_source() != "YHDP") "Only YHDP projects can be replaced")
+
     # Grant number is only required if not New or Expand
     grant_iv <- shinyvalidate::InputValidator$new()
     grant_iv$add_rule("grant_number", sv_required())
@@ -326,7 +327,6 @@ mod_inventory_add_project_server <- function(
       force(max_val_formula)
       max_val_func <- rlang::as_function(max_val_formula)
       function(value) {
-        # Use rlang::eval_tidy() to get the CURRENT value from the formula
         max_val <- max_val_func()
         
         # Don't show an error if either value is missing
@@ -345,7 +345,6 @@ mod_inventory_add_project_server <- function(
     for (group_name in names(bed_groups_to_validate)) {
       # Use local() to capture the current value of 'group_name' for the condition formula
       local({
-        # 'current_group' is a new variable for each loop iteration
         current_group <- group_name
         
         # Create a new validator for this group
@@ -372,6 +371,17 @@ mod_inventory_add_project_server <- function(
         iv$add_validator(v)
       })
     }
+    
+    iv$add_rule(
+      "total_beds_fam", 
+      ~ if(sum(input$ch_beds_fam, input$vet_beds_fam, input$youth_beds_fam, na.rm=TRUE) > .)
+        "Family bed fields cannot sum to more than the Total Family beds."
+    )
+    iv$add_rule(
+      "total_beds_ind", 
+      ~ if(sum(input$ch_beds_ind, input$vet_beds_ind, input$youth_beds_ind, na.rm=TRUE) > .)
+        "Individual bed fields cannot sum to more than the Total Individual beds."
+    )
 
     
     # =================================================================
@@ -388,7 +398,6 @@ mod_inventory_add_project_server <- function(
     observeEvent(c(input$submit, input$add_another_link), {
       req(isTruthy(input$submit) || isTruthy(input$add_another_link))
       iv$enable()
-      print('observed input$submit')
       
       if (iv$is_valid()) {
         vis_beds <- visible_bed_groups()
@@ -457,11 +466,11 @@ mod_inventory_add_project_server <- function(
         )
       } else {
         show_alert(
-          title = "Missing Required Fields",
+          title = "Submission Error",
           text = "Please correct the errors before submitting.",
           type = "error"
         )
-        # modal_submission_outcome <- NULL
+        modal_submission_outcome$status <- "error"
       }
       print(paste0('done with input$submit, status=', modal_submission_outcome$status))
     }, ignoreInit = TRUE, ignoreNULL = TRUE)

@@ -29,7 +29,10 @@ get_rating_factors_and_scores <- function(coc_version_id, selected_project) {
     params = list(
       coc_version_id,
       selected_project$project_id,
-      selected_project$funding_action,
+      if(selected_project$funding_action %in% get_lookup_refid(c("Renew","Expand"), "funding_action"))
+        get_lookup_refid("Renew", "funding_action")
+      else
+        get_lookup_refid("New", "funding_action"),
       selected_project$project_type,
       target_population
     )
