@@ -61,7 +61,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    unspec_types <- c("HMIS Project", "OPH", "SSO", "SSO-CE", "SSO-Host Homes", "SH")
+    unspec_types <- c("HMIS", "HMIS Project", "OPH", "SSO", "SSO-CE", "SSO-Host Homes", "SH")
+    
+    priority_levels <- get_labelled_lookups("priority")
+    
+    unspecified_id <- get_lookup_refid("Unspecified", "priority")
     
     coc_ard_data <- reactive({
       req(user_coc$coc)
@@ -79,8 +83,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     )
     
     ceilings_priorities <- reactive({
-      get_ceilings_priorities(user_coc$coc_version_id) |>
-        fsubset(!is.na(project_type))
+      get_ceilings_priorities(user_coc$coc_version_id)
     })
     
     
@@ -302,8 +305,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       for (i in seq_row(dt)) {
         pt_i <- dt$project_type[i]
-        p_fund <- fcoalesce(dt$coc_funding_recommendation[i], 0L)
-        t_beds <- fcoalesce(dt$total_beds[i], 0L)
+        p_fund <- fcoalesce(dt$coc_funding_recommendation[i], DT::coerceValue(0, dt$coc_funding_recommendation))
+        t_beds <- fcoalesce(dt$total_beds[i], DT::coerceValue(0, dt$total_beds))
         
         # Extract current project beds into a fast, named numeric vector
         p_beds <- c(
@@ -346,7 +349,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         }
         
         check_exceeds <- function(cb) {
-          cb_i <- target_pop_combos$bed_prefix[[cb]] # Matrix Col Index
+          cb_i <- whichv(target_pop_combos$bed_prefix, cb) # Matrix Col Index
           
           c_beds <- dt[[paste0("ceil_beds_", cb)]][i]
           c_fund <- dt[[paste0("ceil_fund_", cb)]][i]
@@ -380,7 +383,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           # If project is kept, update our tracking matrices instantly
           for (cb in target_pop_combos$bed_prefix) {
             if (p_beds[cb] > 0 || (sum(p_beds) == 0 && cb %in% primary_combos)) {
-              cb_i <- target_pop_combos$bed_prefix[[cb]]
+              cb_i <- whichv(target_pop_combos$bed_prefix, cb)
               tracker_beds[pt_i, cb_i] <- tracker_beds[pt_i, cb_i] + p_beds[cb]
               tracker_fund[pt_i, cb_i] <- tracker_fund[pt_i, cb_i] + p_fund
             }
@@ -452,9 +455,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     calculate_priority <- function(dt) {
       # 2. Fetch Priorities and convert lookup IDs to standard string values
-      unspecified_id <- get_lookup_refid("Unspecified", "priority")
       
-      if (fnrow(ceilings_priorities()) > 0) {
+      if (!allNA(ceilings_priorities()$priority)) {
         # Pivot Wide for Priorities
         wide_prio <- ceilings_priorities() |>
           pivot(
@@ -497,7 +499,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           join(wide_beds, on = "project_type") |>
           join(wide_fund, on = "project_type")
       } else {
-        priority_levels <- get_labelled_lookups("priority")
         return(
           dt |> 
             fmutate(
@@ -505,12 +506,12 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             )
         )
       }
-      
+      browser()
       # Ensure target columns exist safely
       dt[, total_beds := all_fam_beds + all_ind_beds]
-      unspec_types <- c("HMIS", "HMIS Project", "OPH", "SSO", "SSO-CE", "SSO-Host Homes", "SH")
+      
       # Assign Priority Based on Bed Distribution
-      dt[, priority := if(fnrow(priorities) == 0) unspecified_id else 
+      dt[, priority := if(allNA(ceilings_priorities()$priority)) unspecified_id else 
         fcase(
         project_type %in% unspec_types, unspecified_id,
         dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_DV_Family, prio_DV_Individual, na.rm = TRUE),
@@ -537,12 +538,18 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       cols_to_drop <- paste0("prio_", target_pop_combos$target_pop_combo)
       dt[, (cols_to_drop) := NULL]
       
+      dt <- dt |> 
+        fmutate(
+          priority = factor(priority, levels = priority_levels, labels = names(priority_levels))
+        )
+      
       return(dt)
     } # end calculate_priority
     
     # Process Initial Data on Load or Reset
     process_data <- function(force_reset = FALSE) {
       req(user_coc$coc_version_id)
+      
       raw_data <- get_projects_to_rank(user_coc$coc_version_id) |>
         calculate_priority()
       
