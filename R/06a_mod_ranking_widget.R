@@ -3,11 +3,12 @@ mod_ranking_widget_ui <- function(id) {
   uiOutput(ns("widget_box"))
 }
 
-mod_ranking_widget_server <- function(id, allocated, total, title, icon_name = "piggy-bank") {
+mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title, icon_name = "piggy-bank") {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     output$widget_box <- renderUI({
+      total <- coc_ard_data()[[id]]
       
       # Handle if allocated is a list (like DV Bonus) or a single number
       alloc_data <- allocated()
@@ -68,9 +69,9 @@ mod_ranking_widget_server <- function(id, allocated, total, title, icon_name = "
         breakdown_ui,
         limit_ui,
         sub_text,
-        showcase = icon(icon_name),
+        showcase = icon(icon_name, style="font-size: 3rem;"),
         theme = bslib::value_box_theme(bg = glue::glue("var(--brand-{id})"), fg = "white"),
-        height = "200px"
+        height = "250px"
       )
     })
   })
