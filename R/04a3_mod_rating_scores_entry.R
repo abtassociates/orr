@@ -37,6 +37,7 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
+      style = "overflow: visible;",
       mod_download_rating_ui(ns("download_rating")),
       
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
