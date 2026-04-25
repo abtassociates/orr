@@ -70,7 +70,7 @@ mod_rating_scores_entry_ui <- function(id) {
   )
 }
 
-mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action) {
+mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, hasProjects) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -158,16 +158,17 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
-      selected_project_exists <- !is.null(selected_project()) && fnrow(selected_project()) > 0
-      has_factors <- fnrow(factors_and_scores_for_project()) > 0
+      project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      has_factors <- isTruthy(fnrow(factors_and_scores_for_project()) > 0)
       
-      if(!selected_project_exists && !has_factors) {
+      if(!project_is_selected && !has_factors) {
         shinyjs::hide(id = "total_row")
         shinyjs::hide(id = "weighted_total_row")
       }
       
       shiny::validate(
-        need(selected_project_exists, "Select a project in the left-hand sidebar to begin rating"),
+        need(hasProjects(), paste0("You do not have any ", funding_action, " projects to rate")),
+        need(project_is_selected, "Select a project in the left-hand sidebar to begin rating"),
         need(fnrow(factors_and_scores_for_project()) > 0, "You must select 1 or more rating factors in the Customize Rating Criteria tab in order to rate this project")
       )
       
