@@ -180,19 +180,6 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
         help_id(paste0(input$rating_tabs, "-thresholds_entry"))
     }, ignoreInit = TRUE)
     
-    # If they uncheck all factors, don't show rating entry ratbs
-    observeEvent(
-      c(user_coc$customized_rating_factors_updated, user_coc$customized_coc_thresholds_updated), {
-
-      if(user_coc$customized_rating_factors_updated > 0 && user_coc$customized_coc_thresholds_updated > 0) {
-        nav_show("nav", target = "renew_rating", session = parent_session)
-        nav_show("nav", target = "new_rating", session = parent_session)
-      } else {
-        nav_hide("nav", target = "renew_rating", session = parent_session)
-        nav_hide("nav", target = "new_rating", session = parent_session)
-      }
-    }, ignoreInit = TRUE)
-    
     mod_customize_criteria_server("customize_criteria", user_coc, nav_control, parent_session, help_id)
     mod_in_app_rating_server("renew", user_coc, "Renew", nav_control, help_id)
     mod_in_app_rating_server("new", user_coc, "New", nav_control, help_id)
