@@ -255,7 +255,9 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     # ACTUAL DOWNLOAD HANDLER
     # ----------------------------------------------------
     output$dl_final <- downloadHandler(
-      filename = ready_file$filename,
+      filename = function() {
+        ready_file$filename
+      },
       content = function(file) {
         dl_state("idle")
         
