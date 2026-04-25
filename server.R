@@ -1,5 +1,5 @@
 function(input, output, session) {
-  logger::log_shiny_input_changes(input)
+  logger::log_shiny_input_changes(input, excluded_inputs = c("inventory-projects_table_state"))
   
   user_coc <- reactiveValues(
     coc = NULL,
@@ -17,8 +17,11 @@ function(input, output, session) {
     
     requests_updated = 0,
     projects_updated = 0,
-    customized_rating_factors_updated = 0,
-    customized_coc_thresholds_updated = 0
+    
+    # Incrementing trigger for refreshing other views
+    customized_rating_factors_updated_Renew = 0,
+    customized_rating_factors_updated_New = 0,
+    customized_coc_thresholds_updated = 0,
   )
   nav_control <- reactiveVal("about")
   
@@ -32,7 +35,7 @@ function(input, output, session) {
       nav_insert("nav", get(glue::glue("mod_{t}_ui"))(t), select = t == "dashboard")
       
       # Server
-      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc, session)
+      get(glue::glue("mod_{t}_server"))(t, nav_control, user_coc, session, help_id = help_id)
     })
   })
   
@@ -103,6 +106,9 @@ function(input, output, session) {
     nav_select("nav", selected = nav_control())
   })
 
+  # --- Slide-In Sidebar ----
+  help_id <- mod_slide_in_instructions_server("instructions", user_coc, nav_control)
+  
   shiny::onStop( function(){
     cat("Running onStop")
     
