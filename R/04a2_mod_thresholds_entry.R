@@ -40,9 +40,8 @@ mod_thresholds_entry_ui <- function(id) {
         open = FALSE
       ), # end accordion
       card_footer(
+        class = "sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        div(),
-        actionButton(ns("save_requirements"), "Save Thresholds", icon = icon("save"), class="btn-primary"),
         checkboxInput(ns("threshold_complete"), "Complete?")
       )
     ) # end card
