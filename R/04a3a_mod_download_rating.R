@@ -19,10 +19,10 @@ mod_download_rating_ui <- function(id) {
         ),
         tags$ul(
           class = "dropdown-menu dropdown-menu-end",
-          tags$li(actionLink(ns("dl_current"), "Current Project (PDF)", class = "dropdown-item")),
+          tags$li(actionLink(ns("dl_current"), "Current Project (PDF)", class = "dropdown-item", style="display:none !important;")),
           tags$li(actionLink(ns("dl_blank"), "Blank Template (PDF)", class = "dropdown-item")),
-          tags$hr(class="dropdown-divider"),
-          tags$li(actionLink(ns("dl_all"), "All Projects Summary (ZIP)", class = "dropdown-item"))
+          tags$hr(id = ns("hr_bar"), class="dropdown-divider", style="display:none !important;"),
+          tags$li(actionLink(ns("dl_all"), "All Projects Summary (ZIP)", class = "dropdown-item", style="display:none !important;"))
         )
       )
     )
@@ -44,9 +44,10 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     })
     
     observeEvent(c(selected_project(), all_factors_and_scores()), {
-      shinyjs::toggle(id = "dl_current", condition = fnrow(selected_project()) > 0)
-      shinyjs::toggle(id = "dl_all", condition = fnrow(all_factors_and_scores) > 0)
-    }, ignoreInit = TRUE)
+      shinyjs::toggle(id = "dl_current", condition = isTruthy(fnrow(selected_project()) > 0))
+      shinyjs::toggle(id = "dl_all", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
+      shinyjs::toggle(id = "hr_bar", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # ----------------------------------------------------
     # THE BACKGROUND TASK
