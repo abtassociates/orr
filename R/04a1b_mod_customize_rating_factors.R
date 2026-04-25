@@ -66,6 +66,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     refresh_trigger <- reactiveVal(0)
     subgroup_check_all_values <- reactiveValues()
     
+    input_prefixes <- c("selected", "goal", "max_point_value")
+    
+    
     all_coc_factors <- reactive({
       req(funding_action, user_coc$coc_version_id, refresh_trigger())
       
@@ -414,19 +417,28 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       )
     }, priority = 10)
     
+    inputs_to_track <- reactive({
+      factors <- all_coc_factors_rv()
+      req(nrow(factors) > 0)
+      
+      input_names <- lapply(input_prefixes, paste0, "_", factors$rating_factor_id) |> unlist()
+      req(all(input_names %in% names(input)))
+      
+      setNames(
+        lapply(input_names, function(i) input[[i]]), 
+        input_names
+      )
+    })
+    
     # 3. Difference Engine: Find only what changed
     rating_factors_to_save <- reactive({
+      raw_inputs <- inputs_to_track()
+      req(raw_inputs)
+      
       base <- all_coc_factors_rv()
       req(fnrow(base) > 0)
       
-      expected_inputs <- c(
-        paste0("selected_", base$rating_factor_id), 
-        paste0("goal_", base$rating_factor_id), 
-        paste0("max_point_value_", base$rating_factor_id)
-      )
-      req(all(expected_inputs %in% names(input)))
-      
-      updated_rating_factors <- get_rating_data_to_save(input, base, "rating_factor_id", c("selected", "goal", "max_point_value"))
+      updated_rating_factors <- get_rating_data_to_save(raw_inputs, base, "rating_factor_id", input_prefixes)
       if(is.null(updated_rating_factors)) return(NULL)
       
       updated_rating_factors |>

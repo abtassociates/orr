@@ -361,9 +361,7 @@ not_equal_na <- function(x, y) {
   is.na(x) != is.na(y) | (!is.na(x) & !is.na(y) & x != y)
 }
 
-get_rating_data_to_save <- function(input, base, id_col, input_prefixes) {
-  input_vals <- reactiveValuesToList(input)
-  
+get_rating_data_to_save <- function(input_vals, base, id_col, input_prefixes) {
   new_data <- base |> fselect(id_col)
   for (prefix in input_prefixes) {
     input_name <- paste0(prefix, "_", base[[id_col]])
