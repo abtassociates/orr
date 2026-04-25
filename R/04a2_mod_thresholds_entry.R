@@ -68,7 +68,10 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, funding_
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
       
       shiny::validate(
-        need(hasProjects(), paste0("You do not have any ", funding_action, " projects to rate")),
+        errorClass = "alert-danger",
+        need(hasProjects(), paste0("You do not have any ", funding_action, " projects to rate"))
+      )
+      shiny::validate(
         need(project_is_selected, "Select a project in the left-hand sidebar to begin rating")
       )
     })
