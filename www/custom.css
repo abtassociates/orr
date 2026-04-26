@@ -72,14 +72,19 @@ input[type=number] {
 }*/
 
 /*FUNDING PRIORITIES*/
-#funding_priorities-priorities_table table.dataTable thead tr:nth-child(3) td:nth-child(3n+4) {
-  border-right: 1px solid black;
+#funding_priorities-priorities_table thead th,
+#funding_priorities-priorities_table tbody td:nth-child(n+2) {
+  text-align: center;
 }
-#funding_priorities-priorities_table table.dataTable thead tr:nth-child(3) td:not(:first-child):not(:nth-child(3n+4)) {
+#funding_priorities-priorities_table thead tr:nth-child(2) th,
+#funding_priorities-priorities_table tbody td {
   border-right: 1px solid lightgray;
 }
-border-right` = "1px solid lightgray"
-
+#funding_priorities-priorities_table thead tr:first-child th:nth-child(n+2),
+#funding_priorities-priorities_table thead tr:nth-child(2) th:nth-child(3n+3),
+#funding_priorities-priorities_table tbody td:nth-child(3n+4){
+  border-right: 1px solid black;
+}
 
 [id^="funding_priorities"].autonumeric-input {
   font-size: 1.2rem !important; /*otherwise, default for currencyInput is 1.5rem which is too big*/
