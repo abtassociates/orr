@@ -1,5 +1,5 @@
 function(input, output, session) {
-  logger::log_shiny_input_changes(input, excluded_inputs = c("inventory-projects_table_state"))
+  logger::log_shiny_input_changes(input, excluded_inputs = inputs_to_exclude)
   
   user_coc <- reactiveValues(
     coc = NULL,
