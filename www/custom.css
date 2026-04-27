@@ -245,6 +245,14 @@ tr.group_header td{
   background-color: var(--brand-exceeds);
 }
 
+#ranking-ui_ranked_list table.dataTable tbody tr[style*='background-color'] > td {
+  background-color: inherit !important;
+  color: inherit !important;
+  /* This cancels the Bootstrap 5 background-color on the td */
+  --bs-table-accent-bg: transparent !important;
+  --bs-table-bg: transparent !important;
+}
+    
 /* STICKY CARD FOOTER*/
 .sticky-footer {
   position: sticky; 
