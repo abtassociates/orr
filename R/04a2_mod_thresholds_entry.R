@@ -312,6 +312,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
         fmutate(
           threshold_complete = t,
           updated_by = user_coc$username,
+          project_id = selected_project()$project_id,
           version_id = project_evaluation()$version_id
         ) |>
         fselect(threshold_complete, updated_by, project_id, version_id) |>
