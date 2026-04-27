@@ -14,21 +14,21 @@ get_rating_factors_and_scores <- function(coc_version_id, selected_project) {
       r.piping_text, r.project_type, r.target_population, sr.selected_rating_factor_id, 
       fg.factor_group, fsg.factor_subgroup, 
       sr.goal, sr.max_point_value,
-      rs.rating_score, rs.performance, rs.project_id,
+      rs.rating_score, rs.performance, $1 AS project_id,
       rs.version_id
     FROM rating_factors r
-    INNER JOIN selected_rating_factors sr ON sr.rating_factor_id = r.rating_factor_id AND sr.coc_version_id = $1 AND selected = 1
+    INNER JOIN selected_rating_factors sr ON sr.rating_factor_id = r.rating_factor_id AND sr.coc_version_id = $2 AND selected = 1
     JOIN factor_groups fg ON r.factor_group = fg.factor_group_id
     LEFT JOIN factor_subgroups fsg ON r.factor_subgroup = fsg.factor_subgroup_id
-    LEFT JOIN rating_scores rs ON rs.selected_rating_factor_id = sr.selected_rating_factor_id AND (rs.project_id = $2 OR rs.project_id IS NULL)
+    LEFT JOIN rating_scores rs ON rs.selected_rating_factor_id = sr.selected_rating_factor_id AND (rs.project_id = $1 OR rs.project_id IS NULL)
     WHERE 
       r.funding_action = $3 AND
       (r.project_type = $4 OR r.project_type IS NULL) AND
       (r.target_population = $5 OR r.target_population IS NULL)
     ", 
     params = list(
-      coc_version_id,
       selected_project$project_id,
+      coc_version_id,
       if(selected_project$funding_action %in% get_lookup_refid(c("Renew","Expand"), "funding_action"))
         get_lookup_refid("Renew", "funding_action")
       else
@@ -73,12 +73,13 @@ update_rating_score_project_evaluation_db <- function(p, updated_project_evaluat
 update_rating_complete <- function(p, updated_rating_complete) {
   save_to_db(
     p,
-    "UPDATE project_evaluations (project_id, rating_complete, updated_by)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (project_id) DO UPDATE SET 
-          rating_complete = EXCLUDED.rating_complete
-          updated_by = EXCLUDED.updated_by
-        " |> add_optimistic_locking(),
+    "UPDATE project_evaluations 
+    SET 
+      rating_complete = $1, 
+      updated_by = $2,
+      date_updated = CURRENT_TIMESTAMP,
+      version_id = version_id + 1
+    WHERE project_id = $3 AND version_id = $4",
     updated_rating_complete,
     "project_evaluations"
   ) 

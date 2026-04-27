@@ -7,6 +7,7 @@ mod_thresholds_entry_ui <- function(id) {
     value = id,
     card(
       textOutput(ns("empty")),
+      style = "overflow: visible !important;",
       accordion(
         id = ns("reqs"),
         accordion_panel(
@@ -42,7 +43,7 @@ mod_thresholds_entry_ui <- function(id) {
       card_footer(
         class = "sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        checkboxInput(ns("threshold_complete"), "Complete?")
+        actionButton(ns("threshold_complete"), "Complete?")
       )
     ) # end card
   ) # end nav_panel
@@ -145,7 +146,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       
       shinyjs::toggle("yes_to_all_CoC", condition = isTruthy(fnrow(coc_thresholds_to_enter()) > 0))
       
-      shinyjs::toggleState("threshold_complete", condition = !anyNA(thresholds_to_enter()$met_threshold))
+      shinyjs::toggleState("threshold_complete", condition = !allNA(thresholds_to_enter()$met_threshold))
       
       made_a_change(FALSE)
     }, ignoreNULL = FALSE, priority = 11)
@@ -287,6 +288,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
               fmutate(version_id = version_id + 1)
           )
         
+        shinyjs::toggleState("threshold_complete", condition = !allNA(thresholds_to_enter()$met_threshold))
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
@@ -298,19 +300,23 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
       # only proceed if all thresholds are non-null
       req(isTruthy(fnrow(thresholds_to_enter()) > 0))
       req(!anyNA(thresholds_to_enter()$met_threshold))
-      shinyjs::toggleState("yes_to_all_HUD", condition = input$threshold_complete)
-      shinyjs::toggleState("yes_to_all_CoC", condition = input$threshold_complete)
-      shinyjs::toggleState("HUD_requirements", condition = input$threshold_complete)
-      shinyjs::toggleState("CoC_requirements", condition = input$threshold_complete)
+      
+      t <- input$threshold_complete %% 2 == 0
+      shinyjs::toggleState("yes_to_all_HUD", condition = t)
+      shinyjs::toggleState("yes_to_all_CoC", condition = t)
+      shinyjs::toggleState("HUD_requirements", condition = t)
+      shinyjs::toggleState("CoC_requirements", condition = t)
       
       # Update db
-      browser()
       data <- thresholds_to_enter() |>
-        fselect(project_id) |>
         fmutate(
-          threshold_complete = input$threshold_complete,
-          updated_by = user_coc$username
-        )
+          threshold_complete = t,
+          updated_by = user_coc$username,
+          version_id = project_evaluation()$version_id
+        ) |>
+        fselect(threshold_complete, updated_by, project_id, version_id) |>
+        funique()
+      
       update_threshold_complete(get_db_pool(), data)
     }, ignoreInit = TRUE)
   }) # end moduleServer
