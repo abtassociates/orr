@@ -48,7 +48,7 @@ mod_thresholds_entry_ui <- function(id) {
   ) # end nav_panel
 }
 
-mod_thresholds_entry_server <- function(id, user_coc, selected_project, funding_action, hasProjects) {
+mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, funding_action, hasProjects) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -212,15 +212,17 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, funding_
             selected = target_group_state
           )
         }
+        
         made_a_change(TRUE)
-      }, ignoreNULL = FALSE, ignoreInit = TRUE)
+      }, ignoreNULL = FALSE, ignoreInit = TRUE, priority = 9)
       
     }) # end back-and-forth ind. and yes-to-all checkbox observeEvents
     
     # --- Saving to db ---------------
     # runs whenever user (un)checks a requirement
     threshold_entries_to_save <- reactive({
-      req(thresholds_to_enter(), fnrow(selected_project()) > 0, made_a_change() == T)
+      req(c(input$HUD_requirements, input$CoC_requirements, input$yes_to_all_HUD, input$yes_to_all_CoC, made_a_change()))
+      req(thresholds_to_enter(), fnrow(selected_project()) > 0)
       
       # 1. Diff the checkboxes against the baseline
       updated_thresholds <- get_threshold_data_to_save(thresholds_to_enter(), "threshold_id", "met_threshold", c(input$HUD_requirements, input$CoC_requirements))
@@ -231,7 +233,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, funding_
           created_by = user_coc$username,
           project_id = selected_project()$project_id
         ) |>
-        fselect(project_id, threshold_id, met_threshold_to_save, created_by, version_id)
+        fselect(project_id, threshold_id, met_threshold, created_by, version_id)
       
       # 2. Diff the project evaluations against the baseline
       eval_changed <- is_empty(project_evaluation()) || 
@@ -275,7 +277,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, funding_
           to_save$thresholds, 
           on = "threshold_id", 
           `:=`(
-            met_threshold = as.integer(i.met_threshold_to_save),
+            met_threshold = as.integer(met_threshold),
             version_id = version_id + 1
           )
         ]
@@ -291,7 +293,15 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, funding_
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
-      
-    }, ignoreInit = TRUE, label = "te_debounced_observe")
+    }, ignoreInit = TRUE, label = "te_debounced_observe") # end save_requirements
+    
+    # -- USer PResence ---
+    mod_user_presence_server(
+      id = "presence",
+      user_coc = user_coc,
+      # We use the project ID because we are rating a specific project
+      record_id = reactive({ selected_project()$project_id }), 
+      active = active
+    )
   }) # end moduleServer
 }

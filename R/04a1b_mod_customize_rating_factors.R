@@ -42,7 +42,11 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
       card(
         style = "overflow: visible !important;", 
         
-        uiOutput(ns("factors_ui")) |> withSpinner(),
+        div(
+          id = ns("factor_container"),
+          mod_user_presence_ui(ns("presence")),
+          uiOutput(ns("factors_ui")) |> withSpinner()
+        ),
         
         card_footer(
           class = "sticky-footer d-flex justify-content-between align-items-center",
@@ -55,7 +59,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
 
 #' @title mod_new_factors_server
 #' @noRd
-mod_customize_rating_factors_server <- function(id, user_coc, funding_action, nav_control) {
+mod_customize_rating_factors_server <- function(id, user_coc, funding_action, nav_control, active) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -487,5 +491,24 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         refresh_trigger(refresh_trigger() + 1)
       }
     }, ignoreInit = TRUE)
+    
+    # --- User presence ---------
+    record_being_edited <- reactiveVal(NULL)
+    observeEvent(input$projects_table_cell_being_edited, {
+      record_being_edited(
+        list(
+          record_id = projects_data()[input$projects_table_cell_clicked$row]$project_id,
+          field = names(projects_data())[[input$projects_table_cell_clicked$col + 1]]
+        )
+      )
+    })
+    
+    mod_user_presence_server(
+      id = "presence",
+      user_coc = user_coc,
+      # Record is the CoC Version
+      record_id = reactive({ user_coc$coc_version_id }),
+      active = active
+    )
   })
 }

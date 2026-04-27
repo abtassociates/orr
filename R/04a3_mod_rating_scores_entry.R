@@ -39,7 +39,7 @@ mod_rating_scores_entry_ui <- function(id) {
     card(
       style = "overflow: visible;",
       mod_download_rating_ui(ns("download_rating")),
-      
+      mod_user_presence_ui(ns("presence")),
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
         id = ns("total_row"),
@@ -71,7 +71,7 @@ mod_rating_scores_entry_ui <- function(id) {
   )
 }
 
-mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, hasProjects) {
+mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, active, hasProjects) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -162,7 +162,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
       has_factors <- isTruthy(fnrow(factors_and_scores_for_project()) > 0)
       
-      if(!project_is_selected && !has_factors) {
+      if(!isTruthy(selected_project_exists) && !isTruthy(has_factors)) {
         shinyjs::hide(id = "total_row")
         shinyjs::hide(id = "weighted_total_row")
       }
@@ -473,5 +473,15 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     }) # end save
     
     mod_download_rating_server("download_rating", user_coc, selected_project, funding_action, factors_and_scores_for_project)
+    })
+    
+    # --- User PResence ----
+    mod_user_presence_server(
+      id = "presence", # Internal ID for this leaf module
+      user_coc = user_coc,
+      # We use the project ID because we are rating a specific project
+      record_id = reactive({ selected_project()$project_id }), 
+      active = active
+    )
   }) #end module server
 }
