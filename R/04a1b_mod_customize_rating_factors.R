@@ -146,7 +146,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         ),
         if(funding_action == "Renew") div(style = "flex: 1;", get_lookup_label(project_type, "project_type")) else NULL,
         div(style = "flex: 1;", get_lookup_label(target_population, "target_population")),
-        div(style = "flex: 3; font-size: 0.9rem;", text),
+        div(style = "flex: 3; font-size: 0.9rem;", HTML(text)),
         div(style = "flex: 1;", textInput(ns(paste0("goal_", id)), NULL, value = goal, width = "100%", updateOn = "blur")),
         div(style = "flex: 0 0 80px;", numericInput(ns(paste0("max_point_value_", id)), NULL, value = points, step = 0.1, width = "100%", updateOn = "blur"))
       )

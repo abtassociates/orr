@@ -18,10 +18,8 @@ mod_thresholds_entry_ui <- function(id) {
           checkboxGroupInput(
             ns("HUD_requirements"),
             label = NULL,
-            choices = setNames(
-              HUD_THRESHOLD_REQUIREMENTS$threshold_id, 
-              HUD_THRESHOLD_REQUIREMENTS$threshold_text
-            ),
+            choiceValues = HUD_THRESHOLD_REQUIREMENTS$threshold_id, 
+            choiceNames = lapply(HUD_THRESHOLD_REQUIREMENTS$threshold_text, HTML),
             width = "100%"
           )
         ),

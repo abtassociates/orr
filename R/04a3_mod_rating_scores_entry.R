@@ -205,7 +205,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
               layout_columns(
                 col_widths = col_widths,
                 # We can add a class for CSS styling, e.g., for indentation
-                p(text),
+                HTML(text),
                 p(goal),
                 div(
                   class = "input-col", 
