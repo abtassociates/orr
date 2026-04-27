@@ -279,7 +279,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
           on = "threshold_id", 
           `:=`(
             met_threshold = as.integer(met_threshold),
-            version_id = version_id + 1
+            version_id = fcoalesce(version_id, 0L) + 1
           )
         ]
         
@@ -295,7 +295,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
-    }, ignoreInit = TRUE, label = "te_debounced_observe") # end save requirements
+    }, label = "te_debounced_observe") # end save requirements
     
     observeEvent(input$threshold_complete, {
       # only proceed if all thresholds are non-null
