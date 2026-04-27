@@ -284,7 +284,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     # ranked_project_ids <- reactiveValues(new = NULL)
     
-    observeEvent(user_coc$coc_version_id, { process_data(force_reset = FALSE) }, ignoreInit = TRUE)
+    observeEvent(c(user_coc$coc_version_id, user_coc$projects_updated), { 
+      process_data(force_reset = FALSE) 
+    }, ignoreInit = TRUE)
     
     # Core Function: Recalculate Tiers and Bonuses
     check_over_targets <- function(dt) {
