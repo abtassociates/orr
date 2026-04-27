@@ -43,12 +43,12 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
       req(fnrow(projects) > 0)
       
       # Query DB for all projects that have a weighted_score
-      evaluated <- get_project_evaluation_scores(projects$project_id)
+      evaluated <- get_project_rating_completion(projects$project_id)
       
       if (is.null(evaluated) || fnrow(evaluated) == 0) return(character(0))
       
       # Return only rated projects that belong to the current list
-      intersect(projects$project_id, evaluated$project_id)
+      evaluated$project_id
     })
     
     # Dynamically generate CSS to set the background color of completed options in the dropdown
