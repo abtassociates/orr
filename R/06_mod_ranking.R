@@ -156,11 +156,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           
           if (nrow(dt_pt) > 0) {
             for (r in seq_len(nrow(dt_pt))) {
-              p_beds <- fcoalesce(dt_pt[[ bed_cols[[cb]] ]][r], 0L)
-              p_fund <- fcoalesce(dt_pt$coc_funding_recommendation[r], 0L)
-              t_beds <- fcoalesce(dt_pt$total_beds[r], 0L)
+              p_beds <- DT::coerceValue(dt_pt[[ bed_cols[[cb]] ]][r], 0L)
+              p_fund <- DT::coerceValue(dt_pt$coc_funding_recommendation[r], 0L)
+              t_beds <- DT::coerceValue(dt_pt$total_beds[r], 0L)
               
-              r_beds <- sapply(names(bed_cols), function(x) fcoalesce(dt_pt[[ bed_cols[[x]] ]][r], 0L))
+              r_beds <- sapply(names(bed_cols), function(x) DT::coerceValue(dt_pt[[ bed_cols[[x]] ]][r], 0L))
               
               has_dv <- (r_beds[["dv_fam"]] > 0) || (r_beds[["dv_ind"]] > 0)
               subpops <- c("ch_fam", "vet_fam", "par_youth", "ch_ind", "vet_ind", "single_youth")
