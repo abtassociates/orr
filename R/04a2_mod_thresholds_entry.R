@@ -43,7 +43,7 @@ mod_thresholds_entry_ui <- function(id) {
       card_footer(
         class = "sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("threshold_complete"), "Confirm complete?")
+        shinyWidgets::switchInput(ns("threshold_complete"), label = "Threshold Complete?", onLabel="Yes", offLabel="No")
       )
     ) # end card
   ) # end nav_panel
@@ -146,6 +146,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
       
       shinyjs::toggle("yes_to_all_CoC", condition = isTruthy(fnrow(coc_thresholds_to_enter()) > 0))
       
+      updateSwitchInput(session=session, inputId = "threshold_complete", value = project_evaluation()$threshold_complete == 1)
       shinyjs::toggleState("threshold_complete", condition = !allNA(thresholds_to_enter()$met_threshold))
       
       made_a_change(FALSE)
@@ -302,27 +303,22 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
       req(isTruthy(fnrow(thresholds_to_enter()) > 0))
       req(!anyNA(thresholds_to_enter()$met_threshold))
       
-      t <- input$threshold_complete %% 2 != 0
-      shinyjs::toggleState("yes_to_all_HUD", condition = t)
-      shinyjs::toggleState("yes_to_all_CoC", condition = t)
-      shinyjs::toggleState("HUD_requirements", condition = t)
-      shinyjs::toggleState("CoC_requirements", condition = t)
+      shinyjs::toggleState("yes_to_all_HUD", condition = !input$threshold_complete)
+      shinyjs::toggleState("yes_to_all_CoC", condition = !input$threshold_complete)
+      shinyjs::toggleState("HUD_requirements", condition = !input$threshold_complete)
+      shinyjs::toggleState("CoC_requirements", condition = !input$threshold_complete)
       
       # Update db
       data <- thresholds_to_enter() |>
         fmutate(
-          threshold_complete = t,
+          threshold_complete = input$threshold_complete,
           updated_by = user_coc$username,
           project_id = selected_project()$project_id,
-          version_id = project_evaluation()$version_id
         ) |>
         fselect(threshold_complete, updated_by, project_id, version_id) |>
         funique()
       
-      needs_refresh <- update_threshold_complete(get_db_pool(), data)
-      
-      if(!needs_refresh)
-        updateActionButton(inputId = "threshold_complete", session = session, label = "Reset completion?")
+      update_threshold_complete(get_db_pool(), data)
     }, ignoreInit = TRUE)
 
     # -- USer PResence ---
