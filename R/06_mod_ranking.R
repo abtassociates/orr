@@ -34,6 +34,7 @@ mod_ranking_ui <- function(id) {
     ),
     
     bslib::accordion(
+      id = ns("funding_analysis_accordion"),
       open = FALSE,
       bslib::accordion_panel(
         "Funding Analysis Table",
@@ -86,6 +87,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       get_ceilings_priorities(user_coc$coc_version_id)
     })
     
+    observeEvent(ceilings_priorities(), {
+      cp <- ceilings_priorities()
+      shinyjs::toggle("funding_analysis_accordion", condition = !allNA(cp$priority) || !allNA(cp$ceil_beds) || !allNA(cp$ceil_fund))
+    })
     
     target_pop_combos <-  expand.grid(
       target_population = LOOKUPS[reference_type == "target_population"]$value,
