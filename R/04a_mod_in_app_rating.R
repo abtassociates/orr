@@ -99,8 +99,18 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
       )
     })
     
+    # 1. Define a reactive for each sub-tab's visibility
+    # It's active IF the main navbar is on 'rating' AND this specific nested tab is selected
+    is_thresholds_active <- reactive({
+      nav_control() == "rating" && input$main_contents == ns("thresholds_entry")
+    })
+    
+    is_scores_active <- reactive({
+      nav_control() == "rating" && input$main_contents == ns("rating_scores_entry")
+    })
+    
     # call the module servers of the subtabs
-    mod_thresholds_entry_server("thresholds_entry", user_coc, selected_project)
-    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project)
+    mod_thresholds_entry_server("thresholds_entry", user_coc, selected_project, active = is_thresholds_active)
+    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, funding_action, active = is_scores_active)
   })
 }

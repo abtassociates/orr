@@ -37,6 +37,7 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
+      mod_user_presence_ui(ns("presence")),
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
         id = ns("total_row"),
@@ -63,17 +64,12 @@ mod_rating_scores_entry_ui <- function(id) {
               strong(textOutput(ns("weighted_total_score"), inline=TRUE))),
           div(strong("out of 100"))
         )
-      ),
-      card_footer(
-        class="sticky-save",
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("save_rating"), "Save Rating", icon = icon("save"))
       )
     )
   )
 }
 
-mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
+mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, active) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -81,10 +77,12 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
     factors_and_scores_for_project <- reactiveVal()
     project_evaluation <- reactiveVal()
     
+    input_prefixes <- c("rating_score", "performance")
+    
     performance_char_limit <- get_db_column_limit("rating_scores","performance")
     
     
-    observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_rating_factors_updated), {
+    observeEvent(c(selected_project(), refresh_trigger(), user_coc[[paste0("customized_rating_factors_updated_", funding_action)]]), {
       req(user_coc$coc_version_id)
       req(selected_project())
       req(fnrow(selected_project()) > 0)
@@ -114,13 +112,15 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
     # `iv` without needing to be recreated itself.
     # ---------------------------------------------------------------------------
     iv <- shinyvalidate::InputValidator$new()
+    iv_r <- reactiveVal()
     
     observe({
       factors_df <- factors_and_scores_for_project()
       req(nrow(factors_df) > 0)
       
       # Wipe all previously registered rules before re-registering.
-      iv$initialize()
+      iv <- shinyvalidate::InputValidator$new()
+      
       purrr::walk2(
         factors_df$selected_rating_factor_id,
         factors_df$max_point_value,
@@ -152,23 +152,23 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       # not only on save. Call it after rules are registered so the first
       # render doesn't flash errors on blank inputs immediately.
       iv$enable()
+      iv_r(iv)
     })
     
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
       selected_project_exists <- !is.null(selected_project()) && fnrow(selected_project()) > 0
+      has_factors <- fnrow(factors_and_scores_for_project()) > 0
       
-      if(!selected_project_exists) {
+      if(!selected_project_exists && !has_factors) {
         shinyjs::hide(id = "total_row")
         shinyjs::hide(id = "weighted_total_row")
       }
       
-      shiny::validate(need(
-        selected_project_exists,
-        "Select a project in the left-hand sidebar to begin rating"
-      ))
-
-      req(nrow(factors_and_scores_for_project()) > 0)
+      shiny::validate(
+        need(selected_project_exists, "Select a project in the left-hand sidebar to begin rating"),
+        need(fnrow(factors_and_scores_for_project()) > 0, "You must select 1 or more rating factors in the Customize Rating Criteria tab in order to rate this project")
+      )
       
       # Group data only by the main factor_group
       grouped_data <- split(factors_and_scores_for_project(), by = "factor_group")
@@ -212,11 +212,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
                   textAreaInput(
                     ns(paste0("performance_", id)), 
                     label = NULL, 
-                    value = performance,
+                    value = fcoalesce(performance, ""),
                     autoresize = TRUE,
-                    rows = 1
-                  ) # |> 
-                    #shiny::tagAppendAttributes(maxlength = performance_char_limit)
+                    rows = 1,
+                    updateOn = "blur"
+                  )
                 ),
                 div(
                   class = "input-col", 
@@ -225,7 +225,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
                     label = NULL, 
                     value = rating_score,
                     min = 0,
-                    max = max_points
+                    max = max_points,
+                    updateOn = "blur"
                   )) |>
                     tagAppendAttributes(class = 'score-input', `data-group` = group_id),
                 p(paste("out of", max_points), style="padding-top: 5px;")
@@ -369,61 +370,110 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project) {
       })
     })
     
-    
-    # Disable save_rating if any invalid responses
-    observe({
-      # for reactive dependency on the inputs so we can ensure this triggers.
-      req(entered_scores())
-      shinyjs::toggleState("save_rating", condition = iv$is_valid())
+    inputs_to_track <- reactive({
+      factors <- factors_and_scores_for_project()
+      req(nrow(factors) > 0)
+      
+      input_names <- lapply(input_prefixes, paste0, "_", factors$selected_rating_factor_id) |> unlist()
+      req(all(input_names %in% names(input)))
+      
+      s <- lapply(input_names, function(i) input[[i]])
+      names(s) <- input_names
+      s
     })
     
-    get_updated_project_evaluation <- function(params) {
-      data.table(
-        project_id = params$project_id,
-        weighted_score = params$weighted_score,
-        created_by = params$username,
-        version_id = params$version_id
-      )
-    }
-    
-    observeEvent(input$save_rating, {
-      # rating scores prep
-      df <- factors_and_scores_for_project()
-      selected_ids <- df$selected_rating_factor_id
-      num_selected <- fnrow(df)
+    rating_scores_to_save <- reactive({
+      raw_inputs <- inputs_to_track()
+      req(raw_inputs)
       
-      updated_rating_scores <- list(
-        project_ids                 = alloc(selected_project()$project_id, num_selected),
-        selected_rating_factor_ids  = selected_ids,
-        rating_scores               = sapply(selected_ids, \(id) input[[paste0("rating_score_", id)]]),
-        performances                = sapply(selected_ids, \(id) input[[paste0("performance_", id)]]),
-        created_bys                 = alloc(user_coc$username, num_selected),
-        version_id                = df$version_id
-      )
+      base <- isolate(factors_and_scores_for_project())
+      proj <- isolate(selected_project())
+      req(fnrow(base) > 0, fnrow(proj) > 0)
       
+      updated_rating_scores <- get_rating_data_to_save(raw_inputs, base, "selected_rating_factor_id", input_prefixes)
+      if(is.null(updated_rating_scores)) return(NULL)
       
-      # Project evalaution prep
-      numerator <- fsum(entered_scores())
-      denominator <- fsum(df$max_point_value)
-      
-      updated_project_evaluation <- get_updated_project_evaluation(
-        list(
-          project_id =  selected_project()$project_id,
-          weighted_score = round(100 * numerator/denominator, 0),
-          username = user_coc$username,
-          version_id = ifelse(fnrow(project_evaluation()) > 0, project_evaluation()$version_id, NA)
+      updated_rating_scores <- updated_rating_scores |>
+        fmutate(
+          created_by = user_coc$username,
+          performance = fifelse(performance == "", NA, performance),
+          project_id = proj$project_id
+        ) |>
+        fselect(
+          project_id,
+          selected_rating_factor_id, 
+          rating_score, 
+          performance, 
+          created_by,
+          version_id
         )
-      )
       
-      needs_refresh1 <- FALSE
-      needs_refresh2 <- FALSE
-      pool::poolWithTransaction(get_db_pool(), function(p) {
-        needs_refresh1 <- update_rating_scores_db(p, updated_rating_scores)
-        needs_refresh2 <- update_rating_score_project_evaluation_db(p, updated_project_evaluation)
+      eval_base <- isolate(project_evaluation())
+      
+      updated_project_evaluation <- if(!allNA(updated_rating_scores$rating_score)) {
+        # Project evalaution prep
+         data.table(
+          project_id = proj$project_id,
+          weighted_score = round(100 * fsum(entered_scores())/fsum(base$max_point_value), 0),
+          created_by = user_coc$username,
+          version_id = ifelse(fnrow(eval_base) > 0, eval_base$version_id, NA)
+        )
+      }
+
+      list(rating_scores = updated_rating_scores, project_evaluation = updated_project_evaluation)
+    }, label = "rating_scores_to_Save_reactive") |> debounce(2000)
+
+    observeEvent(rating_scores_to_save(), {
+      to_save <- rating_scores_to_save()
+      iv <- iv_r() 
+      
+      req(to_save, iv$is_valid())
+      
+      refresh_flags <- pool::poolWithTransaction(get_db_pool(), function(p) {
+        needs_ref1 <- update_rating_scores_db(p, to_save$rating_scores)
+
+        needs_ref2 <- FALSE
+        if (!is.null(to_save$project_evaluation))
+          needs_ref2 <- update_rating_score_project_evaluation_db(p, to_save$project_evaluation)
+
+        return(c(needs_ref1, needs_ref2))
       })
 
-      # if(needs_refresh1 || needs_refresh2)
+      needs_refresh <- any(unlist(refresh_flags))
+
+      if (!needs_refresh) {
+        # SUCCESS: The "Silent Update" to the baselines
+        # 1. Update thresholds_to_enter baseline
+        factors_and_scores_for_project()[
+          to_save$rating_scores,
+          on = "selected_rating_factor_id",
+          `:=`(
+            rating_score = as.integer(i.rating_score),
+            performance = i.performance,
+            version_id = version_id + 1
+          )
+        ]
+
+        # 2. Update project_evaluation baseline
+        if (!is.null(to_save$project_evaluation))
+          project_evaluation(
+            to_save$project_evaluation |>
+              fmutate(version_id = version_id + 1)
+          )
+
+      } else {
+        # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
+      }
     })
+    
+    # --- User PResence ----
+    mod_user_presence_server(
+      id = ns("presence"), # Internal ID for this leaf module
+      user_coc = user_coc,
+      # We use the project ID because we are rating a specific project
+      record_id = reactive({ selected_project()$project_id }), 
+      active = active
+    )
   }) #end module server
 }

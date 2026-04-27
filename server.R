@@ -17,8 +17,11 @@ function(input, output, session) {
     
     requests_updated = 0,
     projects_updated = 0,
-    customized_rating_factors_updated = 0,
-    customized_coc_thresholds_updated = 0
+    
+    # Incrementing trigger for refreshing other views
+    customized_rating_factors_updated_Renew = 0,
+    customized_rating_factors_updated_New = 0,
+    customized_coc_thresholds_updated = 0,
   )
   nav_control <- reactiveVal("about")
   
@@ -97,11 +100,19 @@ function(input, output, session) {
   observeEvent(input$nav, {
     if(!(nav_control() == "dashboard" && input$nav == "about"))
       nav_control(input$nav)
+    
+    db_execute("
+      DELETE FROM user_presence WHERE session_id = $1", 
+      params = list(session$token)
+    )
   })
   
   observeEvent(nav_control(), {
     nav_select("nav", selected = nav_control())
   })
+  
+  # Run once on app startup
+  clean_presence_table()
 
   # --- Slide-In Sidebar ----
   help_id <- mod_slide_in_instructions_server("instructions", user_coc, nav_control)

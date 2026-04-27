@@ -1351,7 +1351,6 @@ CREATE TABLE IF NOT EXISTS project_evaluations (
 
 #### RANKING ####
 DBI::dbExecute(get_db_pool(), glue::glue("
---- Ranking 
 CREATE TABLE IF NOT EXISTS ranking (
     rank_id {id_var_attrs},
     project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
@@ -1365,6 +1364,19 @@ CREATE TABLE IF NOT EXISTS ranking (
     updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 "))
+
+#### USER PRESENCE #####
+drop_table("user_presence")
+DBI::dbExecute(get_db_pool(), "
+CREATE TABLE user_presence (
+    session_id VARCHAR(100),
+    context VARCHAR(100),  -- We will pass the module 'id' here
+    user_id VARCHAR(100),
+    record_id VARCHAR(100),
+    field VARCHAR(100),    -- The new field column
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (session_id, context)
+);")
 
 ################
 # ADD VERSION ID
@@ -1426,6 +1438,7 @@ DBI::dbExecute(get_db_pool(), "CREATE INDEX IF NOT EXISTS idx_rating_scores_proj
 DBI::dbExecute(get_db_pool(), "CREATE INDEX IF NOT EXISTS idx_threshold_entries_project_threshold ON threshold_entries(project_id, threshold_id);")
 DBI::dbExecute(get_db_pool(), "CREATE INDEX IF NOT EXISTS idx_references_type ON lookups (reference_type);")
 
+DBI::dbExecute(get_db_pool(), "CREATE INDEX IF NOT EXISTS idx_user_presence_lookup ON user_presence (record_id, context, field, last_seen);")
 message("Done populating the db!")
 
 if(Sys.getenv("RSTUDIO") == "1" || add_demo_data)
