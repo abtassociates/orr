@@ -298,7 +298,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         !!!accordion_items_group,
         id = ns("main_accordion"),
         multiple = TRUE,
-        open = names(grouped_data)[1] # Open the first group by default
+        open = FALSE # per HUD feedback, close by default
       )
     }) # end render factors
     

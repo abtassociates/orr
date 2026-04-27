@@ -173,7 +173,8 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           div(style = "flex: 0 0 80px;", "Max Points")
         ),
         hr(),
-        factor_rows
+        factor_rows, 
+        open = FALSE
       )
     }
     
