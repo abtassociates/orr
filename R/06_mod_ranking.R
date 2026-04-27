@@ -516,8 +516,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       dt[, priority := if(allNA(ceilings_priorities()$priority)) unspecified_id else 
         fcase(
         project_type %in% unspec_types, unspecified_id,
+        
+        # If they have any DV beds, use DV priority
         dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_DV_Family, prio_DV_Individual, na.rm = TRUE),
         
+        # If any of their sub-pop beds are at least 50% of total beds, use highest priority of those sub-pop
         (ch_fam_beds >= 0.5 * total_beds & total_beds > 0) | (vet_fam_beds >= 0.5 * total_beds & total_beds > 0) |
           (par_youth_beds >= 0.5 * total_beds & total_beds > 0) | (total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0) |
           (vet_ind_beds >= 0.5 * total_beds & total_beds > 0) | (single_youth_beds >= 0.5 * total_beds & total_beds > 0),
@@ -529,7 +532,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           fifelse(vet_ind_beds >= 0.5 * total_beds & total_beds > 0, prio_Veteran_Individual, unspecified_id),
           fifelse(single_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_Youth_Individual, unspecified_id), na.rm = TRUE),
         
+        #If sum of their sub-pop beds is at least 50%, use "Unspecified"
         (ch_fam_beds + total_ch_ind_beds + vet_fam_beds + vet_ind_beds + par_youth_beds + single_youth_beds) >= 0.5 * total_beds & total_beds > 0, unspecified_id,
+        
+        # If sum of their sub-pop beds is less than 50%, use general pop priority
         all_fam_beds > all_ind_beds, prio_General_Family,
         all_ind_beds > all_fam_beds, prio_General_Individual,
         all_fam_beds == all_ind_beds & total_beds > 0, pmax(prio_General_Family, prio_General_Individual, na.rm = TRUE),
@@ -715,7 +721,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           maxWidth = '150px'        # REQUIRED: Set a max width so truncation triggers
         ) |>
         formatStyle(
-          'highlight',  # Replace with your actual column name
+          columns = 'highlight',  # Replace with your actual column name
           target = 'row',
           backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
           color = styleEqual(c("coc", "dv"), c('white', 'white'))
