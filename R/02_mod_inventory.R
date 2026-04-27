@@ -37,6 +37,7 @@ mod_inventory_ui <- function(id) {
                       )
           )
         ),
+        mod_user_presence_ui(ns("presence")),
         DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
         # br(),
         # textOutput(ns("projects_table_counts")),
@@ -680,6 +681,25 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         )
       )
     })
+    
+    record_being_edited <- reactiveVal(NULL)
+    observeEvent(input$projects_table_cell_being_edited, {
+      record_being_edited(
+        list(
+          record_id = projects_data()[input$projects_table_cell_clicked$row]$project_id,
+          field = names(projects_data())[[input$projects_table_cell_clicked$col + 1]]
+        )
+      )
+    })
+    
+    mod_user_presence_server(
+      id = ns("presence"), # Internal ID for this leaf module
+      user_coc = user_coc,
+      # We use the project ID because we are rating a specific project
+      record_id = reactive({ record_being_edited()$record_id }), 
+      field = reactive({ record_being_edited()$field }),
+      active = reactive({ nav_control() == "inventory"})
+    )
     
     # output$projects_table_counts <- renderText({
     #   req(projects_data())

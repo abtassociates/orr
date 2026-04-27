@@ -12,6 +12,7 @@ mod_customize_coc_thresholds_ui <- function(id) {
     "CoC Thresholds Requirements",
     value = id,
     card(
+      mod_user_presence_ui(ns("presence")),
       em("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
       checkboxGroupInput(
         inputId = ns("threshold_checkboxes"),
@@ -31,7 +32,7 @@ mod_customize_coc_thresholds_ui <- function(id) {
 
 #' @title mod_coc_thresholds_server
 #' @noRd
-mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
+mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, active) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -149,5 +150,14 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control) {
       if(!needs_refresh2)
         user_coc$customized_coc_thresholds_updated <- user_coc$customized_coc_thresholds_updated + 1
     }) # end submit custom threhsold
+    
+    # -- User Presence ---
+    mod_user_presence_server(
+      id = ns("presence"),
+      user_coc = user_coc,
+      # Record is the CoC Version
+      record_id = reactive({ user_coc$coc_version_id }),
+      active = active
+    )
   })
 }

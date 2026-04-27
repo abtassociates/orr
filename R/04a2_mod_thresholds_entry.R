@@ -48,7 +48,7 @@ mod_thresholds_entry_ui <- function(id) {
   ) # end nav_panel
 }
 
-mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
+mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -291,7 +291,15 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project) {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
-      
-    }, ignoreInit = TRUE, label = "te_debounced_observe")
+    }, ignoreInit = TRUE, label = "te_debounced_observe") # end save_requirements
+    
+    # -- USer PResence ---
+    mod_user_presence_server(
+      id = ns("presence"),
+      user_coc = user_coc,
+      # We use the project ID because we are rating a specific project
+      record_id = reactive({ selected_project()$project_id }), 
+      active = active
+    )
   }) # end moduleServer
 }
