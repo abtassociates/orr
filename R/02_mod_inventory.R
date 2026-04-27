@@ -47,6 +47,21 @@ mod_inventory_ui <- function(id) {
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
         actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
       )
+    ),
+    absolutePanel(
+      id = ns("giw_panel"),
+      style = "display:none;",
+      card(
+        h3("GIW"),
+        actionButton(ns("close_giw"), "X", class = "btn-danger btn-sm"),
+        p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
+        DTOutput(ns("giw_tbl")) |> withSpinner()
+      ),
+      draggable = TRUE,
+      width = "60vw",
+      height = "50vh",
+      top = "10vh",
+      left = "20vw"
     )
   )
 }
@@ -651,35 +666,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     })
     
     observeEvent(input$view_giw_btn, {
-      req(isTruthy(giw_data()))
-      
-        data <- giw_data() |>
-          fselect(-date_created, -date_updated, -created_by, -updated_by)
-      
-      names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
-      
-      showModal(
-        modalDialog(
-          title = "GIW",
-          p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
-          DT::renderDT(
-            data,
-            fillContainer = TRUE,
-            options = list(
-              pageLength = 200,
-              scrollY = "400px",
-              columnDefs = list(
-                list(visible = FALSE, targets = 0)  # 0 = first column (0-based index)
-              ),
-              language = list(
-                zeroRecords = "No GIW data available for this CoC."
-              )
-            )
-          ),
-          size="xl",
-          easyClose = TRUE
-        )
-      )
+      shinyjs::show("giw_panel")
+    })
+    observeEvent(input$close_giw, {
+      shinyjs::hide("giw_panel")
     })
     
     record_being_edited <- reactiveVal(NULL)
@@ -705,6 +695,30 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     #   req(projects_data())
     #   paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
     # })
+    output$giw_tbl <- renderDT({
+      data <- giw_data() |>
+        fselect(-date_created, -date_updated, -created_by, -updated_by, -version_id)
+      
+      names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
+      
+      datatable(
+        data,
+        fillContainer = TRUE,
+        selection = "none",
+        options = list(
+          pageLength = 200,
+          scrollY = "500px",
+          columnDefs = list(
+            list(visible = FALSE, targets = 0) # 0 = first column (0-based index)
+          ),
+          language = list(
+            zeroRecords = "No GIW data available for this CoC."
+          )
+        ),
+        lazyRender = TRUE,
+        filter = 'top'
+      )
+    })
     
   }) # end moduleServer
 }

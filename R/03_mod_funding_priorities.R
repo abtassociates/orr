@@ -308,33 +308,10 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       data <- formatted_coc_funding_priorities()
       
-      selected_populations <- data %>%
-        dplyr::filter(dplyr::if_any(-Population, ~ !is.na(.)))
-      
-      default_population_filter <- if(fnrow(selected_populations) > 0) 
-        selected_populations$Population 
-      else
-        c("General Families", "General Individuals", "Single Youth")
-      
-      initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(selected_populations) == "Population")]] <- list(
-        search = paste0('["', paste(default_population_filter, collapse = '","'), '"]')
-      )
-      
       initialize_inline_edit_table_ui(
         data = data,
         tableID = ns("priorities_table"),
         formatting = list(
-          function(x) formatStyle(
-            x,
-            columns = 1:ncol(data),
-            `border-right` = "1px solid lightgray"
-          ),
-          function(x) formatStyle(
-            x,
-            columns = seq(4, ncol(data), by = 3),  # Priority columns (every 3rd column starting from 3)
-            `border-right` = "1px solid black"
-          ),
           function(x) formatCurrency(
             x,
             columns = seq(3, ncol(data), by = 3), # funding fields
@@ -354,12 +331,12 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
             tags$tr(
               tags$th(rowspan = 2, 'Population'),
               lapply(MAIN_PROJECT_TYPES, function(pt) {
-                tags$th(colspan = 3, pt, style = "border-right: 1px solid black; text-align: center")
+                tags$th(colspan = 3, pt)
               })
             ),
             tags$tr(
               lapply(rep(c("Beds", "Funding", "Priority"), length(MAIN_PROJECT_TYPES)), function(col) {
-                tags$th(col, style=ifelse(col == "Priority", "border-right: 1px solid black", ""))
+                tags$th(col)
               })
             )
           )
@@ -370,11 +347,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           keys = TRUE,
           ordering = FALSE
         ),
-        initial_filter = initial_filter,
-        filter = 'top',
-        column_defs = list(
-          list(searchable = FALSE, targets = which(names(data) != "Population") - 1)
-        ),
+        filter = 'none',
         has_double_header = TRUE
       )      
     }, server = FALSE) #end initialize_data_Table
