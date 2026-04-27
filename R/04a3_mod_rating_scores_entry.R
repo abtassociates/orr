@@ -481,7 +481,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       req(fnrow(project_evaluation()) > 0)
       req(isTruthy(fnrow(factors_and_scores_for_project()) > 0))
       
-      r <- input$rating_complete %% 2 == 0
+      r <- input$rating_complete %% 2 != 0
       # Disable/Enable individual score fields
       lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
         shinyjs::toggleState(paste0("performance_", i), condition = r)
@@ -498,7 +498,10 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         fselect(rating_complete, updated_by, project_id, version_id) |>
         funique()
       
-      update_rating_complete(get_db_pool(), data)
+      needs_refresh <- update_rating_complete(get_db_pool(), data)
+      
+      if(!needs_refresh)
+        updateActionButton(inputId = "rating_complete", session = session, label = "Reset completion?")
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
       
     # --- User PResence ----

@@ -43,7 +43,7 @@ mod_thresholds_entry_ui <- function(id) {
       card_footer(
         class = "sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("threshold_complete"), "Complete?")
+        actionButton(ns("threshold_complete"), "Confirm complete?")
       )
     ) # end card
   ) # end nav_panel
@@ -302,7 +302,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
       req(isTruthy(fnrow(thresholds_to_enter()) > 0))
       req(!anyNA(thresholds_to_enter()$met_threshold))
       
-      t <- input$threshold_complete %% 2 == 0
+      t <- input$threshold_complete %% 2 != 0
       shinyjs::toggleState("yes_to_all_HUD", condition = t)
       shinyjs::toggleState("yes_to_all_CoC", condition = t)
       shinyjs::toggleState("HUD_requirements", condition = t)
@@ -319,7 +319,10 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
         fselect(threshold_complete, updated_by, project_id, version_id) |>
         funique()
       
-      update_threshold_complete(get_db_pool(), data)
+      needs_refresh <- update_threshold_complete(get_db_pool(), data)
+      
+      if(!needs_refresh)
+        updateActionButton(inputId = "threshold_complete", session = session, label = "Reset completion?")
     }, ignoreInit = TRUE)
 
     # -- USer PResence ---
