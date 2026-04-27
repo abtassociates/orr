@@ -681,6 +681,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       datatable(
         data,
         fillContainer = TRUE,
+        selection = "none",
         options = list(
           pageLength = 200,
           scrollY = "500px",
