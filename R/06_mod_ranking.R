@@ -621,8 +621,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         "no_pop_grp",
         "dv_renewal",
         "mckinneyventoyhdp",
-        paste0("ceil_beds_", target_pop_combos$combo),
-        paste0("ceil_fund_", target_pop_combos$combo)
+        paste0("ceil_beds_", target_pop_combos$target_pop_combo),
+        paste0("ceil_fund_", target_pop_combos$target_pop_combo),
+        "total_beds",
+        "bonus_type"
       )
       
       dt |>
