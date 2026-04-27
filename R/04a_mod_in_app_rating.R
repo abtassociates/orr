@@ -101,7 +101,6 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
         
         if (any(is_rated_sorted)) {
           choices_labels[is_rated_sorted] <- paste0("✔ ", choices_labels[is_rated_sorted])
-          # choices_labels[is_rated_sorted] <- paste0(custom_letter_check_icon("T"), choices_labels[is_rated_sorted])
         }
         
         choices_list <- c("Please select..." = "", setNames(projects$project_id, choices_labels))
@@ -118,47 +117,6 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
         choices = choices_list
       )
     })
-    
-    custom_letter_check_icon <- function(letter = "A", color = "#3498db", size = "10px") {
-      tags$div(
-        style = paste0(
-          "position: relative; 
-       display: inline-block; 
-       width: ", size, "; 
-       height: ", size, ";"
-        ),
-        # The Circle and Letter
-        tags$div(
-          style = paste0(
-            "width: 100%; height: 100%; 
-         background-color: ", color, "; 
-         border-radius: 50%; 
-         display: flex; 
-         align-items: center; 
-         justify-content: center; 
-         color: white; 
-         font-weight: bold; 
-         font-family: sans-serif;
-         font-size: calc(", size, " * 0.6);"
-          ),
-          letter
-        ),
-        # The Checkmark Badge
-        tags$div(
-          style = "position: absolute; 
-               bottom: -2px; 
-               right: -2px; 
-               background: white; 
-               border-radius: 50%; 
-               width: 40%; 
-               height: 40%; 
-               display: flex; 
-               align-items: center; 
-               justify-content: center;",
-          icon("check-circle", style = "color: #27ae60; font-size: 0.9em; margin: 0;")
-        )
-      )
-    }
     
     # Collapse sidebar when user is on Customize Rating Criteria tab, since it's
     # not useful there
