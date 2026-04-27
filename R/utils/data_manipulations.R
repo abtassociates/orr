@@ -399,7 +399,7 @@ get_threshold_data_to_save <- function(base, id_col, valuecol, selections) {
   new_val <- as.integer(base[[id_col]] %in% selections)
   diff <- base |> 
     fmutate(new_val = new_val) %>%
-    fsubset(new_val != .[[valuecol]])
+    fsubset(new_val != fcoalesce(DT::coerceValue(.[[valuecol]], new_val), 0L))
   
   diff[[valuecol]] <- diff$new_val
   diff$new_val <- NULL
