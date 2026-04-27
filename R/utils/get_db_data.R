@@ -41,7 +41,7 @@ get_db_tbl <- function(tbl_name) {
 
 # Write to db -------------------
 # dbExecute returns rows affected
-db_execute <- function(sql, params) {
+db_execute <- function(sql, params = NULL) {
   tryCatch({
     with_tunnel_retry({
       DBI::dbExecute(get_db_pool(), sql, params = params)
