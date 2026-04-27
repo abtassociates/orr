@@ -469,7 +469,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     # --- User PResence ----
     mod_user_presence_server(
-      id = ns("presence"), # Internal ID for this leaf module
+      id = "presence", # Internal ID for this leaf module
       user_coc = user_coc,
       # We use the project ID because we are rating a specific project
       record_id = reactive({ selected_project()$project_id }), 

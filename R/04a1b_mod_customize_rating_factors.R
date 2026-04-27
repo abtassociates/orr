@@ -509,7 +509,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     })
     
     mod_user_presence_server(
-      id = ns("presence"),
+      id = "presence",
       user_coc = user_coc,
       # Record is the CoC Version
       record_id = reactive({ user_coc$coc_version_id }),

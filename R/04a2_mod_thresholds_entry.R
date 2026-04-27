@@ -295,7 +295,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
     
     # -- USer PResence ---
     mod_user_presence_server(
-      id = ns("presence"),
+      id = "presence",
       user_coc = user_coc,
       # We use the project ID because we are rating a specific project
       record_id = reactive({ selected_project()$project_id }), 
