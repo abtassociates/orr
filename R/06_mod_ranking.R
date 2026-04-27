@@ -680,7 +680,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           info = FALSE,
           columnDefs = list(
             list(targets = 0, className = 'drag-handle', width = "30px"),
-            list(targets = which(colnames %in% c("project_id","tier","highlight")) - 1, visible = FALSE),
+            list(targets = which(colnames %in% c("project_id","tier", "highlight", "coc_cum")) - 1, visible = FALSE),
             list(targets=  which(colnames %in% c("sort_project_type", "is_over_target")) - 1, className = "hidden", visible = FALSE)
           )
         ),
