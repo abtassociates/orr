@@ -433,7 +433,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           (project_type == "SSO-CE")
       )]
       
-      dt[is_over_target == FALSE, is_dv_eligible := grepl("New|Expand", funding_action) & is_dedicated_dv == "Yes" & coc_funding_recommendation >= 50000 & (
+      dt[is_over_target == FALSE, is_dv_eligible := grepl("New|Expand", funding_action) & 
+        is_dedicated_dv == "Yes" & coc_funding_recommendation >= 50000 & (
         (project_type == "RRH" & (dv_ind_beds > 0 | dv_fam_beds > 0)) |
           (project_type == "TH+RRH" & (dv_ind_beds > 0 | dv_fam_beds > 0)) |
           (project_type == "SSO-CE")
