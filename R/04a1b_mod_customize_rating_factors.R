@@ -153,10 +153,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     }
     
     subgroup_panel <- function(factor_rows, group_name, subgroup_name, all_selected) {
-      bslib::accordion_panel(
-        title = ifelse(subgroup_name == "NA", "", subgroup_name),
+      contents <- list(
         div(
-          style = "display: flex; gap: 15px; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #ddd;",
+          style = "display: flex; gap: 15px; font-weight: bold; margin-bottom: 10px;",
           div(
             style = "flex: 0 0 100px; margin-bottom: 0px; display: flex; justify-content: center;", 
             checkboxInput(
@@ -175,16 +174,23 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         hr(),
         factor_rows
       )
+      
+      if(subgroup_name == "NA") return(contents)
+      
+      bslib::accordion_panel(
+        title = ifelse(subgroup_name == "NA", "", subgroup_name),
+        contents
+      )
     }
     
-    group_panel <- function(group_name, subgroup_panels, open = FALSE) {
+    group_panel <- function(group_name, subgroup_panels) {
       bslib::accordion_panel(
         title = group_name,
         bslib::accordion(
           !!!subgroup_panels,
           id = ns(paste0("sub_accordion_", janitor:::make_clean_names(group_name))),
           multiple = TRUE,
-          open = open
+          open = FALSE
         )
       )
     }
