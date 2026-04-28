@@ -48,7 +48,7 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
           stringr::str_to_title(paste0(tab, " Instructions")),
           div(
             style = "position: absolute; top: 10px; right: 20px;",
-            actionButton("close_help", "X", class = "btn-danger btn-sm")
+            actionButton(ns("close_help"), "X", class = "btn-danger btn-sm")
           )
         ),
         hr(),

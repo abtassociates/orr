@@ -21,7 +21,7 @@ mod_alternative_rating_ui <- function(id) {
   )
 }
 
-mod_alternative_rating_server <- function(id, user_coc) {
+mod_alternative_rating_server <- function(id, user_coc, nav_control) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -54,7 +54,7 @@ mod_alternative_rating_server <- function(id, user_coc) {
     
     output$alternative_rating_table <- renderDT({
       req(user_coc$coc_version_id)
-      data <- ratable_projects() |> fselect(-version_id)
+      data <- isolate(ratable_projects() |> fselect(-version_id))
       
       shiny::validate(need(
         nrow(data) > 0, 
@@ -104,6 +104,12 @@ mod_alternative_rating_server <- function(id, user_coc) {
         )
       )
     }, server=FALSE)
+    
+    alt_rating_proxy <- dataTableProxy("alternative_rating_table", session=session)
+    alt_rating_proxy$id <- "alternative_rating_table"
+    observeEvent(ratable_projects(), {
+      replaceData(alt_rating_proxy, ratable_projects() |> fselect(-version_id), resetPaging=FALSE, rownames = FALSE)
+    })
     
     alt_rating_update <- function() {
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
@@ -412,6 +418,16 @@ mod_alternative_rating_server <- function(id, user_coc) {
         })
       )
     }) # end field_mapping_ui
+    
+    # --- User PResence ----
+    mod_user_presence_server(
+      id = "presence",
+      user_coc = user_coc,
+      # All inputs on this page are tied to the version ID
+      record_id = reactive({ input$alternative_rating_table_rows_selected }),
+      # Only pulse if the main navbar is on 'funding_priorities'
+      active = reactive({ nav_control() == "rating" })
+    )
     
   }) # end module server
 }

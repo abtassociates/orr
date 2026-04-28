@@ -30,10 +30,14 @@ mod_inventory_ui <- function(id) {
                       
                       options = pickerOptions(
                         selectedTextFormat = 'count',
-                        countSelectedText = '{0} Fields Displayed'
+                        countSelectedText = '{0} Fields Displayed',
+                        selectAllText = 'Select All',
+                        deselectAllText = 'De-select All',
+                        actionsBox = TRUE
                       )
           )
         ),
+        mod_user_presence_ui(ns("presence")),
         DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
         # br(),
         # textOutput(ns("projects_table_counts")),
@@ -43,6 +47,21 @@ mod_inventory_ui <- function(id) {
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
         actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
       )
+    ),
+    absolutePanel(
+      id = ns("giw_panel"),
+      style = "display:none;",
+      card(
+        h3("GIW"),
+        actionButton(ns("close_giw"), "X", class = "btn-danger btn-sm"),
+        p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
+        DTOutput(ns("giw_tbl")) |> withSpinner()
+      ),
+      draggable = TRUE,
+      width = "60vw",
+      height = "50vh",
+      top = "10vh",
+      left = "20vw"
     )
   )
 }
@@ -266,7 +285,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           
           function(x) formatRound(
             x,
-            columns = grep('bed', names(data)) - 1,
+            columns = grep('bed', names(data)),
             digits = 0
           )
         ),
@@ -293,6 +312,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
     projects_table_proxy <- dataTableProxy("projects_table",session = session)
+    projects_table_proxy$id <- "projects_table" # setting id to raw_id seems to fix auto-scrolling
     
     observe({
       req(projects_data())
@@ -328,8 +348,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       req(projects_data())
       
-      bed_fields <- grep('bed', names(projects_data())) - 1
-      bed_field_names <- names(projects_data())[bed_fields + 1]
+      bed_fields <- grep('bed', names(projects_data()))
+      bed_field_names <- names(projects_data())[bed_fields]
       
       if(input$toggle_bed_fields){
         updatePickerInput(session, inputId = 'projects_col_selections', selected = union(input$projects_col_selections, bed_field_names))
@@ -340,24 +360,25 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     
     # Update DT table with column changes made in dropdown (pickerInput)
     observeEvent(input$projects_col_selections, {
-      
-       req(user_coc$auth)
-       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
-       req(projects_data())
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      req(projects_data())
         
-       cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
-       cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
-       # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+      cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
+      cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
+      # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+      
+      ## show and hide columns as needed
+      projects_table_proxy$id <- ns("projects_table")
+      if(length(cols_to_hide) > 0) {
+        hideCols(projects_table_proxy, hide = cols_to_hide)
+      }
+      if(length(cols_to_show) > 0) {
+        showCols(projects_table_proxy, show = cols_to_show)
+      }
+      projects_table_proxy$id <- "projects_table"
        
-       ## show and hide columns as needed
-        if(length(cols_to_hide) > 0){
-          hideCols(projects_table_proxy, hide = cols_to_hide)
-        }
-        if(length(cols_to_show) > 0){
-          showCols(projects_table_proxy, show = cols_to_show)
-        }
-       
-       user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
+      user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
     })
     
     # Update projects -----
@@ -644,41 +665,59 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     })
     
     observeEvent(input$view_giw_btn, {
-      req(isTruthy(giw_data()))
-      
-        data <- giw_data() |>
-          fselect(-date_created, -date_updated, -created_by, -updated_by)
-      
-      names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
-      
-      showModal(
-        modalDialog(
-          title = "GIW",
-          p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
-          DT::renderDT(
-            data,
-            fillContainer = TRUE,
-            options = list(
-              pageLength = 200,
-              scrollY = "400px",
-              columnDefs = list(
-                list(visible = FALSE, targets = 0)  # 0 = first column (0-based index)
-              ),
-              language = list(
-                zeroRecords = "No GIW data available for this CoC."
-              )
-            )
-          ),
-          size="xl",
-          easyClose = TRUE
+      shinyjs::show("giw_panel")
+    })
+    observeEvent(input$close_giw, {
+      shinyjs::hide("giw_panel")
+    })
+    
+    record_being_edited <- reactiveVal(NULL)
+    observeEvent(input$projects_table_cell_being_edited, {
+      record_being_edited(
+        list(
+          record_id = projects_data()[input$projects_table_cell_clicked$row]$project_id,
+          field = names(projects_data())[[input$projects_table_cell_clicked$col + 1]]
         )
       )
     })
+    
+    mod_user_presence_server(
+      id = "presence", # Internal ID for this leaf module
+      user_coc = user_coc,
+      # We use the project ID because we are rating a specific project
+      record_id = reactive({ record_being_edited()$record_id }), 
+      field = reactive({ record_being_edited()$field }),
+      active = reactive({ nav_control() == "inventory"})
+    )
     
     # output$projects_table_counts <- renderText({
     #   req(projects_data())
     #   paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
     # })
+    output$giw_tbl <- renderDT({
+      data <- giw_data() |>
+        fselect(-date_created, -date_updated, -created_by, -updated_by, -version_id)
+      
+      names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
+      
+      datatable(
+        data,
+        fillContainer = TRUE,
+        selection = "none",
+        options = list(
+          pageLength = 200,
+          scrollY = "500px",
+          columnDefs = list(
+            list(visible = FALSE, targets = 0) # 0 = first column (0-based index)
+          ),
+          language = list(
+            zeroRecords = "No GIW data available for this CoC."
+          )
+        ),
+        lazyRender = TRUE,
+        filter = 'top'
+      )
+    })
     
   }) # end moduleServer
 }
