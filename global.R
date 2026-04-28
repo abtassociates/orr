@@ -80,6 +80,22 @@ logger::log_threshold(Sys.getenv("LOG_LEVEL", "DEBUG"))
 options(shiny.fullstacktrace = IN_DEV_MODE)
 options(shiny.sanitize.errors = FALSE)
 
+# add logger table input names
+table_suffixes <- c(
+  "_rows_selected",
+  "_rows_current",
+  "_rows_all",
+  "_state"
+)
+table_names <- c(
+  "dashboard-coc_selection-coc_versions_dt",
+  "inventory-projects_table",
+  "dashboard-requests-requests_dt",
+  "funding_priorities-priorities_table"
+)
+
+inputs_to_exclude <- outer(table_names, table_suffixes, paste, sep = "")
+
 # UTILS AND DB FUNCTIONS --------------
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
