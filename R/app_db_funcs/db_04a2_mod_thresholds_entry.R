@@ -41,3 +41,19 @@ update_threshold_project_evaluation_db <- function(p, updated_project_evaluation
     "project_evaluation"
   )
 }
+
+
+update_threshold_complete <- function(p, updated_threshold_complete) {
+  save_to_db(
+    p,
+    "UPDATE project_evaluations 
+    SET 
+      threshold_complete = $1, 
+      updated_by = $2,
+      date_updated = CURRENT_TIMESTAMP,
+      version_id = version_id + 1
+    WHERE project_id = $3 AND version_id = $4",
+    updated_threshold_complete,
+    "project_evaluations"
+  ) 
+}
