@@ -1,6 +1,7 @@
 library(shiny)
 library(bslib)
 library(brandr)
+library(brand.yml)
 library(DT)
 # library(sortable)
 library(fontawesome) # may not be needed
@@ -23,6 +24,9 @@ library(httr2)
 library(jsonlite)
 library(shinyWidgets)
 library(brand.yml)
+# downloads
+library(gt)
+library(pagedown)
 
 # ENVIRONMENT DETECTION -----------
 IN_DEV_MODE <- Sys.getenv("RSTUDIO") == "1" && !isTRUE(getOption("shiny.testmode"))
