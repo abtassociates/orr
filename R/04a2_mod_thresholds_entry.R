@@ -19,10 +19,8 @@ mod_thresholds_entry_ui <- function(id) {
           checkboxGroupInput(
             ns("HUD_requirements"),
             label = NULL,
-            choices = setNames(
-              HUD_THRESHOLD_REQUIREMENTS$threshold_id, 
-              HUD_THRESHOLD_REQUIREMENTS$threshold_text
-            ),
+            choiceValues = HUD_THRESHOLD_REQUIREMENTS$threshold_id, 
+            choiceNames = lapply(HUD_THRESHOLD_REQUIREMENTS$threshold_text, HTML),
             width = "100%"
           )
         ),
@@ -87,13 +85,13 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
       # shinyjs::toggleState(selector = glue::glue("#{ns('reqs')} .accordion-button"), condition = project_is_selected)
       shinyjs::toggleState("save_requirements", condition = project_is_selected)
       
-      if(project_is_selected) {
-        bslib::accordion_panel_open("reqs", "HUD Requirements", session = session)
-        bslib::accordion_panel_open("reqs", "CoC Requirements", session = session)
-      } else {
-        bslib::accordion_panel_close("reqs", "HUD Requirements", session = session)
-        bslib::accordion_panel_close("reqs", "CoC Requirements", session = session)
-      }
+      # if(project_is_selected) {
+      #   bslib::accordion_panel_open("reqs", "HUD Requirements", session = session)
+      #   bslib::accordion_panel_open("reqs", "CoC Requirements", session = session)
+      # } else {
+      #   bslib::accordion_panel_close("reqs", "HUD Requirements", session = session)
+      #   bslib::accordion_panel_close("reqs", "CoC Requirements", session = session)
+      # }
     }, ignoreNULL = FALSE)
     
     # Updating main data

@@ -146,17 +146,16 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         ),
         if(funding_action == "Renew") div(style = "flex: 1;", get_lookup_label(project_type, "project_type")) else NULL,
         div(style = "flex: 1;", get_lookup_label(target_population, "target_population")),
-        div(style = "flex: 3; font-size: 0.9rem;", text),
+        div(style = "flex: 3; font-size: 0.9rem;", HTML(text)),
         div(style = "flex: 1;", textInput(ns(paste0("goal_", id)), NULL, value = goal, width = "100%", updateOn = "blur")),
         div(style = "flex: 0 0 80px;", numericInput(ns(paste0("max_point_value_", id)), NULL, value = points, step = 0.1, width = "100%", updateOn = "blur"))
       )
     }
     
     subgroup_panel <- function(factor_rows, group_name, subgroup_name, all_selected) {
-      bslib::accordion_panel(
-        title = ifelse(subgroup_name == "NA", "", subgroup_name),
+      contents <- list(
         div(
-          style = "display: flex; gap: 15px; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #ddd;",
+          style = "display: flex; gap: 15px; font-weight: bold; margin-bottom: 10px;",
           div(
             style = "flex: 0 0 100px; margin-bottom: 0px; display: flex; justify-content: center;", 
             checkboxInput(
@@ -175,16 +174,23 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         hr(),
         factor_rows
       )
+      
+      if(subgroup_name == "NA") return(contents)
+      
+      bslib::accordion_panel(
+        title = ifelse(subgroup_name == "NA", "", subgroup_name),
+        contents
+      )
     }
     
-    group_panel <- function(group_name, subgroup_panels, open = FALSE) {
+    group_panel <- function(group_name, subgroup_panels) {
       bslib::accordion_panel(
         title = group_name,
         bslib::accordion(
           !!!subgroup_panels,
           id = ns(paste0("sub_accordion_", janitor:::make_clean_names(group_name))),
           multiple = TRUE,
-          open = open
+          open = FALSE
         )
       )
     }
@@ -215,13 +221,14 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           subgroup_panel(factor_rows, group_name, subgroup_name, all_subgroup_factors_selected)
         })
         
-        group_panel(group_name, subgroup_panels, open = names(group_data_subgroups)[1])
+        group_panel(group_name, subgroup_panels)
       })
       
       bslib::accordion(
         !!!accordion_items_group, 
         id = ns("main_accordion"), 
-        multiple = TRUE
+        multiple = TRUE,
+        open = FALSE
       )
     }
     
