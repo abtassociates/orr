@@ -43,7 +43,7 @@ mod_thresholds_entry_ui <- function(id) {
       card_footer(
         class = "sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        shinyWidgets::switchInput(ns("threshold_complete"), label = "Threshold Complete?", onLabel="Yes", offLabel="No")
+        prettySwitch(ns("threshold_complete"), label = "Threshold Complete?")
       )
     ) # end card
   ) # end nav_panel
@@ -98,24 +98,17 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
     
     # Updating main data
     observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_coc_thresholds_updated), {
-      req(fnrow(selected_project()) > 0)
-      
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      project_id <- selected_project()$project_id
       
       thresholds_to_enter(
-        get_all_thresholds_to_enter(
-          user_coc$coc_version_id, 
-          if(!project_is_selected) NA else selected_project()$project_id
-        )
+        get_all_thresholds_to_enter(user_coc$coc_version_id, if(!project_is_selected) NA else project_id)
       )
       
-      project_evaluation(
-        get_project_evaluation(
-          user_coc$coc_version_id, 
-          if(!project_is_selected) NA else selected_project()$project_id
+      if(project_is_selected)
+        project_evaluation(
+          get_project_evaluation(user_coc$coc_version_id, project_id)
         )
-      )
-      
       
       hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
       updateCheckboxGroupInput(
@@ -146,7 +139,11 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
       
       shinyjs::toggle("yes_to_all_CoC", condition = isTruthy(fnrow(coc_thresholds_to_enter()) > 0))
       
-      updateSwitchInput(session=session, inputId = "threshold_complete", value = project_evaluation()$threshold_complete == 1)
+      updatePrettySwitch(
+        session,
+        "threshold_complete", 
+        value = project_evaluation()$threshold_complete == 1
+      )
       shinyjs::toggleState("threshold_complete", condition = !allNA(thresholds_to_enter()$met_threshold))
       
       made_a_change(FALSE)
