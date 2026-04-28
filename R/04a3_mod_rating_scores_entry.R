@@ -37,6 +37,7 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
+      style = "overflow: visible !important;",
       mod_user_presence_ui(ns("presence")),
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
@@ -64,6 +65,11 @@ mod_rating_scores_entry_ui <- function(id) {
               strong(textOutput(ns("weighted_total_score"), inline=TRUE))),
           div(strong("out of 100"))
         )
+      ),
+      card_footer(
+        class="sticky-footer",
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        shinyWidgets::switchInput(ns("rating_complete"), label = "Rating Complete?", onLabel="Yes", offLabel="No")
       )
     )
   )
@@ -291,6 +297,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       shinyjs::delay(800, {
         shinyjs::show(id = "total_row")
         shinyjs::show(id = "weighted_total_row")
+        updateSwitchInput(session=session, inputId = "rating_complete", value = project_evaluation()$rating_complete == 1)
+        shinyjs::toggleState("rating_complete", condition = !allNA(factors_and_scores_for_project()$rating_score))
       })
       
       # The final accordion structure
@@ -461,12 +469,43 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
               fmutate(version_id = version_id + 1)
           )
 
+        shinyjs::toggleState("rating_complete", condition = !allNA(factors_and_scores_for_project()$rating_score))
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
     })
     
+    observeEvent(input$rating_complete, {
+      # only proceed if all scores are entered
+      req(fnrow(project_evaluation()) > 0)
+      req(isTruthy(fnrow(factors_and_scores_for_project()) > 0))
+      req(fnrow(selected_project()) > 0)
+      
+      # Disable/Enable individual score fields
+      lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
+        shinyjs::toggleState(paste0("performance_", i), condition = !input$rating_complete)
+        shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
+      })
+      
+      # pull latest Project Evaluation in case they just updated Threshold
+      project_evaluation(
+        get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
+      )
+      
+      # Update db
+      data <- factors_and_scores_for_project() |>
+        fmutate(
+          rating_complete = input$rating_complete,
+          updated_by = user_coc$username,
+          version_id = project_evaluation()$version_id
+        ) |>
+        fselect(rating_complete, updated_by, project_id, version_id) |>
+        funique()
+      
+      update_rating_complete(get_db_pool(), data)
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+      
     # --- User PResence ----
     mod_user_presence_server(
       id = "presence", # Internal ID for this leaf module

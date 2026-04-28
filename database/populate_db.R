@@ -1341,6 +1341,8 @@ CREATE TABLE IF NOT EXISTS project_evaluations (
     met_coc_thresholds BOOLEAN NULL,
 
     weighted_score SMALLINT CHECK (weighted_score >= 0 AND weighted_score <= 100),
+    threshold_complete BOOLEAN NULL DEFAULT FALSE,
+    rating_complete BOOLEAN NULL DEFAULT FALSE,
 
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,

@@ -7,6 +7,7 @@ mod_thresholds_entry_ui <- function(id) {
     value = id,
     card(
       textOutput(ns("empty")),
+      style = "overflow: visible !important;",
       accordion(
         id = ns("reqs"),
         accordion_panel(
@@ -38,12 +39,12 @@ mod_thresholds_entry_ui <- function(id) {
           )
         ),
         open = FALSE
-      )#, # end accordion
-      # card_footer(
-      #   style = "display: flex; justify-content: space-between; align-items: center;",
-      #   div(),
-      #   actionButton(ns("save_requirements"), "Save Thresholds", icon = icon("save"), class="btn-primary")
-      # )
+      ), # end accordion
+      card_footer(
+        class = "sticky-footer",
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        prettySwitch(ns("threshold_complete"), label = "Threshold Complete?")
+      )
     ) # end card
   ) # end nav_panel
 }
@@ -97,24 +98,17 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
     
     # Updating main data
     observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_coc_thresholds_updated), {
-      req(fnrow(selected_project()) > 0)
-      
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      project_id <- selected_project()$project_id
       
       thresholds_to_enter(
-        get_all_thresholds_to_enter(
-          user_coc$coc_version_id, 
-          if(!project_is_selected) NA else selected_project()$project_id
-        )
+        get_all_thresholds_to_enter(user_coc$coc_version_id, if(!project_is_selected) NA else project_id)
       )
       
-      project_evaluation(
-        get_project_evaluation(
-          user_coc$coc_version_id, 
-          if(!project_is_selected) NA else selected_project()$project_id
+      if(project_is_selected)
+        project_evaluation(
+          get_project_evaluation(user_coc$coc_version_id, project_id)
         )
-      )
-      
       
       hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
       updateCheckboxGroupInput(
@@ -144,6 +138,13 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
       })
       
       shinyjs::toggle("yes_to_all_CoC", condition = isTruthy(fnrow(coc_thresholds_to_enter()) > 0))
+      
+      updatePrettySwitch(
+        session,
+        "threshold_complete", 
+        value = project_evaluation()$threshold_complete == 1
+      )
+      shinyjs::toggleState("threshold_complete", condition = !allNA(thresholds_to_enter()$met_threshold))
       
       made_a_change(FALSE)
     }, ignoreNULL = FALSE, priority = 11)
@@ -276,7 +277,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
           on = "threshold_id", 
           `:=`(
             met_threshold = as.integer(met_threshold),
-            version_id = version_id + 1
+            version_id = fcoalesce(version_id, 0L) + 1
           )
         ]
         
@@ -286,13 +287,45 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
             to_save$project_evaluation |>
               fmutate(version_id = version_id + 1)
           )
-
+        
+        shinyjs::toggleState("threshold_complete", condition = !allNA(thresholds_to_enter()$met_threshold))
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
-    }, ignoreInit = TRUE, label = "te_debounced_observe") # end save_requirements
+    }, label = "te_debounced_observe") # end save requirements
     
+    observeEvent(input$threshold_complete, {
+      # only proceed if all thresholds are non-null
+      req(isTruthy(fnrow(thresholds_to_enter()) > 0))
+      req(!anyNA(thresholds_to_enter()$met_threshold))
+      req(made_a_change())
+      req(fnrow(selected_project()) > 0)
+      
+      shinyjs::toggleState("yes_to_all_HUD", condition = !input$threshold_complete)
+      shinyjs::toggleState("yes_to_all_CoC", condition = !input$threshold_complete)
+      shinyjs::toggleState("HUD_requirements", condition = !input$threshold_complete)
+      shinyjs::toggleState("CoC_requirements", condition = !input$threshold_complete)
+      
+      # pull latest Project Evaluation in case they just updated Threshold
+      project_evaluation(
+        get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
+      )
+      
+      # Update db
+      data <- thresholds_to_enter() |>
+        fmutate(
+          threshold_complete = input$threshold_complete,
+          updated_by = user_coc$username,
+          project_id = selected_project()$project_id,
+          version_id = project_evaluation()$version_id
+        ) |>
+        fselect(threshold_complete, updated_by, project_id, version_id) |>
+        funique()
+      
+      update_threshold_complete(get_db_pool(), data)
+    }, ignoreInit = TRUE)
+
     # -- USer PResence ---
     mod_user_presence_server(
       id = "presence",
