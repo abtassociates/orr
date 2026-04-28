@@ -5,23 +5,27 @@ mod_ranking_ui <- function(id) {
     "Ranking",
     value = "ranking",
     
-    layout_columns(
-      fill = FALSE,
-      col_widths = c(4, 4, 4),
-      actionButton(
-        ns("btn_adjust_tiers"), 
-        "Adjust Tiers after Funding Changes", 
-        class = "btn-info btn-lg w-100", 
-        icon = icon("arrows-rotate")
-      ),
-      actionButton(
-        ns("btn_save_ranking"), 
-        "Save Ranking", 
-        class = "btn-success btn-lg w-100", 
-        icon = icon("save")
+    div(
+      class = "d-flex justify-content-between align-items-end mb-3",
+      
+      # Left Side: Buttons (Normal size, placed next to each other)
+      layout_columns(
+        fill = FALSE,
+        col_widths = c(6, 6),
+        actionButton(
+          ns("btn_adjust_tiers"), 
+          "Adjust Tiers after Funding Changes", 
+          class = "btn-info btn-lg w-100", 
+          icon = icon("arrows-rotate")
+        ),
+        actionButton(
+          ns("btn_save_ranking"), 
+          "Save Ranking", 
+          class = "btn-success btn-lg w-100", 
+          icon = icon("save")
+        )
       )
     ),
-    
     
     # 1. Top Summary Widgets
     layout_columns(
@@ -43,6 +47,15 @@ mod_ranking_ui <- function(id) {
       )
     ),
     
+    shinyWidgets::virtualSelectInput(
+      inputId = ns("hidden_cols"),
+      label = "Hidden Columns:",
+      choices = NULL, # Populated dynamically in server
+      multiple = TRUE,
+      width = "200px",
+      showValueAsTags = TRUE,
+      placeholder = "No columns hidden"
+    ),
     
     # 4. Drag and Drop Zones
     DTOutput(ns("ui_ranked_list")) |> shinycssloaders::withSpinner(),
@@ -513,7 +526,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             )
         )
       }
-      browser()
+      
       # Ensure target columns exist safely
       dt[, total_beds := all_fam_beds + all_ind_beds]
       
@@ -646,12 +659,24 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           "100% DV" = is_dedicated_dv
         )
     }
-    render_projects_dt <- function(final) {
+    
+    structural_cols <- c("project_id", "tier", "highlight", "coc_cum", "sort_project_type", "is_over_target", " ")
+    
+    render_projects_dt <- function(final, show_beds = FALSE) {
       colnames <- names(final)
       
       disabled_cols <- setdiff(
         0:(ncol(final) - 1), 
         which(colnames == "coc_funding_recommendation") - 1
+      )
+      
+      bed_cols <- grep("bed", colnames, ignore.case = TRUE) - 1
+      
+      columnDefs = list(
+        list(targets = 0, className = 'drag-handle', width = "30px"),
+        # hide structural fields and, initially, bed fields
+        list(targets = which(colnames %in% structural_cols) - 1, visible = FALSE),
+        list(targets = bed_cols, visible = FALSE)
       )
       
       # Get all column indices except coc_funding_recommendation
@@ -689,11 +714,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           searching = FALSE,
           ordering = FALSE,
           info = FALSE,
-          columnDefs = list(
-            list(targets = 0, className = 'drag-handle', width = "30px"),
-            list(targets = which(colnames %in% c("project_id","tier", "highlight", "coc_cum")) - 1, visible = FALSE),
-            list(targets=  which(colnames %in% c("sort_project_type", "is_over_target")) - 1, className = "hidden", visible = FALSE)
-          )
+          columnDefs = columnDefs
         ),
         # for tracking reordered rows
         callback = JS(sprintf("
@@ -709,7 +730,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         ))
       ) |>
         formatStyle(
-          'coc_funding_recommendation',  # Replace with your actual column name
+          'coc_funding_recommendation', 
           backgroundColor = USER_ENTRY_BG_COLOR,
           fontWeight = 'bold'
         ) |>
@@ -735,6 +756,60 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       x
     }
     
+    
+    
+    # HANDLE COLUMN TOGGLE
+    # user cannot show/hide these. Always hidden
+    observe({
+      req(rv$ranked)
+      col_names <- names(format_ranked_tbl(rv$ranked))
+      
+      toggleable_cols <- setdiff(col_names, structural_cols)
+      
+      bed_cols <- grep("bed", toggleable_cols, ignore.case = TRUE, value = TRUE)
+      general_cols <- setdiff(toggleable_cols, bed_cols)
+      
+      # Create a flat list of choices, swapping all bed fields for the single word "Beds"
+      choices <- c("BED FIELDS", general_cols)
+      
+      shinyWidgets::updateVirtualSelect(
+        session = session,
+        inputId = "hidden_cols",
+        choices = setNames(choices, gsub("_", "", toupper(choices))),
+        selected = "BED FIELDS" # Initially hide Beds
+      )
+    })
+    
+    # 2. Proxy observer: Fast client-side hiding/showing of columns
+    observeEvent(input$hidden_cols, {
+      req(rv$ranked)
+      col_names <- names(format_ranked_tbl(rv$ranked))
+      toggleable_cols <- setdiff(col_names, structural_cols)
+      
+      bed_cols <- grep("bed", toggleable_cols, ignore.case = TRUE, value = TRUE)
+      general_cols <- setdiff(toggleable_cols, bed_cols)
+      
+      selected_hidden <- if(is.null(input$hidden_cols)) character(0) else input$hidden_cols
+      
+      # Build the final list of actual columns to hide
+      cols_to_hide <- character(0)
+      
+      # Expand the "Beds" shortcut into the actual column names
+      if ("BED FIELDS" %in% selected_hidden) {
+        cols_to_hide <- c(cols_to_hide, bed_cols)
+      }
+      
+      # Add any general columns the user selected
+      cols_to_hide <- c(cols_to_hide, intersect(selected_hidden, general_cols))
+      cols_to_show <- setdiff(toggleable_cols, cols_to_hide)
+      
+      # Apply fast UI changes via Proxy
+      if (length(cols_to_show) > 0) DT::showCols(ranked_proxy, which(col_names %in% cols_to_show) - 1)
+      if (length(cols_to_hide) > 0) DT::hideCols(ranked_proxy, which(col_names %in% cols_to_hide) - 1)
+      
+    }, ignoreNULL = FALSE)
+    
+    
     observeEvent(input$newOrder, {
       req(rv$ranked)
       
@@ -753,16 +828,14 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     output$ui_ranked_list <- renderDT({
       req(fnrow(rv$ranked) > 0)
-      render_projects_dt(format_ranked_tbl(rv$ranked))
+      render_projects_dt(format_ranked_tbl(rv$ranked), isTruthy(input$toggle_beds))
     }, server=FALSE)
     
-    ranked_proxy <- dataTableProxy(ns("ui_ranked_list"),session = session)
-    
+    ranked_proxy <- dataTableProxy("ui_ranked_list",session = session)
     observe({
       req(rv$ranked)
       replaceData(ranked_proxy, format_ranked_tbl(rv$ranked), resetPaging = FALSE)
     })
-    
     
     observeEvent(input$ui_ranked_list_cell_edit, {
       info <- input$ui_ranked_list_cell_edit
