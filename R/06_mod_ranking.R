@@ -456,6 +456,12 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         default = "Projects Exceeding ARD"
       )]
       
+      dt[is_over_target == FALSE, straddle_amount := fifelse(
+        prev_cum < coc_ard_data()$tier_1 & cum_funding > coc_ard_data()$tier_1, 
+        cum_funding - coc_ard_data()$tier_1,
+        0
+      )]
+      
       dt[is_over_target == FALSE, coc_selected := FALSE]
       if (any(dt$is_coc_eligible, na.rm=TRUE)) {
         dt[is_coc_eligible == TRUE, coc_cum := cumsum(coc_funding_recommendation)]
@@ -660,7 +666,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         )
     }
     
-    structural_cols <- c("project_id", "tier", "highlight", "coc_cum", "sort_project_type", "is_over_target", " ")
+    structural_cols <- c("project_id", "tier", "highlight", "coc_cum", "sort_project_type", "is_over_target", "straddle_amount", " ")
     
     render_projects_dt <- function(final, show_beds = FALSE) {
       colnames <- names(final)
@@ -678,6 +684,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         list(targets = which(colnames %in% structural_cols) - 1, visible = FALSE),
         list(targets = bed_cols, visible = FALSE)
       )
+      straddle_col_idx <- which(colnames == "straddle_amount") - 1
+      funding_col_idx  <- which(colnames == "coc_funding_recommendation") - 1
+      
+      
       
       # Get all column indices except coc_funding_recommendation
       x <- datatable(
@@ -714,7 +724,37 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           searching = FALSE,
           ordering = FALSE,
           info = FALSE,
-          columnDefs = columnDefs
+          columnDefs = columnDefs,
+          # Inside your datatable options list:
+          rowCallback = JS(sprintf("
+            function(row, data, displayNum, displayIndex, dataIndex) {
+              var straddleIdx = %d;
+              var fundingIdx = %d;
+              debugger;
+              var straddle = parseFloat(data[straddleIdx]);
+              var funding = parseFloat(data[fundingIdx]);
+              
+              if (straddle > 0 && funding > 0) {
+                var tier1 = funding - straddle;
+                var pct = (tier1 / funding) * 100;
+                
+                var fmt = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0});
+                
+                var titleText = '⚖️ STRADDLING PROJECT\\n' +
+                                'This project spans the Tier 1 / Tier 2 boundary.\\n\\n' +
+                                '• Allocated to Tier 1: ' + fmt.format(tier1) + ' (' + pct.toFixed(1) + '%%)\\n' +
+                                '• Allocated to Tier 2: ' + fmt.format(straddle) + ' (' + (100 - pct).toFixed(1) + '%%)';
+                var titleTextCSS = titleText.replace(/\\n/g, '\\\\A ');
+
+                // Apply class and the CSS Variable to the ROW
+                $(row).addClass('straddle-row');
+                
+                var ghostLabel = '⬇️ ' + fmt.format(straddle) + ' spills over into Tier 2';
+                row.style.setProperty('--t1-pct', pct + '%%');
+                row.style.setProperty('--straddle-label', '\"' + titleTextCSS + '\"');
+              }
+            }", straddle_col_idx, funding_col_idx
+          ))
         ),
         # for tracking reordered rows
         callback = JS(sprintf("
@@ -751,6 +791,14 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           target = 'row',
           backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
           color = styleEqual(c("coc", "dv"), c('white', 'white'))
+        ) |>
+        formatStyle(
+          columns = 'straddle_amount',
+          target = 'row',
+          outline = styleInterval(
+            cuts = 0,
+            values = c('none', '2px solid var(--brand-tier_2)') # [<=0 style, >0 style]
+          )
         )
       
       x

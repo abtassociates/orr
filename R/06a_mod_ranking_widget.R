@@ -53,11 +53,19 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title, icon_n
         limit_ui <- p(class="value-box-value", "Eligible For:", span(class="val", scales::dollar(total)))
         
         if (diff_amt < 0) {
-          sub_text <- p(
-            icon("triangle-exclamation"), 
-            paste("Overallocated by:", scales::dollar(abs(diff_amt))), 
-            class = "ranking-remaining overallocated text-danger"
-          )
+          if(id == "tier_1") {
+            sub_text <- p(
+              icon("triangle-exclamation"), 
+              paste("Straddle Amount:", scales::dollar(abs(diff_amt))), 
+              class = "ranking-remaining overallocated text-warning"
+            )
+          } else {
+            sub_text <- p(
+              icon("triangle-exclamation"), 
+              paste("Overallocated by:", scales::dollar(abs(diff_amt))), 
+              class = "ranking-remaining overallocated text-danger"
+            )
+          }
         } else if(diff_amt == 0) {
           sub_text <- p(
             icon("check", class="success"), 

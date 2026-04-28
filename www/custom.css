@@ -245,7 +245,6 @@ td.drag-handle:active {
 .bslib-card .card-body p.ranking-remaining.overallocated {
   animation: warning-pulse 2s infinite;
 }
-.
 
 @keyframes warning-pulse {
   0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.4); }
@@ -280,6 +279,7 @@ tr.group_header td{
   background-color: var(--brand-exceeds);
 }
 
+/* Necessary for CoC and DV Bonus highlighting*/
 #ranking-ui_ranked_list table.dataTable tbody tr[style*='background-color'] > td {
   background-color: inherit !important;
   color: inherit !important;
@@ -287,7 +287,59 @@ tr.group_header td{
   --bs-table-accent-bg: transparent !important;
   --bs-table-bg: transparent !important;
 }
-    
+
+/* Apply the gradient to the cells (td) so it isn't hidden by cell backgrounds */
+:root {
+  --brand-tier_1-rgb: 13, 71, 161;
+  --brand-tier_2-rgb: 135, 54, 0;
+}
+
+/* 1. Apply the gradient to the ROW (the full-width container) */
+#ranking-ui_ranked_list table.dataTable tbody tr.straddle-row {
+  background: linear-gradient(90deg, 
+    rgba(var(--brand-tier_1-rgb), 0.4) 0%, 
+    rgba(var(--brand-tier_1-rgb), 0.4) var(--t1-pct), 
+    rgba(var(--brand-tier_2-rgb), 0.4) var(--t1-pct), 
+    rgba(var(--brand-tier_2-rgb), 0.4) 100%
+  ) !important;
+  cursor: help;
+  position: relative;
+  display:table-row;
+  background-position: right bottom !important
+}
+  
+/* 2. CRITICAL: Make cells transparent on hover so the row gradient is visible */
+#ranking-ui_ranked_list table.dataTable tbody tr.straddle-row td {
+  background-color: transparent !important;
+  /* This ensures your bold text and other styles remain visible */
+}
+
+/* The 'Ghost Overlay' Logic */
+#ranking-ui_ranked_list table.dataTable tbody tr.straddle-row:hover::after {
+  content: var(--straddle-label);
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  background: white;
+  color: #333;
+  padding: 6px 12px;
+  border: 2px solid var(--brand-tier_2);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  z-index: 9999;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  white-space: break-spaces;
+  pointer-events: none;
+  animation: ghost-float 0.3s ease-out;
+}
+
+@keyframes ghost-float {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
 /* STICKY CARD FOOTER*/
 .sticky-footer {
   position: sticky; 
