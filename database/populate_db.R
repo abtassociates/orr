@@ -16,6 +16,7 @@ populate_db <- function(
   library(here)
   library(DBI)
   library(data.table)
+  library(collapse)
   
   files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
   lapply(files, source)
