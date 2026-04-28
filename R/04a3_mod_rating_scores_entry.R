@@ -205,7 +205,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
               layout_columns(
                 col_widths = col_widths,
                 # We can add a class for CSS styling, e.g., for indentation
-                p(text),
+                HTML(text),
                 p(goal),
                 div(
                   class = "input-col", 
@@ -249,9 +249,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         
         # Create the single accordion panel for the whole group
         bslib::accordion_panel(
-          title = tagList(
-            htmltools::span(group_name),
-            htmltools::span(
+          title = layout_columns(
+            col_widths = col_widths,
+            # tagList(
+            htmltools::div(group_name),
+            div(),
+            div(),
+            div(),
+            htmltools::div(
               class = "accordion_total_display",
               HTML(paste0(
                 "(",
@@ -298,7 +303,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         !!!accordion_items_group,
         id = ns("main_accordion"),
         multiple = TRUE,
-        open = names(grouped_data)[1] # Open the first group by default
+        open = FALSE # per HUD feedback, close by default
       )
     }) # end render factors
     
