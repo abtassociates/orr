@@ -20,9 +20,6 @@ color:
     tier_2: '#873600'
     dv_bonus: '#00695c'
     exceeds: '#000000'
-    
-    # Warning color
-    overallocated: '#ffc107'
 
     
   # theme colors  

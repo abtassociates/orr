@@ -205,21 +205,56 @@ td.drag-handle:active {
   cursor: grabbing !important; 
 }
 
-/* Ranking Summary Widget Text Styles */
-.ranking-limit {
-  font-size: 1.2em;
-  font-weight: bold;
-  margin-bottom: 0.2rem;
+/*************** 
+** Ranking Summary Widget Text Styles
+*******************/
+.bslib-value-box .value-box-value {
+  font-size: 1.2rem;
 }
-.ranking-remaining {
-  font-size: 1em;
-  margin-bottom: 0;
+.bslib-value-box .value-box-value > .val {
+  font-size: 1.5rem;
 }
-.ranking-exceeded {
-  font-size: 1em;
-  margin-bottom: 0;
-  color: var(--brand-overallocated); /* Bright yellow to contrast against dark backgrounds */
+
+.bslib-value-box .value-box-title {
+  font-size:1.7rem;
   font-weight: bold;
+}
+
+.value-box-title .subtitle {
+  font-size: 0.75rem; 
+  font-weight: normal; 
+  margin-top: 3px;
+}
+
+/* Overallocation, Remaining, Fully Allocated pill*/
+.bslib-card .card-body p.ranking-remaining {
+  display: inline-flex;
+  gap: 6px;
+  padding: 2px 10px;
+  align-items: center; /*vertical alignment*/
+  border-radius: 12px;
+  color: #9c5300;
+  font-weight: 700;
+  text-transform: uppercase;
+  background-color: white;
+  margin-top: auto;
+  justify-content: center; /*horizontal alignment*/
+  border: 5px solid;
+}
+
+.bslib-card .card-body p.ranking-remaining.overallocated {
+  animation: warning-pulse 2s infinite;
+}
+.
+
+@keyframes warning-pulse {
+  0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0); }
+}
+
+.bslib-value-box .value-box-area {
+  padding: 1.5rem 0rem;
 }
 
 /* DataTables RowGroup Header Styles */

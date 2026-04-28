@@ -31,45 +31,54 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title, icon_n
       title_parts <- strsplit(title, " \\(")[[1]]
       main_title <- title_parts[1]
       
-      title_block <- if (length(title_parts) > 1) {
+      title_block <- div(main_title)
+      
+      if (length(title_parts) > 1) {
         sub_title <- paste0("(", title_parts[2])
-        tagList(
-          div(main_title, style = "font-size: 1.3em; font-weight: 900; line-height: 1.1;"),
-          div(sub_title, style = "font-size: 0.75em; font-weight: normal; opacity: 0.9; margin-top: 3px;")
+        title_block <- tagList(
+          div(main_title),
+          div(class="subtitle", sub_title)
         )
-      } else {
-        div(main_title, style = "font-size: 1.3em; font-weight: 900;")
       }
       
       # Limit and Remaining logic (Handle Inf for Exceeds bucket)
+      show_warning <- FALSE
       if (is.infinite(total)) {
         limit_ui <- NULL
         sub_text <- NULL
+        value_box_class <- NULL
       } else {
-        is_exceeded <- alloc > total
-        diff_amt <- abs(total - alloc)
-        show_warning <- is_exceeded && total > 0
+        diff_amt <- total - alloc
         
-        limit_ui <- p(paste("Limit:", scales::dollar(total)), class = "ranking-limit")
+        limit_ui <- p(class="value-box-value", "Eligible For:", span(class="val", scales::dollar(total)))
         
-        sub_text <- if (show_warning) {
-          p(
+        if (diff_amt < 0) {
+          sub_text <- p(
             icon("triangle-exclamation"), 
-            paste("Overallocated by:", scales::dollar(diff_amt)), 
-            class = "ranking-exceeded"
+            paste("Overallocated by:", scales::dollar(abs(diff_amt))), 
+            class = "ranking-remaining overallocated text-danger"
+          )
+        } else if(diff_amt == 0) {
+          sub_text <- p(
+            icon("check", class="success"), 
+            "Fully Allocated", 
+            class = "ranking-remaining success"
           )
         } else {
-          p(paste("Remaining:", scales::dollar(diff_amt)), class = "ranking-remaining")
+          sub_text <- p(
+            paste("Remaining:", scales::dollar(diff_amt)), 
+            class = "ranking-remaining"
+          )
         }
       }
       
       bslib::value_box(
         title = title_block,
-        value = scales::dollar(alloc),
+        value = p("Allocated: ", span(class="val", scales::dollar(alloc))),
         breakdown_ui,
         limit_ui,
         sub_text,
-        showcase = icon(icon_name, style="font-size: 3rem;"),
+        # showcase = icon(icon_name),
         theme = bslib::value_box_theme(bg = glue::glue("var(--brand-{id})"), fg = "white"),
         height = "250px"
       )
