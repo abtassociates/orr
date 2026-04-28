@@ -173,8 +173,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           div(style = "flex: 0 0 80px;", "Max Points")
         ),
         hr(),
-        factor_rows, 
-        open = FALSE
+        factor_rows
       )
     }
     
@@ -216,13 +215,14 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           subgroup_panel(factor_rows, group_name, subgroup_name, all_subgroup_factors_selected)
         })
         
-        group_panel(group_name, subgroup_panels, open = names(group_data_subgroups)[1])
+        group_panel(group_name, subgroup_panels)
       })
       
       bslib::accordion(
         !!!accordion_items_group, 
         id = ns("main_accordion"), 
-        multiple = TRUE
+        multiple = TRUE,
+        open = FALSE
       )
     }
     
