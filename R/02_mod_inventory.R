@@ -683,7 +683,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     })
     
     mod_user_presence_server(
-      id = ns("presence"), # Internal ID for this leaf module
+      id = "presence", # Internal ID for this leaf module
       user_coc = user_coc,
       # We use the project ID because we are rating a specific project
       record_id = reactive({ record_being_edited()$record_id }), 

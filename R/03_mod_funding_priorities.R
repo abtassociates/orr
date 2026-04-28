@@ -485,7 +485,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     # -- User PResence ---------
     mod_user_presence_server(
-      id = ns("presence"),
+      id = "presence",
       user_coc = user_coc,
       # All inputs on this page are tied to the version ID
       record_id = reactive({ user_coc$coc_version_id }),

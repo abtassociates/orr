@@ -730,7 +730,7 @@ message("about to do populate thresholds")
 DBI::dbExecute(get_db_pool(), "
 INSERT INTO thresholds (type, threshold_text, created_by)
 VALUES ('CoC', 'Coordinated Entry Participation', 'orr_service@abtglobal.com'),
-('CoC', 'Housing First and/or Low Barrier Implementation', 'orr_service@abtglobal.com'),
+('CoC', 'Low Barrier Implementation', 'orr_service@abtglobal.com'),
 ('CoC', 'Documented, secured minimum match', 'orr_service@abtglobal.com'),
 ('CoC', 'Project has reasonable costs per permanent housing exit, as defined locally', 'orr_service@abtglobal.com'),
 ('CoC', 'Project is financially feasible', 'orr_service@abtglobal.com'),
@@ -744,68 +744,68 @@ VALUES ('CoC', 'Coordinated Entry Participation', 'orr_service@abtglobal.com'),
 ('HUD', '1. Applicant has Active SAM registration with current information, and maintains an active SAM registration annually.', 'orr_service@abtglobal.com'),
 ('HUD', '2. Applicant has Valid UEI (Unique Entity Identifier) Number.', 'orr_service@abtglobal.com'),
 ('HUD', '3. CoC Program Eligibility – Project applicants and potential subrecipients meet the eligibility requirements of the CoC Program as described in the Act and the Rule and provide evidence of eligibility required in the application (e.g., nonprofit documentation).', 'orr_service@abtglobal.com'),
-('HUD', '4. Financial and Management Capacity:
-- Project applicants and subrecipients demonstrate the financial and management capacity and experience to carry out the project as detailed in the project application
-- Applicants must demonstrate the capacity to administer federal funds.', 'orr_service@abtglobal.com'),
+('HUD', '4. Financial and Management Capacity:<ul>
+<li>Project applicants and subrecipients demonstrate the financial and management capacity and experience to carry out the project as detailed in the project application</li>
+<li>Applicants must demonstrate the capacity to administer federal funds.</li></ul>', 'orr_service@abtglobal.com'),
 ('HUD', '5. Certifications – Project applicants submit the required certifications specified in the NOFO.', 'orr_service@abtglobal.com'),
 ('HUD', '6. Population Served – The population to be served meets program eligibility requirements as described in the Act, the Rule, and the NOFO.', 'orr_service@abtglobal.com'),
-('HUD', '7. HMIS Participation –
-- Project applicants (except those only receiving CoC planning or UFA Costs) agree to participate in a local HMIS system.
-- Victim service providers must not disclose any personally identifying client info in HMIS.
-- Victim service providers must use a comparable database meeting HMIS requirements.', 'orr_service@abtglobal.com'),
-('HUD', '8. Applicant has no Outstanding Delinquent Federal Debts –
-It is HUD policy that applicants with delinquent federal debt are not eligible unless:
-   a) A negotiated repayment schedule is established and not delinquent, or
-   b) Other arrangements satisfactory to HUD are made before the award of funds.', 'orr_service@abtglobal.com'),
+('HUD', '7. HMIS Participation – <ul>
+<li>Project applicants (except those only receiving CoC planning or UFA Costs) agree to participate in a local HMIS system.</li>
+<li>Victim service providers must not disclose any personally identifying client info in HMIS.</li>
+<li>Victim service providers must use a comparable database meeting HMIS requirements.</li></ul>', 'orr_service@abtglobal.com'),
+('HUD', '8. Applicant has no Outstanding Delinquent Federal Debts – <ul>
+<p>It is HUD policy that applicants with delinquent federal debt are not eligible unless:</p><ol type=\"a\">
+   <li>A negotiated repayment schedule is established and not delinquent, or</li>
+   <li>Other arrangements satisfactory to HUD are made before the award of funds.</li></ol>', 'orr_service@abtglobal.com'),
 ('HUD', '9. Applicant has no Debarments and/or Suspensions –
 In accordance with 2 CFR 2424, no federal funds may be awarded to debarred or suspended applicants.', 'orr_service@abtglobal.com'),
 ('HUD', '10. Pre-selection Review of Performance –
-If your organization has delinquent federal debt or is excluded from doing business with the Federal government, HUD may:
-   a) Deny funding or consider suspension/termination for cause;
-   b) Require removal of key individuals from project roles;
-   c) Change payment or reporting terms.
+<p>If your organization has delinquent federal debt or is excluded from doing business with the Federal government, HUD may:</p><ol type=\"a\">
+   <li>Deny funding or consider suspension/termination for cause;</li>
+   <li>Require removal of key individuals from project roles;</li>
+   <li>Change payment or reporting terms.</li></ol>
 
-HUD reviews OMB-designated sources such as:
-- Federal Awardee Performance and Integrity Information System (FAPIIS)
-- The \"Do Not Pay\" website.', 'orr_service@abtglobal.com'),
+<p>HUD reviews OMB-designated sources such as:</p><ul>
+<li>Federal Awardee Performance and Integrity Information System (FAPIIS)</li>
+<li>The \"Do Not Pay\" website.</li></ul>', 'orr_service@abtglobal.com'),
 ('HUD', '11. Sufficiency of Financial Management System –
 HUD will not award funds to applicants lacking a compliant financial management system per 2 CFR 200.302.
-HUD may conduct surveys for:
-- New applicants without federal award history
-- Applicants flagged as high risk due to past performance or financial findings.', 'orr_service@abtglobal.com'),
+HUD may conduct surveys for:<ul>
+<li>New applicants without federal award history</li>
+<li>Applicants flagged as high risk due to past performance or financial findings.</li></ul>', 'orr_service@abtglobal.com'),
 ('HUD', '12. False Statements –
-A false statement in an application may result in:
-- Denial or termination of award
-- Criminal, civil, and/or administrative sanctions
-- Fines, penalties, and imprisonment
-Applicants confirm all statements are truthful.', 'orr_service@abtglobal.com'),
+A false statement in an application may result in:<ul>
+<li>Denial or termination of award</li>
+<li>Criminal, civil, and/or administrative sanctions</li>
+<li>Fines, penalties, and imprisonment</li></ul>
+<p>Applicants confirm all statements are truthful.</p>', 'orr_service@abtglobal.com'),
 ('HUD', '13. Mandatory Disclosure Requirement –
-Recipients or applicants must disclose, in writing, to HUD:
-- Any violations of Federal criminal law involving fraud, bribery, or gratuity affecting the award
-- Disclosures must occur within 10 days of learning of the violation
-Recipients are also required to:
-- Report proceedings via SAM, per Appendix XII to 2 CFR part 200
-- Comply with 2 CFR part 180, 31 U.S.C. 3321, and 31 U.S.C. 2313
-Failure to disclose may lead to suspension, debarment, or other remedies in §200.338.', 'orr_service@abtglobal.com'),
+Recipients or applicants must disclose, in writing, to HUD:<ul>
+<li>Any violations of Federal criminal law involving fraud, bribery, or gratuity affecting the award</li>
+<li>Disclosures must occur within 10 days of learning of the violation</li></ul>
+<p>Recipients are also required to:</p><ul>
+<li>Report proceedings via SAM, per Appendix XII to 2 CFR part 200</li>
+<li>Comply with 2 CFR part 180, 31 U.S.C. 3321, and 31 U.S.C. 2313</li></ul>
+<p>Failure to disclose may lead to suspension, debarment, or other remedies in §200.338.</p>', 'orr_service@abtglobal.com'),
 ('HUD', '14. Prohibition Against Lobbying Activities –
-Applicants must comply with:
-- The Byrd Amendment (31 U.S.C. 1352)
-- 24 CFR part 87
+Applicants must comply with:<ul>
+<li>The Byrd Amendment (31 U.S.C. 1352)</li>
+<li>24 CFR part 87</li></ul>
 
-Applicants must:
-- Submit a signed Certification Regarding Lobbying
-- Disclose non-federal lobbying efforts via SFLLL (Standard Form for Lobbying)
+<p>Applicants must:</p><ul>
+<li>Submit a signed Certification Regarding Lobbying</li>
+<li>Disclose non-federal lobbying efforts via SFLLL (Standard Form for Lobbying)</li></ul>
 
-Federally recognized Indian tribes and TDHEs (created via tribal sovereignty) are exempt from the Byrd Amendment.
-State-recognized tribes and TDHEs under state law must comply.', 'orr_service@abtglobal.com'),
+<p>Federally recognized Indian tribes and TDHEs (created via tribal sovereignty) are exempt from the Byrd Amendment.
+State-recognized tribes and TDHEs under state law must comply.</p>', 'orr_service@abtglobal.com'),
 ('HUD', '15. Equal Participation of Faith-Based Organizations –
 All projects must comply with 24 CFR 5.109, updated by HUD (81 FR 19355) on April 4, 2016, to reflect E.O. 13559:
 \"Fundamental Principles and Policymaking Criteria for Partnerships with Faith-Based and Other Neighborhood Organizations\"
 Applies to all HUD programs and activities unless otherwise exempted by program statutes or regulations.', 'orr_service@abtglobal.com'),
 ('HUD', '16. Resolution of Civil Rights Matters –
-Applicants with unresolved civil rights matters as of the submission deadline:
-- Will be deemed ineligible
-- Will not be reviewed, rated, ranked, or funded', 'orr_service@abtglobal.com');
+Applicants with unresolved civil rights matters as of the submission deadline:<ul>
+<li>Will be deemed ineligible</li>
+<li>Will not be reviewed, rated, ranked, or funded</li></ul>', 'orr_service@abtglobal.com');
 ")
 
 message("about to create rating_Factors")
@@ -1015,14 +1015,14 @@ VALUES
 ('Coordinated Entry Participation- Minimum percent of entries to project from CE referral (or alternative system for DV projects)', 'Coordinated Entry Participation', '≥ <<goal>> of entries to project from CE referrals', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, '95 %', 10, 'orr_service@abtglobal.com'),
 ('Coordinated Entry Participation- Minimum percent of entries to project from CE referral (or alternative system for DV projects)', 'Coordinated Entry Participation', '≥ <<goal>> of entries to project from CE referrals', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th_rrh), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, '95 %', 10, 'orr_service@abtglobal.com'),
 ('Coordinated Entry Participation- Minimum percent of entries to project from CE referral (or alternative system for DV projects)', 'Coordinated Entry Participation', '≥ <<goal>> of entries to project from CE referrals', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th_rrh), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, '95 %', 10, 'orr_service@abtglobal.com'),
-('Housing First and/or Low Barrier Implementation - CoC assessment of fidelity to Housing First from CoC monitoring or review of project policies and procedures', 'Housing First and/or Low Barrier Implementation', 'Commits to applying Housing First model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_rrh), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
-('Housing First and/or Low Barrier Implementation - CoC assessment of fidelity to Housing First from CoC monitoring or review of project policies and procedures', 'Housing First and/or Low Barrier Implementation', 'Commits to applying Housing First model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_rrh), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
-('Housing First and/or Low Barrier Implementation - CoC assessment of fidelity to Housing First from CoC monitoring or review of project policies and procedures', 'Housing First and/or Low Barrier Implementation', 'Commits to applying Housing First model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_psh), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
-('Housing First and/or Low Barrier Implementation - CoC assessment of fidelity to Housing First from CoC monitoring or review of project policies and procedures', 'Housing First and/or Low Barrier Implementation', 'Commits to applying Housing First model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_psh), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
-('Housing First and/or Low Barrier Implementation - CoC assessment of fidelity to Housing First from CoC monitoring or review of project policies and procedures', 'Housing First and/or Low Barrier Implementation', 'Commits to applying Housing First model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
-('Housing First and/or Low Barrier Implementation - CoC assessment of fidelity to Housing First from CoC monitoring or review of project policies and procedures', 'Housing First and/or Low Barrier Implementation', 'Commits to applying Housing First model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
-('Housing First and/or Low Barrier Implementation - CoC assessment of fidelity to Housing First from CoC monitoring or review of project policies and procedures', 'Housing First and/or Low Barrier Implementation', 'Commits to applying Housing First model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th_rrh), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
-('Housing First and/or Low Barrier Implementation - CoC assessment of fidelity to Housing First from CoC monitoring or review of project policies and procedures', 'Housing First and/or Low Barrier Implementation', 'Commits to applying Housing First model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th_rrh), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
+('Low Barrier Implementation - CoC assessment of fidelity to minimizing barriers to housing from CoC monitoring or review of project policies and procedures', 'Low Barrier Implementation', 'Commits to a low or no barrier model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_rrh), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
+('Low Barrier Implementation - CoC assessment of fidelity to minimizing barriers to housing from CoC monitoring or review of project policies and procedures', 'Low Barrier Implementation', 'Commits to a low or no barrier model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_rrh), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
+('Low Barrier Implementation - CoC assessment of fidelity to minimizing barriers to housing from CoC monitoring or review of project policies and procedures', 'Low Barrier Implementation', 'Commits to a low or no barrier model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_psh), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
+('Low Barrier Implementation - CoC assessment of fidelity to minimizing barriers to housing from CoC monitoring or review of project policies and procedures', 'Low Barrier Implementation', 'Commits to a low or no barrier model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_psh), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
+('Low Barrier Implementation - CoC assessment of fidelity to minimizing barriers to housing from CoC monitoring or review of project policies and procedures', 'Low Barrier Implementation', 'Commits to a low or no barrier model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
+('Low Barrier Implementation - CoC assessment of fidelity to minimizing barriers to housing from CoC monitoring or review of project policies and procedures', 'Low Barrier Implementation', 'Commits to a low or no barrier model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
+('Low Barrier Implementation - CoC assessment of fidelity to minimizing barriers to housing from CoC monitoring or review of project policies and procedures', 'Low Barrier Implementation', 'Commits to a low or no barrier model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th_rrh), (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
+('Low Barrier Implementation - CoC assessment of fidelity to minimizing barriers to housing from CoC monitoring or review of project policies and procedures', 'Low Barrier Implementation', 'Commits to a low or no barrier model', (SELECT reference_id FROM l_renew), (SELECT reference_id FROM l_th_rrh), (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_proj_effect_renew), NULL, 'Yes', 10, 'orr_service@abtglobal.com'),
 
 -- Equity Factors, Governance, and Policies (factor_group = fg_equity_factors_renew)
 -- Subgroup: Agency Leadership, Governance, and Policies (fsg_agency_leadership_renew)
@@ -1044,19 +1044,19 @@ VALUES
 -- Experience (factor_group = fg_experience_new)
 ('A. Describe the experience of the applicant and sub-recipients (if any) in working with the proposed population and in providing housing similar to that proposed in the application.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_experience_new), NULL, NULL, 15, 'orr_service@abtglobal.com'),
 ('A. Describe the experience of the applicant and sub-recipients (if any) in working with the proposed population and in providing housing similar to that proposed in the application.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_experience_new), NULL, NULL, 15, 'orr_service@abtglobal.com'),
-('B. Describe experience with utilizing a Housing First approach. This must include:
-- Eligibility criteria
-- Process for accepting new clients
-- Process and criteria for exiting clients
-- Demonstration of no preconditions to entry, allowing entry regardless of current or past substance abuse, income, criminal records (with exceptions of restrictions imposed by federal, state, or local law or ordinance), marital status, familial status, self-disclosed or perceived sexual orientation, gender identity or gender expression.
-- Demonstration that the project has a process to address situations that may jeopardize housing or project assistance to ensure that project participation is terminated in only the most severe cases.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_experience_new), NULL, NULL, 10, 'orr_service@abtglobal.com'),
+('B. Describe experience with utilizing a Housing First approach. This must include:<ul>
+<li>Eligibility criteria</li>
+<li>Process for accepting new clients</li>
+<li>Process and criteria for exiting clients</li>
+<li>Demonstration of no preconditions to entry, allowing entry regardless of current or past substance abuse, income, criminal records (with exceptions of restrictions imposed by federal, state, or local law or ordinance), marital status, familial status, self-disclosed or perceived sexual orientation, gender identity or gender expression.</li>
+<li>Demonstration that the project has a process to address situations that may jeopardize housing or project assistance to ensure that project participation is terminated in only the most severe cases.</li></ul>', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_experience_new), NULL, NULL, 10, 'orr_service@abtglobal.com'),
 
-('B. Describe experience with utilizing a Housing First approach. This must include:
-- Eligibility criteria
-- Process for accepting new clients
-- Process and criteria for exiting clients
-- Demonstration of no preconditions to entry, allowing entry regardless of current or past substance abuse, income, criminal records (with exceptions of restrictions imposed by federal, state, or local law or ordinance), marital status, familial status, self-disclosed or perceived sexual orientation, gender identity or gender expression.
-- Demonstration that the project has a process to address situations that may jeopardize housing or project assistance to ensure that project participation is terminated in only the most severe cases.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_experience_new), NULL, NULL, 10, 'orr_service@abtglobal.com'),
+('B. Describe experience with utilizing a Housing First approach. This must include:<ul>
+<li>Eligibility criteria</li>
+<li>Process for accepting new clients</li>
+<li>Process and criteria for exiting clients</li>
+<li>Demonstration of no preconditions to entry, allowing entry regardless of current or past substance abuse, income, criminal records (with exceptions of restrictions imposed by federal, state, or local law or ordinance), marital status, familial status, self-disclosed or perceived sexual orientation, gender identity or gender expression.</li>
+<li>Demonstration that the project has a process to address situations that may jeopardize housing or project assistance to ensure that project participation is terminated in only the most severe cases.</li></ul>', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_experience_new), NULL, NULL, 10, 'orr_service@abtglobal.com'),
 ('C. Describe experience in effectively utilizing federal funds including HUD grants and other public funding, including satisfactory drawdowns and performance for existing grants as evidenced by timely reimbursement of subrecipients (if applicable), regular drawdowns, timely resolution of monitoring findings, and timely submission of required reporting on existing grants.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_dv), (SELECT factor_group_id FROM fg_experience_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
 ('C. Describe experience in effectively utilizing federal funds including HUD grants and other public funding, including satisfactory drawdowns and performance for existing grants as evidenced by timely reimbursement of subrecipients (if applicable), regular drawdowns, timely resolution of monitoring findings, and timely submission of required reporting on existing grants.', NULL, NULL, (SELECT reference_id FROM l_new), NULL, (SELECT reference_id FROM l_general), (SELECT factor_group_id FROM fg_experience_new), NULL, NULL, 5, 'orr_service@abtglobal.com'),
 
@@ -1341,6 +1341,8 @@ CREATE TABLE IF NOT EXISTS project_evaluations (
     met_coc_thresholds BOOLEAN NULL,
 
     weighted_score SMALLINT CHECK (weighted_score >= 0 AND weighted_score <= 100),
+    threshold_complete BOOLEAN NULL DEFAULT FALSE,
+    rating_complete BOOLEAN NULL DEFAULT FALSE,
 
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,

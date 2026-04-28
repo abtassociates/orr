@@ -42,7 +42,7 @@ generate_selected_rating_factors_for_coc <- function(p, coc_version_id) {
   DBI::dbExecute(
     p,
     glue::glue("INSERT INTO selected_rating_factors (rating_factor_id, selected, coc_version_id, goal, max_point_value, created_by, updated_by)
-    VALUES ($1, TRUE, $2, $3, $4, '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
+    VALUES ($1, FALSE, $2, $3, $4, '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
     ON CONFLICT (coc_version_id, rating_factor_id) DO NOTHING;"),
     params = paramify(rating_factors)
   )

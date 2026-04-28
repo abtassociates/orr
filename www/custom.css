@@ -176,7 +176,7 @@ table.dataTable .selectize-dropdown-content {
 /* float the accordion title totals to the right */
 #rating-renew-rating_scores_entry-main_accordion .accordion-title,
 #rating-new-rating_scores_entry-main_accordion .accordion-title {
-  display: flex; 
+  display: block; 
   justify-content: space-between; 
   align-items: center; 
   width: 100%;
