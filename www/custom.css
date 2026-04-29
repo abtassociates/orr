@@ -289,12 +289,42 @@ tr.group_header td{
 }
 
 /* Apply the gradient to the cells (td) so it isn't hidden by cell backgrounds */
-:root {
-  --brand-tier_1-rgb: 13, 71, 161;
-  --brand-tier_2-rgb: 135, 54, 0;
+.straddle-row {
+  cursor: help;
+  position: relative;
+  display:table-row;
+}
+/* Define the hazard tape animation/style */
+.straddle-row td {
+  /* Create the top and bottom borders */
+  border-top: 6px solid transparent !important;
+  border-bottom: 6px solid transparent !important;
+  
+  /* Use border-image to create the stripes */
+  border-image: repeating-linear-gradient(
+    45deg,
+    var(--brand-tier_1),
+    var(--brand-tier_1) 10px,
+    var(--brand-tier_2) 10px,
+    var(--brand-tier_2) 20px
+  ) 10;
+  
+  /* Ensure cells don't collapse the border */
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* Add side borders to the first and last columns to complete the box */
+.straddle-row td:first-child {
+  border-left: 6px solid transparent !important;
+}
+
+.straddle-row td:last-child {
+  border-right: 6px solid transparent !important;
 }
 
 /* 1. Apply the gradient to the ROW (the full-width container) */
+/*
 #ranking-ui_ranked_list table.dataTable tbody tr.straddle-row {
   background: linear-gradient(90deg, 
     rgba(var(--brand-tier_1-rgb), 0.4) 0%, 
@@ -306,13 +336,12 @@ tr.group_header td{
   position: relative;
   display:table-row;
   background-position: right bottom !important
-}
+}*/
   
 /* 2. CRITICAL: Make cells transparent on hover so the row gradient is visible */
-#ranking-ui_ranked_list table.dataTable tbody tr.straddle-row td {
+/*#ranking-ui_ranked_list table.dataTable tbody tr.straddle-row td {
   background-color: transparent !important;
-  /* This ensures your bold text and other styles remain visible */
-}
+}*/
 
 /* The 'Ghost Overlay' Logic */
 #ranking-ui_ranked_list table.dataTable tbody tr.straddle-row:hover::after {
