@@ -486,7 +486,6 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     }) # end save
     
     mod_download_rating_server("download_rating", user_coc, selected_project, funding_action, factors_and_scores_for_project)
-    })
     
     observeEvent(input$rating_complete, {
       # only proceed if all scores are entered
