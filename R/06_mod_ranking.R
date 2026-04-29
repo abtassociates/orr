@@ -588,6 +588,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         raw_data[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, fnrow(raw_data)), coc_funding_requested))]
         raw_data[, coc_funding_recommendation := fcoalesce(coc_funding_recommendation, coerceValue(coc_funding_requested, coc_funding_recommendation))]
         raw_data[, weighted_score := fcoalesce(weighted_score, DT::coerceValue(sample(100, fnrow(raw_data)), weighted_score))]
+        raw_data[, met_hud_threshold := fcoalesce(met_hud_threshold, coerceValue(sample(c(TRUE, FALSE), fnrow(raw_data), replace=TRUE), met_hud_threshold))]
+        raw_data[, met_coc_threshold := fcoalesce(met_coc_threshold, coerceValue(sample(c(TRUE, FALSE), fnrow(raw_data), replace=TRUE), met_coc_threshold))]
       }
       
       # add empty column to front for drag-and-drop control
