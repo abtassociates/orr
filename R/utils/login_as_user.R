@@ -9,6 +9,10 @@ login_as_user <- function(user_coc, user_email = NULL) {
   u <- get_db_tbl("users") |>
     fsubset(username == user_email)
   
+  if(fnrow(u) == 0) {
+    stop(paste0(user_email, " not found"))
+  }
+  
   # u <- devs[[Sys.info()[["user"]]]]
   hideElement("login_link")
   hideElement("signup_link")
