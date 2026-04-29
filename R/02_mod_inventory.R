@@ -505,13 +505,13 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       project_data <- projects_data()[project_id == info$project_id]
       
       funding_source <- ifelse(
-        project_data$mckinneyventoyhdp == "Yes",
-        "YHDP",
-        ifelse(
+        # project_data$mckinneyventoyhdp == "Yes",
+        # "YHDP",
+        # ifelse(
           isTruthy(project_data$dv_renewal == "Yes" || project_data$target_population == "DV"),
           "DV",
           "CoC"
-        )
+        # )
       )
       
       is_factor_col <- is.factor(projects_data()[[col_name]])
