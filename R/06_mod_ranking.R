@@ -301,7 +301,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     # ranked_project_ids <- reactiveValues(new = NULL)
     
-    observeEvent(c(user_coc$coc_version_id, user_coc$projects_updated), { 
+    observeEvent(c(user_coc$coc_version_id, user_coc$projects_updated, user_coc$rating_updated, user_coc$priorities_and_ceilings_updated), { 
       process_data(force_reset = FALSE) 
     }, ignoreInit = TRUE)
     

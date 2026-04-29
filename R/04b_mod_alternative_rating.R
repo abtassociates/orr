@@ -187,6 +187,8 @@ debugger;
       ratable_projects(current_data)
       
       alt_rating_update()
+      
+      user_coc$rating_updated <- user_coc$rating_updated + 1
     }, ignoreInit = TRUE) # end alt rating table cell edit
 
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns

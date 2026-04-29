@@ -509,6 +509,9 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         funique()
       
       update_rating_complete(get_db_pool(), data)
+      
+      if(input$rating_complete)
+        user_coc$rating_updated <- user_coc$rating_updated + 1
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
       
     # --- User PResence ----

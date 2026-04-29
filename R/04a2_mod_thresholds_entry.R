@@ -322,6 +322,9 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
         funique()
       
       update_threshold_complete(get_db_pool(), data)
+      
+      if(input$threshold_complete)
+        user_coc$rating_updated <- user_coc$rating_updated + 1
     }, ignoreInit = TRUE)
 
     # -- USer PResence ---
