@@ -267,6 +267,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         # Create the single accordion panel for the whole group
         bslib::accordion_panel(
           title = layout_columns(
+            style = "margin-bottom: 0px",
             col_widths = col_widths,
             # tagList(
             htmltools::div(group_name),
