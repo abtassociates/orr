@@ -422,29 +422,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       # Rank only non-excluded rows correctly by sequence
       dt[is_over_target == FALSE, rank := seq_len(.N)]
       
-      # 1. Evaluate Bonus Eligibility only on valid projects
-      dt[is_over_target == FALSE, is_coc_eligible := grepl("New|Expand", funding_action) & (
-        (project_type == "PSH" & ((total_ch_ind_beds > 0 & is_dedicated_ch_ind == "Yes") | (ch_fam_beds > 0 & is_dedicated_ch_fam == "Yes"))) |
-          (project_type == "RRH" & (all_ind_beds > 0 | all_fam_beds > 0)) |
-          (project_type == "TH+RRH" & (all_fam_beds > 0 | all_ind_beds > 0)) |
-          (project_type == "HMIS Project") |
-          (project_type == "SSO-CE")
-      )]
-      
-      dt[is_over_target == FALSE, is_dv_eligible := grepl("New|Expand", funding_action) & 
-        is_dedicated_dv == "Yes" & coc_funding_recommendation >= 50000 & (
-        (project_type == "RRH" & (dv_ind_beds > 0 | dv_fam_beds > 0)) |
-          (project_type == "TH+RRH" & (dv_ind_beds > 0 | dv_fam_beds > 0)) |
-          (project_type == "SSO-CE")
-      )]
-      
-      dt[is_over_target == FALSE, bonus_eligibility := fcase(
-        is_coc_eligible & is_dv_eligible, "DV and CoC",
-        is_coc_eligible, "CoC Bonus",
-        is_dv_eligible, "DV Bonus",
-        default = ""
-      )]
-      
       # 2. Cumulative Funding & Tier Straddling only on valid projects
       dt[is_over_target == FALSE, cum_funding := cumsum(coc_funding_recommendation)]
       dt[is_over_target == FALSE, prev_cum := cum_funding - coc_funding_recommendation]
@@ -593,16 +570,42 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       }
       
       # add empty column to front for drag-and-drop control
-      raw_data[, ` ` := as.character(icon("grip-vertical"))]
-      raw_data <- raw_data |> colorder(` `)
+      raw_data <- raw_data |>
+        fmutate(` ` = as.character(icon("grip-vertical"))) |>
+        colorder(` `) |>
+        fmutate(
+          # 1. Evaluate Bonus Eligibility only on valid projects
+          is_coc_eligible = funding_action %in% c("New","Expand") & (
+            (project_type == "PSH" & ((total_ch_ind_beds > 0 & is_dedicated_ch_ind == "Yes") | (ch_fam_beds > 0 & is_dedicated_ch_fam == "Yes"))) |
+            (project_type %in% c("RRH", "TH+RRH") & (all_ind_beds > 0 | all_fam_beds > 0)) |
+            project_type %in% c("HMIS Project", "SSO-CE")
+          ),
+          
+          is_dv_eligible = funding_action %in% c("New","Expand") & 
+            is_dedicated_dv == "Yes" & coc_funding_recommendation >= 50000 & (
+              (project_type %in% c("RRH", "TH+RRH") & (dv_ind_beds > 0 | dv_fam_beds > 0)) |
+              project_type == "SSO-CE"
+            ),
+          
+          bonus_eligibility = fcase(
+            is_coc_eligible & is_dv_eligible, "DV and CoC",
+            is_coc_eligible, "CoC Bonus",
+            is_dv_eligible, "DV Bonus",
+            default = ""
+          ),
+          
+          ineligible = funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore") |
+            !met_hud_thresholds | !met_coc_thresholds |
+            (funding_action %in% c("New","Expand") & !is_coc_eligible & !is_dv_eligible)
+        )
       
       # Partition data
       # rv$yhdp_ren <- raw_data[mckinneyventoyhdp & funding_action == "Renew"]
       # rv$yhdp_oth <- raw_data[mckinneyventoyhdp & funding_action %in% c("Replace", "Reallocate", "Expand")]
-      rv$excluded <- raw_data[funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
+      rv$excluded <- raw_data[ineligible == TRUE]
       
       # Get valid ranked projects 
-      ranked_data <- raw_data[!funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore")]
+      ranked_data <- raw_data[ineligible == FALSE]
       
       # Step 1: Default Sorted Logic Pre-Ranking
       ranked_data <- if (force_reset || all(is.na(ranked_data$rank))) {
