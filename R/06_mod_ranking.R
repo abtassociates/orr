@@ -61,6 +61,7 @@ mod_ranking_ui <- function(id) {
     DTOutput(ns("ui_ranked_list")) |> shinycssloaders::withSpinner(),
     br(),
     br(),
+    h5(id = ns("excluded_tbl_title"), "Projects Not Selected for Funding"),
     DTOutput(ns("ui_excluded_list")) |> shinycssloaders::withSpinner() #,
     # br(),
     # br(),
@@ -672,7 +673,46 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     structural_cols <- c("project_id", "tier", "highlight", "coc_cum", "sort_project_type", "is_over_target", "straddle_amount", " ")
     
-    render_projects_dt <- function(final, show_beds = FALSE) {
+    table_styles <- function(dt, type = "main") {
+      dt <- dt |>
+        formatStyle(
+          'coc_funding_recommendation', 
+          backgroundColor = USER_ENTRY_BG_COLOR,
+          fontWeight = 'bold'
+        ) |>
+        formatCurrency(
+          c('coc_funding_requested', 'coc_funding_recommendation'),
+          currency = "$",
+          digits = 0
+        ) |>
+        formatStyle(
+          columns = c("project_name","organization_name"), # Apply to all columns
+          whiteSpace = 'nowrap',
+          overflow = 'hidden',
+          textOverflow = 'ellipsis',
+          maxWidth = '150px'        # REQUIRED: Set a max width so truncation triggers
+        )
+      
+      if(type == "main")
+        dt <- dt |>
+          formatStyle(
+            columns = 'highlight',  # Replace with your actual column name
+            target = 'row',
+            backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
+            color = styleEqual(c("coc", "dv"), c('white', 'white'))
+          ) |>
+          formatStyle(
+            columns = 'straddle_amount',
+            target = 'row',
+            outline = styleInterval(
+              cuts = 0,
+              values = c('none', '2px solid var(--brand-tier_2)') # [<=0 style, >0 style]
+            )
+          )
+      
+      dt
+    }
+    render_projects_dt <- function(final, type = "main", show_beds = FALSE) {
       colnames <- names(final)
       
       disabled_cols <- setdiff(
@@ -710,7 +750,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           scrollY = NULL,
           rowReorder = list(selector = 'td.drag-handle', update = FALSE), # Grab by icon
           fixedHeader = TRUE,
-          rowGroup = list(
+          rowGroup = if(type == "main") list(
             dataSrc = which(colnames == "tier") - 1,  # Group by TIER column (0-indexed)
             startRender = JS("
               function(rows, group) {
@@ -730,7 +770,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           info = FALSE,
           columnDefs = columnDefs,
           # Inside your datatable options list:
-          rowCallback = JS(sprintf("
+          rowCallback = if(type == "main") JS(sprintf("
             function(row, data, displayNum, displayIndex, dataIndex) {
               var straddleIdx = %d;
               var fundingIdx = %d;
@@ -773,37 +813,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           ns("newOrder")
         ))
       ) |>
-        formatStyle(
-          'coc_funding_recommendation', 
-          backgroundColor = USER_ENTRY_BG_COLOR,
-          fontWeight = 'bold'
-        ) |>
-        formatCurrency(
-          c('coc_funding_requested', 'coc_funding_recommendation'),
-          currency = "$",
-          digits = 0
-        ) |>
-        formatStyle(
-          columns = c("project_name","organization_name"), # Apply to all columns
-          whiteSpace = 'nowrap',
-          overflow = 'hidden',
-          textOverflow = 'ellipsis',
-          maxWidth = '150px'        # REQUIRED: Set a max width so truncation triggers
-        ) |>
-        formatStyle(
-          columns = 'highlight',  # Replace with your actual column name
-          target = 'row',
-          backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
-          color = styleEqual(c("coc", "dv"), c('white', 'white'))
-        ) |>
-        formatStyle(
-          columns = 'straddle_amount',
-          target = 'row',
-          outline = styleInterval(
-            cuts = 0,
-            values = c('none', '2px solid var(--brand-tier_2)') # [<=0 style, >0 style]
-          )
-        )
+        table_styles(type = type)
       
       x
     }
@@ -880,7 +890,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     output$ui_ranked_list <- renderDT({
       req(fnrow(rv$ranked) > 0)
-      render_projects_dt(format_ranked_tbl(rv$ranked), isTruthy(input$toggle_beds))
+      render_projects_dt(format_ranked_tbl(rv$ranked), show_beds = isTruthy(input$toggle_beds))
     }, server=FALSE)
     
     ranked_proxy <- dataTableProxy("ui_ranked_list",session = session)
@@ -902,23 +912,31 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       }
     })
       
-    render_minor_dt <- function(dt) {
-      if (is.null(dt) || nrow(dt) == 0) return(NULL)
-      browser()
-      display_df <- dt |>
-        fselect(priority, weighted_score, met_hud_thresholds, met_coc_thresholds, funding_action, project_type, target_population, organization_name, project_name, coc_funding_requested, coc_funding_recommendation) |>
-        frename(met_hud_thresholds = "Met HUD Thresholds", met_coc_thresholds = "Met CoC Thresholds")
-      
-      datatable(
-        display_df, 
-        rownames = FALSE, 
-        options = list(dom = 't', paging = FALSE, scrollY = NULL)
-      ) |> formatCurrency(c('coc_funding_requested', 'coc_funding_recommendation'), currency = "$", digits = 0)
-    }
+    # render_minor_dt <- function(dt) {
+    #   if (is.null(dt) || nrow(dt) == 0) return(NULL)
+    #   
+    #   display_df <- dt |>
+    #     fselect(rank, priority, weighted_score, met_hud_thresholds, met_coc_thresholds, funding_action, project_type, target_population, organization_name, project_name, coc_funding_requested, coc_funding_recommendation)
+    #   
+    #   datatable(
+    #     display_df, 
+    #     rownames = FALSE, 
+    #     options = list(
+    #       dom = 't', 
+    #       paging = FALSE, 
+    #       scrollY = NULL
+    #     )
+    #   ) |>
+    #     table_styles()
+    # }
     # output$ui_yhdp_ren_list <- renderDT({ render_minor_dt(rv$yhdp_ren) })
     # output$ui_yhdp_oth_list <- renderDT({ render_minor_dt(rv$yhdp_oth) })
-    output$ui_excluded_list <- renderDT({ render_minor_dt(rv$excluded) })
-    
+    output$ui_excluded_list <- renderDT({ 
+      tbl_has_rows <- isTruthy(fnrow(rv$excluded) > 0)
+      shinyjs::toggle(id = "excluded_tbl_title", condition = tbl_has_rows)
+      req(tbl_has_rows)
+      render_projects_dt(format_ranked_tbl(rv$excluded), type = "excluded", show_beds = isTruthy(input$toggle_beds)) 
+    })
     
     observeEvent(input$btn_adjust_tiers, {
       req(rv$ranked)
