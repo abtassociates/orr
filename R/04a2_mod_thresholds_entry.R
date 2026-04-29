@@ -58,6 +58,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
     project_evaluation <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(0)
     made_a_change <- reactiveVal(FALSE)
+    manually_updated_threshold_complete <- reactiveVal(TRUE)
     
     coc_thresholds_to_enter <- reactive({
       req(thresholds_to_enter())
@@ -142,10 +143,11 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
       updatePrettySwitch(
         session,
         "threshold_complete", 
-        value = project_evaluation()$threshold_complete == 1
+        value = isTruthy(project_evaluation()$threshold_complete == 1)
       )
-      shinyjs::toggleState("threshold_complete", condition = !allNA(thresholds_to_enter()$met_threshold))
+      shinyjs::toggleState("threshold_complete", condition = project_is_selected)
       
+      manually_updated_threshold_complete(FALSE)
       made_a_change(FALSE)
     }, ignoreNULL = FALSE, priority = 11)
     
@@ -287,8 +289,6 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
             to_save$project_evaluation |>
               fmutate(version_id = version_id + 1)
           )
-        
-        shinyjs::toggleState("threshold_complete", condition = !allNA(thresholds_to_enter()$met_threshold))
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
@@ -298,8 +298,6 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
     observeEvent(input$threshold_complete, {
       # only proceed if all thresholds are non-null
       req(isTruthy(fnrow(thresholds_to_enter()) > 0))
-      req(!anyNA(thresholds_to_enter()$met_threshold))
-      req(made_a_change())
       req(fnrow(selected_project()) > 0)
       
       shinyjs::toggleState("yes_to_all_HUD", condition = !input$threshold_complete)
@@ -307,21 +305,23 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
       shinyjs::toggleState("HUD_requirements", condition = !input$threshold_complete)
       shinyjs::toggleState("CoC_requirements", condition = !input$threshold_complete)
       
+      if(!manually_updated_threshold_complete()) {
+        manually_updated_threshold_complete(TRUE)
+        return()
+      }
+      
       # pull latest Project Evaluation in case they just updated Threshold
       project_evaluation(
         get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
       )
       
       # Update db
-      data <- thresholds_to_enter() |>
-        fmutate(
-          threshold_complete = input$threshold_complete,
-          updated_by = user_coc$username,
-          project_id = selected_project()$project_id,
-          version_id = project_evaluation()$version_id
-        ) |>
-        fselect(threshold_complete, updated_by, project_id, version_id) |>
-        funique()
+      data <- data.table(
+        project_id = selected_project()$project_id,
+        threshold_complete = input$threshold_complete,
+        username = user_coc$username,
+        version_id = if(fnrow(project_evaluation()) > 0) project_evaluation()$version_id else 0L
+      )
       
       update_threshold_complete(get_db_pool(), data)
     }, ignoreInit = TRUE)
