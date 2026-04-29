@@ -3,7 +3,7 @@ mod_ranking_widget_ui <- function(id) {
   uiOutput(ns("widget_box"))
 }
 
-mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title, icon_name = "piggy-bank") {
+mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     

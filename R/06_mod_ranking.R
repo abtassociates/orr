@@ -293,11 +293,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       )
     })
     
-    mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data, "CoC Bonus", icon_name = "plus-circle")
-    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data, "Tier 1 (Adj ARD * 90%)", icon_name = "layer-group")
-    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data, "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)", icon_name = "layer-group")
-    mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data, "DV Bonus", icon_name = "heart")
-    mod_ranking_widget_server("exceeds", alloc_exceed, coc_ard_data, "Exceeding ARD Adj", icon_name = "exclamation-triangle")
+    mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data, "CoC Bonus")
+    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data, "Tier 1 (Adj ARD * 90%)")
+    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data, "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)")
+    mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data, "DV Bonus")
+    mod_ranking_widget_server("exceeds", alloc_exceed, coc_ard_data, "Exceeding ARD Adj")
     
     # ranked_project_ids <- reactiveValues(new = NULL)
     
