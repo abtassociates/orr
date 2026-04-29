@@ -369,6 +369,10 @@ tr.group_header td{
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+#ranking-hidden_cols {
+  display:none;
+}
+
 /* STICKY CARD FOOTER*/
 .sticky-footer {
   position: sticky; 

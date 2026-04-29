@@ -857,6 +857,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       # Create a flat list of choices, swapping all bed fields for the single word "Beds"
       choices <- c("BED FIELDS", general_cols)
       
+      shinyjs::show("hidden_cols")
       shinyWidgets::updateVirtualSelect(
         session = session,
         inputId = "hidden_cols",
