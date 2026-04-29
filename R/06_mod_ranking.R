@@ -646,6 +646,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         rv$excluded <- rbindlist(list(rv$excluded, over_target), fill = TRUE, use.names = TRUE)
       }
       
+      rv$excluded < rv$excluded |>
+        colorder(rank, priority, pos = "after")
+      
       # Store clean ranked rows to UI
       rv$ranked <- ranked_data |>
         fsubset(is_over_target == FALSE) |>
