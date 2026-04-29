@@ -347,6 +347,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       fsum(current_scores)
     }
     
+    observeEvent(input$main_accordion, {
+      req(isTruthy(fnrow(factors_and_scores_for_project()) > 0))
+      lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
+        shinyjs::toggleState(paste0("performance_", i), condition = !input$rating_complete)
+        shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
+      })
+    })
+    
     # Dynamically update subgroup totals
     observe({
       req(nrow(factors_and_scores_for_project()) > 0)
