@@ -167,7 +167,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
       has_factors <- isTruthy(fnrow(factors_and_scores_for_project()) > 0)
       
-      if(!isTruthy(selected_project_exists) && !isTruthy(has_factors)) {
+      if(!isTruthy(project_is_selected) && !isTruthy(has_factors)) {
         shinyjs::hide(id = "total_row")
         shinyjs::hide(id = "weighted_total_row")
       }
