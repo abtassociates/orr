@@ -93,7 +93,7 @@ variable_labels <- c(
   "project_type" = "Project Type",
   "target_population" = "Target Population",
   "mckinneyvento" = "McKinney-Vento",
-  "mckinneyventoyhdp" = "McKinney-Vento: YHDP",
+  # "mckinneyventoyhdp" = "McKinney-Vento: YHDP",
   "dv_renewal" = "DV Renewal",
   "grant_number" = "Grant Number",
   "coc_amount_awarded_last_year" = "CoC Amount Awarded Last Operating Year",

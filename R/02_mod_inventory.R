@@ -126,7 +126,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           target_population = convert_to_factor(., "target_population"),
           dv_renewal = factor_yesno(dv_renewal),
           mckinneyvento = factor_yesno(mckinneyvento),
-          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
           is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
           is_dedicated_dv = factor_yesno(is_dedicated_dv)
@@ -435,7 +435,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         fmutate(
           project_id = as.integer(fmax(projects_data()$project_id) + 1),
           mckinneyvento = factor_yesno(mckinneyvento),
-          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           dv_renewal = factor_yesno(dv_renewal),
           coc_amount_awarded_last_year = NA,
           coc_amount_expended_last_year = NA,

@@ -371,7 +371,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       project_data <- coc_data %>% # %>% needed for gvr to work
         fmutate(
           mckinneyvento = factor_yesno(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
-          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           dv_renewal = factor_yesno(NA),
           grant_number = as.character(NA), 
           coc_amount_awarded_last_year = as.numeric(NA),
