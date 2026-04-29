@@ -233,7 +233,7 @@ td.drag-handle:active {
   padding: 2px 10px;
   align-items: center; /*vertical alignment*/
   border-radius: 12px;
-  color: #9c5300;
+  color: black;
   font-weight: 700;
   text-transform: uppercase;
   background-color: white;
@@ -242,7 +242,12 @@ td.drag-handle:active {
   border: 5px solid;
 }
 
-.bslib-card .card-body p.ranking-remaining.overallocated {
+.bslib-card .card-body p.ranking-remaining.straddle{
+  color: #D6A600 !important;
+}
+
+.bslib-card .card-body p.ranking-remaining.overallocated,
+.bslib-card .card-body p.ranking-remaining.straddle {
   animation: warning-pulse 2s infinite;
 }
 

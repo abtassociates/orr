@@ -57,11 +57,11 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title, icon_n
             sub_text <- p(
               icon("triangle-exclamation"), 
               paste("Straddle Amount:", scales::dollar(abs(diff_amt))), 
-              class = "ranking-remaining overallocated text-warning"
+              class = "ranking-remaining straddle"
             )
           } else {
             sub_text <- p(
-              icon("triangle-exclamation"), 
+              icon("octagon-exclamation"), 
               paste("Overallocated by:", scales::dollar(abs(diff_amt))), 
               class = "ranking-remaining overallocated text-danger"
             )
