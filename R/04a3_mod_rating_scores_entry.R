@@ -69,7 +69,7 @@ mod_rating_scores_entry_ui <- function(id) {
       card_footer(
         class="sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        shinyWidgets::switchInput(ns("rating_complete"), label = "Rating Complete?", onLabel="Yes", offLabel="No")
+        prettySwitch(ns("rating_complete"), label = "Rating Complete?", status = "success", fill=TRUE)
       )
     )
   )
@@ -82,6 +82,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     refresh_trigger <- reactiveVal(NA)
     factors_and_scores_for_project <- reactiveVal()
     project_evaluation <- reactiveVal()
+    manually_updated_rating_complete <- reactiveVal(TRUE)
     
     input_prefixes <- c("rating_score", "performance")
     
@@ -90,8 +91,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     observeEvent(c(selected_project(), refresh_trigger(), user_coc[[paste0("customized_rating_factors_updated_", funding_action)]]), {
       req(user_coc$coc_version_id)
-      req(selected_project())
-      req(fnrow(selected_project()) > 0)
+      
+      project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      shinyjs::toggleState("rating_complete", condition = project_is_selected)
+      
+      req(project_is_selected)
       
       # individual threshold entries
       factors_and_scores_for_project(
@@ -108,6 +112,13 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           selected_project()$project_id
         )
       )
+      
+      updatePrettySwitch(
+        session, 
+        "rating_complete", 
+        value = isTruthy(project_evaluation()$rating_complete == 1)
+      )
+      manually_updated_rating_complete(FALSE)
     })
     
     # ---------------------------------------------------------------------------
@@ -256,6 +267,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         # Create the single accordion panel for the whole group
         bslib::accordion_panel(
           title = layout_columns(
+            style = "margin-bottom: 0px",
             col_widths = col_widths,
             # tagList(
             htmltools::div(group_name),
@@ -302,8 +314,6 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       shinyjs::delay(800, {
         shinyjs::show(id = "total_row")
         shinyjs::show(id = "weighted_total_row")
-        updateSwitchInput(session=session, inputId = "rating_complete", value = project_evaluation()$rating_complete == 1)
-        shinyjs::toggleState("rating_complete", condition = !allNA(factors_and_scores_for_project()$rating_score))
       })
       
       # The final accordion structure
@@ -336,6 +346,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       # Return the sum
       fsum(current_scores)
     }
+    
+    observeEvent(input$main_accordion, {
+      req(isTruthy(fnrow(factors_and_scores_for_project()) > 0))
+      lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
+        shinyjs::toggleState(paste0("performance_", i), condition = !input$rating_complete)
+        shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
+      })
+    })
     
     # Dynamically update subgroup totals
     observe({
@@ -442,6 +460,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       
       req(to_save, iv$is_valid())
       
+      browser()
       refresh_flags <- pool::poolWithTransaction(get_db_pool(), function(p) {
         needs_ref1 <- update_rating_scores_db(p, to_save$rating_scores)
 
@@ -473,8 +492,6 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
             to_save$project_evaluation |>
               fmutate(version_id = version_id + 1)
           )
-
-        shinyjs::toggleState("rating_complete", condition = !allNA(factors_and_scores_for_project()$rating_score))
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
@@ -492,6 +509,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         shinyjs::toggleState(paste0("performance_", i), condition = !input$rating_complete)
         shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
       })
+      
+      if(!manually_updated_rating_complete()) {
+        manually_updated_rating_complete(TRUE)
+        return(FALSE)
+      }
       
       # pull latest Project Evaluation in case they just updated Threshold
       project_evaluation(
