@@ -249,13 +249,12 @@ save_to_db <- function(p, sql, params, tbl_name) {
     }
     
     if(grepl("RETURNING ", sql)) {
-      if(is.null(rows_changed)) {
+      if(is.null(rows_changed))
         msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
-        print(sql)
-      }
       else
         msg <- glue::glue("{tbl_name} saved successfully!")
       print(msg)
+      print(sql)
       showNotification(msg, type = "message")
       return(rows_changed)
     } 
@@ -270,6 +269,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
       needs_refresh <- TRUE
     } else {
       msg <- glue::glue("{tbl_name} saved successfully!")
+      print(sql)
       needs_refresh <- FALSE
     }
     logger::log_info(msg)
