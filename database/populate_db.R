@@ -129,7 +129,7 @@ VALUES
 ('funding_action', 'Expand', 'orr_service@abtglobal.com'),
 ('funding_action', 'Reallocate', 'orr_service@abtglobal.com'),
 ('funding_action', 'Ignore', 'orr_service@abtglobal.com'),
-('funding_action', 'Replace', 'orr_service@abtglobal.com'),
+-- ('funding_action', 'Replace', 'orr_service@abtglobal.com'), -- replacement not happening in FY25
 
 -- from bonus_types
 ('bonus_type', 'CoC Bonus', 'orr_service@abtglobal.com'),

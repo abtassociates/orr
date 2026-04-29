@@ -15,14 +15,14 @@ LOOKUP_CHOICES <- list(
 # ===================================================================
 # UI Function (Now with a helper for bed inputs)
 # ===================================================================
-mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_replace = NULL, orgnames) {
+mod_inventory_add_project_ui <- function(id, form_type = "New", orgnames) { # removed project_to_replace = NULL argument. Replacement not happening in FY25
   ns <- NS(id)
   
   title <- switch(form_type,
                   "YHDP Reallocation" = "YHDP Reallocation Form",
                   "DV Reallocation"   = "DV Reallocation Form",
                   "CoC Reallocation"  = "CoC Reallocation Form",
-                  "YHDP Replacement"  = "YHDP Replacement Form",
+                  # "YHDP Replacement"  = "YHDP Replacement Form",
                   "Add New Project"
   )
   
@@ -110,7 +110,7 @@ mod_inventory_add_project_server <- function(
     trigger,
     form_type = NULL, 
     funding_source = "", 
-    project_to_replace = NULL, 
+    # project_to_replace = NULL, 
     user_coc = NULL,
     orgnames = NULL,
     parent_session = NULL
@@ -191,18 +191,20 @@ mod_inventory_add_project_server <- function(
       if (grepl("Reallocation", form_type()) && funding_source() != "") {
         updateSelectInput(session, "funding_source", selected = funding_source())
         updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
-        if (funding_source() == "YHDP") {
-          updateSelectInput(session, "funding_action", selected = "New")
-        }
+        # if (funding_source() == "YHDP") {
+        #   updateSelectInput(session, "funding_action", selected = "New")
+        # }
         shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
         shinyjs::disable("funding_source")
-      } else if (form_type() == "YHDP Replacement" && !is.null(project_to_replace())) {
-        updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
-        updateSelectInput(session, "funding_action", selected = "Replace")
-        updateNumericInput(session, "youth_beds_fam", value = project_to_replace$par_youth_beds)
-        updateNumericInput(session, "youth_beds_ind", value = project_to_replace$single_youth_beds)
-        shinyjs::disable("funding_source")
-      } else {
+      } 
+      # else if (form_type() == "YHDP Replacement" && !is.null(project_to_replace())) {
+      #   updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
+      #   updateSelectInput(session, "funding_action", selected = "Replace")
+      #   updateNumericInput(session, "youth_beds_fam", value = project_to_replace$par_youth_beds)
+      #   updateNumericInput(session, "youth_beds_ind", value = project_to_replace$single_youth_beds)
+      #   shinyjs::disable("funding_source")
+      # } 
+      else {
         reset_form()
       }
     })
@@ -263,7 +265,7 @@ mod_inventory_add_project_server <- function(
       shinyjs::toggleState("all_dv_checkbox", condition = show_dv_check && current_funding_source() != "DV")
       
       # Missing organization_name state control
-      shinyjs::toggleState("organization_name", condition = form_type() != "YHDP Replacement")
+      # shinyjs::toggleState("organization_name", condition = form_type() != "YHDP Replacement")
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update Target Population Selection
@@ -306,7 +308,7 @@ mod_inventory_add_project_server <- function(
     iv$add_rule("project_type", sv_required())
     iv$add_rule("funding_source", sv_required())
     iv$add_rule("target_population", sv_required())
-    iv$add_rule("funding_action", ~ if(. == "Replace" && current_funding_source() != "YHDP") "Only YHDP projects can be replaced")
+    # iv$add_rule("funding_action", ~ if(. == "Replace" && current_funding_source() != "YHDP") "Only YHDP projects can be replaced")
 
     # Grant number is only required if not New or Expand
     grant_iv <- shinyvalidate::InputValidator$new()
