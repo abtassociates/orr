@@ -563,11 +563,13 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         calculate_priority()
       
       if(IN_DEV_MODE) {
-        raw_data[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, fnrow(raw_data)), coc_funding_requested))]
+        raw_data[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, .N), coc_funding_requested))]
         raw_data[, coc_funding_recommendation := fcoalesce(coc_funding_recommendation, coerceValue(coc_funding_requested, coc_funding_recommendation))]
-        raw_data[, weighted_score := fcoalesce(weighted_score, DT::coerceValue(sample(100, fnrow(raw_data)), weighted_score))]
-        raw_data[, met_hud_threshold := fcoalesce(met_hud_threshold, coerceValue(sample(c(TRUE, FALSE), fnrow(raw_data), replace=TRUE), met_hud_threshold))]
-        raw_data[, met_coc_threshold := fcoalesce(met_coc_threshold, coerceValue(sample(c(TRUE, FALSE), fnrow(raw_data), replace=TRUE), met_coc_threshold))]
+        raw_data[, weighted_score := fcoalesce(weighted_score, DT::coerceValue(sample(100, .N), weighted_score))]
+        raw_data[, met_hud_thresholds := fcoalesce(coerceValue(met_hud_thresholds, 0L), 1L)]
+        raw_data[, met_coc_thresholds := fcoalesce(coerceValue(met_coc_thresholds, 0L), 1L)]
+        # raw_data[, met_hud_thresholds := fcoalesce(coerceValue(met_hud_thresholds, 0L), sample(0:1, .N, replace=TRUE))]
+        # raw_data[, met_coc_thresholds := fcoalesce(coerceValue(met_coc_thresholds, 0L), sample(0:1, .N, replace=TRUE))]
       }
       
       # add empty column to front for drag-and-drop control
@@ -589,21 +591,33 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             ),
           
           bonus_eligibility = fcase(
+            !funding_action %in% c("New","Expand"), "N/A",
             is_coc_eligible & is_dv_eligible, "DV and CoC",
             is_coc_eligible, "CoC Bonus",
             is_dv_eligible, "DV Bonus",
-            default = ""
+            funding_action %in% c("New","Expand"), "New, Bonus-Ineligible"
           ),
           
+          met_hud_thresholds = fcoalesce(met_hud_thresholds, 0L),
+          met_coc_thresholds = fcoalesce(met_coc_thresholds, 0L),
+          
+          unmet_thresholds = met_hud_thresholds != 1 | met_coc_thresholds != 1,
+          
           ineligible = funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore") |
-            !met_hud_thresholds | !met_coc_thresholds |
-            (funding_action %in% c("New","Expand") & !is_coc_eligible & !is_dv_eligible)
+            unmet_thresholds |
+            bonus_eligibility == "New, Bonus-Ineligible"
         )
       
       # Partition data
       # rv$yhdp_ren <- raw_data[mckinneyventoyhdp & funding_action == "Renew"]
       # rv$yhdp_oth <- raw_data[mckinneyventoyhdp & funding_action %in% c("Replace", "Reallocate", "Expand")]
-      rv$excluded <- raw_data[ineligible == TRUE]
+      rv$excluded <- raw_data |>
+        fsubset(ineligible == TRUE) |>
+        fmutate(rank = fcase(
+          unmet_thresholds, "Unmet thresholds",
+          bonus_eligibility == "New, Bonus-Ineligible",  "New, Bonus-Ineligible",
+          default = "Ineligible"
+        ))
       
       # Get valid ranked projects 
       ranked_data <- raw_data[ineligible == FALSE]
@@ -659,7 +673,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         paste0("ceil_beds_", target_pop_combos$target_pop_combo),
         paste0("ceil_fund_", target_pop_combos$target_pop_combo),
         "total_beds",
-        "bonus_type"
+        "bonus_type",
+        "unmet_thresholds",
+        "ineligible"
       )
       
       dt |>
@@ -668,6 +684,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           "100% Dedicated + or CH Fam" = is_dedicated_ch_fam,
           "100% Dedicated + or CH Ind" = is_dedicated_ch_ind,
           "100% DV" = is_dedicated_dv
+        ) |>
+        fmutate(
+          met_hud_thresholds = factor_yesno(met_hud_thresholds),
+          met_coc_thresholds = factor_yesno(met_coc_thresholds)
         )
     }
     
@@ -786,8 +806,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
                 
                 var titleText = '⚖️ STRADDLING PROJECT\\n' +
                                 'This project spans the Tier 1 / Tier 2 boundary.\\n\\n' +
-                                '• Allocated to Tier 1: ' + fmt.format(tier1) + ' (' + pct.toFixed(1) + '%%)\\n' +
-                                '• Allocated to Tier 2: ' + fmt.format(straddle) + ' (' + (100 - pct).toFixed(1) + '%%)';
+                                '• Portion allocated to Tier 1: ' + fmt.format(tier1) + ' (' + pct.toFixed(1) + '%%)\\n' +
+                                '• Portion allocated to Tier 2: ' + fmt.format(straddle) + ' (' + (100 - pct).toFixed(1) + '%%)';
                 var titleTextCSS = titleText.replace(/\\n/g, '\\\\A ');
 
                 // Apply class and the CSS Variable to the ROW
