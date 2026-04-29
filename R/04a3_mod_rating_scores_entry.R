@@ -69,7 +69,7 @@ mod_rating_scores_entry_ui <- function(id) {
       card_footer(
         class="sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        shinyWidgets::switchInput(ns("rating_complete"), label = "Rating Complete?", onLabel="Yes", offLabel="No")
+        prettySwitch(ns("rating_complete"), label = "Rating Complete?", status = "success", fill=TRUE)
       )
     )
   )

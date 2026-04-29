@@ -43,7 +43,7 @@ mod_thresholds_entry_ui <- function(id) {
       card_footer(
         class = "sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
-        prettySwitch(ns("threshold_complete"), label = "Threshold Complete?")
+        prettySwitch(ns("threshold_complete"), label = "Threshold Complete?", status = "success", fill=TRUE)
       )
     ) # end card
   ) # end nav_panel
