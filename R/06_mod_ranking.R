@@ -451,7 +451,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         dt[is_dv_eligible == TRUE & coc_selected == FALSE & (dv_cum - coc_funding_recommendation) < coc_ard_data()$dv_bonus, dv_selected := TRUE]
       }
       
-      dt[is_over_target == FALSE, highlight := fcase(coc_selected, "coc", dv_selected, "dv", default = "none")]
+      dt[is_over_target == FALSE, bonus_highlight := fcase(coc_selected, "coc", dv_selected, "dv", default = "none")]
       
       return(dt)
     } #end recalc ranking
@@ -694,7 +694,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         )
     }
     
-    structural_cols <- c("project_id", "tier", "highlight", "coc_cum", "sort_project_type", "is_over_target", "straddle_amount", " ")
+    structural_cols <- c("project_id", "tier", "bonus_highlight", "coc_cum", "sort_project_type", "is_over_target", "straddle_amount")
     
     table_styles <- function(dt, type = "main") {
       dt <- dt |>
@@ -719,7 +719,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       if(type == "main")
         dt <- dt |>
           formatStyle(
-            columns = 'highlight',  # Replace with your actual column name
+            columns = 'bonus_highlight',  # Replace with your actual column name
             target = 'row',
             backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
             color = styleEqual(c("coc", "dv"), c('white', 'white'))
