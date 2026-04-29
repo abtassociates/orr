@@ -818,12 +818,12 @@ CREATE TABLE ranking (
     project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     rank SMALLINT,
+    tier VARCHAR(50) NULL,
     coc_funding_recommendation NUMERIC(11, 2),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
-    version_id INTEGER NOT NULL DEFAULT 0
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
 );
 
 CREATE TABLE user_presence (
