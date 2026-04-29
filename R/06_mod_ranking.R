@@ -109,7 +109,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       target_population = LOOKUPS[reference_type == "target_population"]$value,
       population_group = LOOKUPS[reference_type == "population_group"]$value
     ) |>
-      fsubset(target_population != "NA") |>
+      fsubset(!target_population %in% c("NA", "HIV")) |>
       fmutate(
         target_pop_combo = paste0(target_population, "_", population_group),
         bed_prefix = fcase(
@@ -124,10 +124,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           target_pop_combo == "Veteran_Family", "vet_fam",
           target_pop_combo == "Youth_Family", "par_youth"
         )
-      ) |>
-      fsubset(target_population != "HIV")
-      
-    
+      )
     
     # Helper for the Funding Analysis Matrix
     get_funding_analysis_data <- function(dt) {
@@ -222,6 +219,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       }
       return(res)
     }
+    
     output$ui_funding_analysis <- renderUI({
       req(rv$ranked)
       dt <- get_funding_analysis_data(rv$ranked)
@@ -901,9 +899,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
     render_minor_dt <- function(dt) {
       if (is.null(dt) || nrow(dt) == 0) return(NULL)
-      
-      display_df <- dt[, .(priority, weighted_score, met_hud_thresholds, met_coc_thresholds, funding_action, project_type, target_population, organization_name, project_name, coc_funding_requested, coc_funding_recommendation)]
-      frename(display_df, met_hud_thresholds = "Met HUD Thresholds", met_coc_thresholds = "Met CoC Thresholds")
+      browser()
+      display_df <- dt |>
+        fselect(priority, weighted_score, met_hud_thresholds, met_coc_thresholds, funding_action, project_type, target_population, organization_name, project_name, coc_funding_requested, coc_funding_recommendation) |>
+        frename(met_hud_thresholds = "Met HUD Thresholds", met_coc_thresholds = "Met CoC Thresholds")
       
       datatable(
         display_df, 
