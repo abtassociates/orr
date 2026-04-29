@@ -428,8 +428,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       dt[is_over_target == FALSE, prev_cum := cum_funding - coc_funding_recommendation]
       
       dt[is_over_target == FALSE, tier := fcase(
-        prev_cum < coc_ard_data()$tier_1, "Tier 1",
-        prev_cum < (coc_ard_data()$tier_1 + coc_ard_data()$tier_2), "Tier 2",
+        prev_cum < coc_ard_data()$tier_1, "Tier 1", # this allows straddles
+        cum_funding <= (coc_ard_data()$tier_1 + coc_ard_data()$tier_2), "Tier 2", # this doesn't allow straddles
         default = "Projects Exceeding ARD Adj"
       )]
       
