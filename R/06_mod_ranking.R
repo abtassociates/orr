@@ -281,7 +281,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     alloc_tier1 <- reactive( get_allocated_funding(quote(tier == "Tier 1")) )
     alloc_tier2 <- reactive( get_allocated_funding(quote(tier == "Tier 2")) )
     alloc_coc <- reactive( get_allocated_funding(quote(coc_selected == TRUE)) )
-    alloc_exceed <- reactive( get_allocated_funding(quote(tier == "Projects Exceeding ARD")) )
+    alloc_exceed <- reactive( get_allocated_funding(quote(tier == "Projects Exceeding ARD Adj")) )
     
     alloc_dv <- reactive({
       req(fnrow(rv$ranked) > 0)
@@ -296,7 +296,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data, "Tier 1 (Adj ARD * 90%)", icon_name = "layer-group")
     mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data, "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)", icon_name = "layer-group")
     mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data, "DV Bonus", icon_name = "heart")
-    mod_ranking_widget_server("exceeds", alloc_exceed, coc_ard_data, "Exceeding ARD", icon_name = "exclamation-triangle")
+    mod_ranking_widget_server("exceeds", alloc_exceed, coc_ard_data, "Exceeding ARD Adj", icon_name = "exclamation-triangle")
     
     # ranked_project_ids <- reactiveValues(new = NULL)
     
@@ -452,7 +452,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       dt[is_over_target == FALSE, tier := fcase(
         prev_cum < coc_ard_data()$tier_1, "Tier 1",
         prev_cum < (coc_ard_data()$tier_1 + coc_ard_data()$tier_2), "Tier 2",
-        default = "Projects Exceeding ARD"
+        default = "Projects Exceeding ARD Adj"
       )]
       
       dt[is_over_target == FALSE, straddle_amount := fifelse(
