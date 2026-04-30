@@ -464,7 +464,6 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       
       req(to_save, iv$is_valid())
       
-      browser()
       refresh_flags <- pool::poolWithTransaction(get_db_pool(), function(p) {
         needs_ref1 <- update_rating_scores_db(p, to_save$rating_scores)
 

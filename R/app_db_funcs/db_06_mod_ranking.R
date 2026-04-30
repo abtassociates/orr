@@ -26,7 +26,6 @@ get_projects_to_rank <- function(coc_version_id) {
       p.is_dedicated_ch_fam,
       p.is_dedicated_ch_ind,
       p.is_dedicated_dv,
-      p.mckinneyventoyhdp,
       pe.met_hud_thresholds,
       pe.met_coc_thresholds,
       no.population_group AS no_pop_grp,
