@@ -127,8 +127,11 @@ initialize_inline_edit_table_ui <- function(
   # use js to show the dropdowns
   init_js <- get_init_js(factor_info$factor_levels, header_cb)
   
-  if(callback_js != 'return table;')
-    callback_js <- get_js_script("callback.js")
+  callback_js0 <- get_js_script("callback.js")
+  callback_js <- if(callback_js != 'return table;') 
+    paste0(callback_js0, callback_js)
+  else
+    callback_js0
   
   # --- STEP 1: handle user-specified options ---
   default_options <- list(
