@@ -38,6 +38,7 @@ mod_rating_scores_entry_ui <- function(id) {
     )))),
     card(
       style = "overflow: visible !important;",
+      mod_download_rating_ui(ns("download_rating")),
       mod_user_presence_ui(ns("presence")),
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
@@ -75,7 +76,7 @@ mod_rating_scores_entry_ui <- function(id) {
   )
 }
 
-mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, active) {
+mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, active, hasProjects) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -174,17 +175,20 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
-      selected_project_exists <- !is.null(selected_project()) && fnrow(selected_project()) > 0
-      has_factors <- fnrow(factors_and_scores_for_project()) > 0
+      project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      has_factors <- isTruthy(fnrow(factors_and_scores_for_project()) > 0)
       
-      if(!isTruthy(selected_project_exists) && !isTruthy(has_factors)) {
+      if(!isTruthy(project_is_selected) && !isTruthy(has_factors)) {
         shinyjs::hide(id = "total_row")
         shinyjs::hide(id = "weighted_total_row")
       }
       
       shiny::validate(
-        need(selected_project_exists, "Select a project in the left-hand sidebar to begin rating"),
-        need(fnrow(factors_and_scores_for_project()) > 0, "You must select 1 or more rating factors in the Customize Rating Criteria tab in order to rate this project")
+        need(hasProjects(), paste0("You do not have any ", funding_action, " projects to threshold. Add them on the Review tab.")),
+        need(fnrow(factors_and_scores_for_project()) > 0, paste0("You must select 1 or more ", funding_action, " rating factors in the Customize Rating Criteria tab in order to rate this project"))
+      )
+      shiny::validate(
+        need(project_is_selected, "Select a project in the left-hand sidebar to begin rating")
       )
       
       # Group data only by the main factor_group
@@ -496,7 +500,9 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
-    })
+    }) # end save
+    
+    mod_download_rating_server("download_rating", user_coc, selected_project, funding_action, factors_and_scores_for_project)
     
     observeEvent(input$rating_complete, {
       # only proceed if all scores are entered
