@@ -56,7 +56,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
     project_evaluation <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(0)
     made_a_change <- reactiveVal(FALSE)
-    manually_updated_threshold_complete <- reactiveVal(TRUE)
+    updated_threshold_complete_from_db <- reactiveVal(NULL)
     
     coc_thresholds_to_enter <- reactive({
       req(thresholds_to_enter())
@@ -140,14 +140,17 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       
       shinyjs::toggle("yes_to_all_CoC", condition = isTruthy(fnrow(coc_thresholds_to_enter()) > 0))
       
-      updatePrettySwitch(
-        session,
-        "threshold_complete", 
-        value = isTruthy(project_evaluation()$threshold_complete == 1)
-      )
+      if(input$threshold_complete != isTruthy(project_evaluation()$threshold_complete == 1)) {
+        updatePrettySwitch(
+          session,
+          "threshold_complete", 
+          value = isTruthy(project_evaluation()$threshold_complete == 1)
+        )
+        updated_threshold_complete_from_db(TRUE)
+      }
+      
       shinyjs::toggleState("threshold_complete", condition = project_is_selected)
       
-      manually_updated_threshold_complete(FALSE)
       made_a_change(FALSE)
     }, ignoreNULL = FALSE, priority = 11)
     
@@ -305,8 +308,8 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       shinyjs::toggleState("HUD_requirements", condition = !input$threshold_complete)
       shinyjs::toggleState("CoC_requirements", condition = !input$threshold_complete)
       
-      if(!manually_updated_threshold_complete()) {
-        manually_updated_threshold_complete(TRUE)
+      if(isTruthy(updated_threshold_complete_from_db())) {
+        updated_threshold_complete_from_db(FALSE)
         return()
       }
       

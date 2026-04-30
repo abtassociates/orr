@@ -83,7 +83,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     refresh_trigger <- reactiveVal(NA)
     factors_and_scores_for_project <- reactiveVal()
     project_evaluation <- reactiveVal()
-    manually_updated_rating_complete <- reactiveVal(TRUE)
+    updated_rating_complete_from_db <- reactiveVal(NULL)
     
     input_prefixes <- c("rating_score", "performance")
     
@@ -114,12 +114,15 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         )
       )
       
-      updatePrettySwitch(
-        session, 
-        "rating_complete", 
-        value = isTruthy(project_evaluation()$rating_complete == 1)
-      )
-      manually_updated_rating_complete(FALSE)
+      if(input$rating_complete != isTruthy(project_evaluation()$rating_complete == 1)) {
+        updatePrettySwitch(
+          session, 
+          "rating_complete", 
+          value = isTruthy(project_evaluation()$rating_complete == 1)
+        )
+        
+        updated_rating_complete_from_db(TRUE)
+      }
     })
     
     # ---------------------------------------------------------------------------
@@ -516,8 +519,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
       })
       
-      if(!manually_updated_rating_complete()) {
-        manually_updated_rating_complete(TRUE)
+      if(isTruthy(updated_rating_complete_from_db())) {
+        updated_rating_complete_from_db(FALSE)
         return(FALSE)
       }
       
