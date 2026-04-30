@@ -76,6 +76,7 @@ populate_db <- function(
   message("Loading HIC Data...")
   HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
   hic_data <- fread(HIC_DATA_FILEPATH) |> 
+    fselect(-mcKinneyVentoYhdp, -mcKinneyVentoYhdpRenewals) |>
     frename(
       row_num                   = "Row #",
       hudnum                    = "HudNum",
