@@ -23,7 +23,6 @@ library(httr)
 library(httr2)
 library(jsonlite)
 library(shinyWidgets)
-library(brand.yml)
 # downloads
 library(gt)
 library(pagedown)
