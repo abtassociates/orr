@@ -935,22 +935,21 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     }, ignoreInit = TRUE)
     
     output$ui_ranked_list <- renderDT({
-      # dt <- isolate(rv$ranked)
-      dt <- rv$ranked
+      dt <- isolate(rv$ranked)
       req(fnrow(dt) > 0)
+      
       shinyjs::show("hidden_cols")
+      
       render_projects_dt(format_ranked_tbl(dt))
-    }, server=FALSE)
+    }, server=TRUE)
     
     ranked_proxy <- dataTableProxy("ui_ranked_list",session = session)
-    # ranked_proxy$id <- "ui_ranked_list"
-    # observeEvent(rv$ranked, {
-    #   # browser()
-    #   # ranked_proxy$id <- ns("ui_ranked_list")
-    #   dt <- format_ranked_tbl(rv$ranked)
-    #   replaceData(ranked_proxy, dt, rownames = FALSE, resetPaging = FALSE)
-    # }, ignoreInit = TRUE, ignoreNULL = TRUE)
-    
+    observeEvent(rv$ranked, {
+      req(rv$ranked)
+      dt <- format_ranked_tbl(rv$ranked)
+      replaceData(ranked_proxy, dt, rownames = FALSE, resetPaging = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+
     observeEvent(input$ui_ranked_list_cell_edit, {
       info <- input$ui_ranked_list_cell_edit
       new_val <- as.integer(gsub("[^0-9.]", "", info$value))
@@ -964,40 +963,22 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       }
     })
       
-    # render_minor_dt <- function(dt) {
-    #   if (is.null(dt) || nrow(dt) == 0) return(NULL)
-    #   
-    #   display_df <- dt |>
-    #     fselect(rank, priority, weighted_score, met_hud_thresholds, met_coc_thresholds, funding_action, project_type, target_population, organization_name, project_name, coc_funding_requested, coc_funding_recommendation)
-    #   
-    #   datatable(
-    #     display_df, 
-    #     rownames = FALSE, 
-    #     options = list(
-    #       dom = 't', 
-    #       paging = FALSE, 
-    #       scrollY = NULL
-    #     )
-    #   ) |>
-    #     table_styles()
-    # }
     # output$ui_yhdp_ren_list <- renderDT({ render_minor_dt(rv$yhdp_ren) })
     # output$ui_yhdp_oth_list <- renderDT({ render_minor_dt(rv$yhdp_oth) })
     output$ui_excluded_list <- renderDT({ 
-      # dt <- isolate(rv$excluded)
-      dt <- rv$excluded
+      dt <- isolate(rv$excluded)
       tbl_has_rows <- isTruthy(fnrow(dt) > 0)
       shinyjs::toggle(id = "excluded_tbl_title", condition = tbl_has_rows)
       req(tbl_has_rows)
+      
       render_projects_dt(format_ranked_tbl(dt), type = "excluded") 
     })
     
     excluded_proxy <- dataTableProxy("ui_excluded_list",session = session)
-    # excluded_proxy$id <- "ui_excluded_list"
-    # observe({
-    #   req(rv$excluded)
-    #   replaceData(excluded_proxy, format_ranked_tbl(rv$excluded), rownames = FALSE, resetPaging = FALSE)
-    # })
+    observe({
+      req(rv$excluded)
+      replaceData(excluded_proxy, format_ranked_tbl(rv$excluded), rownames = FALSE, resetPaging = FALSE)
+    })
     
     observeEvent(input$btn_adjust_tiers, {
       req(rv$ranked)
