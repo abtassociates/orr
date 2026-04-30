@@ -98,8 +98,6 @@ populate_db <- function(
       mckinneyventospc          = "mcKinneyVentoSpC",
       mckinneyventos8           = "mcKinneyVentoS8",
       mckinneyventoshp          = "mcKinneyVentoShp",
-      mckinneyventoyhdp         = "mcKinneyVentoYhdp",
-      mckinneyventoyhdprenewals = "mcKinneyVentoYhdpRenewals",
       mckinneyventounshelt      = "mcKinneyVentoUnshelt",
       mckinneyventorural        = "mcKinneyVentoRural",
       beds_hh_w_children        = "Beds HH w/ Children",

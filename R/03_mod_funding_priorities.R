@@ -54,7 +54,7 @@ mod_funding_priorities_ui <- function(id) {
         funding_input("coc_bonus", "CoC Bonus"),
         funding_input("tier_1", "Tier 1"),
         funding_input("adjusted_ard", "Adjusted ARD"),
-        funding_input("yhdp_ard", "YHDP ARD"),
+        # funding_input("yhdp_ard", "YHDP ARD"),
         funding_input("tier_2", "Tier 2"),
         funding_input("dv_bonus", "DV Bonus"),
         funding_input("dv_ard", "DV ARD")
@@ -125,7 +125,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       "tier_1",
       "tier_2",
       "adjusted_ard",
-      "yhdp_ard",
+      # "yhdp_ard",
       "dv_ard",
       "coc_bonus",
       "dv_bonus"
@@ -139,7 +139,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         fmutate(
           adjusted_ard = round(tier_1/0.9, 0),
           tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
-          yhdp_ard = estimated - min(adjusted_ard, estimated),
+          # yhdp_ard = estimated - min(adjusted_ard, estimated),
           dv_ard = dv_ard_db$dv_ard[1],
           version_id = dv_ard_db$version_id[1]
         ) |>

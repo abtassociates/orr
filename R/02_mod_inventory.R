@@ -85,13 +85,13 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     # binary indicator for whether a new row/project has been added
     is_new_project <- reactiveVal(FALSE)
     
-    # yhdp info for passing around
-    yhdp_replacement_info <- reactiveValues(
-      info = NULL,
-      new_value = NULL,
-      project_to_replace = NULL,
-      funding_source = NULL
-    )
+    # # yhdp info for passing around
+    # yhdp_replacement_info <- reactiveValues(
+    #   info = NULL,
+    #   new_value = NULL,
+    #   project_to_replace = NULL,
+    #   funding_source = NULL
+    # )
     
     refresh_trigger <- reactiveVal(0)
     
@@ -126,7 +126,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           target_population = convert_to_factor(., "target_population"),
           dv_renewal = factor_yesno(dv_renewal),
           mckinneyvento = factor_yesno(mckinneyvento),
-          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
           is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
           is_dedicated_dv = factor_yesno(is_dedicated_dv)
@@ -177,7 +177,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       
       ## filter out Ignores by default-----
       initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
+      initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","New","Expand"]') # removed Replace; not happening for FY25
 
       # helper text explaining this
       helper_html <- "<span title='Projects with funding action \"Ignore\" are filtered out by default.'>funding action ⓘ</span>"
@@ -264,12 +264,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
             backgroundColor = USER_ENTRY_BG_COLOR
           ),
           # Replacement projects should fill out these fields, and thus color them green.
-          function(x) formatStyle(
-            x,
-            columns = c("project_name","project_type","par_youth_beds","single_youth_beds"),            # what to style
-            valueColumns = c("funding_action"),
-            backgroundColor = styleEqual("Replace", USER_ENTRY_BG_COLOR)
-          ),
+          # function(x) formatStyle(
+          #   x,
+          #   columns = c("project_name","project_type","par_youth_beds","single_youth_beds"),            # what to style
+          #   valueColumns = c("funding_action"),
+          #   backgroundColor = styleEqual("Replace", USER_ENTRY_BG_COLOR)
+          # ),
           function(x) formatStyle(
             x,
             columns = c("all_ind_beds"),            # what to style
@@ -330,16 +330,16 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           )
           return(FALSE)
         }
-      } else if(val == "Replace") {
-        if(project_data$mckinneyventoyhdp != "Yes") {
-          showNotification(
-            "It looks like you are trying to replace a non-YHDP project. Only 
-            YHDP projects can be replaced. If this is a YHDP project, 
-            please mark the McKinney- Vento: YHDP field as 'Yes'"
-          )
-          return(FALSE)
-        }
-      }
+      } #else if(val == "Replace") {
+      #   if(project_data$mckinneyventoyhdp != "Yes") {
+      #     showNotification(
+      #       "It looks like you are trying to replace a non-YHDP project. Only 
+      #       YHDP projects can be replaced. If this is a YHDP project, 
+      #       please mark the McKinney- Vento: YHDP field as 'Yes'"
+      #     )
+      #     return(FALSE)
+      #   }
+      # }
       return(TRUE)
     }
     
@@ -435,7 +435,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         fmutate(
           project_id = as.integer(fmax(projects_data()$project_id) + 1),
           mckinneyvento = factor_yesno(mckinneyvento),
-          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           dv_renewal = factor_yesno(dv_renewal),
           coc_amount_awarded_last_year = NA,
           coc_amount_expended_last_year = NA,
@@ -505,13 +505,13 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       project_data <- projects_data()[project_id == info$project_id]
       
       funding_source <- ifelse(
-        project_data$mckinneyventoyhdp == "Yes",
-        "YHDP",
-        ifelse(
+        # project_data$mckinneyventoyhdp == "Yes",
+        # "YHDP",
+        # ifelse(
           isTruthy(project_data$dv_renewal == "Yes" || project_data$target_population == "DV"),
           "DV",
           "CoC"
-        )
+        # )
       )
       
       is_factor_col <- is.factor(projects_data()[[col_name]])
@@ -526,7 +526,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       )
       
       ## Handle reallocation and replace -----
-      if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
+      if(col_name == "funding_action" && info$value %in% c("Reallocate")) { # removed "Replace". not happening in FY25
         # Validity check ----
         is_valid <- validity_pre_checks(project_data, funding_source, info$value)
         
@@ -535,79 +535,77 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         req(is_valid)
         
         ## YHDP Replacement -----
-        if(info$value == "Replace") {
-          # Update reactiveValues so it's visible to observeEvents of the confirmation pop-up
-          yhdp_replacement_info$funding_source <- funding_source
-          yhdp_replacement_info$info <- info
-          yhdp_replacement_info$new_value <- new_value
-          yhdp_replacement_info$project_to_replace <- project_data
-          
-          showModal(
-            modalDialog(
-              title = "YHDP Replacement Confirmation",
-              HTML("
-                  Are you replacing this project with multiple projects? <br><br>
-                  If not, click 'No'. Then update the newly highlighted fields 
-                  for the project. Note that because this is a YHDP Replacement 
-                  project, you can only edit the Project Name, Project Type, and Youth 
-                  bed fields. <br><br> If you are Replacing this project with 
-                  multiple projects, click 'Yes', then you will need to create new 
-                  projects as well as editing this row of the List of Project tab. 
-                  First enter the additional project's information in the pop-up after 
-                  you click 'Yes'. If you are creating more than two projects to 
-                  Replace the current project, then click on the 'additional 
-                  replacement project?' link at the bottom right corner of the pop-up. 
-                  When you are finished adding additional projects, which will appear 
-                  in the list on this tab, then return to the row of the of the current 
-                  project that is being Replaced and update the highlighted fields.
-                "),
-              footer = tagList(
-                actionButton(ns('replace_multiple'), label="Yes"),
-                actionButton(ns('replace_one'), label="No"),
-                actionButton(ns('replace_cancel'), label="Cancel"),
-              ),
-              size = "l"
-            )
-          ) # end showModal
-        } 
+        # if(info$value == "Replace") {
+        #   # Update reactiveValues so it's visible to observeEvents of the confirmation pop-up
+        #   yhdp_replacement_info$funding_source <- funding_source
+        #   yhdp_replacement_info$info <- info
+        #   yhdp_replacement_info$new_value <- new_value
+        #   yhdp_replacement_info$project_to_replace <- project_data
+        #   
+        #   showModal(
+        #     modalDialog(
+        #       title = "YHDP Replacement Confirmation",
+        #       HTML("
+        #           Are you replacing this project with multiple projects? <br><br>
+        #           If not, click 'No'. Then update the newly highlighted fields 
+        #           for the project. Note that because this is a YHDP Replacement 
+        #           project, you can only edit the Project Name, Project Type, and Youth 
+        #           bed fields. <br><br> If you are Replacing this project with 
+        #           multiple projects, click 'Yes', then you will need to create new 
+        #           projects as well as editing this row of the List of Project tab. 
+        #           First enter the additional project's information in the pop-up after 
+        #           you click 'Yes'. If you are creating more than two projects to 
+        #           Replace the current project, then click on the 'additional 
+        #           replacement project?' link at the bottom right corner of the pop-up. 
+        #           When you are finished adding additional projects, which will appear 
+        #           in the list on this tab, then return to the row of the of the current 
+        #           project that is being Replaced and update the highlighted fields.
+        #         "),
+        #       footer = tagList(
+        #         actionButton(ns('replace_multiple'), label="Yes"),
+        #         actionButton(ns('replace_one'), label="No"),
+        #         actionButton(ns('replace_cancel'), label="Cancel"),
+        #       ),
+        #       size = "l"
+        #     )
+        #   ) # end showModal
+        # } 
         ## Reallocation -----
-        else {
+        # else {
           launch_modal(paste0(funding_source, " Reallocation"), funding_source)
-        }
+        # }
       } # end reallocation/replace IF-block
       # Update after non-reallocation and non-replace ------
       inventory_update(info, new_value)
     }, ignoreInit = TRUE)
     
-    # Handle replacement modal ------
-    
-    
     modal_trigger <- reactiveVal(0)
     current_form_type <- reactiveVal("New")
     current_funding_src <- reactiveVal("")
-    current_proj_to_replace <- reactiveVal(NULL)
+    # current_proj_to_replace <- reactiveVal(NULL)
     
+    # Handle replacement modal ------
     ## User wants to replace with multiple projects ----
-    observeEvent(input$replace_multiple, {
-      removeModal()
-      launch_modal(
-        type ="YHDP Replacement", 
-        source = yhdp_replacement_info$funding_source, 
-        replacement = yhdp_replacement_info$project_to_replace
-      )
-    })
-
-        ## User wants to replace with one project ----
-    observeEvent(input$replace_one, {
-      removeModal()
-    })
-    
-    ## User cancelled replacement ----
-    observeEvent(input$replace_cancel, {
-      revert_cell(ns("projects_table"), yhdp_replacement_info$info, input$projects_table_rows_current, projects_data())
-      removeModal()
-      # no need to do inventory_update because we haven't modified the db or datatable yet
-    })
+    # observeEvent(input$replace_multiple, {
+    #   removeModal()
+    #   launch_modal(
+    #     type ="YHDP Replacement", 
+    #     source = yhdp_replacement_info$funding_source, 
+    #     replacement = yhdp_replacement_info$project_to_replace
+    #   )
+    # })
+    # 
+    #     ## User wants to replace with one project ----
+    # observeEvent(input$replace_one, {
+    #   removeModal()
+    # })
+    # 
+    # ## User cancelled replacement ----
+    # observeEvent(input$replace_cancel, {
+    #   revert_cell(ns("projects_table"), yhdp_replacement_info$info, input$projects_table_rows_current, projects_data())
+    #   removeModal()
+    #   # no need to do inventory_update because we haven't modified the db or datatable yet
+    # })
     
     orgnames <- reactive({
       req(user_coc$coc_version_id)
@@ -621,7 +619,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       trigger = modal_trigger,
       form_type = current_form_type,
       funding_source = current_funding_src,
-      project_to_replace = current_proj_to_replace,
+      # project_to_replace = current_proj_to_replace,
       user_coc = user_coc,
       orgnames = orgnames
     )
@@ -630,7 +628,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     launch_modal <- function(type, source = "", replacement = NULL) {
       current_form_type(type)
       current_funding_src(source)
-      current_proj_to_replace(replacement)
+      # current_proj_to_replace(replacement)
       
       # Increment trigger to tell child server to prepopulate/reset
       modal_trigger(modal_trigger() + 1) 
@@ -643,14 +641,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       req(modal_submission$status)
       req(modal_submission$status != "error")
       
-      if(current_form_type() == "New") {
-        inventory_append(modal_submission$project_data)
-      } 
-      # If they reallocated or replaced, we need to both update the reallocated/replaced row
-      # AND add the new project
-      else {
-        inventory_append(modal_submission$project_data)
-      }
+      inventory_append(modal_submission$project_data)
     }, ignoreNULL = TRUE)
     
     # Add additional project handling ----
