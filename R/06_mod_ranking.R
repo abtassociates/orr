@@ -935,20 +935,21 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     }, ignoreInit = TRUE)
     
     output$ui_ranked_list <- renderDT({
-      dt <- isolate(rv$ranked)
+      # dt <- isolate(rv$ranked)
+      dt <- rv$ranked
       req(fnrow(dt) > 0)
       shinyjs::show("hidden_cols")
       render_projects_dt(format_ranked_tbl(dt))
-    }, server=TRUE)
+    }, server=FALSE)
     
     ranked_proxy <- dataTableProxy("ui_ranked_list",session = session)
-    ranked_proxy$id <- "ui_ranked_list"
-    observeEvent(rv$ranked, {
-      # browser()
-      # ranked_proxy$id <- ns("ui_ranked_list")
-      dt <- format_ranked_tbl(rv$ranked)
-      replaceData(ranked_proxy, dt, rownames = FALSE, resetPaging = FALSE)
-    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+    # ranked_proxy$id <- "ui_ranked_list"
+    # observeEvent(rv$ranked, {
+    #   # browser()
+    #   # ranked_proxy$id <- ns("ui_ranked_list")
+    #   dt <- format_ranked_tbl(rv$ranked)
+    #   replaceData(ranked_proxy, dt, rownames = FALSE, resetPaging = FALSE)
+    # }, ignoreInit = TRUE, ignoreNULL = TRUE)
     
     observeEvent(input$ui_ranked_list_cell_edit, {
       info <- input$ui_ranked_list_cell_edit
@@ -983,7 +984,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     # output$ui_yhdp_ren_list <- renderDT({ render_minor_dt(rv$yhdp_ren) })
     # output$ui_yhdp_oth_list <- renderDT({ render_minor_dt(rv$yhdp_oth) })
     output$ui_excluded_list <- renderDT({ 
-      dt <- isolate(rv$excluded)
+      # dt <- isolate(rv$excluded)
+      dt <- rv$excluded
       tbl_has_rows <- isTruthy(fnrow(dt) > 0)
       shinyjs::toggle(id = "excluded_tbl_title", condition = tbl_has_rows)
       req(tbl_has_rows)
@@ -991,11 +993,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     })
     
     excluded_proxy <- dataTableProxy("ui_excluded_list",session = session)
-    excluded_proxy$id <- "ui_excluded_list"
-    observe({
-      req(rv$excluded)
-      replaceData(excluded_proxy, format_ranked_tbl(rv$excluded), rownames = FALSE, resetPaging = FALSE)
-    })
+    # excluded_proxy$id <- "ui_excluded_list"
+    # observe({
+    #   req(rv$excluded)
+    #   replaceData(excluded_proxy, format_ranked_tbl(rv$excluded), rownames = FALSE, resetPaging = FALSE)
+    # })
     
     observeEvent(input$btn_adjust_tiers, {
       req(rv$ranked)
