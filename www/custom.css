@@ -305,7 +305,7 @@ tr.group_header td{
 }
 
 /* Necessary for CoC and DV Bonus highlighting*/
-#ranking-ui_ranked_list table.dataTable tbody tr[style*='background-color'] > td {
+#ranking-ui_ranked_list table.dataTable tbody tr[style*='background-color']:not(.group_header) > td {
   background-color: inherit !important;
   color: inherit !important;
   /* This cancels the Bootstrap 5 background-color on the td */
