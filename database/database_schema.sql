@@ -806,6 +806,8 @@ CREATE TABLE project_evaluations (
     met_hud_thresholds BOOLEAN NULL,
     met_coc_thresholds BOOLEAN NULL,
     weighted_score SMALLINT CHECK (weighted_score >= 0 AND weighted_score <= 100),
+    rating_complete BOOLEAN NULL DEFAULT FALSE,
+    threshold_complete BOOLEAN NULL DEFAULT FALSE,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
