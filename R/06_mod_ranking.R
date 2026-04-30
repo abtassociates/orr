@@ -47,14 +47,28 @@ mod_ranking_ui <- function(id) {
       )
     ),
     
-    shinyWidgets::virtualSelectInput(
-      inputId = ns("hidden_cols"),
-      label = "Hidden Columns:",
-      choices = NULL, # Populated dynamically in server
-      multiple = TRUE,
-      width = "200px",
-      showValueAsTags = TRUE,
-      placeholder = "No columns hidden"
+    br(),
+    div(
+      style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;",
+      
+      shinyWidgets::virtualSelectInput(
+        inputId = ns("hidden_cols"),
+        label = "Hidden Columns:",
+        choices = NULL, # Populated dynamically in server
+        multiple = TRUE,
+        width = "200px",
+        showValueAsTags = TRUE,
+        placeholder = "No columns hidden"
+      ),
+      
+      div(
+        id = "legend",
+        # The Striped Box
+        div(style="width: 50px;"),
+        
+        # The Label (Text and Equals)
+        span("= Straddle row")
+      )
     ),
     
     # 4. Drag and Drop Zones

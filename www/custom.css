@@ -320,7 +320,7 @@ tr.group_header td{
   display:table-row;
 }
 /* Define the hazard tape animation/style */
-.straddle-row td {
+.straddle-row td, #legend > div {
   /* Create the top and bottom borders */
   border-top: 6px solid transparent !important;
   border-bottom: 6px solid transparent !important;
@@ -340,14 +340,28 @@ tr.group_header td{
 }
 
 /* Add side borders to the first and last columns to complete the box */
-.straddle-row td:first-child {
+.straddle-row td:first-child, #legend > div {
   border-left: 6px solid transparent !important;
 }
 
-.straddle-row td:last-child {
+.straddle-row td:last-child, #legend > div {
   border-right: 6px solid transparent !important;
 }
 
+#legend {
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  margin-bottom: 8px; 
+  font-weight: 500;
+  margin-right: 20px;
+}
+
+#legend > span {
+  line-height: 1; 
+  display: flex; 
+  align-items: center;
+}
 /* 1. Apply the gradient to the ROW (the full-width container) */
 /*
 #ranking-ui_ranked_list table.dataTable tbody tr.straddle-row {
