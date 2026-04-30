@@ -54,7 +54,7 @@ mod_funding_priorities_ui <- function(id) {
         funding_input("coc_bonus", "CoC Bonus"),
         funding_input("tier_1", "Tier 1"),
         funding_input("adjusted_ard", "Adjusted ARD"),
-        funding_input("yhdp_ard", "YHDP ARD"),
+        # funding_input("yhdp_ard", "YHDP ARD"),
         funding_input("tier_2", "Tier 2"),
         funding_input("dv_bonus", "DV Bonus"),
         funding_input("dv_ard", "DV ARD")
@@ -125,7 +125,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       "tier_1",
       "tier_2",
       "adjusted_ard",
-      "yhdp_ard",
+      # "yhdp_ard",
       "dv_ard",
       "coc_bonus",
       "dv_bonus"
@@ -133,7 +133,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     hud_ard_coc_data <- reactive({
       req(refresh_trigger$dv_ard, user_coc$coc_version_id)
-      
       get_coc_hud_ard_data(user_coc) |>
         frename(estimated = "total_ard")
     })
@@ -303,7 +302,6 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       initialize_inline_edit_table_ui(
         data = data,
-        tableID = ns("priorities_table"),
         formatting = list(
           function(x) formatCurrency(
             x,
@@ -340,8 +338,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           keys = TRUE,
           ordering = FALSE
         ),
-        filter = 'none',
-        has_double_header = TRUE
+        filter = 'none'
       )      
     }, server = FALSE) #end initialize_data_Table
     

@@ -47,7 +47,7 @@ mod_thresholds_entry_ui <- function(id) {
   ) # end nav_panel
 }
 
-mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) {
+mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, funding_action, hasProjects) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -67,10 +67,12 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active) 
     output$empty <- renderText({
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
       
-      shiny::validate(need(
-        project_is_selected,
-        "Select a project in the left-hand sidebar to begin rating"
-      ))
+      shiny::validate(
+        need(hasProjects(), paste0("You do not have any ", funding_action, " projects to rate"))
+      )
+      shiny::validate(
+        need(project_is_selected, "Select a project in the left-hand sidebar to begin rating")
+      )
     })
     
     # UI updates based on project selection

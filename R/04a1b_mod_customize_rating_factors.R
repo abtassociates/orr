@@ -24,11 +24,6 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
     
     dropdowns_to_include <- target_pop_dropdown
     if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
-    inner_layout_args <- c(
-      # if Renew, each dropdown takes half of this 8-column space. If New, it's just one column taking up the whole space
-      width = ifelse(funding_action == "Renew", 1/2, 1),
-      dropdowns_to_include
-    )
     
     dropdowns_to_include
   }

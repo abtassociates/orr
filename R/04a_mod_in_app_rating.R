@@ -180,7 +180,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     })
     
     # call the module servers of the subtabs
-    mod_thresholds_entry_server("thresholds_entry", user_coc, selected_project, active = is_thresholds_active)
-    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, funding_action, active = is_scores_active)
+    mod_thresholds_entry_server("thresholds_entry", user_coc, selected_project, active = is_thresholds_active, funding_action, hasProjects = reactive(isTruthy(fnrow(all_projects()) > 0)))
+    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, funding_action, active = is_scores_active, hasProjects = reactive(isTruthy(fnrow(all_projects()) > 0)))
   })
 }
