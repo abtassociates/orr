@@ -37,6 +37,8 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
+      style = "overflow: visible !important;",
+      mod_download_rating_ui(ns("download_rating")),
       mod_user_presence_ui(ns("presence")),
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
@@ -64,18 +66,24 @@ mod_rating_scores_entry_ui <- function(id) {
               strong(textOutput(ns("weighted_total_score"), inline=TRUE))),
           div(strong("out of 100"))
         )
+      ),
+      card_footer(
+        class="sticky-footer",
+        style = "display: flex; justify-content: space-between; align-items: center;",
+        prettySwitch(ns("rating_complete"), label = "Rating Complete?", status = "success", fill=TRUE)
       )
     )
   )
 }
 
-mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, active) {
+mod_rating_scores_entry_server <- function(id, user_coc, selected_project, funding_action, active, hasProjects) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     refresh_trigger <- reactiveVal(NA)
     factors_and_scores_for_project <- reactiveVal()
     project_evaluation <- reactiveVal()
+    manually_updated_rating_complete <- reactiveVal(TRUE)
     
     input_prefixes <- c("rating_score", "performance")
     
@@ -84,8 +92,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     observeEvent(c(selected_project(), refresh_trigger(), user_coc[[paste0("customized_rating_factors_updated_", funding_action)]]), {
       req(user_coc$coc_version_id)
-      req(selected_project())
-      req(fnrow(selected_project()) > 0)
+      
+      project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      shinyjs::toggleState("rating_complete", condition = project_is_selected)
+      
+      req(project_is_selected)
       
       # individual threshold entries
       factors_and_scores_for_project(
@@ -102,6 +113,13 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           selected_project()$project_id
         )
       )
+      
+      updatePrettySwitch(
+        session, 
+        "rating_complete", 
+        value = isTruthy(project_evaluation()$rating_complete == 1)
+      )
+      manually_updated_rating_complete(FALSE)
     })
     
     # ---------------------------------------------------------------------------
@@ -157,17 +175,20 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
-      selected_project_exists <- !is.null(selected_project()) && fnrow(selected_project()) > 0
-      has_factors <- fnrow(factors_and_scores_for_project()) > 0
+      project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
+      has_factors <- isTruthy(fnrow(factors_and_scores_for_project()) > 0)
       
-      if(!isTruthy(selected_project_exists) && !isTruthy(has_factors)) {
+      if(!isTruthy(project_is_selected) && !isTruthy(has_factors)) {
         shinyjs::hide(id = "total_row")
         shinyjs::hide(id = "weighted_total_row")
       }
       
       shiny::validate(
-        need(selected_project_exists, "Select a project in the left-hand sidebar to begin rating"),
-        need(fnrow(factors_and_scores_for_project()) > 0, "You must select 1 or more rating factors in the Customize Rating Criteria tab in order to rate this project")
+        need(hasProjects(), paste0("You do not have any ", funding_action, " projects to threshold. Add them on the Review tab.")),
+        need(fnrow(factors_and_scores_for_project()) > 0, paste0("You must select 1 or more ", funding_action, " rating factors in the Customize Rating Criteria tab in order to rate this project"))
+      )
+      shiny::validate(
+        need(project_is_selected, "Select a project in the left-hand sidebar to begin rating")
       )
       
       # Group data only by the main factor_group
@@ -205,7 +226,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
               layout_columns(
                 col_widths = col_widths,
                 # We can add a class for CSS styling, e.g., for indentation
-                p(text),
+                HTML(text),
                 p(goal),
                 div(
                   class = "input-col", 
@@ -249,9 +270,15 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         
         # Create the single accordion panel for the whole group
         bslib::accordion_panel(
-          title = tagList(
-            htmltools::span(group_name),
-            htmltools::span(
+          title = layout_columns(
+            style = "margin-bottom: 0px",
+            col_widths = col_widths,
+            # tagList(
+            htmltools::div(group_name),
+            div(),
+            div(),
+            div(),
+            htmltools::div(
               class = "accordion_total_display",
               HTML(paste0(
                 "(",
@@ -298,7 +325,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         !!!accordion_items_group,
         id = ns("main_accordion"),
         multiple = TRUE,
-        open = names(grouped_data)[1] # Open the first group by default
+        open = FALSE # per HUD feedback, close by default
       )
     }) # end render factors
     
@@ -323,6 +350,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       # Return the sum
       fsum(current_scores)
     }
+    
+    observeEvent(input$main_accordion, {
+      req(isTruthy(fnrow(factors_and_scores_for_project()) > 0))
+      lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
+        shinyjs::toggleState(paste0("performance_", i), condition = !input$rating_complete)
+        shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
+      })
+    })
     
     # Dynamically update subgroup totals
     observe({
@@ -429,6 +464,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       
       req(to_save, iv$is_valid())
       
+      browser()
       refresh_flags <- pool::poolWithTransaction(get_db_pool(), function(p) {
         needs_ref1 <- update_rating_scores_db(p, to_save$rating_scores)
 
@@ -460,13 +496,49 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
             to_save$project_evaluation |>
               fmutate(version_id = version_id + 1)
           )
-
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
       }
-    })
+    }) # end save
     
+    mod_download_rating_server("download_rating", user_coc, selected_project, funding_action, factors_and_scores_for_project)
+    
+    observeEvent(input$rating_complete, {
+      # only proceed if all scores are entered
+      req(fnrow(project_evaluation()) > 0)
+      req(isTruthy(fnrow(factors_and_scores_for_project()) > 0))
+      req(fnrow(selected_project()) > 0)
+      
+      # Disable/Enable individual score fields
+      lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
+        shinyjs::toggleState(paste0("performance_", i), condition = !input$rating_complete)
+        shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
+      })
+      
+      if(!manually_updated_rating_complete()) {
+        manually_updated_rating_complete(TRUE)
+        return(FALSE)
+      }
+      
+      # pull latest Project Evaluation in case they just updated Threshold
+      project_evaluation(
+        get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
+      )
+      
+      # Update db
+      data <- factors_and_scores_for_project() |>
+        fmutate(
+          rating_complete = input$rating_complete,
+          updated_by = user_coc$username,
+          version_id = project_evaluation()$version_id
+        ) |>
+        fselect(rating_complete, updated_by, project_id, version_id) |>
+        funique()
+      
+      update_rating_complete(get_db_pool(), data)
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+      
     # --- User PResence ----
     mod_user_presence_server(
       id = "presence", # Internal ID for this leaf module

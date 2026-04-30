@@ -27,6 +27,9 @@ library(brand.yml)
 # downloads
 library(gt)
 library(pagedown)
+# For Rating Report Cards
+library(mirai)
+library(promises)
 
 # ENVIRONMENT DETECTION -----------
 IN_DEV_MODE <- Sys.getenv("RSTUDIO") == "1" && !isTRUE(getOption("shiny.testmode"))
@@ -84,22 +87,6 @@ logger::log_threshold(Sys.getenv("LOG_LEVEL", "DEBUG"))
 options(shiny.fullstacktrace = IN_DEV_MODE)
 options(shiny.sanitize.errors = FALSE)
 
-# add logger table input names
-table_suffixes <- c(
-  "_rows_selected",
-  "_rows_current",
-  "_rows_all",
-  "_state"
-)
-table_names <- c(
-  "dashboard-coc_selection-coc_versions_dt",
-  "inventory-projects_table",
-  "dashboard-requests-requests_dt",
-  "funding_priorities-priorities_table"
-)
-
-inputs_to_exclude <- outer(table_names, table_suffixes, paste, sep = "")
-
 # UTILS AND DB FUNCTIONS --------------
 files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
 lapply(files, source)
@@ -122,5 +109,19 @@ shiny::onStop( function(){
   if (shiny::isRunning()) {
     try(tools::pskill(tunnel), silent = TRUE)
   }
+  
+  daemons(0)
 })
+
+# For Rating Report Cards
+daemons(2, output = TRUE, sync = TRUE)
+mirai::everywhere({
+  library(gt)
+  library(pagedown)
+  library(dplyr)
+  library(zip)
+  
+  source(here("R/utils/build_report.R"))
+}, .options = list(seed = TRUE))
+
 # shiny::runApp(port = 4000, launch.browser = T)

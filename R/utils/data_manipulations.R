@@ -93,7 +93,7 @@ variable_labels <- c(
   "project_type" = "Project Type",
   "target_population" = "Target Population",
   "mckinneyvento" = "McKinney-Vento",
-  "mckinneyventoyhdp" = "McKinney-Vento: YHDP",
+  # "mckinneyventoyhdp" = "McKinney-Vento: YHDP",
   "dv_renewal" = "DV Renewal",
   "grant_number" = "Grant Number",
   "coc_amount_awarded_last_year" = "CoC Amount Awarded Last Operating Year",
@@ -254,6 +254,7 @@ save_to_db <- function(p, sql, params, tbl_name) {
       else
         msg <- glue::glue("{tbl_name} saved successfully!")
       print(msg)
+      print(sql)
       showNotification(msg, type = "message")
       return(rows_changed)
     } 
@@ -261,12 +262,14 @@ save_to_db <- function(p, sql, params, tbl_name) {
     num_rows <- ifelse("list" %in% class(params), length(params[[1]]), fnrow(params))
     if(rows_changed == 0) {
       msg <- glue::glue("Someone recently edited this {tbl_name}! Refreshing your view. Resubmit when you're ready.")
+      print(sql)
       needs_refresh <- TRUE
     } else if(rows_changed < num_rows) {
       msg <- glue::glue("Someone recently edited one or more {tbl_name} for this project! Refreshing your view. Resubmit when you're ready.")
       needs_refresh <- TRUE
     } else {
       msg <- glue::glue("{tbl_name} saved successfully!")
+      print(sql)
       needs_refresh <- FALSE
     }
     logger::log_info(msg)
@@ -399,7 +402,7 @@ get_threshold_data_to_save <- function(base, id_col, valuecol, selections) {
   new_val <- as.integer(base[[id_col]] %in% selections)
   diff <- base |> 
     fmutate(new_val = new_val) %>%
-    fsubset(new_val != .[[valuecol]])
+    fsubset(new_val != fcoalesce(DT::coerceValue(.[[valuecol]], new_val), 0L))
   
   diff[[valuecol]] <- diff$new_val
   diff$new_val <- NULL

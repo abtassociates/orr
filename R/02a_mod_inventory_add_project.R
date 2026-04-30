@@ -4,25 +4,25 @@ LOOKUP_CHOICES <- list(
   all_project_types = LOOKUPS[reference_type == 'project_type']$value,
   coc_renewal_reallocate_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO", "HMIS"),
   coc_new_expansion_types = c("PSH", "TH", "RRH", "TH+RRH", "SSO - CE", "HMIS"),
-  yhdp_project_types = c("PSH", "RRH", "TH", "TH+RRH", "SSO - CE"), # what about SSO-Host Homes?
+  # yhdp_project_types = c("PSH", "RRH", "TH", "TH+RRH", "SSO - CE"), # what about SSO-Host Homes?
   dv_project_types = c("RRH", "TH+RRH", "SSO - CE"),
   dv_reallocation_project_types = c("RRH", "TH+RRH", "SSO - CE"),
-  funding_source = c("CoC","YHDP","DV"),
-  no_yhdp_funding_source = c("CoC", "DV"),
+  # funding_source = c("CoC","YHDP","DV"), # According to guidance from HUD on 4/20/26, no separate YHDP bucket
+  funding_source = c("CoC","DV"),
   target_populations = LOOKUPS[reference_type == 'target_population']$value #c("DV","HIV","Youth", "General") # AS 8/26: What are the right populations here?
 )
 
 # ===================================================================
 # UI Function (Now with a helper for bed inputs)
 # ===================================================================
-mod_inventory_add_project_ui <- function(id, form_type = "New", project_to_replace = NULL, orgnames) {
+mod_inventory_add_project_ui <- function(id, form_type = "New", orgnames) { # removed project_to_replace = NULL argument. Replacement not happening in FY25
   ns <- NS(id)
   
   title <- switch(form_type,
-                  "YHDP Reallocation" = "YHDP Reallocation Form",
+                  # "YHDP Reallocation" = "YHDP Reallocation Form",
                   "DV Reallocation"   = "DV Reallocation Form",
                   "CoC Reallocation"  = "CoC Reallocation Form",
-                  "YHDP Replacement"  = "YHDP Replacement Form",
+                  # "YHDP Replacement"  = "YHDP Replacement Form",
                   "Add New Project"
   )
   
@@ -110,7 +110,7 @@ mod_inventory_add_project_server <- function(
     trigger,
     form_type = NULL, 
     funding_source = "", 
-    project_to_replace = NULL, 
+    # project_to_replace = NULL, 
     user_coc = NULL,
     orgnames = NULL,
     parent_session = NULL
@@ -129,8 +129,8 @@ mod_inventory_add_project_server <- function(
     
     # Determine the definitive target population.
     current_target_pop <- reactive({
-      if (current_funding_source() == "YHDP") "Youth" 
-      else if (current_funding_source() == "DV") "DV" 
+      # if (current_funding_source() == "YHDP") "Youth" 
+      if (current_funding_source() == "DV") "DV" 
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
     })
@@ -147,8 +147,8 @@ mod_inventory_add_project_server <- function(
       
       # Determine visibility based on funding and population
       groups <- c()
-      if (current_funding_source() == "YHDP") groups <- c("youth_beds")
-      else if (current_funding_source() == "DV") groups <- c("total_beds") # Will be relabeled to "DV Beds"
+      # if (current_funding_source() == "YHDP") groups <- c("youth_beds")
+      if (current_funding_source() == "DV") groups <- c("total_beds") # Will be relabeled to "DV Beds"
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
         if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
@@ -191,18 +191,20 @@ mod_inventory_add_project_server <- function(
       if (grepl("Reallocation", form_type()) && funding_source() != "") {
         updateSelectInput(session, "funding_source", selected = funding_source())
         updateSelectInput(session, "funding_action", choices = c("Select an option below" = "", LOOKUP_CHOICES$reallocation_funding_actions))
-        if (funding_source() == "YHDP") {
-          updateSelectInput(session, "funding_action", selected = "New")
-        }
+        # if (funding_source() == "YHDP") {
+        #   updateSelectInput(session, "funding_action", selected = "New")
+        # }
         shinyjs::hide("grant_number") # should never need grant number because can only reallocate to New or Expand
         shinyjs::disable("funding_source")
-      } else if (form_type() == "YHDP Replacement" && !is.null(project_to_replace())) {
-        updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
-        updateSelectInput(session, "funding_action", selected = "Replace")
-        updateNumericInput(session, "youth_beds_fam", value = project_to_replace$par_youth_beds)
-        updateNumericInput(session, "youth_beds_ind", value = project_to_replace$single_youth_beds)
-        shinyjs::disable("funding_source")
-      } else {
+      } 
+      # else if (form_type() == "YHDP Replacement" && !is.null(project_to_replace())) {
+      #   updateTextInput(session, "project_name", value = project_to_replace$`Project Name`)
+      #   updateSelectInput(session, "funding_action", selected = "Replace")
+      #   updateNumericInput(session, "youth_beds_fam", value = project_to_replace$par_youth_beds)
+      #   updateNumericInput(session, "youth_beds_ind", value = project_to_replace$single_youth_beds)
+      #   shinyjs::disable("funding_source")
+      # } 
+      else {
         reset_form()
       }
     })
@@ -217,7 +219,7 @@ mod_inventory_add_project_server <- function(
       proj_type_choices <- 
         if (current_funding_source() == "CoC" && fa %in% c("Renew", "Reallocate")) LOOKUP_CHOICES$coc_renewal_reallocate_types
         else if (current_funding_source() == "CoC") LOOKUP_CHOICES$coc_new_expansion_types
-        else if (current_funding_source() == "YHDP") LOOKUP_CHOICES$yhdp_project_types
+        # else if (current_funding_source() == "YHDP") LOOKUP_CHOICES$yhdp_project_types
         else if (current_funding_source() == "DV" && fa == "Reallocate") LOOKUP_CHOICES$dv_reallocation_project_types
         else if (current_funding_source() == "DV") LOOKUP_CHOICES$dv_project_types
         else LOOKUP_CHOICES$all_project_types
@@ -263,7 +265,7 @@ mod_inventory_add_project_server <- function(
       shinyjs::toggleState("all_dv_checkbox", condition = show_dv_check && current_funding_source() != "DV")
       
       # Missing organization_name state control
-      shinyjs::toggleState("organization_name", condition = form_type() != "YHDP Replacement")
+      # shinyjs::toggleState("organization_name", condition = form_type() != "YHDP Replacement")
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update Target Population Selection
@@ -306,7 +308,7 @@ mod_inventory_add_project_server <- function(
     iv$add_rule("project_type", sv_required())
     iv$add_rule("funding_source", sv_required())
     iv$add_rule("target_population", sv_required())
-    iv$add_rule("funding_action", ~ if(. == "Replace" && current_funding_source() != "YHDP") "Only YHDP projects can be replaced")
+    # iv$add_rule("funding_action", ~ if(. == "Replace" && current_funding_source() != "YHDP") "Only YHDP projects can be replaced")
 
     # Grant number is only required if not New or Expand
     grant_iv <- shinyvalidate::InputValidator$new()
@@ -410,12 +412,12 @@ mod_inventory_add_project_server <- function(
         # Handle YHDP Reallocation special case for total beds
         total_fam <- get_val("total_beds", "fam")
         total_ind <- get_val("total_beds", "ind")
-        if (input$funding_source == "YHDP" 
-            # && grepl("Reallocation", form_type())
-          ) {
-          total_fam <- get_val("youth_beds", "fam")
-          total_ind <- get_val("youth_beds", "ind")
-        }
+        # if (input$funding_source == "YHDP" 
+        #     # && grepl("Reallocation", form_type())
+        #   ) {
+        #   total_fam <- get_val("youth_beds", "fam")
+        #   total_ind <- get_val("youth_beds", "ind")
+        # }
 
         # Collect data into a clean list
         new_project_data <- data.table(
@@ -439,7 +441,7 @@ mod_inventory_add_project_server <- function(
           is_dedicated_ch_fam = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_fam,
           is_dedicated_ch_ind = input$funding_source == "CoC" && input$project_type == "PSH" && input$targeted_ch_ind,
           mckinneyvento = TRUE,
-          mckinneyventoyhdp = input$funding_source == "YHDP",
+          # mckinneyventoyhdp = input$funding_source == "YHDP",
           dv_renewal = input$funding_source == "DV" && input$funding_action == "Renew",
           created_by = user_coc$username
         )

@@ -1,7 +1,7 @@
 # Used to pull project-evaluation info for a given project
 get_project_evaluation <- function(coc_version_id, project_id) {
   get_db_query(
-    "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, pe.version_id 
+    "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, weighted_score, pe.version_id, pe.threshold_complete, pe.rating_complete
     FROM project_evaluations pe
     LEFT JOIN projects p ON pe.project_id = p.project_id
     WHERE p.coc_version_id = $1 and pe.project_id = $2",
@@ -30,4 +30,13 @@ get_projects_by_funding_action <- function(coc_version_id, funding_action_ids) {
       on = c("funding_action","project_type"),
       how = "inner"
     )
+}
+
+get_project_rating_completion <- function(project_ids) {
+  get_db_query(glue::glue_sql(
+    "SELECT project_id 
+    FROM project_evaluations 
+    WHERE project_id IN ({project_ids*}) AND rating_complete AND threshold_complete",
+    .con=get_db_pool()
+  ))
 }

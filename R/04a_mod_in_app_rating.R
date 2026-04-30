@@ -11,12 +11,13 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     helpText(paste0("Rate your ", ptypes, " against your selected criteria.")),
     br(),
     layout_sidebar(
-      style = "min-height: 500px;",
+      style = "min-height: 500px; overflow: visible !important;",
       # the side bar will be 
       sidebar = sidebar(
         width = 250,
         open = "desktop",
         id = ns("project_selection_sidebar"),
+        uiOutput(ns("project_select_css")),
         selectInput(ns("project_select"), label = "Select Project", choices = NULL),
         uiOutput(ns("project_info_sidebar"))
       ),
@@ -33,6 +34,47 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    # Reactive to query the database and return IDs of projects that have already been rated
+    rated_projects <- reactive({
+      req(user_coc$coc_version_id, nav_control() == 'rating')
+      user_coc$projects_updated # Trigger a refresh if projects/ratings are updated
+      
+      projects <- all_projects()
+      req(fnrow(projects) > 0)
+      
+      # Query DB for all projects that have a weighted_score
+      evaluated <- get_project_rating_completion(projects$project_id)
+      
+      if (is.null(evaluated) || fnrow(evaluated) == 0) return(character(0))
+      
+      # Return only rated projects that belong to the current list
+      evaluated$project_id
+    })
+    
+    # Dynamically generate CSS to set the background color of completed options in the dropdown
+    output$project_select_css <- renderUI({
+      rated <- rated_projects()
+      req(length(rated) > 0)
+      
+      input_id <- ns("project_select")
+      
+      # Build CSS selectors targeting the specific project options in the selectize dropdown
+      # Also target raw <option> tags as a fallback
+      css_selectors <- c(
+        paste0("#", input_id, " option[value='", rated, "']"),
+        paste0("#", input_id, " ~ .selectize-control .selectize-dropdown-content .option[data-value='", rated, "']")
+      )
+      
+      # Inject custom background color (a Bootstrap-like success green)
+      css_rule <- paste(
+        paste(css_selectors, collapse = ",\n"),
+        "{ background-color: #4BB543 !important; color: black !important;}"
+      )
+      
+      tags$style(HTML(css_rule))
+    })
+    
+    
     ## restore last selected project from user_settings DB tbl
     ## also update choices
     observe({
@@ -40,11 +82,39 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
       
       user_prev_project_selected <- get_user_setting(get_db_pool(), glue::glue('rating_{id}_project_selected'), user_coc$coc_version_id, user_coc$username)
       
+      projects <- all_projects()
+      
+      if (fnrow(projects) > 0) {
+        rated <- rated_projects()
+        
+        # Sort projects so that unrated (FALSE/0) come first, and rated (TRUE/1) go to the bottom.
+        # seq_len(nrow(projects)) acts as a tie-breaker so original relative sorting is preserved.
+        is_rated <- projects$project_id %in% rated
+        sort_order <- order(is_rated, tolower(projects$project_name))
+        projects <- projects[sort_order, ]
+        
+        # Update our flag based on the newly sorted dataframe
+        is_rated_sorted <- projects$project_id %in% rated
+        
+        # Prepend a checkmark to the names of the completed projects
+        choices_labels <- projects$project_name
+        
+        if (any(is_rated_sorted)) {
+          choices_labels[is_rated_sorted] <- paste0("✔ ", choices_labels[is_rated_sorted])
+        }
+        
+        choices_list <- c("Please select..." = "", setNames(projects$project_id, choices_labels))
+        selected_val <- if(length(user_prev_project_selected) && user_prev_project_selected %in% projects$project_id) user_prev_project_selected else ""
+      } else {
+        choices_list <- character(0)
+        selected_val <- ""
+      }
+      
       updateSelectInput(
         session, 
         'project_select', 
-        selected = if(fnrow(all_projects()) > 0 && length(user_prev_project_selected)) user_prev_project_selected else "",
-        choices = if(fnrow(all_projects()) > 0) c("Please select..." = "", setNames(all_projects()$project_id, all_projects()$project_name)) else character(0)
+        selected = selected_val,
+        choices = choices_list
       )
     })
     
@@ -110,7 +180,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     })
     
     # call the module servers of the subtabs
-    mod_thresholds_entry_server("thresholds_entry", user_coc, selected_project, active = is_thresholds_active)
-    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, funding_action, active = is_scores_active)
+    mod_thresholds_entry_server("thresholds_entry", user_coc, selected_project, active = is_thresholds_active, funding_action, hasProjects = reactive(isTruthy(fnrow(all_projects()) > 0)))
+    mod_rating_scores_entry_server("rating_scores_entry", user_coc, selected_project, funding_action, active = is_scores_active, hasProjects = reactive(isTruthy(fnrow(all_projects()) > 0)))
   })
 }
