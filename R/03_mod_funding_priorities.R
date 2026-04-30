@@ -346,8 +346,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           keys = TRUE,
           ordering = FALSE
         ),
-        filter = 'none',
-        has_double_header = TRUE
+        filter = 'none'
       )      
     }, server = FALSE) #end initialize_data_Table
     
