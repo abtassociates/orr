@@ -100,6 +100,11 @@ input[type=number] {
   overflow-y: hidden !important;  
 }
 
+#funding_priorities-priorities_table th.col-pop, #funding_priorities-priorities_table td.col-pop           { width: 20%; min-width: 245.781px; }
+#funding_priorities-priorities_table th.col-beds, #funding_priorities-priorities_table td.col-beds         { width: 8%;  min-width: 70px;  } 
+#funding_priorities-priorities_table th.col-funding, #funding_priorities-priorities_table td.col-funding   { width: 18%; min-width: 130px; } 
+#funding_priorities-priorities_table th.col-priority, #funding_priorities-priorities_table td.col-priority { width: 12%; min-width: 100px; } 
+
 
 [id^="funding_priorities"].autonumeric-input {
   font-size: 1.2rem !important; /*otherwise, default for currencyInput is 1.5rem which is too big*/

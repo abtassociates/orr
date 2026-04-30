@@ -39,8 +39,10 @@ function getShinyTableId(table) {
 function getColName(cell, table) {
   var colIndex = cell.index().column;
   
+  var hasMultiHeaders = table.header()[0].querySelector('tr.multi-header-row') !== null;
+
   let colName = table.column(colIndex).header().innerText.toUpperCase();
-  if (table.header()[0].rows.length > 2) {
+  if (hasMultiHeaders) {
     colName = getCompoundColName(colIndex, table);
   } else if (getShinyTableId(table) == 'rating-alternative-alternative_rating_table') {
     colName = table.column(colIndex).header().childNodes[0].wholeText;

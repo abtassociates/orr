@@ -328,14 +328,19 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         container = tags$table(
           tags$thead(
             tags$tr(
-              tags$th(rowspan = 2, 'Population'),
+              tags$th(rowspan = 2, 'Population', class = 'col-pop'),
               lapply(MAIN_PROJECT_TYPES, function(pt) {
                 tags$th(colspan = 3, pt)
               })
             ),
             tags$tr(
+              class = "multi-header-row",
               lapply(rep(c("Beds", "Funding", "Priority"), length(MAIN_PROJECT_TYPES)), function(col) {
-                tags$th(col)
+                # Assign CSS classes based on the column name
+                cls <- if (col == "Beds") "col-beds"
+                  else if (col == "Funding") "col-funding"
+                  else "col-priority"
+                tags$th(col, class = cls)
               })
             )
           )
@@ -344,7 +349,15 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
           dom = 't',
           info = FALSE,
           keys = TRUE,
-          ordering = FALSE
+          ordering = FALSE,
+          # autoWidth = FALSE, # Still required
+          # scrollX = TRUE,
+          columnDefs = list(
+            list(className = 'col-pop', targets = 0),
+            list(className = 'col-beds dt-center', targets = seq(2, ncol(data), by = 3) - 1),
+            list(className = 'col-funding dt-center', targets = seq(3, ncol(data), by = 3) - 1),
+            list(className = 'col-priority dt-center', targets = seq(4, ncol(data), by = 3) - 1)
+          )
         ),
         filter = 'none'
       )      
