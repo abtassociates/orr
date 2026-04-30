@@ -290,20 +290,25 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     })
     
     get_allocated_funding <- function(condition) {
-      req(fnrow(rv$ranked) > 0)
-      sum(rv$ranked[eval(condition)]$coc_funding_recommendation, na.rm = TRUE)
+      reactive({
+        req(fnrow(rv$ranked) > 0)
+        dt <- rv$ranked[eval(condition)]
+        if(fnrow(dt) > 0) fsum(dt$coc_funding_recommendation) else 0
+      })
     }
-    alloc_tier1 <- reactive( get_allocated_funding(quote(tier == "Tier 1")) )
-    alloc_tier2 <- reactive( get_allocated_funding(quote(tier == "Tier 2")) )
-    alloc_coc <- reactive( get_allocated_funding(quote(coc_selected == TRUE)) )
-    alloc_exceed <- reactive( get_allocated_funding(quote(tier == "Projects Exceeding ARD Adj")) )
+    alloc_tier1 <- get_allocated_funding(quote(tier == "Tier 1"))
+    alloc_tier2 <- get_allocated_funding(quote(tier == "Tier 2"))
+    alloc_coc <- get_allocated_funding(quote(coc_selected == TRUE))
+    alloc_exceed <- get_allocated_funding(quote(tier == "Projects Exceeding ARD Adj"))
     
     alloc_dv <- reactive({
       req(fnrow(rv$ranked) > 0)
+      dt <- rv$ranked[dv_selected == TRUE]
+      
       list(
-        total = sum(rv$ranked[dv_selected == TRUE]$coc_funding_recommendation, na.rm = TRUE),
-        t1 = sum(rv$ranked[dv_selected == TRUE & tier == "Tier 1"]$coc_funding_recommendation, na.rm = TRUE),
-        t2 = sum(rv$ranked[dv_selected == TRUE & tier == "Tier 2"]$coc_funding_recommendation, na.rm = TRUE)
+        total = if(fnrow(dt) > 0) fsum(dt$coc_funding_recommendation) else 0,
+        t1 = if(fnrow(dt) > 0) fsum(dt[tier == "Tier 1"]$coc_funding_recommendation) else 0,
+        t2 = if(fnrow(dt) > 0) fsum(dt[tier == "Tier 2"]$coc_funding_recommendation) else 0
       )
     })
     
@@ -524,9 +529,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         )
       }
       
-      # Ensure target columns exist safely
-      dt[, total_beds := all_fam_beds + all_ind_beds]
-      
       # Assign Priority Based on Bed Distribution
       dt[, priority := if(allNA(ceilings_priorities()$priority)) unspecified_id else 
         fcase(
@@ -574,6 +576,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       req(user_coc$coc_version_id)
       
       raw_data <- get_projects_to_rank(user_coc$coc_version_id) |>
+        fmutate(total_beds = all_fam_beds + all_ind_beds) |>
         calculate_priority()
       
       if(IN_DEV_MODE) {
@@ -749,7 +752,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       dt
     }
-    render_projects_dt <- function(final, type = "main", show_beds = FALSE) {
+    render_projects_dt <- function(final, type = "main") {
       colnames <- names(final)
       
       disabled_cols <- setdiff(
@@ -765,9 +768,13 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         list(targets = which(colnames %in% structural_cols) - 1, visible = FALSE),
         list(targets = bed_cols, visible = FALSE)
       )
+      
+      if(type == "excluded") {
+        columnDefs <- append(columnDefs, list(targets=0, className = "hidden", visible = FALSE))
+      }
+      
       straddle_col_idx <- which(colnames == "straddle_amount") - 1
       funding_col_idx  <- which(colnames == "coc_funding_recommendation") - 1
-      
       
       
       # Get all column indices except coc_funding_recommendation
@@ -871,7 +878,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       # Create a flat list of choices, swapping all bed fields for the single word "Beds"
       choices <- c("BED FIELDS", general_cols)
       
-      shinyjs::show("hidden_cols")
       shinyWidgets::updateVirtualSelect(
         session = session,
         inputId = "hidden_cols",
@@ -923,19 +929,26 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         )
       
       # Recalculate completely handles the new ranks and tiers based on the new array order
-      rv$ranked <- recalculate_ranking(new_data)
+      new_data <- recalculate_ranking(new_data)
+      rv$ranked <- new_data |> fsubset(!ineligible & !is_over_target)
+      rv$excluded <- new_data |> fsubset(ineligible | is_over_target)
     }, ignoreInit = TRUE)
     
     output$ui_ranked_list <- renderDT({
-      req(fnrow(rv$ranked) > 0)
-      render_projects_dt(format_ranked_tbl(rv$ranked), show_beds = isTruthy(input$toggle_beds))
-    }, server=FALSE)
+      dt <- isolate(rv$ranked)
+      req(fnrow(dt) > 0)
+      shinyjs::show("hidden_cols")
+      render_projects_dt(format_ranked_tbl(dt))
+    }, server=TRUE)
     
     ranked_proxy <- dataTableProxy("ui_ranked_list",session = session)
-    observe({
-      req(rv$ranked)
-      replaceData(ranked_proxy, format_ranked_tbl(rv$ranked), resetPaging = FALSE)
-    })
+    ranked_proxy$id <- "ui_ranked_list"
+    observeEvent(rv$ranked, {
+      # browser()
+      # ranked_proxy$id <- ns("ui_ranked_list")
+      dt <- format_ranked_tbl(rv$ranked)
+      replaceData(ranked_proxy, dt, rownames = FALSE, resetPaging = FALSE)
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
     
     observeEvent(input$ui_ranked_list_cell_edit, {
       info <- input$ui_ranked_list_cell_edit
@@ -970,10 +983,18 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     # output$ui_yhdp_ren_list <- renderDT({ render_minor_dt(rv$yhdp_ren) })
     # output$ui_yhdp_oth_list <- renderDT({ render_minor_dt(rv$yhdp_oth) })
     output$ui_excluded_list <- renderDT({ 
-      tbl_has_rows <- isTruthy(fnrow(rv$excluded) > 0)
+      dt <- isolate(rv$excluded)
+      tbl_has_rows <- isTruthy(fnrow(dt) > 0)
       shinyjs::toggle(id = "excluded_tbl_title", condition = tbl_has_rows)
       req(tbl_has_rows)
-      render_projects_dt(format_ranked_tbl(rv$excluded), type = "excluded", show_beds = isTruthy(input$toggle_beds)) 
+      render_projects_dt(format_ranked_tbl(dt), type = "excluded") 
+    })
+    
+    excluded_proxy <- dataTableProxy("ui_excluded_list",session = session)
+    excluded_proxy$id <- "ui_excluded_list"
+    observe({
+      req(rv$excluded)
+      replaceData(excluded_proxy, format_ranked_tbl(rv$excluded), rownames = FALSE, resetPaging = FALSE)
     })
     
     observeEvent(input$btn_adjust_tiers, {
