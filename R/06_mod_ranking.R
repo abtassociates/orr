@@ -5,25 +5,26 @@ mod_ranking_ui <- function(id) {
     "Ranking",
     value = "ranking",
     
-    div(
-      class = "d-flex justify-content-between align-items-end mb-3",
-      
-      # Left Side: Buttons (Normal size, placed next to each other)
-      layout_columns(
-        fill = FALSE,
-        col_widths = c(6, 6),
-        actionButton(
-          ns("btn_adjust_tiers"), 
-          "Adjust Tiers after Funding Changes", 
-          class = "btn-info btn-lg w-100", 
-          icon = icon("arrows-rotate")
-        ),
-        actionButton(
-          ns("btn_save_ranking"), 
-          "Save Ranking", 
-          class = "btn-success btn-lg w-100", 
-          icon = icon("save")
-        )
+    layout_columns(
+      fill = FALSE,
+      col_widths = c(4,4,4),
+      actionButton(
+        ns("conduct_ranking"), 
+        "Conduct Ranking", 
+        class = "btn-info btn-lg w-100", 
+        icon = icon("ranking-star")
+      ),
+      actionButton(
+        ns("btn_adjust_tiers"), 
+        "Adjust Tiers after Funding Changes", 
+        class = "btn-info btn-lg w-100", 
+        icon = icon("arrows-rotate")
+      ),
+      actionButton(
+        ns("btn_save_ranking"), 
+        "Save Ranking", 
+        class = "btn-success btn-lg w-100", 
+        icon = icon("save")
       )
     ),
     
@@ -95,6 +96,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     priority_levels <- get_labelled_lookups("priority")
     
     unspecified_id <- get_lookup_refid("Unspecified", "priority")
+    
+    # when user makes updates to the app, we update this to flag for the user they should run the ranking
+    ranking_needs_refresh <- reactiveVal(FALSE)
     
     coc_ard_data <- reactive({
       req(user_coc$coc)
@@ -318,10 +322,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data, "DV Bonus")
     mod_ranking_widget_server("exceeds", alloc_exceed, coc_ard_data, "Exceeding ARD Adj")
     
-    # ranked_project_ids <- reactiveValues(new = NULL)
-    
     observeEvent(c(user_coc$coc_version_id, user_coc$projects_updated, user_coc$rating_updated, user_coc$priorities_and_ceilings_updated), { 
-      process_data(force_reset = FALSE) 
+      ranking_needs_refresh(TRUE)
     }, ignoreInit = TRUE)
     
     # Core Function: Recalculate Tiers and Bonuses
@@ -671,6 +673,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         fsubset(is_over_target == FALSE) |>
         colorder(rank, priority, pos = "after") # move priority after rank
       
+      ranking_needs_refresh(FALSE)
     } # end process_data
     
     format_ranked_tbl <-function(dt) {
@@ -761,6 +764,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       dt
     }
     render_projects_dt <- function(final, type = "main") {
+      shiny::validate(need(!ranking_needs_refresh(), "Data has been updated. Click 'Conduct Ranking' to update."))
+      
       colnames <- names(final)
       
       disabled_cols <- setdiff(
@@ -944,10 +949,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     }, ignoreInit = TRUE)
     
     output$ui_ranked_list <- renderDT({
-      dt <- isolate(rv$ranked)
+      dt <- rv$ranked
       req(fnrow(dt) > 0)
-      
-      shinyjs::show("hidden_cols")
       
       render_projects_dt(format_ranked_tbl(dt))
     }, server=TRUE)
@@ -989,6 +992,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       replaceData(excluded_proxy, format_ranked_tbl(rv$excluded), rownames = FALSE, resetPaging = FALSE)
     })
     
+    observeEvent(input$conduct_ranking, {
+      process_data(force_reset = FALSE) 
+    })
     observeEvent(input$btn_adjust_tiers, {
       req(rv$ranked)
       rv$ranked <- recalculate_ranking(copy(rv$ranked))
