@@ -95,10 +95,8 @@ function get_max_length(colName) {
   let c = colName.toUpperCase();
   if(c.includes('BED')) return 5;
   if(c == 'WEIGHTED_SCORE') return 3;
-  if(is_funding_col(colName)) return 9;
-  get_db_column_limit("projects", colName)
+  if(is_funding_col(colName)) return 10;
   return null;
-}
 
 function trim_val(colName, val, max_length = null) {
   let maxLength = max_length ? max_length : get_max_length(colName);
