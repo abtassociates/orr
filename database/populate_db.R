@@ -1,6 +1,7 @@
 populate_db <- function(
     add_demo_data = basename(getwd()) != "ORR", 
-    USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
+    USE_SQLITE = Sys.getenv("RSTUDIO") == "1",
+    dbname = NULL
 ) {
   ans <- readline(
     prompt = "If you proceed, you will erase all database data. Proceed? (Y/N): "
@@ -21,7 +22,7 @@ populate_db <- function(
   files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
   lapply(files, source)
   
-  set_up_db_connection()
+  set_up_db_connection(dbname)
   p <- get_db_pool()
   SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
   
