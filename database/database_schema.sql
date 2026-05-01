@@ -831,7 +831,7 @@ CREATE TABLE ranking (
 CREATE TABLE user_presence (
     session_id VARCHAR(100),
     context VARCHAR(100),
-    user_id VARCHAR(100),
+    user_id VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     record_id VARCHAR(100),
     field VARCHAR(100),
     last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
