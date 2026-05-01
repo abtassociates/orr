@@ -293,3 +293,13 @@ table.dataTable .selectize-dropdown-content {
   overflow-y: auto; /* Handles scrolling for the text */
 }
   
+
+/*********************
+User PResence
+******************/
+.user-presence-banner {
+  padding: 8px; 
+  margin-bottom: 10px; 
+  font-size: 0.9em; 
+  border-left: 5px solid #f0ad4e;
+}

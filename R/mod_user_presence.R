@@ -8,8 +8,8 @@ mod_user_presence_ui <- function(id) {
 # Arguments:
 # - record_id: reactive returning the ID of the CoC Version or Project
 # - field: reactive returning the specific input name or "all"
-# - active: reactive (e.g., input$nav == "rating_tab")
-mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("all"), active = reactive(TRUE)) {
+# - active_tab: reactive (e.g., input$nav == "rating_tab")
+mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("all"), active_tab = reactive(TRUE)) {
   moduleServer(id, function(input, output, session) {
     
     # ---------------------------------------------------------
@@ -18,8 +18,8 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
     observe({
       invalidateLater(10000, session) # 10s pulse
       
-      # Only execute if form is active, user is logged in, and a record is selected
-      req(active(), user_coc$username, record_id())
+      # Only execute this if the tab calling this mod is active, user is logged in, and a record is selected
+      req(active_tab(), user_coc$username, record_id())
       
       # Parameters must be in a list in the order of $1, $2, etc.
       params <- list(
@@ -46,9 +46,9 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
     # ---------------------------------------------------------
     # 2. POLLING (Who else is here?)
     # ---------------------------------------------------------
-    active_others <- reactive({
+    active_sessions <- reactive({
       invalidateLater(10000, session)
-      req(active(), user_coc$username, record_id())
+      req(active_tab(), user_coc$username, record_id())
       
       # Dialect-agnostic threshold calculation
       # We calculate the cutoff in R to avoid INTERVAL (Postgres) vs datetime (SQLite) syntax
@@ -56,7 +56,6 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
       
       params <- list(
         id,
-        user_coc$username,
         as.character(record_id()),
         field(),
         session$token,
@@ -67,7 +66,6 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
         "SELECT DISTINCT user_id 
          FROM user_presence 
          WHERE context = $1 
-           AND user_id != $2
            AND record_id = $3 
            AND field = $4
            AND session_id != $5
@@ -82,22 +80,35 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
     # ---------------------------------------------------------
     # 3. UI RENDER
     # ---------------------------------------------------------
+    presence_banner <- function(msg) {
+      div(
+        class = "alert alert-warning user-presence-banner", 
+        icon("user-friends"),
+        msg
+      )
+    }
+    
     output$banner <- renderUI({
-      others <- active_others()
-      req(length(others) > 0)
+      s <- active_sessions()
+      current_user_sessions <- s[s == user_coc$username]
+      others <- setdiff(s, current_user_sessions)
       
-      div(class = "alert alert-warning", 
-          style = "padding: 8px; margin-bottom: 10px; font-size: 0.9em; border-left: 5px solid #f0ad4e;",
-          icon("user-friends"), 
-          paste(" Presence Detected:", paste(others, collapse = ", "), "is also viewing this section."))
+      req(fnrow(s) > 0)
+      
+      tagList(
+        if(length(others) > 0) presence_banner(
+          paste(" Presence Detected:", paste(others, collapse = ", "), "is also viewing this section.")
+        ),
+        if(length(current_user_sessions) > 1) presence_banner("You have another session open")
+      )
     })
     
     # ---------------------------------------------------------
     # 4. CLEANUP
     # ---------------------------------------------------------
-    # Clear presence when user switches tabs (active becomes FALSE)
-    observeEvent(active(), {
-      if(!active()) {
+    # Clear presence when user switches tabs (active_tab becomes FALSE)
+    observeEvent(active_tab(), {
+      if(!active_tab()) {
         db_execute(
           "DELETE FROM user_presence WHERE session_id = $1 AND context = $2;",
           params = list(session$token, id)
