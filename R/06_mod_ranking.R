@@ -655,8 +655,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       # Flag Over-Target and merge back to excluded safely
       over_target <- ranked_data[is_over_target == TRUE]
-      if (nrow(over_target) > 0) {
-        over_target[, tier := "Excluded (Over Target)"]
+      if (fnrow(over_target) > 0) {
+        over_target[, tier := "Excluded"]
         over_target[, rank := "Over Target"] # Converted intentionally to character to display in dt
         # Make sure rv$excluded has a character rank row so they combine
         if (!is.character(rv$excluded$rank)) rv$excluded[, rank := as.character(rank)]
@@ -715,11 +715,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     table_styles <- function(dt, type = "main") {
       dt <- dt |>
-        formatStyle(
-          'coc_funding_recommendation', 
-          backgroundColor = USER_ENTRY_BG_COLOR,
-          fontWeight = 'bold'
-        ) |>
         formatCurrency(
           c('coc_funding_requested', 'coc_funding_recommendation'),
           currency = "$",
@@ -736,6 +731,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       if(type == "main")
         dt <- dt |>
           formatStyle(
+            'coc_funding_recommendation', 
+            backgroundColor = USER_ENTRY_BG_COLOR,
+            fontWeight = 'bold'
+          ) |>
+          formatStyle(
             columns = 'bonus_highlight',  # Replace with your actual column name
             target = 'row',
             backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
@@ -748,6 +748,14 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
               cuts = 0,
               values = c('none', '2px solid var(--brand-tier_2)') # [<=0 style, >0 style]
             )
+          )
+      else
+        dt <- dt |>
+          formatStyle(
+            columns = "coc_funding_recommendation",
+            valueColumns = "rank",
+            backgroundColor = styleEqual("Over Target", USER_ENTRY_BG_COLOR),
+            fontWeight = 'bold'
           )
       
       dt
@@ -762,16 +770,16 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       bed_cols <- grep("bed", colnames, ignore.case = TRUE) - 1
       
-      columnDefs = list(
-        list(targets = 0, className = 'drag-handle', width = "30px"),
-        # hide structural fields and, initially, bed fields
+      columnDefs <- list(
+        list(
+          targets = 0,
+          className = if (type == "excluded") "hidden" else "drag-handle",
+          width = "30px",
+          visible = type != "excluded"
+        ),
         list(targets = which(colnames %in% structural_cols) - 1, visible = FALSE),
         list(targets = bed_cols, visible = FALSE)
       )
-      
-      if(type == "excluded") {
-        columnDefs <- append(columnDefs, list(targets=0, className = "hidden", visible = FALSE))
-      }
       
       straddle_col_idx <- which(colnames == "straddle_amount") - 1
       funding_col_idx  <- which(colnames == "coc_funding_recommendation") - 1
