@@ -18,17 +18,14 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
     observe({
       invalidateLater(10000, session) # 10s pulse
       
-      # Extract username from reactiveValues
-      username <- user_coc$username
-      
       # Only execute if form is active, user is logged in, and a record is selected
-      req(active(), username, record_id())
+      req(active(), user_coc$username, record_id())
       
       # Parameters must be in a list in the order of $1, $2, etc.
       params <- list(
         session$token,           # $1
         id,                      # $2 (The module namespace ID)
-        username,                # $3
+        user_coc$username,       # $3
         as.character(record_id()),# $4 (Cast to char to handle both int/char IDs)
         field()                  # $5
       )
@@ -51,7 +48,7 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
     # ---------------------------------------------------------
     active_others <- reactive({
       invalidateLater(10000, session)
-      req(active(), record_id())
+      req(active(), user_coc$username, record_id())
       
       # Dialect-agnostic threshold calculation
       # We calculate the cutoff in R to avoid INTERVAL (Postgres) vs datetime (SQLite) syntax
@@ -59,7 +56,7 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
       
       params <- list(
         id,
-        username,
+        user_coc$username,
         as.character(record_id()),
         field(),
         session$token,
