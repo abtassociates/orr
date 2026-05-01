@@ -49,7 +49,7 @@ mod_ranking_ui <- function(id) {
     
     br(),
     div(
-      style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;",
+      id = ns("table_info"),
       
       shinyWidgets::virtualSelectInput(
         inputId = ns("hidden_cols"),
@@ -62,7 +62,7 @@ mod_ranking_ui <- function(id) {
       ),
       
       div(
-        id = "legend",
+        id = ns("legend"),
         # The Striped Box
         div(style="width: 50px;"),
         
@@ -867,6 +867,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       ) |>
         table_styles(type = type)
       
+      shinyjs::show("table_info")
       x
     }
     
