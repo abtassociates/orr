@@ -58,12 +58,12 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
       threshold <- format(Sys.time() - 25, "%Y-%m-%d %H:%M:%S", tz = "UTC")
       
       params <- list(
-        id,                      # $1
+        id,
         username,
-        as.character(record_id()),# $2
-        field(),                 # $3
-        session$token,           # $4
-        threshold                # $5
+        as.character(record_id()),
+        field(),
+        session$token,
+        threshold
       )
       
       res <- get_db_query(
