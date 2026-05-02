@@ -152,19 +152,19 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     }, ignoreInit = TRUE)
     
     iv <- shinyvalidate::InputValidator$new()
-    iv$add_rule("dv_ard", sv_gte(0))
+    iv$add_rule("dv_ard", sv_between(0, 9999999999)) # 9,999,999,999
     
     entered_dv_ard <- reactive({ 
       req(user_coc$coc_version_id)
+      iv$enable()
+      req(iv$is_valid())
+      iv$disable()
       input$dv_ard 
     }) %>% debounce(1000)
     
     observeEvent(entered_dv_ard(), {
-      req(entered_dv_ard() != fcoalesce(hud_ard_coc_data()$dv_ard[[1]], 0L))
-      
-      iv$enable()
       req(iv$is_valid())
-      iv$disable()
+      req(entered_dv_ard() != fcoalesce(hud_ard_coc_data()$dv_ard[[1]], 0L))
       
       update_dv_ard(
         get_db_pool(),
