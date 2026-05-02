@@ -415,6 +415,10 @@ tr.group_header td{
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+.flex-show {
+  display: flex;
+}
+
 #ranking-hidden_cols {
   display:none;
 }

@@ -770,6 +770,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       dt
     }
+    
     render_projects_dt <- function(final, type = "main") {
       shiny::validate(need(!ranking_needs_refresh(), "Data has been updated. Click 'Conduct Ranking' to update."))
       
@@ -879,7 +880,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       ) |>
         table_styles(type = type)
       
-      shinyjs::show("table_info")
+      shinyjs::addClass(id = "table_info", class = "flex-show")
       x
     }
     
@@ -964,7 +965,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     ranked_proxy <- dataTableProxy("ui_ranked_list",session = session)
     observeEvent(rv$ranked, {
-      req(rv$ranked)
       dt <- format_ranked_tbl(rv$ranked)
       replaceData(ranked_proxy, dt, rownames = FALSE, resetPaging = FALSE)
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
@@ -994,14 +994,16 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     })
     
     excluded_proxy <- dataTableProxy("ui_excluded_list",session = session)
-    observe({
-      req(rv$excluded)
-      replaceData(excluded_proxy, format_ranked_tbl(rv$excluded), rownames = FALSE, resetPaging = FALSE)
+    observeEvent(rv$excluded, {
+      dt <- format_ranked_tbl(rv$excluded)
+      replaceData(excluded_proxy, dt, rownames = FALSE, resetPaging = FALSE)
     })
     
     observeEvent(input$conduct_ranking, {
       process_data(force_reset = FALSE) 
     })
+    
+    
     observeEvent(input$btn_adjust_tiers, {
       req(rv$ranked)
       rv$ranked <- recalculate_ranking(copy(rv$ranked))
