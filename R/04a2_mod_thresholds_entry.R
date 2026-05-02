@@ -106,18 +106,19 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
         get_all_thresholds_to_enter(user_coc$coc_version_id, if(!project_is_selected) NA else project_id)
       )
       
-      if(project_is_selected)
+      if(project_is_selected) {
         project_evaluation(
           get_project_evaluation(user_coc$coc_version_id, project_id)
         )
       
-      hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
-      updateCheckboxGroupInput(
-        session,
-        "HUD_requirements",
-        selected = if(fnrow(hud_reqs_met) > 0) hud_reqs_met$threshold_id else character(0)
-      )
-      
+        hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
+        updateCheckboxGroupInput(
+          session,
+          "HUD_requirements",
+          selected = if(fnrow(hud_reqs_met) > 0) hud_reqs_met$threshold_id else character(0)
+        )
+      }
+    
       coc_reqs_met <- coc_thresholds_to_enter()[met_threshold == TRUE]
       updateCheckboxGroupInput(
         session,
@@ -225,7 +226,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
     # --- Saving to db ---------------
     # runs whenever user (un)checks a requirement
     threshold_entries_to_save <- reactive({
-      req(c(input$HUD_requirements, input$CoC_requirements, input$yes_to_all_HUD, input$yes_to_all_CoC, made_a_change()))
+      req(c(input$HUD_requirements, input$CoC_requirements, made_a_change()))
       req(thresholds_to_enter(), fnrow(selected_project()) > 0)
       
       # 1. Diff the checkboxes against the baseline
