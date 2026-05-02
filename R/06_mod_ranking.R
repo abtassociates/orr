@@ -7,7 +7,7 @@ mod_ranking_ui <- function(id) {
     
     layout_columns(
       fill = FALSE,
-      col_widths = c(4,4,4),
+      col_widths = c(3,3,3,3),
       actionButton(
         ns("conduct_ranking"), 
         "Conduct Ranking", 
@@ -25,6 +25,12 @@ mod_ranking_ui <- function(id) {
         "Save Ranking", 
         class = "btn-success btn-lg w-100", 
         icon = icon("save")
+      ),
+      actionButton(
+        ns("btn_export_ranking"), 
+        "Export Ranking", 
+        class = "btn-success btn-lg w-100", 
+        icon = icon("file-export")
       )
     ),
     
@@ -1014,6 +1020,12 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         fselect(project_id, coc_version_id, rank, tier, coc_funding_recommendation, created_by, version_id)
       
       update_ranking_db(get_db_pool(), all_rankings)
+    })
+    
+    observeEvent(input$btn_export_ranking, {
+      req(user_coc$coc_version_id, rv$ranked)
+      
+      sendSweetAlert(session = session, title = "Coming soon!", "The Ranking Export feature is coming soon!")
     })
   })
 }
