@@ -825,7 +825,9 @@ CREATE TABLE ranking (
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE
+    updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
+    version_id INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT uq_ranking_profile UNIQUE (project_id, coc_version_id)
 );
 
 CREATE TABLE user_presence (
@@ -835,6 +837,7 @@ CREATE TABLE user_presence (
     record_id VARCHAR(100),
     field VARCHAR(100),
     last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    version_id INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (session_id, context)
 );
 

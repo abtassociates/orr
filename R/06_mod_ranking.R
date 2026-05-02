@@ -698,7 +698,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         "total_beds",
         "bonus_type",
         "unmet_thresholds",
-        "ineligible"
+        "ineligible",
+        "version_id"
       )
       
       dt |>
@@ -1003,15 +1004,14 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     observeEvent(input$btn_save_ranking, {
       req(user_coc$coc_version_id)
-      all_rankings <- rbindlist(list(
-        rv$ranked[, .(project_id, rank, tier, coc_funding_recommendation)],
-        # rv$yhdp_ren[, .(project_id, rank = NA_integer_, tier = "YHDP", coc_funding_recommendation)],
-        # rv$yhdp_oth[, .(project_id, rank = NA_integer_, tier = "YHDP", coc_funding_recommendation)],
-        rv$excluded[, .(project_id, rank = NA_integer_, tier = "Excluded", coc_funding_recommendation)]
-      ), fill = TRUE)
       
-      all_rankings[, coc_version_id := user_coc$coc_version_id]
-      all_rankings[, created_by := user_coc$username]
+      all_rankings <- collapse::rowbind(rv$ranked, rv$excluded, fill=TRUE, idcol = TRUE) |>
+        fmutate(
+          rank = fifelse(.id == 2, NA_integer_, as.integer(rank)),
+          coc_version_id = user_coc$coc_version_id,
+          created_by = user_coc$username
+        ) |>
+        fselect(project_id, coc_version_id, rank, tier, coc_funding_recommendation, created_by, version_id)
       
       update_ranking_db(get_db_pool(), all_rankings)
     })
