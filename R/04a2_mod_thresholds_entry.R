@@ -278,14 +278,18 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       if (!needs_refresh) {
         # SUCCESS: The "Silent Update" to the baselines
         # 1. Update thresholds_to_enter baseline
-        thresholds_to_enter()[
-          to_save$thresholds, 
-          on = "threshold_id", 
-          `:=`(
-            met_threshold = as.integer(met_threshold),
-            version_id = fcoalesce(version_id, 0L) + 1
-          )
-        ]
+        thresholds_to_enter(
+          join(
+            thresholds_to_enter(),
+            to_save$thresholds |> fselect(threshold_id, met_threshold), 
+            on = "threshold_id"
+          ) |>
+            fmutate(
+              met_threshold = as.integer(fcoalesce(met_threshold_y, met_threshold)),
+              version_id = fcoalesce(version_id, 0L) + 1,
+              met_threshold_y = NULL
+            )
+        )
         
         # 2. Update project_evaluation baseline
         if (!is.null(to_save$project_evaluation))
