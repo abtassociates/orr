@@ -355,6 +355,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     }
     
     ## Pull HIC Data for coc ------------
+    es_project_type <- get_lookup_refid("ES", "project_type")
     get_hic_data <- function(coc, coc_version_id) {
       bed_field_mapping <- c(
         all_fam_beds = "beds_hh_w_children", 
@@ -378,7 +379,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           coc_amount_expended_last_year = as.numeric(NA),
           coc_funding_requested = as.numeric(NA),
           funding_action = fifelse(
-            project_type == "ES" | mckinneyvento == "No",
+            project_type == es_project_type | mckinneyvento == "No",
             "Ignore", 
             "Renew"
           ),
