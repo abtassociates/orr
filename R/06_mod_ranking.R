@@ -18,19 +18,22 @@ mod_ranking_ui <- function(id) {
         ns("btn_adjust_tiers"), 
         "Adjust Tiers after Funding Changes", 
         class = "btn-info btn-lg w-100", 
-        icon = icon("arrows-rotate")
+        icon = icon("arrows-rotate"),
+        disabled = TRUE
       ),
       actionButton(
         ns("btn_save_ranking"), 
         "Save Ranking", 
         class = "btn-success btn-lg w-100", 
-        icon = icon("save")
+        icon = icon("save"),
+        disabled = TRUE
       ),
       actionButton(
         ns("btn_export_ranking"), 
         "Export Ranking", 
         class = "btn-success btn-lg w-100", 
-        icon = icon("file-export")
+        icon = icon("file-export"),
+        disabled = TRUE
       )
     ),
     
@@ -1001,6 +1004,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     observeEvent(input$conduct_ranking, {
       process_data(force_reset = FALSE) 
+      shinyjs::enable("btn_adjust_tiers")
+      shinyjs::enable("btn_save_ranking")
+      shinyjs::enable("btn_export_ranking")
     })
     
     
