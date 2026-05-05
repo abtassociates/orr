@@ -10,7 +10,7 @@ mod_ranking_ui <- function(id) {
       col_widths = c(3,3,3,3),
       actionButton(
         ns("conduct_ranking"), 
-        "Conduct Ranking", 
+        "Generate Ranking", 
         class = "btn-info btn-lg w-100", 
         icon = icon("ranking-star")
       ),
@@ -74,7 +74,7 @@ mod_ranking_ui <- function(id) {
       div(
         id = ns("legend"),
         # The Striped Box
-        div(style="width: 50px;"),
+        div(),
         
         # The Label (Text and Equals)
         span("= Straddle row")
@@ -105,6 +105,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     priority_levels <- get_labelled_lookups("priority")
     
     unspecified_id <- get_lookup_refid("Unspecified", "priority")
+    
+    tier1_id <- get_lookup_refid("Tier 1", "tier")
+    tier2_id <- get_lookup_refid("Tier 2", "tier")
+    tier3_id <- get_lookup_refid("Projects Exceeding ARD Adj", "tier")
+    tier4_id <- get_lookup_refid("Excluded", "tier")
     
     # when user makes updates to the app, we update this to flag for the user they should run the ranking
     ranking_needs_refresh <- reactiveVal(FALSE)
@@ -169,7 +174,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       p_types <- c("PSH", "RRH", "TH", "TH+RRH")
       
       # For matrix, we report beds & funding specifically for valid Tier 1 and Tier 2 projects 
-      dt_sub <- dt[tier %in% c("Tier 1", "Tier 2") & is_over_target == FALSE]
+      dt_sub <- dt[tier %in% c(tier1_id, tier2_id) & is_over_target == FALSE]
       
       res <- data.table(Population = unname(combos))
       
@@ -302,28 +307,38 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         )
     })
     
-    get_allocated_funding <- function(condition) {
+    get_allocated_funding <- function(id, condition) {
       reactive({
         req(fnrow(rv$ranked) > 0)
         dt <- rv$ranked[eval(condition)]
-        if(fnrow(dt) > 0) fsum(dt$coc_funding_recommendation) else 0
+        
+        allocated <- if(id == "dv_bonus")
+          list(
+            total = if(fnrow(dt) > 0) fsum(dt$coc_funding_recommendation) else 0,
+            tier1 = if(fnrow(dt) > 0) fsum(dt[tier == tier1_id]$coc_funding_recommendation) else 0,
+            tier2 = if(fnrow(dt) > 0) fsum(dt[tier == tier2_id]$coc_funding_recommendation) else 0
+          )
+        else {
+          if(fnrow(dt) == 0) 
+            0
+          else if(id == "tier_2") {
+            dt_t2_reg <- dt[tier == tier2_id]
+            list(
+              straddle = fsum(dt$straddle_amount),
+              tier2 = if(fnrow(dt_t2_reg) > 0) fsum(dt_t2_reg$coc_funding_recommendation) else 0
+            )
+          } else
+            fsum(dt$coc_funding_recommendation)
+        }
+        
+        allocated
       })
     }
-    alloc_tier1 <- get_allocated_funding(quote(tier == "Tier 1"))
-    alloc_tier2 <- get_allocated_funding(quote(tier == "Tier 2"))
-    alloc_coc <- get_allocated_funding(quote(coc_selected == TRUE))
-    alloc_exceed <- get_allocated_funding(quote(tier == "Projects Exceeding ARD Adj"))
-    
-    alloc_dv <- reactive({
-      req(fnrow(rv$ranked) > 0)
-      dt <- rv$ranked[dv_selected == TRUE]
-      
-      list(
-        total = if(fnrow(dt) > 0) fsum(dt$coc_funding_recommendation) else 0,
-        t1 = if(fnrow(dt) > 0) fsum(dt[tier == "Tier 1"]$coc_funding_recommendation) else 0,
-        t2 = if(fnrow(dt) > 0) fsum(dt[tier == "Tier 2"]$coc_funding_recommendation) else 0
-      )
-    })
+    alloc_tier1 <- get_allocated_funding("tier_1", quote(tier == tier1_id))
+    alloc_tier2 <- get_allocated_funding("tier_2", quote((tier == tier2_id & project_id != "PLACEHOLDER_T2") | straddle_amount > 0))
+    alloc_coc <- get_allocated_funding("coc_bonus", quote(coc_selected == TRUE))
+    alloc_exceed <- get_allocated_funding("exceeds", quote(tier == tier3_id))
+    alloc_dv <- get_allocated_funding("dv_bonus", quote(dv_selected == TRUE))
     
     mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data, "CoC Bonus")
     mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data, "Tier 1 (Adj ARD * 90%)")
@@ -445,6 +460,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     recalculate_ranking <- function(dt) {
       if(is.null(dt) || nrow(dt) == 0) return(dt)
       
+      dt <- dt |> fsubset(project_id != "PLACEHOLDER_T2")
+      
       dt <- if(!allNA(ceilings_priorities()$ceil_beds) && !allNA(ceilings_priorities()$ceil_fund))
         check_over_targets(dt)
       else
@@ -458,9 +475,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       dt[is_over_target == FALSE, prev_cum := cum_funding - coc_funding_recommendation]
       
       dt[is_over_target == FALSE, tier := fcase(
-        prev_cum < coc_ard_data()$tier_1, "Tier 1", # this allows straddles
-        cum_funding <= (coc_ard_data()$tier_1 + coc_ard_data()$tier_2), "Tier 2", # this doesn't allow straddles
-        default = "Projects Exceeding ARD Adj"
+        prev_cum < coc_ard_data()$tier_1, tier1_id, # this allows straddles
+        cum_funding <= (coc_ard_data()$tier_1 + coc_ard_data()$tier_2), tier2_id, # this doesn't allow straddles
+        default = tier3_id
       )]
       
       dt[is_over_target == FALSE, straddle_amount := fifelse(
@@ -482,6 +499,21 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       }
       
       dt[is_over_target == FALSE, bonus_highlight := fcase(coc_selected, "coc", dv_selected, "dv", default = "none")]
+
+      # Create a dummy Tier 2 row if no Tier 2 projects
+      if (!anyv(dt$tier, tier2_id)) {
+        dummy <- dt[1, ]
+        dummy[1, ] <- NA
+        dummy$tier <- tier2_id
+        dummy$project_id <- "PLACEHOLDER_T2"
+        dummy$is_over_target <- FALSE
+        dummy$ineligible <- FALSE
+        
+        dt <- rbind(dt, dummy)
+      }
+      
+      dt <- dt |>
+        roworder(tier, rank)
       
       return(dt)
     } #end recalc ranking
@@ -582,12 +614,16 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       return(dt)
     } # end calculate_priority
     
+    ranked_projects_db <- reactive({
+      get_projects_to_rank(user_coc$coc_version_id) |>
+        fmutate(total_beds = all_fam_beds + all_ind_beds)
+    })
+    
     # Process Initial Data on Load or Reset
     process_data <- function(force_reset = FALSE) {
       req(user_coc$coc_version_id)
       
-      raw_data <- get_projects_to_rank(user_coc$coc_version_id) |>
-        fmutate(total_beds = all_fam_beds + all_ind_beds) |>
+      raw_data <- ranked_projects_db() |>
         calculate_priority()
       
       if(IN_DEV_MODE) {
@@ -667,7 +703,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       # Flag Over-Target and merge back to excluded safely
       over_target <- ranked_data[is_over_target == TRUE]
       if (fnrow(over_target) > 0) {
-        over_target[, tier := "Excluded"]
+        over_target[, tier := tier4_id]
         over_target[, rank := "Over Target"] # Converted intentionally to character to display in dt
         # Make sure rv$excluded has a character rank row so they combine
         if (!is.character(rv$excluded$rank)) rv$excluded[, rank := as.character(rank)]
@@ -677,7 +713,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       rv$excluded <- rv$excluded |>
         colorder(rank, priority, pos = "after")
       
-      # Store clean ranked rows to UI
       rv$ranked <- ranked_data |>
         fsubset(is_over_target == FALSE) |>
         colorder(rank, priority, pos = "after") # move priority after rank
@@ -775,7 +810,12 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     }
     
     render_projects_dt <- function(final, type = "main") {
-      shiny::validate(need(!ranking_needs_refresh(), "Data has been updated. Click 'Conduct Ranking' to update."))
+      shiny::validate(
+        need(
+          !ranking_needs_refresh(), 
+          "Data has been updated. Click 'Conduct Ranking' to update."
+        )
+      )
       
       colnames <- names(final)
       
@@ -799,7 +839,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       straddle_col_idx <- which(colnames == "straddle_amount") - 1
       funding_col_idx  <- which(colnames == "coc_funding_recommendation") - 1
+      project_id_col_idx <- which(colnames == "project_id") - 1
       
+      final <- final %>%
+        fmutate(tier = convert_to_factor(., "tier"))
       
       # Get all column indices except coc_funding_recommendation
       x <- datatable(
@@ -820,13 +863,17 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           fixedHeader = TRUE,
           rowGroup = if(type == "main") list(
             dataSrc = which(colnames == "tier") - 1,  # Group by TIER column (0-indexed)
+            
+            # Disable the native "No group" fallback header completely
+            emptyDataGroup = JS("null"), 
+            
             startRender = JS("
               function(rows, group) {
                 // Map the group name to the CSS classes we added in custom.css
                 var grpClass = '';
-                if (group.includes('Tier 1')) { grpClass = 'group-tier_1'; } 
-                else if (group.includes('Tier 2')) { grpClass = 'group-tier_2'; } 
-                else if (group.includes('Exceeding')) { grpClass = 'group-exceeds'; }
+                if (group == 'Tier 1') { grpClass = 'group-tier_1'; } 
+                else if (group == 'Tier 2') { grpClass = 'group-tier_2'; } 
+                else if (group == 'Projects Exceeding ARD Adj') { grpClass = 'group-exceeds'; }
                 
                 return $('<tr class=\"group_header ' + grpClass + '\"/>').append('<td colspan=\"100%\">' + group + '</td>');
               }"
@@ -840,9 +887,20 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           # Inside your datatable options list:
           rowCallback = if(type == "main") JS(sprintf("
             function(row, data, displayNum, displayIndex, dataIndex) {
+              // Add Tier 2 placeholder row if needed
+              var projectIdIdx = %d; // Update this to your project_id column index
+              if (data[projectIdIdx] === 'PLACEHOLDER_T2') {
+                $(row).addClass('tier2-placeholder');
+                $(row).find('td').removeClass('drag-handle');
+                $('td', row).empty().html('📂 No projects in Tier 2. Drag here to reassign.')
+                            .attr('colspan', '100%%');
+                $('td', row).not(':first').remove(); // Hide other cells
+              }
+        
+        
               var straddleIdx = %d;
               var fundingIdx = %d;
-              debugger;
+              
               var straddle = parseFloat(data[straddleIdx]);
               var funding = parseFloat(data[fundingIdx]);
               
@@ -865,20 +923,32 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
                 row.style.setProperty('--t1-pct', pct + '%%');
                 row.style.setProperty('--straddle-label', '\"' + titleTextCSS + '\"');
               }
-            }", straddle_col_idx, funding_col_idx
+            }", project_id_col_idx, straddle_col_idx, funding_col_idx
           ))
         ),
         # for tracking reordered rows
         callback = JS(sprintf("
-          table.on('row-reorder', function(e, details, edit){
-            newOrder = table.rows().indexes().toArray();
-            for(i of details) {
+          table.on('row-reorder', function(e, details, edit) {
+            if (!details || details.length === 0) return;
+        
+            // Calculate new order
+            var newOrder = table.rows().indexes().toArray();
+            for(var i of details) {
               newOrder[i.oldPosition] = i.newPosition;
             }
+        
+            // Find the nearest group header above the drop
+            var draggedRow = edit.triggerRow.node();
+            var headerAbove = $(draggedRow).prevAll('tr.group_header').first();
+            var target_tier = headerAbove.length > 0 ? headerAbove.text().trim() : 'Tier 1';
             
-            Shiny.setInputValue('%s', newOrder, {priority: 'event'});
+            // Send to Shiny
+            Shiny.setInputValue('%s', {
+              order: newOrder,
+              target_tier: target_tier
+            }, {priority: 'event'});
           });",
-          ns("newOrder")
+          ns("reorderEvent")
         ))
       ) |>
         table_styles(type = type)
@@ -940,22 +1010,22 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
     }, ignoreNULL = FALSE)
     
-    
-    observeEvent(input$newOrder, {
-      req(rv$ranked)
+    # If user drags and drops to reorder
+    observeEvent(input$reorderEvent, {
+      req(input$reorderEvent)
       
-      # Reorder data by new rank and re-rank
-      new_data <- copy(rv$ranked) |>
-        fmutate(new_rank = input$newOrder) |>
-        roworder(new_rank) |>
-        fmutate(
-          rank = seq_along(project_id),
-          new_rank = NULL
-        )
+      reordered_df <- copy(rv$ranked) |>
+        fmutate(new_rank = unlist(input$reorderEvent$order) + 1) |>
+        roworder(new_rank)
+
+      if(fnrow(reordered_df |> fsubset(tier == tier2_id & project_id != "PLACEHOLDER_T2")) > 0) {
+        reordered_df <- reordered_df |> 
+          fsubset(project_id != "PLACEHOLDER_T2")
+      }
+
+      new_data <- recalculate_ranking(reordered_df)
       
-      # Recalculate completely handles the new ranks and tiers based on the new array order
-      new_data <- recalculate_ranking(new_data)
-      rv$ranked <- new_data |> fsubset(!ineligible & !is_over_target)
+      rv$ranked <- new_data |> fsubset(!(ineligible | is_over_target))
       rv$excluded <- new_data |> fsubset(ineligible | is_over_target)
     }, ignoreInit = TRUE)
     
@@ -1007,8 +1077,13 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       shinyjs::enable("btn_adjust_tiers")
       shinyjs::enable("btn_save_ranking")
       shinyjs::enable("btn_export_ranking")
+      
+      updateActionButton(
+        session,
+        "conduct_ranking",
+        label = "Regenerate Ranking"
+      )
     })
-    
     
     observeEvent(input$btn_adjust_tiers, {
       req(rv$ranked)

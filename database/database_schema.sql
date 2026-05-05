@@ -120,6 +120,13 @@ INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by
     ('population_group', 'Ind', 'Individual', 'Individuals', 'orr_service@abtglobal.com'),
     ('population_group', 'Fam', 'Family', 'Families', 'orr_service@abtglobal.com');
 
+
+INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by) VALUES
+    ('tier', 'Tier 1', 'Tier 1', 'Tier 1', 'orr_service@abtglobal.com'),
+    ('tier', 'Tier 2', 'Tier 2', 'Tier 2', 'orr_service@abtglobal.com'),
+    ('tier', 'Tier 3', 'Projects Exceeding ARD Adj', 'Projects Exceeding ARD Adj', 'orr_service@abtglobal.com'),
+    ('tier', 'Tier 4', 'Excluded', 'Projects Not Selected for Funding', 'orr_service@abtglobal.com');
+
 -- RAW DATA TABLES (Populated via CSV in R later)
 CREATE TABLE all_hic_data (
     hic_data_id __PK_TYPE__,
@@ -820,7 +827,7 @@ CREATE TABLE ranking (
     project_id INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
     coc_version_id INTEGER REFERENCES coc_versions(coc_version_id) ON DELETE CASCADE,
     rank SMALLINT,
-    tier VARCHAR(50) NULL,
+    tier SMALLINT NULL,
     coc_funding_recommendation NUMERIC(12, 2),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
