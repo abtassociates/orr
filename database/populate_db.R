@@ -4,7 +4,7 @@ populate_db <- function(
     dbname = NULL
 ) {
   ans <- readline(
-    prompt = "If you proceed, you will erase all database data. Proceed? (Y/N): "
+    prompt = paste0("If you proceed, you will erase all data for the ", dbname, " database. Proceed? (Y/N): ")
   )
   
   if (toupper(trimws(ans)) != "Y") {
