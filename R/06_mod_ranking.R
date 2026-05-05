@@ -1015,8 +1015,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       req(input$reorderEvent)
       
       reordered_df <- copy(rv$ranked) |>
-        fmutate(new_rank = unlist(input$reorderEvent$order) + 1) |>
-        roworder(new_rank)
+        fmutate(rank = unlist(input$reorderEvent$order) + 1) |>
+        roworder(rank)
 
       if(fnrow(reordered_df |> fsubset(tier == tier2_id & project_id != "PLACEHOLDER_T2")) > 0) {
         reordered_df <- reordered_df |> 
