@@ -5,7 +5,7 @@ get_db_pool <- function() {
   .db_env$pool
 }
 
-set_up_db_connection <- function() {
+set_up_db_connection <- function(dbname = NULL) {
   use_sqlite <- ifelse(exists("USE_SQLITE", where = .GlobalEnv), USE_SQLITE, Sys.getenv("RSTUDIO") == "1")
   .db_env$connection_type <- ifelse(use_sqlite, "SQLite", "RPostgres")
   
@@ -13,12 +13,14 @@ set_up_db_connection <- function() {
     get_sqlite_db()
   } else {
     if(Sys.getenv("RSTUDIO") == "1") set_up_tunnel()
-    get_postgres_db()
+    get_postgres_db(dbname)
   }
   
   # Enforce referential integrity for SQLite (PostgreSQL is automatic)
   if(use_sqlite)
     DBI::dbExecute(.db_env$pool, "PRAGMA foreign_keys = ON;")
+  
+  return(.db_env$pool)
 }
 
 # Create connection to RDS Postgres instance for testing purposes
@@ -98,17 +100,70 @@ kill_open_tunnel <- function() {
 # - maintains N reusable connections
 # - loans them out only when needed (fewer db resources)
 # - automatically reconnects dropped connections (better stability, esp. if usage spikes)
-get_postgres_db <- function() {
-  pool::dbPool(
+# Helper to get connection params (to keep code DRY)
+get_pg_params <- function(dbname) {
+  list(
     drv = RPostgres::Postgres(),
     host = ifelse(Sys.getenv("RSTUDIO") == "1", "localhost", Sys.getenv("AWS_RDS_HOST")),
-    port = as.integer(Sys.getenv("AWS_RDS_PORT", "3306")),
-    dbname = Sys.getenv(ifelse(IN_PROD_APP(), "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV")),
+    port = as.integer(Sys.getenv("AWS_RDS_PORT", "5432")), # Default PG port is 5432
     user = Sys.getenv("AWS_RDS_USERNAME"),
     password = Sys.getenv("AWS_RDS_PASSWORD"),
+    dbname = dbname,
     sslmode = "require"
   )
-} 
+}
+
+get_postgres_db <- function(dbname = NULL) {
+  # 1. Determine target dbname
+  default_db <- Sys.getenv(ifelse(IN_PROD_APP(), "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV"))
+  if(is.null(dbname)) dbname <- default_db
+  
+  # 2. Try to connect to the target DB
+  params <- get_pg_params(dbname)
+  
+  pool <- tryCatch({
+    do.call(pool::dbPool, params)
+  }, error = function(e) {
+    # If the error isn't about the DB not existing, re-throw it
+    if (!grepl("database .* does not exist", e$message)) {
+      stop(e)
+    }
+    return(NULL)
+  })
+  
+  # 3. If connection failed because DB doesn't exist (and we are in DEV)
+  if (is.null(pool)) {
+    if (!USE_SQLITE && IN_DEV_MODE) {
+      message(paste("Database", dbname, "not found. Attempting to create..."))
+      
+      # Connect to the default 'postgres' maintenance DB
+      admin_params <- get_pg_params("postgres")
+      con <- do.call(DBI::dbConnect, admin_params)
+      on.exit(DBI::dbDisconnect(con))
+      
+      # Double check if it exists (prevents race conditions)
+      db_list <- DBI::dbGetQuery(con, "SELECT datname FROM pg_database WHERE datistemplate = false")
+      
+      if (!(dbname %in% db_list$datname)) {
+        ans <- readline(glue::glue("Database '{dbname}' not found. Create it? Y/N: "))
+        if (toupper(trimws(ans)) != "Y") stop("Database creation cancelled.")
+        
+        # CREATE DATABASE cannot run in a transaction
+        # RPostgres runs this fine via dbExecute
+        DBI::dbExecute(con, glue::glue("CREATE DATABASE {dbname}"))
+        message(glue::glue("Database '{dbname}' created successfully."))
+      }
+      
+      # Now that it exists, try to connect again (recursive call)
+      return(get_postgres_db(dbname))
+      
+    } else {
+      stop(glue::glue("Database '{dbname}' does not exist and auto-creation is disabled."))
+    }
+  }
+  
+  return(pool)
+}
 
 get_sqlite_db <- function() {
   pool::dbPool(
@@ -126,9 +181,18 @@ close_pool <- function() {
   pool::poolClose(get_db_pool())
 }
 
-db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1") {
+db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL) {
   USE_SQLITE <<- use_sqlite
-  set_up_db_connection()
+  db_pool <- set_up_db_connection(dbname)
+  
+  if(!use_sqlite & !is.null(db_pool)) {
+    message("PostgreSQL databases in RDS Instance:")
+    DBI::dbGetQuery(get_db_pool(), "
+      SELECT datname
+      FROM pg_database
+      WHERE datistemplate = false;
+    ")
+  }
 }
 
 run_app <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", user_email = NULL) {
