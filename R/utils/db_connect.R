@@ -116,7 +116,7 @@ get_pg_params <- function(dbname) {
 get_current_db <- function() {
   return(DBI::dbGetQuery(get_db_pool(), "SELECT current_database() AS dbname")$dbname[1])
 }
-get_db_connections <- function(dbname) {
+get_open_db_connections <- function(dbname) {
   get_db_query(glue::glue('SELECT pid, usename, application_name, state, query
     FROM pg_stat_activity
   WHERE datname = "{dbname}"'))
@@ -193,6 +193,7 @@ get_db_name <- function(dbname = NULL) {
   # 1. Determine target dbname
   if(is.null(dbname)) {
     if(exists("DBNAME", where = .GlobalEnv)) dbname <- DBNAME
+    else if(!IN_PROD_APP() && Sys.getenv("RSTUDIO") != "1" && basename(getwd()) %in% list_rpostgres_dbs()) dbname <- basename(getwd())
     else dbname <- Sys.getenv(ifelse(IN_PROD_APP(), "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV"))
   }
   return(dbname)
@@ -208,11 +209,9 @@ list_rpostgres_dbs <- function() {
 db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL) {
   USE_SQLITE <<- use_sqlite
   
-  dbname <- get_db_name(dbname)
   db_pool <- set_up_db_connection(dbname)
   
   if(!use_sqlite & !is.null(db_pool)) {
-    message(paste0("You are using the ", dbname, " PostgreSQL databases in RDS Instance"))
     message("Here are all the databases in RDS:")
     list_rpostgres_dbs()
   }
