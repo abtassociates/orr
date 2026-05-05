@@ -77,7 +77,7 @@ mod_ranking_ui <- function(id) {
         div(),
         
         # The Label (Text and Equals)
-        span("= Straddle row")
+        span("= Straddle Project")
       )
     ),
     

@@ -8,7 +8,7 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title) {
     ns <- session$ns
     
     output$widget_box <- renderUI({
-      total <- coc_ard_data()[[id]]
+      total <- round(coc_ard_data()[[id]], 0)
       alloc_data <- allocated()
       
       # ----------------------------------------------------------------------
@@ -94,7 +94,7 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title) {
           
         } else if (id == "tier_1" && diff < 0) {
           status_type <- "straddle"
-          bar_label <- paste("STRADDLE AMOUNT:", scales::dollar(abs(diff)))
+          bar_label <- paste("STRADDLE:", scales::dollar(abs(diff)))
           icon_name <- "triangle-exclamation"
           pct_width <- 100 
           
@@ -116,7 +116,7 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title) {
           div(
             class = "progress-label",
             span(scales::dollar(alloc)),
-            span(scales::dollar(total))
+            span(scales::dollar(total, accuracy = if(is.integer(total)) NULL else 0.01))
           ),
           
           # Combined Status Bar
