@@ -65,14 +65,14 @@ generate_selected_coc_nofo_opportunities <- function(p, coc_version_id) {
   )
 }
 
-cfp <- expand.grid(
-  project_type = get_labelled_lookups("project_type")[c("RRH","PSH","TH","TH+RRH")],
-  target_population = get_labelled_lookups("target_population", lookup_col = "value_long"),
-  population_group = get_labelled_lookups("population_group", lookup_col = "value_long")
-) |>
-  fsubset(!target_population %in% get_lookup_refid(c("Not Applicable", "Human Immunodeficiency Virus"), "target_population", lookup_col = "value_long"))
-
 generate_coc_funding_priorities <- function(p, coc_version_id) {
+  cfp <- expand.grid(
+    project_type = get_labelled_lookups("project_type")[c("RRH","PSH","TH","TH+RRH")],
+    target_population = get_labelled_lookups("target_population", lookup_col = "value_long"),
+    population_group = get_labelled_lookups("population_group", lookup_col = "value_long")
+  ) |>
+    fsubset(!target_population %in% get_lookup_refid(c("Not Applicable", "Human Immunodeficiency Virus"), "target_population", lookup_col = "value_long"))
+  
   # priorities
   data <- cfp |>
     fmutate(coc_version_id = coc_version_id)
