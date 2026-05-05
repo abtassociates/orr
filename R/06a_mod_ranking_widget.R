@@ -78,7 +78,7 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title) {
         
         if(id == "tier_2") {
           straddle_pct <- if(total == 0) 0 else (straddle / total) * 100
-          straddle_pct_width <- min(max(pct, 0), 100)
+          straddle_pct_width <- min(max(straddle_pct, 0), 100)
         }
         
         # Determine Status
