@@ -200,11 +200,13 @@ get_db_name <- function(dbname = NULL) {
 }
 
 list_rpostgres_dbs <- function() {
+  db_connect(FALSE, dbname = "postgres")
   DBI::dbGetQuery(get_db_pool(), "
     SELECT datname
     FROM pg_database
     WHERE datistemplate = false;
   ")
+  close_pool()
 }
 db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL) {
   USE_SQLITE <<- use_sqlite
