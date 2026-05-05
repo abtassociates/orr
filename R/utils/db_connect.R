@@ -186,7 +186,8 @@ db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL)
   db_pool <- set_up_db_connection(dbname)
   
   if(!use_sqlite & !is.null(db_pool)) {
-    message("PostgreSQL databases in RDS Instance:")
+    message(paste0("You are using the ", dbname, " PostgreSQL databases in RDS Instance"))
+    message("Here are all the databases in RDS:")
     DBI::dbGetQuery(get_db_pool(), "
       SELECT datname
       FROM pg_database
