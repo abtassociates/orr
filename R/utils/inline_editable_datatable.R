@@ -70,7 +70,7 @@ validate_numeric_entry <- function(df, col_name, val) {
   max_val = fcase(
     grepl("BED", toupper(col_name)), 99999,
     toupper(col_name) == 'weighted_score', 100,
-    grepl("FUNDING|AMOUNT", toupper(col_name)), get_db_numeric_max("coc_funding_priorities", "funding"),
+    grepl("FUNDING|AMOUNT", toupper(col_name)), 9999999999
   )
   
   if ((!is.na(new_val) && (new_val < 0 || new_val > max_val)) || (is.na(new_val) && !is.na(val))) {
