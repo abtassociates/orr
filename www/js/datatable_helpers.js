@@ -129,6 +129,6 @@ function alertShiny(cell, val, table) {
     col: cell.index().column,
     value: val,
     oldValue: cell.data(),
-    project_id: table.cells(cell.index().row, 0).data()[0],
+    project_id: table.cells(cell.index().row, 0).data()[0]
   }, {priority: 'event'});
 }
