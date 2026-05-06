@@ -209,7 +209,7 @@ list_rpostgres_dbs <- function(dbname = "postgres") {
   ")
   close_pool()
   
-  message(x$datname)
+  message(paste(x$datname, "\n"))
   return(x$datname)
 }
 db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL) {
