@@ -7,12 +7,11 @@ page_navbar(
   theme = orr_bslib_theme,
   navbar_options = orr_navbar_options,
   
-  includeCSS(here("www/custom.css")),
-  
   header = tagList(
     ## css, idle management, and dimension management --------
     tags$head(
-      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+      includeCSS(here("www/custom.css")),
+      # tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
       ## Handle disconnect during login, logout, refresh, vs. crash.
       # Establish configs for disconnect script
       tags$script(HTML(sprintf(
@@ -23,7 +22,6 @@ page_navbar(
         aws_auth_redirect, 
         aws_auth_logout
       ))),
-      
       tags$script(src = "js/disconnect.js"),
       tags$script(src = "js/datatable_helpers.js") # Loaded once for the whole app
     ), # end tags$head
