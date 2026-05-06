@@ -199,22 +199,22 @@ get_db_name <- function(dbname = NULL) {
   return(dbname)
 }
 
-list_rpostgres_dbs <- function() {
-  DBI::dbGetQuery(get_db_pool(), "
+list_rpostgres_dbs <- function(dbname = "postgres") {
+  db_connect(FALSE, dbname)
+  message("Here are all the databases in RDS:")
+  x <- DBI::dbGetQuery(get_db_pool(), "
     SELECT datname
     FROM pg_database
     WHERE datistemplate = false;
   ")
+  close_pool()
+  
+  message(paste(x$datname, "\n"))
+  return(x$datname)
 }
 db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL) {
   USE_SQLITE <<- use_sqlite
-  
   db_pool <- set_up_db_connection(dbname)
-  
-  if(!use_sqlite & !is.null(db_pool)) {
-    message("Here are all the databases in RDS:")
-    list_rpostgres_dbs()
-  }
 }
 
 run_app <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL, user_email = NULL) {
