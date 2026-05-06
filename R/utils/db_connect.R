@@ -114,7 +114,11 @@ get_pg_params <- function(dbname) {
 }
 
 get_current_db <- function() {
-  return(DBI::dbGetQuery(get_db_pool(), "SELECT current_database() AS dbname")$dbname[1])
+  tryCatch(
+    DBI::dbGetQuery(get_db_pool(), "SELECT current_database() AS dbname")$dbname[1],
+    error = function(e) {
+      return(NULL)
+    })
 }
 get_open_db_connections <- function(dbname) {
   get_db_query(glue::glue('SELECT pid, usename, application_name, state, query
@@ -192,7 +196,9 @@ close_pool <- function() {
 get_db_name <- function(dbname = NULL) {
   # 1. Determine target dbname
   if(is.null(dbname)) {
-    if(exists("DBNAME", where = .GlobalEnv)) dbname <- DBNAME
+    current_db <- get_current_db()
+    if(!is.null(current_db)) dbname <- current_db
+    else if(exists("DBNAME", where = .GlobalEnv) && !is.null(DBNAME)) dbname <- DBNAME
     else if(!IN_PROD_APP() && Sys.getenv("RSTUDIO") != "1" && basename(getwd()) %in% list_rpostgres_dbs()) dbname <- basename(getwd())
     else dbname <- Sys.getenv(ifelse(IN_PROD_APP(), "AWS_RDS_DBNAME", "AWS_RDS_DBNAME_DEV"))
   }
