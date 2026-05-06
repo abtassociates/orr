@@ -1094,7 +1094,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     observeEvent(input$btn_save_ranking, {
       req(user_coc$coc_version_id)
       
-      all_rankings <- collapse::rowbind(rv$ranked, rv$excluded, fill=TRUE, idcol = TRUE) |>
+      all_rankings <- collapse::rowbind(rv$ranked[project_id != "PLACEHOLDER_T2"], rv$excluded, fill=TRUE, idcol = TRUE) |>
         fmutate(
           rank = fifelse(.id == 2, NA_integer_, as.integer(rank)),
           coc_version_id = user_coc$coc_version_id,
