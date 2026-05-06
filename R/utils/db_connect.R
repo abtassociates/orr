@@ -202,12 +202,15 @@ get_db_name <- function(dbname = NULL) {
 list_rpostgres_dbs <- function(dbname = "postgres") {
   db_connect(FALSE, dbname)
   message("Here are all the databases in RDS:")
-  print(DBI::dbGetQuery(get_db_pool(), "
+  x <- DBI::dbGetQuery(get_db_pool(), "
     SELECT datname
     FROM pg_database
     WHERE datistemplate = false;
-  "))
+  ")
   close_pool()
+  
+  message(x$datname)
+  return(x$datname)
 }
 db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL) {
   USE_SQLITE <<- use_sqlite
