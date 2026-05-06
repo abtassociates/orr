@@ -98,7 +98,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
             
             zip_path <- tempfile(fileext = ".zip", tmpdir = tmp_dir)
             zip::zipr(zipfile = zip_path, files = files_to_zip)
-            browser()
+            
             return(zip_path)
           }
         }, payload = payload)
@@ -225,16 +225,17 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     })
     
     observeEvent(input$dl_all, {
-      if(fnrow(all_factors_and_scores) == 0)
+      if(fnrow(all_factors_and_scores()) == 0) {
         showNotification("No projects have scores!", type = "error")
-      req(FALSE)
+        req(FALSE)
+      }
       
       dl_state("busy")
       
       payload <- list(
         type = "zip",
         filename = "All_Reports.zip",
-        data = all_factors_and_scores
+        data = all_factors_and_scores()
       )
       
       ready_file$filename <- payload$filename
