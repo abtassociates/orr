@@ -15,7 +15,8 @@ table_names <- c(
   "dashboard-coc_selection-coc_versions_dt",
   "inventory-projects_table",
   "dashboard-requests-requests_dt",
-  "funding_priorities-priorities_table"
+  "funding_priorities-priorities_table",
+  "rating-alternative-alternative_rating_table"
 )
 
 
