@@ -31,11 +31,15 @@ mod_funding_priorities_ui <- function(id) {
   ]
   
   funding_input <- function(id, label) {
-    shinyWidgets::currencyInput(
-      ns(id), 
-      label,
-      value = "0",
-      format = "dollar"
+    shinyWidgets::autonumericInput(
+      inputId = ns(id),
+      label = label,
+      value = 0,
+      align = "center",
+      currencySymbol = "$",           # Your currency symbol
+      currencySymbolPlacement = "p",  # 'p' for prefix (e.g., $100)
+      maximumValue = "9999999999.99",    # 9,999,999,999.99
+      decimalPlaces = 2
     )
   }
   
@@ -138,9 +142,9 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       HUD_ARD_REPORT[coc == user_coc$coc] |>
         fmutate(
           adjusted_ard = round(tier_1/0.9, 0),
-          tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
+          tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0) + fcoalesce(dv_bonus, 0),
           # yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = dv_ard_db$dv_ard[1],
+          dv_ard = fcoalesce(dv_ard_db$dv_ard[1], 0),
           version_id = dv_ard_db$version_id[1]
         ) |>
         frename(estimated = "total_ard")
@@ -161,7 +165,12 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     }, ignoreInit = TRUE)
     
     iv <- shinyvalidate::InputValidator$new()
-    iv$add_rule("dv_ard", sv_between(0, 9999999999)) # 9,999,999,999
+    # Limit to 9,999,999,999
+    iv$add_rule("dv_ard", sv_required())
+    iv$add_rule("dv_ard", function(v) {
+      if(is.null(v)) return(NULL)
+      if(!v %between% c(0, 9999999999)) "Must be between 0 and $9,999,999,999"
+    })
     
     entered_dv_ard <- reactive({ 
       req(user_coc$coc_version_id)
@@ -173,7 +182,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     observeEvent(entered_dv_ard(), {
       req(iv$is_valid())
-      req(entered_dv_ard() != fcoalesce(hud_ard_coc_data()$dv_ard[[1]], 0L))
+      req(entered_dv_ard() != fcoalesce(hud_ard_coc_data()$dv_ard[[1]], 0))
       
       update_dv_ard(
         get_db_pool(),

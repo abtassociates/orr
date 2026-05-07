@@ -22,7 +22,8 @@ get_dv_ard <- function(coc_version_id) {
     FROM coc_versions 
     WHERE coc_version_id = $1", 
     params = coc_version_id
-  )
+  ) |>
+    fmutate(dv_ard = as.numeric(dv_ard))
 } 
 
 update_coc_nofo_opportunities_db <- function(p, updated_coc_nofo_opportunities) {
