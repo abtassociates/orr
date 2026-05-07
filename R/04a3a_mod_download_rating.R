@@ -171,20 +171,20 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       showModal(
         modalDialog(
           title = 'Blank Report Card Specifications',
-          project_type_dropdown <- selectInput(
-            inputId = ns("project_type_filter"),
-            label = "Select project type",
-            choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES]
-          ),
-          
-         if(funding_action == "Renew") 
-           target_pop_dropdown <- selectInput(
+          if(funding_action == "Renew") 
+            project_type_dropdown <- selectInput(
+              inputId = ns("project_type_filter"),
+              label = "Select project type",
+              choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES]
+            )
+          else NULL,
+         
+          target_pop_dropdown <- selectInput(
             inputId = ns("target_population_filter"),
             label = "Select special populations",
             choices = get_labelled_lookups("target_population")[c("DV", "General")]
-          )
-         else
-           NULL,
+          ),
+          
           footer = tagList(
             actionButton(ns('blank_download'), label='Confirm', class='btn-primary'),
             modalButton(label='Cancel')
