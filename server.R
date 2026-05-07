@@ -61,10 +61,22 @@ function(input, output, session) {
       # if an error occurred during login
       if (is.null(current_user)){
         message('user is NULL')
+        
+        # 2. CLEAR COOKIE: Remove the cookie so we don't get stuck in an auto-redirect loop
+        shinyjs::runjs("clear_cookie();")
+        
         #hideElement("login_welcome_text")
         user_coc$auth <- FALSE
       } else {
         message('user found!')
+        
+        # 3. SET COOKIE: Set a browser cookie to expire in 30 minutes
+        shinyjs::runjs("
+          let expires = new Date();
+          expires.setTime(expires.getTime() + (60 * 60 * 1000)); // 60 minutes, to match Cognito
+          document.cookie = 'cognito_session=active;expires=' + expires.toUTCString() + ';path=/';
+        ")
+        
         # check if user is in allowed user list
         if (!(str_to_lower(current_user$email) %in% str_to_lower(get_db_tbl('users')$username))){
           message("new user added to allowed list")
@@ -88,6 +100,13 @@ function(input, output, session) {
         user_coc$auth <- TRUE
         user_coc$username <- current_user$email
         user_coc$given_name <- current_user$given_name
+        
+
+        # 4. CLEAN THE URL: Strip the single-use ?code=... from the URL. 
+        # If the user refreshes, they will hit the clean URL, our cookie logic 
+        # will catch them, and seamlessly fetch a new code from Cognito.
+        updateQueryString(session$clientData$url_pathname, mode = "replace", session = session)
+        
         nav_control("dashboard")
         session$sendCustomMessage("auth_state", TRUE)
       }
