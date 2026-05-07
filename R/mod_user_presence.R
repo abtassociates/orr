@@ -66,10 +66,10 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
         "SELECT DISTINCT user_id 
          FROM user_presence 
          WHERE context = $1 
-           AND record_id = $3 
-           AND field = $4
-           AND session_id != $5
-           AND last_seen > $6;",
+           AND record_id = $2
+           AND field = $3
+           AND session_id != $4
+           AND last_seen > $5;",
         params = params
       )
       
