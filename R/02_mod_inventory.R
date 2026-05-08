@@ -121,8 +121,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     }
     
     # Initialize projects_data ------
-    observe({
-      req(user_coc$coc_version_id, refresh_trigger())
+    observeEvent(c(user_coc$coc_version_id, refresh_trigger()), {
       data <- get_coc_projects(user_coc$coc_version_id) |>
         fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
@@ -146,7 +145,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         user_coc$coc_version_id, 
         user_coc$username
       ))
-    })
+    }, ignoreInit = TRUE)
     
     ## after initial DT table creation, show/hide any columns from user settings
     observe({
