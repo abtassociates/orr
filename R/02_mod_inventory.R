@@ -139,6 +139,13 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         add_calculated_fields()
 
       projects_data(data)
+      
+      user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide <- get_user_setting(
+        get_db_pool(), 
+        "inventory_cols_to_hide", 
+        user_coc$coc_version_id, 
+        user_coc$username
+      )
     })
     
     ## after initial DT table creation, show/hide any columns from user settings
@@ -146,23 +153,14 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       req(projects_data())
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       
-      initial_cols_to_hide <- setdiff(names(projects_data()), initial_cols_to_show )
-      
-      # retrieve user columns from user-settings table
-      user_previous_hidden <- get_project_fields_to_hide(get_db_pool(),user_coc$coc_version_id, user_coc$username)
-      user_cols_to_hide <- gsub('disp_','',user_previous_hidden)
-
-      if(length(user_cols_to_hide) > 0){
-        initial_cols_to_hide <- union(initial_cols_to_hide, user_cols_to_hide)
-
-        ## update selections checkboxes with full set of initially hidden columns
-        updatePickerInput(session, inputId = 'projects_col_selections', selected = setdiff(initial_cols_to_show, initial_cols_to_hide))
-      }
+      ## update selections checkboxes with full set of initially hidden columns
+      cols_to_hide <- isolate(user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide)
+      cols_to_show <- setdiff(names(projects_data()), c(cols_to_hide, "version_id"))
+      updatePickerInput(session, inputId = 'projects_col_selections', selected = cols_to_show)
       
       ## update DT table with full set of initially hidden columns
-      hideCols(projects_table_proxy, initial_cols_to_hide)
-      showCols(projects_table_proxy, setdiff(initial_cols_to_show, initial_cols_to_hide))
-      
+      # hideCols(projects_table_proxy, cols_to_hide)
+      # showCols(projects_table_proxy, cols_to_show)
     })
     
     # Projects datatable -----
@@ -383,9 +381,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         showCols(projects_table_proxy, show = cols_to_show)
       }
       projects_table_proxy$id <- "projects_table"
-       
-      user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
-    })
+      
+      user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide <- colnames_to_hide
+    }, ignoreInit = TRUE)
     
     # Update projects -----
     ## consolidated update function
