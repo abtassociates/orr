@@ -140,12 +140,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
 
       projects_data(data)
       
-      user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide <- get_user_setting(
+      update_user_coc_setting(user_coc, "inventory_cols_to_hide", get_user_setting(
         get_db_pool(), 
         "inventory_cols_to_hide", 
         user_coc$coc_version_id, 
         user_coc$username
-      )
+      ))
     })
     
     ## after initial DT table creation, show/hide any columns from user settings
@@ -382,7 +382,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       }
       projects_table_proxy$id <- "projects_table"
       
-      user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide <- colnames_to_hide
+      update_user_coc_setting(user_coc, "inventory_cols_to_hide", colnames_to_hide)
     }, ignoreInit = TRUE)
     
     # Update projects -----

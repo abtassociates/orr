@@ -9,11 +9,7 @@ function(input, output, session) {
     given_name = NULL, # user's given_name as stored and returned by cognito
     email = NULL,  # user's email as stored and returned by cognito
     active_tab = NULL, # last active tab
-    settings = list(
-      cols_to_hide = NULL, # which project columns to display
-      rating_method = NULL, # in-app vs alternative rating method
-      rating_tab = NULL
-    ),
+    settings = NULL, # user settings (cols hidden from inventory, rating method, etc.)
     
     requests_updated = 0,
     projects_updated = 0,

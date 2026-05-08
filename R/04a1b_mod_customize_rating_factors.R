@@ -399,12 +399,12 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     # ------- Save filters to User settings --------------
     observeEvent(input$project_type, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings[[glue::glue('rating_{id}_project_type')]] <- input$project_type
+      update_user_coc_setting(user_coc, "project_type", input$project_type)
     }, ignoreInit = TRUE)
     
     observeEvent(input$target_population, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings[[glue::glue('rating_{id}_target_population')]] <- input$target_population
+      update_user_coc_setting(user_coc, "target_population", input$target_population)
     }, ignoreInit = TRUE)
     
     

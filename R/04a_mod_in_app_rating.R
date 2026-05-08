@@ -123,7 +123,8 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     observeEvent(input$main_contents, {
       req(user_coc$coc_version_id & nav_control() == 'rating')
       
-      user_coc$settings$rating_subtab <- gsub(glue::glue('rating-{id}-'), '', input$main_contents)
+      update_user_coc_setting(user_coc, "rating_subtab", input$main_contents)
+      
       toggle_sidebar(id = "project_selection_sidebar", open = input$main_contents != ns("rating_factors"))
       
       help_id(input$main_contents)
@@ -132,7 +133,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     # Store selected project in user setting
     observeEvent(input$project_select, {
       req(user_coc$coc_version_id & nav_control() == 'rating')
-      user_coc$settings[[glue::glue('rating_{id}_project_selected')]] <- input$project_select
+      update_user_coc_setting(user_coc, "project_selected", input$project_select)
     }, ignoreInit = TRUE)
     
     # Get all projects for the CoC and the current funding action

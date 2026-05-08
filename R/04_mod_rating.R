@@ -151,7 +151,8 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
     ## Rating method
     observeEvent(input$select_in_app, {
       nav_select(id = "method", selected = ns("in_app"))
-      user_coc$settings$rating_method <- 'in_app'
+      update_user_coc_setting(user_coc, "rating_method", 'in_app')
+
       shinyjs::addClass(id = "select_in_app", class = "card-selected")
       shinyjs::removeClass(id = "select_alternative", class = "card-selected")
       
@@ -160,7 +161,9 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
     
     observeEvent(input$select_alternative, {
       nav_select(id = "method", selected = ns("alternative"))
-      user_coc$settings$rating_method <- 'alternative'
+      
+      update_user_coc_setting(user_coc, "rating_method", 'alternative')
+      
       shinyjs::addClass(id = "select_alternative", class = "card-selected")
       shinyjs::removeClass(id = "select_in_app", class = "card-selected")
       
@@ -171,8 +174,9 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
     ## Update rating_tab user setting
     observeEvent(input$rating_tabs, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings$rating_tab <- gsub('rating-', '', input$rating_tabs)
       
+      update_user_coc_setting(user_coc, "rating_tab", input$rating_tabs)
+
       # Helper slide-in text
       if(input$rating_tabs == ns("customize_criteria"))
         help_id(ns("customize_criteria-coc_thresholds"))
