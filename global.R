@@ -103,9 +103,10 @@ source(here("R/global_data_prep.R"))
 
 # QUESTION: Does this get triggered on crashes?
 shiny::onStop( function(){
-  pool::poolClose(get_db_pool())
+  message("Application exited. Closing pool and mirai daemons")
+  close_pool()
   
-  if (shiny::isRunning()) {
+  if (shiny::isRunning() && Sys.getenv("RSTUDIO") == "1") {
     try(tools::pskill(tunnel), silent = TRUE)
   }
   

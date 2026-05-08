@@ -117,16 +117,14 @@ function(input, output, session) {
   # --- Slide-In Sidebar ----
   help_id <- mod_slide_in_instructions_server("instructions", user_coc, nav_control)
   
-  shiny::onStop( function(){
-    cat("Running onStop")
+  session$onSessionEnded(function() {
+    message("onSession ended, updating user settings")
+    update_all_user_settings(user_coc, tab_name = isolate(input$nav))
     
-    ## record user settings
-    update_all_user_settings(user_coc, tab_name = input$nav)
-    # Get a dev version that persists beyond the app 
-    # pool::poolClose(get_db_pool())
-    
-    # if (shiny::isRunning()) {
-    #   try(tools::pskill(tunnel), silent = TRUE)
-    # }
-  }, session = session)
+    message("onSessionEnded, deleting from user presence.")
+    db_execute(
+      "DELETE FROM user_presence WHERE session_id = $1;",
+      params = list(session$token)
+    )
+  })
 }
