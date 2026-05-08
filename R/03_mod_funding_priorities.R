@@ -155,7 +155,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     observeEvent(user_coc$coc_version_id, {
       ## ARD buckets --------
       lapply(ard_field_names, function(i) {
-        updateCurrencyInput(
+        updateAutonumericInput(
           session, 
           i, 
           value = hud_ard_coc_data()[[i]]
@@ -177,6 +177,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       iv$enable()
       req(iv$is_valid())
       iv$disable()
+      
       input$dv_ard 
     }) %>% debounce(1000)
     
@@ -197,7 +198,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     }, ignoreInit = TRUE)
     
     observeEvent(hud_ard_coc_data(), {
-      updateCurrencyInput(
+      updateAutonumericInput(
         session,
         "dv_ard",
         value = hud_ard_coc_data()$dv_ard
