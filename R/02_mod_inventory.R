@@ -184,7 +184,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       
       
       # More readable col header text
-      colnames <- inventory_variable_labels[names(data)]
+      colnames <- variable_labels[names(data)]
       colnames["funding_action"] <- helper_html
       colnames <- unname(colnames)
       
@@ -689,7 +689,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       data <- giw_data() |>
         fselect(-date_created, -date_updated, -created_by, -updated_by, -version_id)
       
-      names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
+      names(data) <- variable_labels[match(names(data), names(variable_labels))]
       
       datatable(
         data,

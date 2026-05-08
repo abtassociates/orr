@@ -129,19 +129,11 @@ variable_labels <- c(
   "updated_by" = "Updated By",
   "met_hud_thresholds" = "Met HUD Thresholds",
   "met_coc_thresholds" = "Met CoC Thresholds",
-  "weighted_score" = "Weighted Rating Score (out of 100)"
-)
-
-inventory_variable_labels <- variable_labels[!(names(variable_labels) %in% c('met_hud_thresholds', 'met_coc_thresholds', 'weighted_score'))]
-
-initial_cols_to_show <- setdiff(names(inventory_variable_labels), c('created_by','date_created','date_updated','updated_by'))
-                                                                  
-
-giw_variable_labels <- c(
-  "grant_number" = "Grant Number",
+  "weighted_score" = "Weighted Rating Score (out of 100)",
+  
+  #GIW
   "coc" = "CoC",
   "applicant_name" = "Applicant Name",
-  "project_name" = "Project Name",
   "expiration_year" = "Expiration Year",
   "project_component" = "Project Component",
   "restriction_dv_or_ydhp" = "Restriction: DV or YHDP",
@@ -150,36 +142,17 @@ giw_variable_labels <- c(
   "cocs_ard_estimated" = "CoCs ARD Estimated",
   "total_units" = "Total Units",
   "total_ara" = "Total ARA",
-  "date_created" = "Date Created",
-  "created_by" = "Created By",
-  "date_updated" = "Date Updated",
-  "updated_by" = "Updated By"
-)
-
-versions_variable_labels <- c(
-  "coc" = "CoC Code",
+  
+  # CoC Versions
   "coc_name" = "CoC Name",
   "coc_version_name" = "CoC Version Name",
   "coc_status" = "Status",
   "coc_version_id" = "CoC Version ID",
   "coc_version_role" = "Your Role",
-  "updated_by" = "Updated By",
-  "created_by" = "Created By",
-  "date_updated" = "Date Updated",
-  "created_by" = "Created By",
-  "date_created" = "Date Created"
-)
-
-requests_variable_labels <- c(
-  "coc_version_id" = "coc_version_id",
+  
+  # Requests
   "coc_request_id" = "coc_request_id",
-  "coc" = "CoC Code",
-  "coc_name" = "CoC Name",
-  "coc_version_name" = "CoC Version Name",
-  "request_status" = "Request Status",
-  "created_by" = "Requested By",
-  "date_created" = "Date Requested",
-  "date_updated" = "Date Updated"
+  "request_status" = "Request Status"
 )
 
 add_user_stamp <- function(x, user_coc, is_new = FALSE) {

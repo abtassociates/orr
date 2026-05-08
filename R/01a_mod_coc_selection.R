@@ -63,7 +63,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
       data <- users_versions() |> fselect(-version_id)
       datatable(data, 
-                colnames = unname(versions_variable_labels[match(names(data),  names(versions_variable_labels))]),
+                colnames = unname(variable_labels[names(data)]),
                 rownames = FALSE,
                 options = list(
                   dom = 'ftip', 
