@@ -235,7 +235,7 @@ CREATE TABLE coc_versions (
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
-    dv_ard INTEGER,
+    dv_ard DECIMAL(12, 2),
     version_id INTEGER NOT NULL DEFAULT 0
 );
 
