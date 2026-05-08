@@ -1,6 +1,8 @@
 mod_inventory_ui <- function(id) {
   ns <- NS(id)
   
+  col_names <- get_project_col_names()
+  
   nav_panel(
     "Review Projects",
     icon = icon("list-check"),
@@ -23,18 +25,19 @@ mod_inventory_ui <- function(id) {
           circle = FALSE,
           
           prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
-          pickerInput(ns('projects_col_selections'), label = 'Choose Fields to Display',
-                      choices = setNames(initial_cols_to_show, inventory_variable_labels[initial_cols_to_show]),
-                      selected = initial_cols_to_show, 
-                      multiple = TRUE, 
-                      
-                      options = pickerOptions(
-                        selectedTextFormat = 'count',
-                        countSelectedText = '{0} Fields Displayed',
-                        selectAllText = 'Select All',
-                        deselectAllText = 'De-select All',
-                        actionsBox = TRUE
-                      )
+          pickerInput(
+            ns('projects_col_selections'), label = 'Choose Fields to Display',
+            choices = setNames(col_names, variable_labels[col_names]),
+            selected = col_names,
+            multiple = TRUE, 
+            
+            options = pickerOptions(
+              selectedTextFormat = 'count',
+              countSelectedText = '{0} Fields Displayed',
+              selectAllText = 'Select All',
+              deselectAllText = 'De-select All',
+              actionsBox = TRUE
+            )
           )
         ),
         mod_user_presence_ui(ns("presence")),
@@ -84,6 +87,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     
     # binary indicator for whether a new row/project has been added
     is_new_project <- reactiveVal(FALSE)
+    
+    calculated_cols <- c("ch_bed_inventory", "vet_bed_inventory", "youth_bed_inventory")
     
     # # yhdp info for passing around
     # yhdp_replacement_info <- reactiveValues(
@@ -189,18 +194,18 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       colnames <- unname(colnames)
       
       ## initially, only hide pre-specified columns; later, will hide user settings-based ones
-      initial_cols_to_hide <- setdiff(names(data), initial_cols_to_show )
-      col_inds_to_hide <- match(initial_cols_to_hide, names(data)) - 1
+      cols_to_hide <- setdiff(names(data), isolate(input$projects_col_selections))
       
       funding_action_idx <- match("funding_action", names(data)) - 1
       grant_number_idx <- match("grant_number", names(data)) - 1
+      
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
         initial_filter = initial_filter,
         column_defs = list(
           list(
-            targets = col_inds_to_hide, 
+            targets = which(names(data) %in% c(cols_to_hide, "version_id")) - 1, 
             className = "hidden",
             visible = FALSE
           ),
@@ -290,7 +295,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           )
         ),
         colnames = colnames,
-        cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
+        cols_to_disable = c(calculated_cols, "dv_fam_beds","dv_ind_beds"),
         options = list(
           paging = TRUE,
           pageLength = 100,
@@ -364,8 +369,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       req(projects_data())
         
-      cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
-      cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
+      colnames_to_hide <- setdiff(names(projects_data()), c(input$projects_col_selections, "version_id"))
+      cols_to_hide <- match(colnames_to_hide, names(projects_data())) - 1
+      cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
       # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
       
       ## show and hide columns as needed
