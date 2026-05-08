@@ -1,13 +1,18 @@
-get_project_fields_to_hide <- function(p, coc_version_id, username){
+get_project_col_names <- function() {
   
-  if(p$valid){
-    get_db_query(
-      "SELECT setting_name FROM user_settings WHERE coc_version_id = $1 AND coc_user = $2 AND setting_value = 'hide' AND setting_name LIKE 'disp_%'",
-      params = list(coc_version_id, username)
-    ) |> unlist(use.names = FALSE)
-  } else {
-    return(character(0))
-  }
+  sql <- if(get_db_pool()$objClass[[1]] == "SQLiteConnection") 
+    "SELECT name as column_name FROM pragma_table_info('projects');"
+  else 
+    "SELECT column_name
+      FROM information_schema.columns
+      AND table_name = 'projects'
+      ORDER BY ordinal_position;"
+  
+  x <- get_db_query(sql)
+  
+  admin_cols <-  c("version_id", "coc_version_id", "date_created", "date_updated", "updated_by")
+  calculated_cols <- c("ch_bed_inventory", "vet_bed_inventory", "youth_bed_inventory")
+  setdiff(append(x$column_name, calculated_cols), admin_cols)
 }
 
 update_inventory_db <- function(new_value, col_name, proj_id, version_id) {
