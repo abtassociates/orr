@@ -115,13 +115,5 @@ mod_user_presence_server <- function(id, user_coc, record_id, field = reactive("
         )
       }
     }, ignoreInit = TRUE)
-    
-    # Clear presence when session ends (tab closed)
-    session$onSessionEnded(function() {
-      db_execute(
-        "DELETE FROM user_presence WHERE session_id = $1;",
-        params = list(session$token)
-      )
-    })
   })
 }
