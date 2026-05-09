@@ -170,8 +170,8 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
         help_id(ns("alternative"))
     }
     
-    observeEvent(input$select_in_app, { handle_method_selection("in_app")})
-    observeEvent(input$select_alternative, { handle_method_selection("alternative")})
+    observeEvent(input$select_in_app, { handle_method_selection("in_app")}, ignoreInit = TRUE)
+    observeEvent(input$select_alternative, { handle_method_selection("alternative")}, ignoreInit = TRUE)
     
     ## Update rating_tab user setting
     observeEvent(input$rating_tabs, {
