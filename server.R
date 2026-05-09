@@ -101,6 +101,9 @@ function(input, output, session) {
       DELETE FROM user_presence WHERE session_id = $1", 
       params = list(session$token)
     )
+    
+    if(!is.null(user_coc$coc_version_id))
+      update_user_coc_setting(user_coc, "active_tab", input$nav)
   })
   
   observeEvent(nav_control(), {
