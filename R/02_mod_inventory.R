@@ -139,31 +139,25 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
 
       projects_data(data)
       
-      update_user_coc_setting(user_coc, "inventory_cols_to_hide", get_user_setting(
+      cols_to_hide <- get_user_setting(
         get_db_pool(), 
         "inventory_cols_to_hide", 
         user_coc$coc_version_id, 
         user_coc$username
-      ))
-    }, ignoreInit = TRUE)
-    
-    ## after initial DT table creation, show/hide any columns from user settings
-    observe({
-      req(projects_data())
-      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      )
+      user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide <- cols_to_hide
       
-      ## update selections checkboxes with full set of initially hidden columns
-      cols_to_hide <- isolate(user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide)
-      updatePickerInput(session, inputId = 'projects_col_selections', selected = cols_to_show)
       cols_to_show <- if(length(cols_to_hide) > 0) 
         setdiff(names(data), c(strsplit(cols_to_hide, ",")[[1]], "version_id", "created_by"))
       else
         setdiff(names(data), c("version_id", "created_by"))
       
-      ## update DT table with full set of initially hidden columns
-      # hideCols(projects_table_proxy, cols_to_hide)
-      # showCols(projects_table_proxy, cols_to_show)
-    })
+      if(!is.null(input$projects_col_selections))
+        if(length(setdiff(input$projects_col_selections, cols_to_show)) == 0) return()
+      
+      updatePickerInput(session, inputId = 'projects_col_selections', selected = cols_to_show)
+      updated_col_selections_from_db(TRUE) 
+    }, ignoreInit = TRUE)
     
     # Projects datatable -----
     output$projects_table <- renderDT({
