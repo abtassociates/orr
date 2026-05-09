@@ -29,7 +29,7 @@ update_user_coc_setting <- function(user_coc, setting_name, setting_value) {
     setting_value = paste(setting_value, collapse = ",")
   ) |>
     fmutate(
-      coc_user = fifelse(setting_name == "rating_method", NA, coc_user),
+      coc_user = fifelse(setting_name == "rating_method", SERVICE_ACCOUNT, coc_user),
       created_by = fifelse(setting_name == "rating_method", SERVICE_ACCOUNT, coc_user),
       updated_by = fifelse(setting_name == "rating_method", SERVICE_ACCOUNT, coc_user)
     )
@@ -75,7 +75,7 @@ update_all_user_settings <- function(user_coc){
     setting_value = unlist(settings, use.names = FALSE)
   ) |>
     fmutate(
-      coc_user = fifelse(setting_name == "rating_method", NA, coc_user)
+      coc_user = fifelse(setting_name == "rating_method", SERVICE_ACCOUNT, coc_user)
     )
   
   update_user_settings(get_db_pool(), updated_user_settings)

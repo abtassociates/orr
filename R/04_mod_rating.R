@@ -126,6 +126,7 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
       # Handle in-app tab selections
       ## Customize vs. Rate Renew vs. Rate New tabs
       user_previous_tab <- get_user_setting(get_db_pool(), 'rating_tab', user_coc$coc_version_id, user_coc$username)
+      user_previous_tab <- if(length(user_previous_tab)) user_previous_tab else NULL
       nav_select(id = 'rating_tabs', selected = user_previous_tab)
       # if(length(user_previous_tab) > 0){
       #   nav_select(id = 'rating_tabs', selected = user_previous_tab)
