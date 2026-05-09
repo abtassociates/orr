@@ -54,29 +54,3 @@ save_user_settings_db <- function(p, updated_user_settings){
   
   DBI::dbExecute(p, sql, params = paramified)
 }
-
-## on app exit, update all settings
-update_all_user_settings <- function(user_coc){
-  # Make sure user is signed in and coc-version is selected
-  if(!isolate(user_coc$auth))
-    return(NULL)
-  
-  coc_version_id <- isolate(user_coc$coc_version_id)
-  if(is.null(coc_version_id))
-    return(NULL)
- 
-  username <- isolate(user_coc$username)
-  settings <- isolate(user_coc$settings[[paste0("v", coc_version_id)]])
-  
-  updated_user_settings <- data.frame(
-    coc_version_id = coc_version_id,
-    coc_user = username,
-    setting_name = names(settings),
-    setting_value = unlist(settings, use.names = FALSE)
-  ) |>
-    fmutate(
-      coc_user = fifelse(setting_name == "rating_method", SERVICE_ACCOUNT, coc_user)
-    )
-  
-  update_user_settings(get_db_pool(), updated_user_settings)
-}

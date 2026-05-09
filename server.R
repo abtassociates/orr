@@ -123,9 +123,6 @@ function(input, output, session) {
       return(NULL)
     }
     
-    message("onSessionEnded, updating user settings")
-    update_all_user_settings(user_coc)
-    
     message("onSessionEnded, deleting from user presence.")
     db_execute(
       "DELETE FROM user_presence WHERE session_id = $1;",
