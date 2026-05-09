@@ -114,8 +114,14 @@ function(input, output, session) {
   help_id <- mod_slide_in_instructions_server("instructions", user_coc, nav_control)
   
   session$onSessionEnded(function() {
-    message("onSession ended, updating user settings")
-    update_all_user_settings(user_coc, tab_name = isolate(input$nav))
+    p <- get_db_pool()
+    if(!p$valid) {
+      message("onSessionEnded, but no pool available so returning now.")
+      return(NULL)
+    }
+    
+    message("onSessionEnded, updating user settings")
+    update_all_user_settings(user_coc)
     
     message("onSessionEnded, deleting from user presence.")
     db_execute(
