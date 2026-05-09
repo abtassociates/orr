@@ -154,8 +154,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       
       ## update selections checkboxes with full set of initially hidden columns
       cols_to_hide <- isolate(user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide)
-      cols_to_show <- setdiff(names(projects_data()), c(cols_to_hide, "version_id"))
       updatePickerInput(session, inputId = 'projects_col_selections', selected = cols_to_show)
+      cols_to_show <- if(length(cols_to_hide) > 0) 
+        setdiff(names(data), c(strsplit(cols_to_hide, ",")[[1]], "version_id", "created_by"))
+      else
+        setdiff(names(data), c("version_id", "created_by"))
       
       ## update DT table with full set of initially hidden columns
       # hideCols(projects_table_proxy, cols_to_hide)
@@ -191,7 +194,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       colnames <- unname(colnames)
       
       ## initially, only hide pre-specified columns; later, will hide user settings-based ones
-      cols_to_hide <- setdiff(names(data), isolate(input$projects_col_selections))
+      cols_to_hide <- setdiff(names(data), isolate(input$projects_col_selections)) |> append(c("version_id", "created_by"))
       
       funding_action_idx <- match("funding_action", names(data)) - 1
       grant_number_idx <- match("grant_number", names(data)) - 1
@@ -202,7 +205,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         initial_filter = initial_filter,
         column_defs = list(
           list(
-            targets = which(names(data) %in% c(cols_to_hide, "version_id")) - 1, 
+            targets = which(names(data) %in% cols_to_hide) - 1, 
             className = "hidden",
             visible = FALSE
           ),
@@ -365,8 +368,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       req(user_coc$auth)
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       req(projects_data())
-        
-      colnames_to_hide <- setdiff(names(projects_data()), c(input$projects_col_selections, "version_id"))
+      
+      colnames_to_hide <- setdiff(names(projects_data()), c(input$projects_col_selections, "version_id", "created_by"))
       cols_to_hide <- match(colnames_to_hide, names(projects_data())) - 1
       cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
       # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1

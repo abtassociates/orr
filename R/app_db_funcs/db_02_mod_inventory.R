@@ -1,3 +1,4 @@
+# this is used to set the choices of the project col sections
 get_project_col_names <- function() {
   
   sql <- if(get_db_pool()$objClass[[1]] == "SQLiteConnection") 
@@ -10,7 +11,7 @@ get_project_col_names <- function() {
   
   x <- get_db_query(sql)
   
-  admin_cols <-  c("version_id", "coc_version_id", "date_created", "date_updated", "updated_by")
+  admin_cols <-  c("version_id", "coc_version_id", "created_by", "date_created", "date_updated", "updated_by")
   calculated_cols <- c("ch_bed_inventory", "vet_bed_inventory", "youth_bed_inventory")
   setdiff(append(x$column_name, calculated_cols), admin_cols)
 }
