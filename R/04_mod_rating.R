@@ -161,11 +161,11 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
       
       shinyjs::addClass(id = paste0("select_", id), class = "card-selected")
       
-      idToRemoveClass <- paste0("select_", ifelse(id == "in_app", "alternative", "in-app"))
+      idToRemoveClass <- paste0("select_", ifelse(id == "in_app", "alternative", "in_app"))
       shinyjs::removeClass(id = idToRemoveClass, class = "card-selected")
       
       if(id == "in_app")
-        help_id(ns("customize_criteria-coc_thresholds")) # Default to the first sub-tab of in-app
+        help_id(ns("customize_criteria-coc_thresholds")) # Default to the first sub-tab of in_app
       else
         help_id(ns("alternative"))
     }
