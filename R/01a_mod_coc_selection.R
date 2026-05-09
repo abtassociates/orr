@@ -118,6 +118,19 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
       shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0 && current_coc_info$coc_version_role == "Owner")
       shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+      
+      req(!is.null(user_coc$coc_version_id)) 
+      
+      settings <- get_db_query(
+        "SELECT coc_version_id, coc_user, setting_name, setting_value
+        FROM user_settings 
+        WHERE coc_version_id = $1 AND (coc_user = $2 OR coc_user = $3)",
+        params <- list(user_coc$coc_version_id, user_coc$username, SERVICE_ACCOUNT)
+      ) 
+      
+      for (i in seq_row(settings)) {
+        user_coc$settings[[paste0("v", user_coc$coc_version_id)]][[ settings$setting_name[i] ]] <- settings$setting_value[i]
+      }
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     ### toggle navs on version selection ----------------

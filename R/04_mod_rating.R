@@ -115,25 +115,33 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
     observeEvent(c(user_coc$coc_version_id, nav_control()), {
       req(nav_control() == "rating")
       
-      user_previous_method <- unique(get_user_setting(get_db_pool(), 'rating_method', user_coc$coc_version_id, NA))
+      user_previous_method <- get_user_setting(user_coc, "rating_method")
       
       if(length(user_previous_method) == 0) {
         shinyjs::removeClass(id = "select_in_app", class = "card-selected")
         shinyjs::removeClass(id = "select_alternative", class = "card-selected")
+        nav_select(id = "method", selected = ns("none"))
+        nav_select(id = "rating_tabs", selected = ns("customize_criteria"))
+        
       } else {
         shinyjs::click(id = glue::glue('select_{user_previous_method}'))
       }
-      # Handle in-app tab selections
+      
+      req(user_previous_method == "in_app")
+      
+      # Handle in_app tab selections
       ## Customize vs. Rate Renew vs. Rate New tabs
-      user_previous_tab <- get_user_setting(get_db_pool(), 'rating_tab', user_coc$coc_version_id, user_coc$username)
+      user_previous_tab <- get_user_setting(user_coc, "rating_tab")
       user_previous_tab <- if(length(user_previous_tab)) user_previous_tab else NULL
+      
       nav_select(id = 'rating_tabs', selected = user_previous_tab)
+      
       # if(length(user_previous_tab) > 0){
       #   nav_select(id = 'rating_tabs', selected = user_previous_tab)
       # }
       
       ## Subtab
-      user_previous_subtab <- get_user_setting(get_db_pool(), 'rating_subtab', user_coc$coc_version_id, user_coc$username)
+      user_previous_subtab <- get_user_setting(user_coc, "rating_subtab")
       
       subtab_id <- fcase(
         user_previous_tab == ns('customize_criteria'), 'customize_criteria-rating_criteria_subtabs',

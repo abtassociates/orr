@@ -1,22 +1,6 @@
 ## retrieve individual user setting value from DB
-get_user_setting <- function(p, setting_nm, coc_version_id, username){
-  if(p$valid){
-    sql <- "SELECT setting_value 
-      FROM user_settings 
-      WHERE coc_version_id = $1 AND coc_user = $2 AND setting_name = $3"
-    
-    params <- list(coc_version_id, username, setting_nm)
-    
-    if(is.na(username)) {
-      sql <- gsub("$3","$2", gsub("AND coc_user = $2 ", "", sql, fixed=TRUE), fixed=TRUE)
-      params <- list(coc_version_id, setting_nm)
-    }
-    
-    get_db_query(sql, params = params) |>
-      unlist(use.names = FALSE)
-  } else {
-    return(character(0))
-  }
+get_user_setting <- function(user_coc, setting_nm){
+  user_coc$settings[[paste0("v", user_coc$coc_version_id)]][[setting_nm]]
 }
 
 update_user_coc_setting <- function(user_coc, setting_name, setting_value) {

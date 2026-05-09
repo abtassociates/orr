@@ -140,21 +140,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
 
       projects_data(data)
       
-      cols_to_hide <- get_user_setting(
-        get_db_pool(), 
-        "inventory_cols_to_hide", 
-        user_coc$coc_version_id, 
-        user_coc$username
-      )
-      user_coc$settings[[paste0("v", user_coc$coc_version_id)]]$inventory_cols_to_hide <- cols_to_hide
-      
-      cols_to_show <- if(length(cols_to_hide) > 0) 
+      cols_to_hide <- get_user_setting(user_coc, "inventory_cols_to_hide")
+      cols_to_show <- if(length(cols_to_hide) > 0) {
         setdiff(names(data), c(strsplit(cols_to_hide, ",")[[1]], "version_id", "created_by"))
-      else
+      } else {
         setdiff(names(data), c("version_id", "created_by"))
-      
-      if(!is.null(input$projects_col_selections))
-        if(length(setdiff(input$projects_col_selections, cols_to_show)) == 0) return()
+      }
       
       updatePickerInput(session, inputId = 'projects_col_selections', selected = cols_to_show)
       updated_col_selections_from_db(TRUE) 
