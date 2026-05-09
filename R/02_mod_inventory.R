@@ -98,6 +98,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     #   funding_source = NULL
     # )
     
+    updated_col_selections_from_db <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(0)
     
     # Add fields only displayed in Inventory
@@ -355,7 +356,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       } else {
         updatePickerInput(session, inputId = 'projects_col_selections', selected = setdiff(input$projects_col_selections, bed_field_names))
       }
-    })
+    }, ignoreInit = TRUE)
     
     # Update DT table with column changes made in dropdown (pickerInput)
     observeEvent(input$projects_col_selections, {
