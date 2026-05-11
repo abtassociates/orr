@@ -125,57 +125,6 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       }
     })
     
-    # ---------------------------------------------------------------------------
-    # InputValidator — single instance created once; rules are rebuilt whenever
-    # the factor data changes (e.g. project switch, db refresh). iv$initialize()
-    # wipes all previously registered rules without invalidating the object
-    # reference, so the save observeEvent below can safely hold a closure over
-    # `iv` without needing to be recreated itself.
-    # ---------------------------------------------------------------------------
-    iv <- shinyvalidate::InputValidator$new()
-    iv_r <- reactiveVal()
-    
-    observe({
-      factors_df <- factors_and_scores_for_project()
-      req(nrow(factors_df) > 0)
-      
-      # Wipe all previously registered rules before re-registering.
-      iv <- shinyvalidate::InputValidator$new()
-      
-      purrr::walk2(
-        factors_df$selected_rating_factor_id,
-        factors_df$max_point_value,
-        function(id, max_pts) {
-          # Input IDs must be fully namespaced when registering rules outside
-          # of renderUI, because InputValidator operates at the session level.
-          iv$add_rule(
-            paste0("rating_score_", id),
-            ~ {
-              if (is.null(.) || is.na(.)) return(NULL)
-              if (!is.numeric(.) || . < -999.9 || . > max_pts) 
-                return(paste0("Score must be a number between 0 and ", max_pts, "."))
-            }
-          )
-          
-          iv$add_rule(
-            paste0("performance_", id),
-            ~ {
-              # nchar(NULL) is integer(0), so we check for truthiness first
-              if (!is.null(.) && nchar(.) > performance_char_limit) {
-                return(paste0("Maximum length is ", performance_char_limit, " characters (currently ", nchar(.), ")."))
-              }
-            }
-          )
-        }
-      )
-      
-      # enable() activates live validation — errors appear as the user types,
-      # not only on save. Call it after rules are registered so the first
-      # render doesn't flash errors on blank inputs immediately.
-      iv$enable()
-      iv_r(iv)
-    })
-    
     # Project Rating Factors UI
     output$project_rating_factors <- renderUI({
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
@@ -244,13 +193,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
                 ),
                 div(
                   class = "input-col", 
-                  numericInput(
-                    ns(paste0("rating_score_", id)), 
+                  shinyWidgets::autonumericInput(
+                    inputId = ns(paste0("rating_score_", id)), 
                     label = NULL, 
                     value = rating_score,
-                    min = 0,
-                    max = max_points,
-                    updateOn = "blur"
+                    align = "center",
+                    decimalPlaces = 0,
+                    minimumValue = -999,
+                    maximumValue = max_points
                   )) |>
                     tagAppendAttributes(class = 'score-input', `data-group` = group_id),
                 p(paste("out of", max_points), style="padding-top: 5px;")
@@ -334,9 +284,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     # get all entered scores
     entered_scores <- reactive({
-      sapply(
+      vapply(
         factors_and_scores_for_project()$selected_rating_factor_id,
-        \(id) input[[paste0("rating_score_", id)]]
+        function(id) {
+          val <- input[[paste0("rating_score_", id)]]
+          if (is.null(val) || is.na(val) || val == "") return(0)
+          as.numeric(val)
+        },
+        numeric(1) # Forces the return to always be a clean numeric vector
       )
     })
     
@@ -415,7 +370,10 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       input_names <- lapply(input_prefixes, paste0, "_", factors$selected_rating_factor_id) |> unlist()
       req(all(input_names %in% names(input)))
       
-      s <- lapply(input_names, function(i) input[[i]])
+      s <- lapply(input_names, function(i) {
+        val <- input[[i]]
+        if(is.null(val)) NA else val
+      })
       names(s) <- input_names
       s
     })
@@ -463,9 +421,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
 
     observeEvent(rating_scores_to_save(), {
       to_save <- rating_scores_to_save()
-      iv <- iv_r() 
       
-      req(to_save, iv$is_valid())
+      req(to_save)
       
       refresh_flags <- pool::poolWithTransaction(get_db_pool(), function(p) {
         needs_ref1 <- update_rating_scores_db(p, to_save$rating_scores)
