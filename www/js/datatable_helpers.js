@@ -50,8 +50,7 @@ function getColName(cell, table) {
   return colName.replace(' Ⓘ','');
 }
 
-function is_funding_col(colName) {
-  let c = colName.toUpperCase();
+function is_funding_col(c) {
   if(c == 'FUNDING ACTION') return false;
   return c.includes('FUNDING') || c.includes('AMOUNT');
 }
@@ -69,7 +68,7 @@ function formatUSD(amount) {
 }
 
 function getFormattedVal(colName, val) {
-  return is_funding_col(colName) ? formatUSD(val) : val.toLocaleString('en-US');
+  return is_funding_col(colName.toUpperCase()) ? formatUSD(val) : val.toLocaleString('en-US');
 }
 
 function setCellText(cell, val, table) {
