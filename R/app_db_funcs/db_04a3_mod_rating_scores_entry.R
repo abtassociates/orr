@@ -72,7 +72,7 @@ update_rating_score_project_evaluation_db <- function(p, updated_project_evaluat
 
 # ------------ Downloads -------------
 get_all_rating_factors_and_scores <- function(coc_version_id, funding_action_id) {
-  proj_type_check <- ifelse(funding_action_id == get_lookup_refid("New","funding_action"), "", " AND r.project_type = p.project_type")
+  proj_type_check <- ifelse(funding_action_id == get_lookup_refid("New","funding_action"), "", " AND (r.project_type = p.project_type OR r.project_type IS NULL)")
   
   get_db_query(glue::glue(
     "SELECT p.project_id, p.project_name, fg.factor_group, fsg.factor_subgroup, r.piping_text, sr.goal, rs.performance, rs.rating_score, sr.max_point_value

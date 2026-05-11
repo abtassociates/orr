@@ -39,17 +39,17 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     ready_file <- reactiveValues(path = NULL, filename = NULL)
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
     
-    all_factors_and_scores <- reactive({
+    all_projects_factors_and_scores <- reactive({
       req(user_coc[[paste0("customized_rating_factors_updated_", funding_action)]])
       get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action_id)
     })
     
-    observeEvent(c(selected_project(), all_factors_and_scores()), {
-      shinyjs::toggle(id = "generate_report_btn", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
+    observeEvent(c(selected_project(), all_projects_factors_and_scores()), {
+      shinyjs::toggle(id = "generate_report_btn", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
       shinyjs::toggle(id = "dl_current", condition = isTruthy(fnrow(selected_project()) > 0))
-      shinyjs::toggle(id = "dl_blank", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
-      shinyjs::toggle(id = "dl_all", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
-      shinyjs::toggle(id = "hr_bar", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
+      shinyjs::toggle(id = "dl_blank", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
+      shinyjs::toggle(id = "dl_all", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
+      shinyjs::toggle(id = "hr_bar", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # ----------------------------------------------------
@@ -225,7 +225,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     })
     
     observeEvent(input$dl_all, {
-      if(fnrow(all_factors_and_scores()) == 0) {
+      if(fnrow(all_projects_factors_and_scores()) == 0) {
         showNotification("No projects have scores!", type = "error")
         req(FALSE)
       }
@@ -235,7 +235,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       payload <- list(
         type = "zip",
         filename = "All_Reports.zip",
-        data = all_factors_and_scores()
+        data = all_projects_factors_and_scores()
       )
       
       ready_file$filename <- payload$filename
