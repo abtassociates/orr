@@ -333,7 +333,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           shinyWidgets::autonumericInput(
             inputId = ns("custom_points"),
             label = "Max Point Value*", 
-            value = points,
+            value = NA,
             align = "center",
             decimalPlaces = 1,
             minimumValue = -999.9,
