@@ -363,7 +363,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         coc_version_id = user_coc$coc_version_id,
         selected = TRUE,
         goal = input$custom_goal,
-        max_point_value = as.numeric(ifelse(is.null(input$custom_points), NA, input$custom_pointa)),
+        max_point_value = as.numeric(ifelse(is.null(input$custom_points), NA, input$custom_points)),
         created_by = user_coc$username
       )
       
