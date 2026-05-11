@@ -199,7 +199,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
                     value = rating_score,
                     align = "center",
                     decimalPlaces = 0,
-                    minimumValue = -1 * max_points,
+                    minimumValue = -999,
                     maximumValue = max_points
                   )) |>
                     tagAppendAttributes(class = 'score-input', `data-group` = group_id),

@@ -149,7 +149,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
               align = "center",
               width = "100%",
               decimalPlaces = 1,
-              minimumValue = -999.9,
+              minimumValue = 0,
               maximumValue = 999.9
             ))
       )
