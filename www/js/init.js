@@ -175,6 +175,8 @@ function(settings, json) {
         if(noDataChange(this.value, cell)) 
           setCellText(cell, cell.data());
         
+        if (colName === "GEO CODE" && !this.value.startsWith("#"))
+          this.value = `#${this.value}`;
         updateTableAndShiny(cell, table, this.value);
       });
     }, 500);
