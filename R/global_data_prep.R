@@ -5,7 +5,14 @@ LOOKUPS <- get_db_tbl("lookups")
 
 cocs <- get_db_tbl("cocs")
 
-HUD_ARD_REPORT <- get_db_tbl("hud_ard_report")
+HUD_ARD_REPORT <- get_db_tbl("hud_ard_report") |>
+  fmutate(
+    estimated = as.numeric(estimated),
+    tier_1 = as.numeric(tier_1),
+    coc_bonus = as.numeric(coc_bonus),
+    dv_bonus = as.numeric(dv_bonus)
+  )
+
 MAIN_PROJECT_TYPES <- c("PSH", "RRH", "TH", "TH+RRH")
 
 COC_NOFO_OPPORTUNITIES <- get_db_tbl("coc_nofo_opportunities") |>

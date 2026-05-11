@@ -22,7 +22,8 @@ get_dv_ard <- function(coc_version_id) {
     FROM coc_versions 
     WHERE coc_version_id = $1", 
     params = coc_version_id
-  )
+  ) |>
+    fmutate(dv_ard = as.numeric(dv_ard))
 } 
 
 update_coc_nofo_opportunities_db <- function(p, updated_coc_nofo_opportunities) {
@@ -60,10 +61,10 @@ get_coc_hud_ard_data <- function(user_coc) {
   HUD_ARD_REPORT[coc == user_coc$coc] |>
     frename("total_ard" = estimated) |>
     fmutate(
-      adjusted_ard = tier_1/0.9,
-      tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0L) + fcoalesce(dv_bonus, 0L),
-      yhdp_ard = total_ard - min(adjusted_ard, total_ard),
-      dv_ard = dv_ard_db$dv_ard[1],
+      adjusted_ard = round(tier_1/0.9, 0),
+      tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0) + fcoalesce(dv_bonus, 0),
+      # yhdp_ard = estimated - min(adjusted_ard, estimated),
+      dv_ard = fcoalesce(dv_ard_db$dv_ard[1], 0),
       version_id = dv_ard_db$version_id[1],
       exceeds = Inf
     )

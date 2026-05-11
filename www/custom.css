@@ -50,6 +50,12 @@ table.dataTable.display > tbody > tr.selected:hover>* {
   cursor: not-allowed;
 }
 
+.fa-spin {
+      -webkit-animation-iteration-count: infinite !important;
+      animation-iteration-count: infinite !important;
+      -webkit-animation-duration: 2s !important;
+      animation-duration: 2s !important;
+    }
 /*Disallow clicking on disabled/calculated cells*/
 td.disabled {
   pointer-events: none;

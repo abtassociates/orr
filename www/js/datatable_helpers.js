@@ -97,6 +97,7 @@ function get_max_length(colName) {
   if(c == 'WEIGHTED_SCORE') return 3;
   if(is_funding_col(colName)) return 10;
   return null;
+}
 
 function trim_val(colName, val, max_length = null) {
   let maxLength = max_length ? max_length : get_max_length(colName);
@@ -105,7 +106,7 @@ function trim_val(colName, val, max_length = null) {
 }
 
 function isNumeric(str) {
-  str = str.replace(/[^\\d.]/g, '');
+  str = str.replace(/[^\d.]/g, '');
   if (typeof str !== 'string' || str.trim() === '') return false;
   return !Number.isNaN(Number(str));
 }

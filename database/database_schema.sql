@@ -220,10 +220,10 @@ CREATE TABLE hud_ard_report (
     coc VARCHAR(6) REFERENCES cocs(coc_code) ON DELETE CASCADE,
     coc_number_and_name TEXT,
     pprn INTEGER,
-    estimated INTEGER,
-    tier_1 INTEGER,
-    coc_bonus INTEGER NULL,
-    dv_bonus INTEGER,
+    estimated NUMERIC(12, 2),
+    tier_1 NUMERIC(12, 2),
+    coc_bonus NUMERIC(12, 2) NULL,
+    dv_bonus NUMERIC(12, 2),
     coc_planning INTEGER,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
@@ -242,7 +242,7 @@ CREATE TABLE coc_versions (
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(100) NULL REFERENCES users(username) ON DELETE CASCADE,
-    dv_ard INTEGER,
+    dv_ard DECIMAL(12, 2),
     version_id INTEGER NOT NULL DEFAULT 0
 );
 
