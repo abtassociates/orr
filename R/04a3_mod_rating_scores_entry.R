@@ -188,10 +188,10 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       
       shiny::validate(
         need(hasProjects(), paste0("You do not have any ", funding_action, " projects to threshold. Add them on the Review tab.")),
-        need(fnrow(factors_and_scores_for_project()) > 0, paste0("You must select 1 or more ", funding_action, " rating factors in the Customize Rating Criteria tab in order to rate this project"))
+        need(project_is_selected, "Select a project in the left-hand sidebar to begin rating")
       )
       shiny::validate(
-        need(project_is_selected, "Select a project in the left-hand sidebar to begin rating")
+        need(fnrow(factors_and_scores_for_project()) > 0, paste0("You must select 1 or more ", funding_action, " rating factors in the Customize Rating Criteria tab in order to rate this project"))
       )
       
       # Group data only by the main factor_group
