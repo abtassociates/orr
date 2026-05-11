@@ -173,7 +173,7 @@ function(settings, json) {
       // --- Update ---
       $input.off('blur').on('blur', function() {
         if(noDataChange(this.value, cell)) 
-          setCellText(cell, cell.data());
+          revertCell(cell, table);
         
         updateTableAndShiny(cell, table, this.value);
       });
