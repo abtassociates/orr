@@ -4,25 +4,29 @@ mod_download_rating_ui <- function(id) {
   card_header(
     class = "d-flex justify-content-between align-items-center",
     "Project Rating",
-    div(
-      class = "d-flex align-items-center",
-      # This will show the spinner or the download link when ready
-      uiOutput(ns("download_status"), inline = TRUE),
+    hidden(
       div(
-        class = "dropdown ms-2",
-        tags$button(
-          id = ns("generate_report_btn"),
-          class = "btn btn-primary dropdown-toggle btn-sm",
-          type = "button",
-          `data-bs-toggle` = "dropdown",
-          icon("file"), " Generate Report Card"
-        ),
-        tags$ul(
-          class = "dropdown-menu dropdown-menu-end",
-          tags$li(actionLink(ns("dl_current"), "Current Project (PDF)", class = "dropdown-item", style="display:none !important;")),
-          tags$li(actionLink(ns("dl_blank"), "Blank Template (PDF)", class = "dropdown-item")),
-          tags$hr(id = ns("hr_bar"), class="dropdown-divider", style="display:none !important;"),
-          tags$li(actionLink(ns("dl_all"), "All Projects Summary (ZIP)", class = "dropdown-item", style="display:none !important;"))
+        id = ns("rating-download-container"),
+        class = "d-flex align-items-center",
+        # This will show the spinner or the download link when ready
+        uiOutput(ns("download_status"), inline = TRUE),
+        div(
+          class = "dropdown ms-2",
+          tags$button(
+            id = ns("generate_report_btn"),
+            class = "btn btn-primary dropdown-toggle btn-sm",
+            type = "button",
+            `data-bs-toggle` = "dropdown",
+            icon("file"), " Generate Report Card"
+          ),
+          tags$ul(
+            class = "dropdown-menu dropdown-menu-end",
+            style = "z-index: 10000",
+            tags$li(actionLink(ns("dl_current"), "Current Project (PDF)", class = "dropdown-item")),
+            tags$li(actionLink(ns("dl_blank"), "Blank Template (PDF)", class = "dropdown-item")),
+            tags$hr(id = ns("hr_bar"), class="dropdown-divider"),
+            tags$li(actionLink(ns("dl_all"), "All Projects Summary (ZIP)", class = "dropdown-item"))
+          )
         )
       )
     )
@@ -40,16 +44,13 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
     
     all_projects_factors_and_scores <- reactive({
-      req(user_coc[[paste0("customized_rating_factors_updated_", funding_action)]])
+      req(user_coc$coc_version_id)
       get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action_id)
     })
     
     observeEvent(c(selected_project(), all_projects_factors_and_scores()), {
-      shinyjs::toggle(id = "generate_report_btn", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
+      shinyjs::toggle(id = "rating-download-container", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
       shinyjs::toggle(id = "dl_current", condition = isTruthy(fnrow(selected_project()) > 0))
-      shinyjs::toggle(id = "dl_blank", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
-      shinyjs::toggle(id = "dl_all", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
-      shinyjs::toggle(id = "hr_bar", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # ----------------------------------------------------
