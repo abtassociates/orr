@@ -14,6 +14,7 @@ mod_alternative_rating_ui <- function(id) {
       ),
       card_footer(
         style = "display: flex; justify-content: space-between; align-items: center;",
+        downloadButton(ns("download_template"), "Download Template", icon = icon("download")),
         actionButton(ns("import_rating"), "Import Rating", icon = icon("upload")) #,
         # actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary")
       )
@@ -28,6 +29,8 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
+    rerender_table <- reactiveVal(0)
+    
     observeEvent(c(user_coc$coc_version_id, refresh_trigger(), user_coc$projects_updated), {
       req(user_coc$coc_version_id)
       
@@ -38,6 +41,11 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           format_table_data()
       )
     }, ignoreInit = TRUE) # end observe that updates ratable_projects
+    
+    ratable_projects_no_vid <- reactive({
+      req(isTruthy(fnrow(ratable_projects()) > 0))
+      ratable_projects() |> fselect(-version_id)
+    })
     
     # Alternative Rating table
     # 1. Create a helper function to ensure data formatting is identical
@@ -54,7 +62,8 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     
     output$alternative_rating_table <- renderDT({
       req(user_coc$coc_version_id)
-      data <- isolate(ratable_projects() |> fselect(-version_id))
+      rerender_table()
+      data <- isolate(ratable_projects_no_vid())
       
       shiny::validate(need(
         nrow(data) > 0, 
@@ -102,12 +111,6 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
         )
       )
     }, server=FALSE)
-    
-    alt_rating_proxy <- dataTableProxy("alternative_rating_table", session=session)
-    alt_rating_proxy$id <- "alternative_rating_table"
-    observeEvent(ratable_projects(), {
-      replaceData(alt_rating_proxy, ratable_projects() |> fselect(-version_id), resetPaging=FALSE, rownames = FALSE)
-    })
     
     alt_rating_update <- function() {
       updated_project_evaluations = get_updated_project_evaluations(user_coc$username, ratable_projects())
@@ -173,6 +176,19 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     #   alt_rating_update()
     # }, ignoreInit = TRUE) # end save_rating
     
+    # Download Template (to facilitate import)
+    output$download_template <- downloadHandler(
+      filename = "ORR-Alternative-Rating-Tool-Template.xlsx",
+      content = function(file) {
+        dt <- ratable_projects_no_vid()
+        writexl::write_xlsx(
+          dt,
+          path = file,
+          format_headers = FALSE,
+          col_names = TRUE
+        )
+      }
+    )
     
     # Importing --------------------
     observeEvent(input$import_rating, {
@@ -184,7 +200,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           size = "l",
           easyClose = FALSE,
           
-          # Step containers
+          # Step 1: Upload
           div(
             id = ns("step_upload"),
             fileInput(
@@ -194,12 +210,25 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
             ),
           ),
           
+          # Step 2: Preview (NEW)
+          hidden(
+            div(
+              id = ns("step_preview"),
+              h5("Data Preview"),
+              p("Here are the first 5 rows of your uploaded file. Review to ensure it uploaded correctly."),
+              DTOutput(ns("import_preview_table")) |> withSpinner()
+            )
+          ),
+          
+          # Step 3: Mapping fields
           hidden(
             div(
               id = ns("step_mapping"),
               uiOutput(ns("field_mapping_ui"))
             )
           ),
+          
+          hidden(div(id = ns("import_error_box"), class = "text-danger")),
           
           # Footer buttons (always visible, controlled by JS)
           footer = tagList(
@@ -214,40 +243,86 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     # Track current step
     current_step <- reactiveVal(1)
     
+    # Preview Table Render
+    output$import_preview_table <- renderDT({
+      req(rv_uploaded())
+      # req() delays rendering until Step 2 is active, which prevents DT from collapsing inside hidden UI elements
+      req(current_step() == 2) 
+      
+      cols_to_widen <- intersect(
+        c("project_name", "organization_name"), 
+        colnames(rv_uploaded())
+      )
+      
+      DT::datatable(
+        head(rv_uploaded(), 5),
+        options = list(
+          dom = 't',
+          scrollX = TRUE,
+          ordering = FALSE,
+          autoWidth = FALSE # Important so DT respects our custom widths
+        ),
+        rownames = FALSE
+      ) |> 
+        DT::formatStyle(
+          columns = cols_to_widen,
+          minWidth = "300px" # Adjust width as needed
+        )
+      
+    })
+    
     # handle import pop-up button visibility and labeling
     observe({
       req(user_coc$coc_version_id)
       req(input$import_rating)
       step <- current_step()
       
+      # Hide all steps by default
+      shinyjs::hide("step_upload")
+      shinyjs::hide("step_preview")
+      shinyjs::hide("step_mapping")
+      
       if (step == 1) {
         shinyjs::show("step_upload")
-        shinyjs::hide("step_mapping")
         shinyjs::hide("import_back")
         shinyjs::show("import_next")
         updateActionButton(session, ns("import_next"), label = "Next")
         
       } else if (step == 2) {
-        shinyjs::hide("step_upload")
+        shinyjs::show("step_preview")
+        shinyjs::show("import_back")
+        updateActionButton(session, ns("import_next"), label = "Submit")
+      } else if (step == 3) {
         shinyjs::show("step_mapping")
         shinyjs::show("import_back")
         updateActionButton(session, ns("import_next"), label = "Submit")
       }
     })
     
+    show_modal_error <- function(condition, message) {
+      if (!isTRUE(condition)) {
+        # Inject the text
+        shinyjs::html("import_error_box", message)
+        # Reveal the error box
+        shinyjs::show("import_error_box")
+        # Stop execution
+        req(FALSE) 
+      }
+    }
+    
+    
     # Next/Submit button
     observeEvent(input$import_next, {
+      shinyjs::hide("import_error_box") 
+      
       step <- current_step()
       
       if (step == 1) {
-        req(input$rating_file)
-        # Validate file type
-        ext <- tools::file_ext(input$rating_file$datapath)
+        # Initial validation
+        show_modal_error(!is.null(input$rating_file), "Please upload a file.")
         
-        shiny::validate(
-          need(ext %in% c("csv", "xlsx"),
-               "File must be a .csv or .xlsx")
-        )
+        ext <- tools::file_ext(input$rating_file$datapath)
+        show_modal_error(tools::file_ext(input$rating_file$datapath) %in% c("csv", "xlsx"), "File must be CSV or XLSX")
         
         # Read file
         uploaded <- tryCatch({
@@ -261,82 +336,73 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           NULL
         })
         
-        shiny::validate(
-          need(!is.null(uploaded), "Unable to read file.")
-        )
+        # Validate file came through
+        show_modal_error(!is.null(uploaded), "Unable to read file.")
         
         rv_uploaded(uploaded)
         
         # Move to mapping step
         current_step(2)
         
-      } else if (step == 2) {
-        # Submit logic
-        req(rv_uploaded())
+      } else if(step == 2) {
+        current_step(3)
+      } else if (step == 3) {
         # perform mapping + validation + update ratable_projects
-        mapping <- sapply(names(ratable_projects), function(f) input[[paste0("map_", f)]])
-        
-        # Remove empty mappings
-        mapping <- mapping[mapping != ""]
-        
-        imported <- uploaded[, mapping, drop = FALSE]
-        colnames(imported) <- names(mapping)
-        
-        # --------------------
-        # VALIDATION
-        # --------------------
-        
-        # 1️⃣ Must have project identifier
-        validate(
-          need(
-            "project_id" %in% names(imported) ||
-              all(c("organization_name", "project_name") %in% names(imported)),
-            "File must contain either project_id OR organization_name + project_name."
-          )
+        mapping <- sapply(
+          c("project_id","organization_name", "project_name","met_hud_thresholds","met_coc_thresholds","weighted_score"), 
+          function(f) input[[paste0("map_", f)]]
         )
         
-        # Pull valid projects
-        valid_projects <- get_coc_projects(user_coc$coc_version_id) |>
-          fselect(project_id, organization_name, project_name)
+        # Remove empty mappings (ones they didn't select in dropdown)
+        mapping <- mapping[mapping != ""]
         
-        if ("project_id" %in% names(imported)) {
-          validate(
-            need(
-              all(imported$project_id %in% valid_projects$project_id),
-              "Some project_id values not found in database."
+        # Rename to expected fields using mapping
+        imported <- rv_uploaded() |> rename(!!!mapping)
+
+        # VALIDATION: 1️⃣ Must have project identifier
+        show_modal_error(
+          "project_id" %in% names(imported) ||
+            all(c("organization_name", "project_name") %in% names(imported)), 
+          "File must contain either project_id OR organization_name + project_name."
+        )
+        
+        # If "project_id" isn't in upload, bring it in via org name + proj name
+        if (!"project_id" %in% names(imported)) {
+          imported <- imported |>
+            join(
+              ratable_projects() |> fselect(project_id, organization_name, project_name),
+              on = c("organization_name", "project_name"),
+              column = TRUE
             )
-          )
-        } else {
-          merged <- dplyr::left_join(
-            imported,
-            valid_projects,
-            by = c("organization_name", "project_name")
-          )
-          validate(
-            need(!any(is.na(merged$project_id)),
-                 "Some organization_name + project_name combinations not found.")
-          )
-          imported$project_id <- merged$project_id
         }
         
-        # 2️⃣ Validate lookups
-        validate_lookup <- function(col, ref_type) {
-          if (col %in% names(imported)) {
-            valid_vals <- LOOKUPS[
-              reference_type == ref_type
-            ]$value
-            
-            validate(
-              need(all(imported[[col]] %in% valid_vals),
-                   paste("Invalid values found in", col))
-            )
-          }
-        }
+        # VALIDATION: Uploaded projects not found in db
+        show_modal_error(
+          all(imported$project_id %in% ratable_projects()$project_id),
+          "Some projects in your upload were not found in the list of ratable projects."
+        )
         
-        validate_lookup("funding_action", "funding_action")
-        validate_lookup("target_population", "target_population")
-        validate_lookup("project_type", "project_type")
+        # VALIDATION: Ratable projects not in upload
+        show_modal_error(
+          all(ratable_projects()$project_id %in% imported$project_id),
+          "Some ratable projects were not found in your upload. Please make sure you have uploaded all projects you wish to rate."
+        )
         
+        # VALIDATION: Missing rating cols
+        rating_cols <- c("met_hud_thresholds","met_coc_thresholds","weighted_score") 
+        rating_cols_present <- rating_cols %in% names(imported)
+        
+        show_modal_error(
+          all(rating_cols_present),
+          glue::glue("Your upload file is missing {rating_cols_present[rating_cols]}")
+        )
+        
+        # just keep the columns we need
+        imported <- imported |> 
+          fselect(project_id, met_hud_thresholds, met_coc_thresholds, weighted_score)
+        
+        
+        # VALIDATION: Invalid boolean vals
         # 3️⃣ Boolean threshold conversion
         normalize_bool <- function(x) {
           x <- tolower(as.character(x))
@@ -344,40 +410,50 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           yes_vals <- c("1", "yes", "true", "y", "t")
           no_vals  <- c("0", "no", "false", "n", "f")
           
-          ifelse(x %in% yes_vals, 1,
-                 ifelse(x %in% no_vals, 0, NA))
+          fcase(
+            x %in% yes_vals, 1,
+            x %in% no_vals, 0, 
+            !is.na(x), -9,
+            default = NA
+          )
         }
         
-        if ("met_hud_thresholds" %in% names(imported)) {
-          imported$met_hud_thresholds <- normalize_bool(imported$met_hud_thresholds)
-          validate(need(!any(is.na(imported$met_hud_thresholds)),
-                        "Invalid boolean values in met_hud_thresholds"))
-          imported$met_hud_thresholds <- factor_yesno(imported$met_hud_thresholds)
+        for(v in c("met_hud_thresholds", "met_coc_thresholds")) {
+          imported[[v]] <- normalize_bool(imported[[v]])
+          show_modal_error(
+            !anyv(imported[[v]], -9), 
+            glue::glue("Invalid boolean values in {v}")
+          )
+          imported[[v]] <- factor_yesno(imported[[v]])
         }
         
-        if ("met_coc_thresholds" %in% names(imported)) {
-          imported$met_coc_thresholds <- normalize_bool(imported$met_coc_thresholds)
-          validate(need(!any(is.na(imported$met_coc_thresholds)),
-                        "Invalid boolean values in met_coc_thresholds"))
-          imported$met_coc_thresholds <- factor_yesno(imported$met_coc_thresholds)
-        }
+        # VALIDATION: Invalid score
+        show_modal_error(
+          all(is.na(imported$weighted_score) | imported$weighted_score %between% c(0, 100)),
+          "Weighted scores must be an integer between 0 and 100"
+        )
         
         # -------------
         # UPDATE REACTIVE
         # -------------
+        update_cols <- setdiff(names(imported), "project_id")
+        current <- copy(ratable_projects())
+        current[
+          imported, 
+          on = "project_id", 
+          (update_cols) := lapply(update_cols, function(col) {
+            fcoalesce(get(paste0("i.", col)), DT::coerceValue(get(col), get(paste0("i.", col))))
+          })
+        ]
         
-        current <- ratable_projects()
-        updated <- current |>
-          join(
-            imported, 
-            on ="project_id", 
-            suffix = c("", "_import")
-          )
-        
-        ratable_projects(updated)
-        
+        ratable_projects(current)
         removeModal()
+        current_step(1)
         showNotification("Import successful!", type = "message")
+        
+        alt_rating_update()
+        rerender_table(rerender_table() + 1)
+        showNotification("Data updated!")
       }
     })
     
@@ -391,8 +467,14 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
       
       uploaded <- rv_uploaded()
       upload_cols <- colnames(uploaded)
-      fields <- names(ratable_projects())
-      
+      fields_needed <- c(
+        "project_id",
+        "organization_name",
+        "project_name",
+        "met_hud_thresholds",
+        "met_coc_thresholds",
+        "weighted_score"
+      )
       
       tagList(
         h4("Map Fields"),
@@ -402,14 +484,14 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           col_widths = c(6, 6)
         ),
         
-        lapply(names(ratable_projects()), function(field) {
+        lapply(fields_needed, function(field) {
           layout_columns(
             div(field),
             selectInput(
               ns(paste0("map_", field)),
               label = NULL,
               choices = c("Choose one" = "", colnames(rv_uploaded())),
-              selected = ""
+              selected = if(field %in% colnames(rv_uploaded())) field else ""
             ),
             col_widths = c(6, 6)
           )

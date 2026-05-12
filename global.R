@@ -29,6 +29,7 @@ library(pagedown)
 # For Rating Report Cards
 library(mirai)
 library(promises)
+library(writexl)
 
 # ENVIRONMENT DETECTION -----------
 IN_DEV_MODE <- Sys.getenv("RSTUDIO") == "1" && !isTRUE(getOption("shiny.testmode"))
