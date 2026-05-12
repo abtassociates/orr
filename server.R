@@ -9,11 +9,7 @@ function(input, output, session) {
     given_name = NULL, # user's given_name as stored and returned by cognito
     email = NULL,  # user's email as stored and returned by cognito
     active_tab = NULL, # last active tab
-    settings = list(
-      cols_to_hide = NULL, # which project columns to display
-      rating_method = NULL, # in-app vs alternative rating method
-      rating_tab = NULL
-    ),
+    settings = NULL, # user settings (cols hidden from inventory, rating method, etc.)
     
     requests_updated = 0,
     projects_updated = 0,
@@ -124,6 +120,9 @@ function(input, output, session) {
       DELETE FROM user_presence WHERE session_id = $1", 
       params = list(session$token)
     )
+    
+    if(!is.null(user_coc$coc_version_id))
+      update_user_coc_setting(user_coc, "active_tab", input$nav)
   })
   
   observeEvent(nav_control(), {
@@ -136,16 +135,17 @@ function(input, output, session) {
   # --- Slide-In Sidebar ----
   help_id <- mod_slide_in_instructions_server("instructions", user_coc, nav_control)
   
-  shiny::onStop( function(){
-    cat("Running onStop")
+  session$onSessionEnded(function() {
+    p <- get_db_pool()
+    if(!p$valid) {
+      message("onSessionEnded, but no pool available so returning now.")
+      return(NULL)
+    }
     
-    ## record user settings
-    update_all_user_settings(user_coc, tab_name = input$nav)
-    # Get a dev version that persists beyond the app 
-    # pool::poolClose(get_db_pool())
-    
-    # if (shiny::isRunning()) {
-    #   try(tools::pskill(tunnel), silent = TRUE)
-    # }
-  }, session = session)
+    message("onSessionEnded, deleting from user presence.")
+    db_execute(
+      "DELETE FROM user_presence WHERE session_id = $1;",
+      params = list(session$token)
+    )
+  })
 }

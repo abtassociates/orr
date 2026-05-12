@@ -79,7 +79,7 @@ mod_requests_server <- function(id, user_coc) {
       
       datatable(
         data,
-        colnames = unname(requests_variable_labels[names(data)]),
+        colnames = unname(variable_labels[names(data)]),
         escape=-1,
         style = 'default',
         options = list(

@@ -64,8 +64,6 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
         
       editable_cols <- c("met_hud_thresholds", "met_coc_thresholds", "weighted_score")
       
-      colnames <- unname(variable_labels[names(data)])
-      
       header_cb <- get_js_script("alternative_dt.js")
       header_cb <- gsub('__MET_HUD_INPUT_ID__', ns("set_met_hud_thresholds"), header_cb)
       header_cb <- gsub('__MET_COC_INPUT_ID__', ns("set_met_coc_thresholds"), header_cb)
@@ -93,7 +91,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
             backgroundColor = USER_ENTRY_BG_COLOR
           )
         ),
-        colnames = colnames,
+        colnames = unname(variable_labels[names(data)]),
         cols_to_disable = setdiff(names(data), editable_cols),
         header_cb = header_cb,
         options = list(
