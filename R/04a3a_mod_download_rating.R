@@ -70,7 +70,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
               project_name = payload$project_name,
               total = payload$total,
               max_pts = payload$max_pts,
-              file = out_file
+              file = out_file,
+              funding_action = payload$funding_action
             )
             return(out_file)
             
@@ -91,7 +92,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
                 project_name = proj_name,
                 total = fsum(df$rating_score),
                 max_pts = fsum(df$max_point_value),
-                file = out_file
+                file = out_file,
+                funding_action = payload$funding_action
               )
               files_to_zip <- c(files_to_zip, out_file)
             }
@@ -153,7 +155,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         data = df,
         project_name = selected_project()$project_name,
         total = fsum(df$rating_score),
-        max_pts = fsum(df$max_point_value)
+        max_pts = fsum(df$max_point_value),
+        funding_action = funding_action
       )
       
       ready_file$filename <- payload$filename
@@ -218,7 +221,9 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         filename = "Blank_Template.pdf",
         data = df,
         project_name = "Blank Template",
-        total = 0, max_pts = 0
+        total = 0, 
+        max_pts = 0,
+        funding_action = funding_action
       )
       
       ready_file$filename <- payload$filename
@@ -240,7 +245,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       payload <- list(
         type = "zip",
         filename = "All_Reports.zip",
-        data = all_projects_factors_and_scores()
+        data = all_projects_factors_and_scores(),
+        funding_action = funding_action
       )
       
       ready_file$filename <- payload$filename
