@@ -165,8 +165,13 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     })
     
     iv <- shinyvalidate::InputValidator$new()
-    iv$add_rule("project_type_filter", sv_required())
     iv$add_rule("target_population_filter", sv_required())
+    
+    iv_proj <- shinyvalidate::InputValidator$new()
+    iv_proj$add_rule("project_type_filter", sv_required())
+    iv_proj$condition(cond = ~ funding_action == "")
+    iv$add_validator(iv_proj)
+    
     observeEvent(input$dl_blank, {
       showModal(
         modalDialog(
@@ -204,7 +209,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       df <- get_rating_factors_by_pop_target_type(
         user_coc$coc_version_id, 
         funding_action_id, 
-        input$project_type_filter, 
+        if(funding_action == "Renew") input$project_type_filter else NA,
         input$target_population_filter
       )
       
