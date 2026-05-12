@@ -341,7 +341,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           ),
           
           hidden(
-            p(id = ns("custom_factor_helper"), "A negative value represents that maximum number of points you can deduct from a project for this factor")
+            p(id = ns("custom_factor_helper"), "A negative value represents the maximum number of points you can deduct from a project for this factor")
           ),
           
           footer = tagList(
