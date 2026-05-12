@@ -184,13 +184,12 @@ get_sqlite_db <- function() {
   )
 }
 
-# Get a dev version that persists beyond the app 
-# shiny::onStop(function() {
-#   pool::poolClose(get_db_pool())
-# })
-
 close_pool <- function() {
-  pool::poolClose(get_db_pool())
+  tryCatch({
+    pool::poolClose(get_db_pool())
+  }, error = function(e) {
+    message(e)
+  })
 }
 
 get_db_name <- function(dbname = NULL) {

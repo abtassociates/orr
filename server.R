@@ -9,11 +9,7 @@ function(input, output, session) {
     given_name = NULL, # user's given_name as stored and returned by cognito
     email = NULL,  # user's email as stored and returned by cognito
     active_tab = NULL, # last active tab
-    settings = list(
-      cols_to_hide = NULL, # which project columns to display
-      rating_method = NULL, # in-app vs alternative rating method
-      rating_tab = NULL
-    ),
+    settings = NULL, # user settings (cols hidden from inventory, rating method, etc.)
     
     requests_updated = 0,
     projects_updated = 0,
@@ -64,10 +60,22 @@ function(input, output, session) {
       # if an error occurred during login
       if (is.null(current_user)){
         message('user is NULL')
+        
+        # 2. CLEAR COOKIE: Remove the cookie so we don't get stuck in an auto-redirect loop
+        shinyjs::runjs("clear_cookie();")
+        
         #hideElement("login_welcome_text")
         user_coc$auth <- FALSE
       } else {
         message('user found!')
+        
+        # 3. SET COOKIE: Set a browser cookie to expire in 30 minutes
+        shinyjs::runjs("
+          let expires = new Date();
+          expires.setTime(expires.getTime() + (60 * 60 * 1000)); // 60 minutes, to match Cognito
+          document.cookie = 'cognito_session=active;expires=' + expires.toUTCString() + ';path=/';
+        ")
+        
         # check if user is in allowed user list
         if (!(str_to_lower(current_user$email) %in% str_to_lower(get_db_tbl('users')$username))){
           message("new user added to allowed list")
@@ -91,6 +99,13 @@ function(input, output, session) {
         user_coc$auth <- TRUE
         user_coc$username <- current_user$email
         user_coc$given_name <- current_user$given_name
+        
+
+        # 4. CLEAN THE URL: Strip the single-use ?code=... from the URL. 
+        # If the user refreshes, they will hit the clean URL, our cookie logic 
+        # will catch them, and seamlessly fetch a new code from Cognito.
+        updateQueryString(session$clientData$url_pathname, mode = "replace", session = session)
+        
         nav_control("dashboard")
         session$sendCustomMessage("auth_state", TRUE)
       }
@@ -108,6 +123,9 @@ function(input, output, session) {
       DELETE FROM user_presence WHERE session_id = $1", 
       params = list(session$token)
     )
+    
+    if(!is.null(user_coc$coc_version_id))
+      update_user_coc_setting(user_coc, "active_tab", input$nav)
   })
   
   observeEvent(nav_control(), {
@@ -120,16 +138,17 @@ function(input, output, session) {
   # --- Slide-In Sidebar ----
   help_id <- mod_slide_in_instructions_server("instructions", user_coc, nav_control)
   
-  shiny::onStop( function(){
-    cat("Running onStop")
+  session$onSessionEnded(function() {
+    p <- get_db_pool()
+    if(!p$valid) {
+      message("onSessionEnded, but no pool available so returning now.")
+      return(NULL)
+    }
     
-    ## record user settings
-    update_all_user_settings(user_coc, tab_name = input$nav)
-    # Get a dev version that persists beyond the app 
-    # pool::poolClose(get_db_pool())
-    
-    # if (shiny::isRunning()) {
-    #   try(tools::pskill(tunnel), silent = TRUE)
-    # }
-  }, session = session)
+    message("onSessionEnded, deleting from user presence.")
+    db_execute(
+      "DELETE FROM user_presence WHERE session_id = $1;",
+      params = list(session$token)
+    )
+  })
 }

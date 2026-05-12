@@ -1,6 +1,8 @@
 mod_inventory_ui <- function(id) {
   ns <- NS(id)
   
+  col_names <- get_project_col_names()
+  
   nav_panel(
     "Review Projects",
     icon = icon("list-check"),
@@ -23,18 +25,19 @@ mod_inventory_ui <- function(id) {
           circle = FALSE,
           
           prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
-          pickerInput(ns('projects_col_selections'), label = 'Choose Fields to Display',
-                      choices = setNames(initial_cols_to_show, inventory_variable_labels[initial_cols_to_show]),
-                      selected = initial_cols_to_show, 
-                      multiple = TRUE, 
-                      
-                      options = pickerOptions(
-                        selectedTextFormat = 'count',
-                        countSelectedText = '{0} Fields Displayed',
-                        selectAllText = 'Select All',
-                        deselectAllText = 'De-select All',
-                        actionsBox = TRUE
-                      )
+          pickerInput(
+            ns('projects_col_selections'), label = 'Choose Fields to Display',
+            choices = setNames(col_names, variable_labels[col_names]),
+            selected = col_names,
+            multiple = TRUE, 
+            
+            options = pickerOptions(
+              selectedTextFormat = 'count',
+              countSelectedText = '{0} Fields Displayed',
+              selectAllText = 'Select All',
+              deselectAllText = 'De-select All',
+              actionsBox = TRUE
+            )
           )
         ),
         mod_user_presence_ui(ns("presence")),
@@ -85,6 +88,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     # binary indicator for whether a new row/project has been added
     is_new_project <- reactiveVal(FALSE)
     
+    calculated_cols <- c("ch_bed_inventory", "vet_bed_inventory", "youth_bed_inventory")
+    
     # # yhdp info for passing around
     # yhdp_replacement_info <- reactiveValues(
     #   info = NULL,
@@ -93,6 +98,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     #   funding_source = NULL
     # )
     
+    updated_col_selections_from_db <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(0)
     
     # Add fields only displayed in Inventory
@@ -116,8 +122,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     }
     
     # Initialize projects_data ------
-    observe({
-      req(user_coc$coc_version_id, refresh_trigger())
+    observeEvent(c(user_coc$coc_version_id, refresh_trigger()), {
       data <- get_coc_projects(user_coc$coc_version_id) |>
         fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
@@ -134,31 +139,17 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         add_calculated_fields()
 
       projects_data(data)
-    })
-    
-    ## after initial DT table creation, show/hide any columns from user settings
-    observe({
-      req(projects_data())
-      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       
-      initial_cols_to_hide <- setdiff(names(projects_data()), initial_cols_to_show )
-      
-      # retrieve user columns from user-settings table
-      user_previous_hidden <- get_project_fields_to_hide(get_db_pool(),user_coc$coc_version_id, user_coc$username)
-      user_cols_to_hide <- gsub('disp_','',user_previous_hidden)
-
-      if(length(user_cols_to_hide) > 0){
-        initial_cols_to_hide <- union(initial_cols_to_hide, user_cols_to_hide)
-
-        ## update selections checkboxes with full set of initially hidden columns
-        updatePickerInput(session, inputId = 'projects_col_selections', selected = setdiff(initial_cols_to_show, initial_cols_to_hide))
+      cols_to_hide <- get_user_setting(user_coc, "inventory_cols_to_hide")
+      cols_to_show <- if(length(cols_to_hide) > 0) {
+        setdiff(names(data), c(strsplit(cols_to_hide, ",")[[1]], "version_id", "created_by"))
+      } else {
+        setdiff(names(data), c("version_id", "created_by"))
       }
       
-      ## update DT table with full set of initially hidden columns
-      hideCols(projects_table_proxy, initial_cols_to_hide)
-      showCols(projects_table_proxy, setdiff(initial_cols_to_show, initial_cols_to_hide))
-      
-    })
+      updatePickerInput(session, inputId = 'projects_col_selections', selected = cols_to_show)
+      updated_col_selections_from_db(TRUE) 
+    }, ignoreInit = TRUE)
     
     # Projects datatable -----
     output$projects_table <- renderDT({
@@ -184,23 +175,23 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       
       
       # More readable col header text
-      colnames <- inventory_variable_labels[names(data)]
+      colnames <- variable_labels[names(data)]
       colnames["funding_action"] <- helper_html
       colnames <- unname(colnames)
       
       ## initially, only hide pre-specified columns; later, will hide user settings-based ones
-      initial_cols_to_hide <- setdiff(names(data), initial_cols_to_show )
-      col_inds_to_hide <- match(initial_cols_to_hide, names(data)) - 1
+      cols_to_hide <- setdiff(names(data), isolate(input$projects_col_selections)) |> append(c("version_id", "created_by"))
       
       funding_action_idx <- match("funding_action", names(data)) - 1
       grant_number_idx <- match("grant_number", names(data)) - 1
+      
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
         initial_filter = initial_filter,
         column_defs = list(
           list(
-            targets = col_inds_to_hide, 
+            targets = which(names(data) %in% cols_to_hide) - 1, 
             className = "hidden",
             visible = FALSE
           ),
@@ -290,7 +281,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           )
         ),
         colnames = colnames,
-        cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
+        cols_to_disable = c(calculated_cols, "dv_fam_beds","dv_ind_beds"),
         options = list(
           paging = TRUE,
           pageLength = 100,
@@ -356,16 +347,17 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       } else {
         updatePickerInput(session, inputId = 'projects_col_selections', selected = setdiff(input$projects_col_selections, bed_field_names))
       }
-    })
+    }, ignoreInit = TRUE)
     
     # Update DT table with column changes made in dropdown (pickerInput)
     observeEvent(input$projects_col_selections, {
       req(user_coc$auth)
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
       req(projects_data())
-        
-      cols_to_hide <- match(setdiff(names(projects_data()), input$projects_col_selections), names(projects_data())) - 1
-      cols_to_show <- which(names(projects_data()) %in% input$projects_col_selections) - 1
+      
+      colnames_to_hide <- setdiff(names(projects_data()), c(input$projects_col_selections, "version_id", "created_by"))
+      cols_to_hide <- match(colnames_to_hide, names(projects_data())) - 1
+      cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
       # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
       
       ## show and hide columns as needed
@@ -377,9 +369,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
         showCols(projects_table_proxy, show = cols_to_show)
       }
       projects_table_proxy$id <- "projects_table"
-       
-      user_coc$settings$cols_to_hide <- names(projects_data())[cols_to_hide+1]
-    })
+      
+      update_user_coc_setting(user_coc, "inventory_cols_to_hide", colnames_to_hide)
+    }, ignoreInit = TRUE)
     
     # Update projects -----
     ## consolidated update function
@@ -689,7 +681,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       data <- giw_data() |>
         fselect(-date_created, -date_updated, -created_by, -updated_by, -version_id)
       
-      names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
+      names(data) <- variable_labels[match(names(data), names(variable_labels))]
       
       datatable(
         data,

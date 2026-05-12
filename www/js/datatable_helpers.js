@@ -50,8 +50,7 @@ function getColName(cell, table) {
   return colName.replace(' Ⓘ','');
 }
 
-function is_funding_col(colName) {
-  let c = colName.toUpperCase();
+function is_funding_col(c) {
   if(c == 'FUNDING ACTION') return false;
   return c.includes('FUNDING') || c.includes('AMOUNT');
 }
@@ -69,7 +68,7 @@ function formatUSD(amount) {
 }
 
 function getFormattedVal(colName, val) {
-  return is_funding_col(colName) ? formatUSD(val) : val.toLocaleString('en-US');
+  return is_funding_col(colName.toUpperCase()) ? formatUSD(val) : val.toLocaleString('en-US');
 }
 
 function setCellText(cell, val, table) {
@@ -95,7 +94,8 @@ function get_max_length(colName) {
   let c = colName.toUpperCase();
   if(c.includes('BED')) return 5;
   if(c == 'WEIGHTED_SCORE') return 3;
-  if(is_funding_col(colName)) return 10;
+  if(is_funding_col(c)) return 10;
+  if(c == "GEO CODE") return 9; /*# the actual max is 10 but a "#" is prepended AFTER this check*/
   return null;
 }
 

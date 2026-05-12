@@ -173,8 +173,10 @@ function(settings, json) {
       // --- Update ---
       $input.off('blur').on('blur', function() {
         if(noDataChange(this.value, cell)) 
-          setCellText(cell, cell.data());
+          revertCell(cell, table);
         
+        if (colName === "GEO CODE" && !this.value.startsWith("#"))
+          this.value = `#${this.value}`;
         updateTableAndShiny(cell, table, this.value);
       });
     }, 500);

@@ -4,25 +4,29 @@ mod_download_rating_ui <- function(id) {
   card_header(
     class = "d-flex justify-content-between align-items-center",
     "Project Rating",
-    div(
-      class = "d-flex align-items-center",
-      # This will show the spinner or the download link when ready
-      uiOutput(ns("download_status"), inline = TRUE),
+    hidden(
       div(
-        class = "dropdown ms-2",
-        tags$button(
-          id = ns("generate_report_btn"),
-          class = "btn btn-primary dropdown-toggle btn-sm",
-          type = "button",
-          `data-bs-toggle` = "dropdown",
-          icon("file"), " Generate Report Card"
-        ),
-        tags$ul(
-          class = "dropdown-menu dropdown-menu-end",
-          tags$li(actionLink(ns("dl_current"), "Current Project (PDF)", class = "dropdown-item", style="display:none !important;")),
-          tags$li(actionLink(ns("dl_blank"), "Blank Template (PDF)", class = "dropdown-item")),
-          tags$hr(id = ns("hr_bar"), class="dropdown-divider", style="display:none !important;"),
-          tags$li(actionLink(ns("dl_all"), "All Projects Summary (ZIP)", class = "dropdown-item", style="display:none !important;"))
+        id = ns("rating-download-container"),
+        class = "d-flex align-items-center",
+        # This will show the spinner or the download link when ready
+        uiOutput(ns("download_status"), inline = TRUE),
+        div(
+          class = "dropdown ms-2",
+          tags$button(
+            id = ns("generate_report_btn"),
+            class = "btn btn-primary dropdown-toggle btn-sm",
+            type = "button",
+            `data-bs-toggle` = "dropdown",
+            icon("file"), " Generate Report Card"
+          ),
+          tags$ul(
+            class = "dropdown-menu dropdown-menu-end",
+            style = "z-index: 10000",
+            tags$li(actionLink(ns("dl_current"), "Current Project (PDF)", class = "dropdown-item")),
+            tags$li(actionLink(ns("dl_blank"), "Blank Template (PDF)", class = "dropdown-item")),
+            tags$hr(id = ns("hr_bar"), class="dropdown-divider"),
+            tags$li(actionLink(ns("dl_all"), "All Projects Summary (ZIP)", class = "dropdown-item"))
+          )
         )
       )
     )
@@ -39,17 +43,14 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     ready_file <- reactiveValues(path = NULL, filename = NULL)
     funding_action_id <- get_lookup_refid(funding_action, "funding_action")
     
-    all_factors_and_scores <- reactive({
-      req(user_coc[[paste0("customized_rating_factors_updated_", funding_action)]])
+    all_projects_factors_and_scores <- reactive({
+      req(user_coc$coc_version_id)
       get_all_rating_factors_and_scores(user_coc$coc_version_id, funding_action_id)
     })
     
-    observeEvent(c(selected_project(), all_factors_and_scores()), {
-      shinyjs::toggle(id = "generate_report_btn", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
+    observeEvent(c(selected_project(), all_projects_factors_and_scores()), {
+      shinyjs::toggle(id = "rating-download-container", condition = isTruthy(fnrow(all_projects_factors_and_scores()) > 0))
       shinyjs::toggle(id = "dl_current", condition = isTruthy(fnrow(selected_project()) > 0))
-      shinyjs::toggle(id = "dl_blank", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
-      shinyjs::toggle(id = "dl_all", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
-      shinyjs::toggle(id = "hr_bar", condition = isTruthy(fnrow(all_factors_and_scores()) > 0))
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # ----------------------------------------------------
@@ -70,7 +71,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
               project_name = payload$project_name,
               total = payload$total,
               max_pts = payload$max_pts,
-              file = out_file
+              file = out_file,
+              funding_action = payload$funding_action
             )
             return(out_file)
             
@@ -91,7 +93,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
                 project_name = proj_name,
                 total = fsum(df$rating_score),
                 max_pts = fsum(df$max_point_value),
-                file = out_file
+                file = out_file,
+                funding_action = payload$funding_action
               )
               files_to_zip <- c(files_to_zip, out_file)
             }
@@ -153,7 +156,8 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         data = df,
         project_name = selected_project()$project_name,
         total = fsum(df$rating_score),
-        max_pts = fsum(df$max_point_value)
+        max_pts = fsum(df$max_point_value),
+        funding_action = funding_action
       )
       
       ready_file$filename <- payload$filename
@@ -165,26 +169,31 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     })
     
     iv <- shinyvalidate::InputValidator$new()
-    iv$add_rule("project_type_filter", sv_required())
     iv$add_rule("target_population_filter", sv_required())
+    
+    iv_proj <- shinyvalidate::InputValidator$new()
+    iv_proj$add_rule("project_type_filter", sv_required())
+    iv_proj$condition(cond = ~ funding_action == "")
+    iv$add_validator(iv_proj)
+    
     observeEvent(input$dl_blank, {
       showModal(
         modalDialog(
           title = 'Blank Report Card Specifications',
-          project_type_dropdown <- selectInput(
-            inputId = ns("project_type_filter"),
-            label = "Select project type",
-            choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES]
-          ),
-          
-         if(funding_action == "Renew") 
-           target_pop_dropdown <- selectInput(
+          if(funding_action == "Renew") 
+            project_type_dropdown <- selectInput(
+              inputId = ns("project_type_filter"),
+              label = "Select project type",
+              choices = get_labelled_lookups("project_type")[MAIN_PROJECT_TYPES]
+            )
+          else NULL,
+         
+          target_pop_dropdown <- selectInput(
             inputId = ns("target_population_filter"),
             label = "Select special populations",
             choices = get_labelled_lookups("target_population")[c("DV", "General")]
-          )
-         else
-           NULL,
+          ),
+          
           footer = tagList(
             actionButton(ns('blank_download'), label='Confirm', class='btn-primary'),
             modalButton(label='Cancel')
@@ -204,7 +213,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       df <- get_rating_factors_by_pop_target_type(
         user_coc$coc_version_id, 
         funding_action_id, 
-        input$project_type_filter, 
+        if(funding_action == "Renew") input$project_type_filter else NA,
         input$target_population_filter
       )
       
@@ -213,7 +222,9 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
         filename = "Blank_Template.pdf",
         data = df,
         project_name = "Blank Template",
-        total = 0, max_pts = 0
+        total = 0, 
+        max_pts = 0,
+        funding_action = funding_action
       )
       
       ready_file$filename <- payload$filename
@@ -225,7 +236,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     })
     
     observeEvent(input$dl_all, {
-      if(fnrow(all_factors_and_scores()) == 0) {
+      if(fnrow(all_projects_factors_and_scores()) == 0) {
         showNotification("No projects have scores!", type = "error")
         req(FALSE)
       }
@@ -234,8 +245,9 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       
       payload <- list(
         type = "zip",
-        filename = "All_Reports.zip",
-        data = all_factors_and_scores()
+        filename = glue::glue("All_{funding_action}_Project_Reports.zip"),
+        data = all_projects_factors_and_scores(),
+        funding_action = funding_action
       )
       
       ready_file$filename <- payload$filename

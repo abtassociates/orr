@@ -1,4 +1,4 @@
-build_report <- function(data, project_name, total, max_pts, file) {
+build_report <- function(data, project_name, total, max_pts, file, funding_action) {
   
   # Handle NULL project name for the Blank Template
   p_name_display <- ifelse(is.null(project_name), "Blank Template", project_name)
@@ -12,9 +12,12 @@ build_report <- function(data, project_name, total, max_pts, file) {
       Goal = goal,
       Performance = performance,
       Score = rating_score,
-      `Max Pts` = max_point_value
+      `Total Pts` = max_point_value
     ) %>%
     dplyr::mutate(dplyr::across(dplyr::everything(), ~ifelse(is.na(.) | . == "NA", "", as.character(.))))
+  
+  if(funding_action == "New")
+    table_data$Subgroup <- NULL
   
   # 2. Build the gt Table
   gt_table <- table_data %>%
@@ -28,7 +31,7 @@ build_report <- function(data, project_name, total, max_pts, file) {
     ) %>%
     summary_rows(
       groups = TRUE,
-      columns = c(Score, `Max Pts`),
+      columns = c(Score, `Total Pts`),
       fns = list(label = "Subtotal", fn = fsum),
       side = "top"
     ) %>%
@@ -42,20 +45,23 @@ build_report <- function(data, project_name, total, max_pts, file) {
       column_labels.font.weight = "bold"
     ) %>%
     cols_width(
-      Subgroup ~ px(100),
       Factor ~ px(300),
       Goal ~ px(80),
       Performance ~ px(80),
       Score ~ px(60),
-      `Max Pts` ~ px(60)
+      `Total Pts` ~ px(60)
     ) %>%
-    cols_align(align = "center", columns = c(Score, `Max Pts`)) %>%
+    cols_align(align = "center", columns = c(Score, `Total Pts`))
+  
+  if(funding_action == "Renew")
+    gt_table <- gt_table %>%
+      cols_width(Subgroup ~ px(100)) %>%
     
-    # 1. CHANGED: Handle the "Empty Subgroup" logic to show N/A
-    text_transform(
-      locations = cells_body(columns = Subgroup),
-      fn = function(x) ifelse(x == "", "N/A", x)
-    )
+      # Handle the "Empty Subgroup" logic to show N/A
+      text_transform(
+        locations = cells_body(columns = Subgroup),
+        fn = function(x) ifelse(x == "", "N/A", x)
+      )
   
   
   # Save as HTML And use pagedown to "print" the HTML to PDF

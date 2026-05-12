@@ -126,8 +126,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     
     make_factor_row <- function(id, project_type, target_population, text, goal, points, selected, group_name) {
       iv$add_rule(paste0("goal_", id), ~if (isTRUE(nchar(.) > goal_char_limit)) glue::glue("Limited to {goal_char_limit} characters"))
-      iv$add_rule(paste0("max_point_value_", id), sv_numeric())
-      iv$add_rule(paste0("max_point_value_", id), sv_between(-999.9, 999.9))
       
       pt_class <- if(is.na(project_type)) "pt-all" else paste0("pt-", project_type)
       tp_class <- if(is.na(target_population)) "tp-all" else paste0("tp-", target_population)
@@ -143,7 +141,17 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         div(style = "flex: 1;", get_lookup_label(target_population, "target_population")),
         div(style = "flex: 3; font-size: 0.9rem;", HTML(text)),
         div(style = "flex: 1;", textInput(ns(paste0("goal_", id)), NULL, value = goal, width = "100%", updateOn = "blur")),
-        div(style = "flex: 0 0 80px;", numericInput(ns(paste0("max_point_value_", id)), NULL, value = points, step = 0.1, width = "100%", updateOn = "blur"))
+        div(style = "flex: 0 0 80px;", 
+            shinyWidgets::autonumericInput(
+              inputId = ns(paste0("max_point_value_", id)), 
+              label = NULL, 
+              value = points,
+              align = "center",
+              width = "100%",
+              decimalPlaces = 1,
+              minimumValue = 0,
+              maximumValue = 999.9
+            ))
       )
     }
     
@@ -164,7 +172,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           div(style = "flex: 1;", "Target Population"),
           div(style = "flex: 3;", "Rating Factor"),
           div(style = "flex: 1;", "Goal"),
-          div(style = "flex: 0 0 80px;", "Max Points")
+          div(style = "flex: 0 0 80px;", "Total Points")
         ),
         hr(),
         factor_rows
@@ -303,9 +311,6 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     iv_custom <- shinyvalidate::InputValidator$new()
     iv_custom$add_rule("custom_text", sv_required())
     iv_custom$add_rule("custom_text", ~ if(. %in% all_coc_factors()$rating_factor_text) "You already have a rating factor with this text.")
-    ## validate that max point value of >= 0
-    iv_custom$add_rule("custom_points",  ~ if(is.na(.)) "Please input a numeric value")
-    iv_custom$add_rule("custom_points", sv_between(-999.9, 999.9))
     iv_custom$add_rule("custom_goal", ~ if (isTRUE(nchar(.) > goal_char_limit)) "Limited to 10 characters")
     
     observeEvent(input$add_custom_factor, {
@@ -324,7 +329,20 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
 
           textInput(ns("custom_text"), label = "Rating Factor*", placeholder = "Enter custom factor text"),
           textInput(ns("custom_goal"), label = "Factor/Goal", placeholder = "Enter goal"),
-          numericInput(ns("custom_points"), min = -999.9, max = 999.9, label = "Max Point Value*", value = 0, step = 0.1),
+          
+          shinyWidgets::autonumericInput(
+            inputId = ns("custom_points"),
+            label = HTML("Total Point Value*<br><p style='font-size: 0.8em'; margin-bottom: 0px;>(can be negative)</span>"), 
+            value = NA,
+            align = "center",
+            decimalPlaces = 1,
+            minimumValue = -999.9,
+            maximumValue = 999.9
+          ),
+          
+          hidden(
+            p(id = ns("custom_factor_helper"), "A negative value represents the maximum number of points you can deduct from a project for this factor")
+          ),
           
           footer = tagList(
             actionButton(ns("submit_custom_factor"), "Submit", class = "btn-primary"),
@@ -334,6 +352,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       )
     }, ignoreInit = TRUE)
     
+    observeEvent(input$custom_points, {
+      shinyjs::toggle(id = "custom_factor_helper", condition = input$custom_points < 0)
+    })
     observeEvent(input$cancel_custom_factor, {
       iv_custom$disable()
       removeModal()
@@ -349,7 +370,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         coc_version_id = user_coc$coc_version_id,
         selected = TRUE,
         goal = input$custom_goal,
-        max_point_value = as.numeric(input$custom_points),
+        max_point_value = as.numeric(ifelse(is.null(input$custom_points), NA, input$custom_points)),
         created_by = user_coc$username
       )
       
@@ -368,7 +389,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
         factor_subgroup = NA,
         selected = TRUE,
         goal = input$custom_goal,
-        max_point_value = input$custom_points,
+        max_point_value = ifelse(is.null(input$custom_points), NA, input$custom_points),
         created_by = user_coc$username
       ) |> cbind(pt_tp_combo)
       
@@ -399,12 +420,12 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
     # ------- Save filters to User settings --------------
     observeEvent(input$project_type, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings[[glue::glue('rating_{id}_project_type')]] <- input$project_type
+      update_user_coc_setting(user_coc, "project_type", input$project_type)
     }, ignoreInit = TRUE)
     
     observeEvent(input$target_population, {
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
-      user_coc$settings[[glue::glue('rating_{id}_target_population')]] <- input$target_population
+      update_user_coc_setting(user_coc, "target_population", input$target_population)
     }, ignoreInit = TRUE)
     
     
@@ -435,10 +456,12 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       input_names <- lapply(input_prefixes, paste0, "_", factors$rating_factor_id) |> unlist()
       req(all(input_names %in% names(input)))
       
-      setNames(
-        lapply(input_names, function(i) input[[i]]), 
-        input_names
-      )
+      s <- lapply(input_names, function(i) {
+        val <- input[[i]]
+        if(is.null(val)) NA else val
+      })
+      names(s) <- input_names
+      s
     })
     
     # 3. Difference Engine: Find only what changed

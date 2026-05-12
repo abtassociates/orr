@@ -22,6 +22,8 @@ page_navbar(
         aws_auth_redirect, 
         aws_auth_logout
       ))),
+      
+      tags$script(src = "js/auth_cookie.js"),
       tags$script(src = "js/disconnect.js"),
       tags$script(src = "js/datatable_helpers.js") # Loaded once for the whole app
     ), # end tags$head
