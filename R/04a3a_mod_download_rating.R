@@ -245,7 +245,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
       
       payload <- list(
         type = "zip",
-        filename = "All_Reports.zip",
+        filename = glue::glue("All_{funding_action}_Project_Reports.zip"),
         data = all_projects_factors_and_scores(),
         funding_action = funding_action
       )
