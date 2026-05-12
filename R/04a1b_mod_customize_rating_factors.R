@@ -172,7 +172,7 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           div(style = "flex: 1;", "Target Population"),
           div(style = "flex: 3;", "Rating Factor"),
           div(style = "flex: 1;", "Goal"),
-          div(style = "flex: 0 0 80px;", "Max Points")
+          div(style = "flex: 0 0 80px;", "Total Points")
         ),
         hr(),
         factor_rows
@@ -332,12 +332,16 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
           
           shinyWidgets::autonumericInput(
             inputId = ns("custom_points"),
-            label = "Max Point Value*", 
+            label = HTML("Total Point Value*<br><p style='font-size: 0.8em'; margin-bottom: 0px;>(can be negative)</span>"), 
             value = NA,
             align = "center",
             decimalPlaces = 1,
             minimumValue = -999.9,
             maximumValue = 999.9
+          ),
+          
+          hidden(
+            p(id = ns("custom_factor_helper"), "A negative value represents that maximum number of points you can deduct from a project for this factor")
           ),
           
           footer = tagList(
@@ -348,6 +352,9 @@ mod_customize_rating_factors_server <- function(id, user_coc, funding_action, na
       )
     }, ignoreInit = TRUE)
     
+    observeEvent(input$custom_points, {
+      shinyjs::toggle(id = "custom_factor_helper", condition = input$custom_points < 0)
+    })
     observeEvent(input$cancel_custom_factor, {
       iv_custom$disable()
       removeModal()

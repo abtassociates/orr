@@ -199,11 +199,18 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
                     value = rating_score,
                     align = "center",
                     decimalPlaces = 0,
-                    minimumValue = -999,
-                    maximumValue = max_points
+                    minimumValue = ifelse(max_points < 0, max_points, 0),
+                    maximumValue = ifelse(max_points < 0, 0, max_points)
                   )) |>
                     tagAppendAttributes(class = 'score-input', `data-group` = group_id),
-                p(paste("out of", max_points), style="padding-top: 5px;")
+                p(
+                  ifelse(
+                    max_points > 0, 
+                    paste("out of", max_points), 
+                    paste0("(deduct up to ", max_points, ")")
+                  ),
+                  style="padding-top: 5px;"
+                )
               )
             }
           )
