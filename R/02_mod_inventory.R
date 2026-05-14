@@ -123,6 +123,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     
     # Initialize projects_data ------
     observeEvent(c(user_coc$coc_version_id, refresh_trigger()), {
+      req(user_coc$coc_version_id)
+      
       data <- get_coc_projects(user_coc$coc_version_id) |>
         fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
