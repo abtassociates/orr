@@ -655,9 +655,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             funding_action %in% c("New","Expand"), "New, Bonus-Ineligible"
           ),
           
-          met_hud_thresholds = fcoalesce(met_hud_thresholds, FALSE),
-          met_coc_thresholds = fcoalesce(met_coc_thresholds, FALSE),
-          
           unmet_thresholds = met_hud_thresholds == FALSE | met_coc_thresholds == FALSE,
           
           ineligible = funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore") |
