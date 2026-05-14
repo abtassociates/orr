@@ -1073,7 +1073,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     observeEvent(input$conduct_ranking, {
       raw_data <- ranked_projects_db()
-      if(IN_DEV_MODE) {
+      if(IN_DEV_MODE || tolower(user_coc$username) == "alex.silverman@abtglobal.com") {
         raw_data[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, .N), coc_funding_requested))]
         raw_data[, coc_funding_recommendation := fcoalesce(coc_funding_recommendation, coerceValue(coc_funding_requested, coc_funding_recommendation))]
         raw_data[, weighted_score := fcoalesce(weighted_score, DT::coerceValue(sample(100, .N), weighted_score))]
