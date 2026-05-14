@@ -677,7 +677,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         ))
       
       # Get valid ranked projects 
-      ranked_data <- raw_data[ineligible == FALSE]
+      ranked_data <- raw_data |>
+        fsubset(ineligible == FALSE) |>
+        calculate_priority()
       
       # Step 1: Default Sorted Logic Pre-Ranking
       ranked_data <- if (force_reset || all(is.na(ranked_data$rank))) {
@@ -704,6 +706,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       }
       
       rv$excluded <- rv$excluded |>
+        fmutate(priority = "Unspecified") |>
         colorder(rank, priority, pos = "after")
       
       rv$ranked <- ranked_data |>
