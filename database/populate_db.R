@@ -39,8 +39,8 @@ populate_db <- function(
     
     sql_string <- stringi::stri_replace_all_fixed(
       sql_string,
-      c("__PK_TYPE__", "__CASCADE__"), 
-      c("INTEGER PRIMARY KEY AUTOINCREMENT", ""),
+      c("__PK_TYPE__", "__CASCADE__", "__NOT_STARTED__"), 
+      c("INTEGER PRIMARY KEY AUTOINCREMENT", "", get_lookup_refid("Not Started", "coc_status")),
       vectorize_all = FALSE
     )
   } else {

@@ -51,6 +51,9 @@ second_user <- toString(USERS[3, 1])
 # -2: AK-500 Alternate, Second user owns, main user is editor (main user request approved)
 # -1: AK-501 Main Version, Second user owns, no one else on, main user requested
 coc_version_ids <- -6:-1
+not_started <- get_lookup_refid("Not Started", "coc_status")
+in_progress <- get_lookup_refid("In Progress", "coc_status")
+
 coc_versions <- data.table(
   coc_version_id = coc_version_ids,
   coc_version_name = c(
@@ -62,7 +65,7 @@ coc_versions <- data.table(
     'AK-501 Main Version'
   ),
   coc = c('IL-517', 'IL-517', 'FL-600', 'AK-500', 'AK-500', 'AK-501'),
-  coc_status = c(8, 8, 8, 9, 8, 9),  # Not Started, In Progress, Not Started, In Progress
+  coc_status = c(not_started, not_started, not_started, in_progress, not_started, in_progress),  # Not Started, In Progress, Not Started, In Progress
   created_by = c(
     second_user,
     second_user,
@@ -75,11 +78,14 @@ coc_versions <- data.table(
 )
 
 # CoC Version Users (many-to-many relationship)
+owner <- get_lookup_refid("Owner", "coc_version_role")
+editor <- get_lookup_refid("Editor", "coc_version_role")
+
 coc_version_users <- data.table(
   coc_version_user_id = -12:-5,
   coc_version_id = c(-6, -5, -4, -3, -3, -2, -2, -1),
   username = c(second_user, second_user, main_user, main_user, second_user, second_user, main_user, second_user),
-  coc_version_role = c(4, 4, 4, 4, 5, 4, 5, 4),  # Owner, Owner, Owner, Editor, Owner, Editor, Owner
+  coc_version_role = c(owner, owner, owner, owner, editor, owner, editor, owner), 
   created_by = c(
     second_user,
     second_user,
@@ -99,10 +105,13 @@ coc_version_users <- data.table(
 # -3: AK-500 Main Version, Main user owns, second user is editor (request approved)
 # -2: AK-500 Alternate, Second user owns, main user is editor (main user request approved)
 # -1: AK-501 Main Version, Second user owns, no one else on, main user requested
+sent <- get_lookup_refid("Sent","request_status")
+approved <- get_lookup_refid("Approved","request_status")
+
 coc_version_requests <- data.table(
   coc_request_id = -4:-1,
   coc_version_id = c(-4, -3, -2, -1),
-  request_status = c(1, 2, 2, 1),  # Sent by second user to main, Approved by main from second, Approved by second user from main, Sent by main user to second
+  request_status = c(sent, approved, approved, sent),  # Sent by second user to main, Approved by main from second, Approved by second user from main, Sent by main user to second
   reason_for_rejection = NA_integer_,
   created_by = c(
     second_user,
@@ -137,7 +146,7 @@ get_hic_data <- function(coc, coc_version_id) {
       coc_amount_awarded_last_year = as.numeric(NA),
       coc_amount_expended_last_year = as.numeric(NA),
       coc_funding_requested = as.numeric(NA),
-      funding_action = fifelse(mckinneyvento == "Yes", 10, 13), # renew = 10, ignore = 13
+      funding_action = fifelse(mckinneyvento == "Yes", get_lookup_refid("Renew", "funding_action"), get_lookup_refid("Ignore", "funding_action")), # renew = 10, ignore = 13
       coc_version_id = coc_version_id,
       # additional cols user will fill out
       is_dedicated_ch_fam = factor_yesno(NA),
