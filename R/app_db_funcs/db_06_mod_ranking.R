@@ -31,7 +31,8 @@ get_projects_to_rank <- function(coc_version_id) {
       no.population_group AS no_pop_grp,
       p.dv_renewal,
       p.project_id,
-      r.version_id
+      r.version_id,
+      pe.rating_complete AND pe.threshold_complete AS rating_complete
       
       FROM projects p
       LEFT JOIN ranking r ON p.project_id = r.project_id AND r.coc_version_id = p.coc_version_id

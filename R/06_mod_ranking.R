@@ -1084,6 +1084,19 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     })
     
     observeEvent(input$conduct_ranking, {
+      if(!all(raw_data$rating_complete)) {
+        confirmSweetAlert(
+          inputId = ns("confirm_incomplete_ratings"),
+          title = "One or more project ratings incomplete!",
+          text = "One or more projects' rating and/or threshold is not marked as complete. Continue?",
+          type = "warning"
+        )
+      }
+    })
+    
+    observeEvent(input$confirm_incomplete_ratings, {
+      req(isTRUE(input$confirm_incomplete_ratings))
+      
       process_data(force_reset = FALSE) 
       shinyjs::enable("btn_adjust_tiers")
       shinyjs::enable("btn_save_ranking")
