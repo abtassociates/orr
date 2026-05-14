@@ -161,6 +161,8 @@ get_postgres_db <- function(dbname = NULL) {
         # CREATE DATABASE cannot run in a transaction
         # RPostgres runs this fine via dbExecute
         DBI::dbExecute(con, glue::glue("CREATE DATABASE {dbname}"))
+        source("~/orr/database/populate_db.R")
+        populate_db(USE_SQLITE = FALSE, dbname = dbname)
         message(glue::glue("Database '{dbname}' created successfully."))
       }
       
