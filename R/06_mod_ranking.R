@@ -1073,7 +1073,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     observeEvent(input$conduct_ranking, {
       raw_data <- ranked_projects_db()
-      if(IN_DEV_MODE || tolower(user_coc$username) == "alex.silverman@abtglobal.com") {
+      # if(IN_DEV_MODE || tolower(user_coc$username) == "alex.silverman@abtglobal.com") {
         raw_data[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, .N), coc_funding_requested))]
         raw_data[, coc_funding_recommendation := fcoalesce(coc_funding_recommendation, coerceValue(coc_funding_requested, coc_funding_recommendation))]
         raw_data[, weighted_score := fcoalesce(weighted_score, DT::coerceValue(sample(100, .N), weighted_score))]
@@ -1082,7 +1082,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         # raw_data[, met_hud_thresholds := as.logical(fcoalesce(DT::coerceValue(met_hud_thresholds, 0L), sample(0:1, .N, replace=TRUE)))]
         # raw_data[, met_coc_thresholds := as.logical(fcoalesce(DT::coerceValue(met_coc_thresholds, 0L), sample(0:1, .N, replace=TRUE)))]
         raw_data[, rating_complete := 1]
-      }
+      # }
 
       
       if(allNA(raw_data$weighted_score) || 
