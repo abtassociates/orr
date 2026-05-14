@@ -114,3 +114,12 @@ update_coc_version <- function(params) {
 delete_coc_version <- function(coc_version_id) {
   db_execute("DELETE FROM coc_versions WHERE coc_version_id = $1", params = coc_version_id)
 }
+
+get_coc_status <- function(coc_version_id) {
+  get_db_query(
+    "SELECT coc_status
+    FROM coc_versions
+    WHERE coc_version_id = $1",
+    params = coc_version_id
+  )
+}

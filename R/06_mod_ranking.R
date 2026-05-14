@@ -86,13 +86,14 @@ mod_ranking_ui <- function(id) {
     br(),
     br(),
     h5(id = ns("excluded_tbl_title"), "Projects Not Selected for Funding"),
-    DTOutput(ns("ui_excluded_list")) |> shinycssloaders::withSpinner() #,
+    DTOutput(ns("ui_excluded_list")) |> shinycssloaders::withSpinner(), #,
     # br(),
     # br(),
     # DTOutput(ns("ui_yhdp_ren")),
     # br(),
     # br(),
     # DTOutput(ns("ui_yhdp_oth"))
+    checkboxInput(ns("ranking_complete"), "Ranking complete?")
   )
 }
 
@@ -1120,6 +1121,18 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       req(user_coc$coc_version_id, rv$ranked)
       
       sendSweetAlert(session = session, title = "Coming soon!", "The Ranking Export feature is coming soon!")
+    })
+    
+    observeEvent(input$ranking_complete, {
+      user_coc$ranking_updated <- user_coc$ranking_updated + 1
+      status <- ifelse(input$ranking_complete, "Complete", "Rating Complete")
+      update_coc_version(
+        params = list(
+          get_lookup_refid(status, "coc_status"), 
+          user_coc$username, 
+          user_coc$coc_version_id
+        )
+      )
     })
   })
 }

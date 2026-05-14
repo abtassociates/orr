@@ -59,8 +59,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # CoC Versions table ------------------
     ####
     output$coc_versions_dt <- renderDT({
-      req(user_coc$auth)
-      
       data <- users_versions() |> fselect(-version_id)
       datatable(data, 
                 colnames = unname(variable_labels[names(data)]),
@@ -81,6 +79,53 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           method = 'toLocaleString'
         )
     }, server = FALSE)
+    
+    observeEvent(user_coc$rating_updated, {
+      pe <- get_project_evaluation(user_coc$coc_version_id)
+      coc_status <- get_coc_status(user_coc$coc_version_id)
+      
+      if(coc_status == get_lookup_refid("Rating In Progress", "coc_status") && (
+        all(pe$rating_complete) &&
+        all(pe$threshold_complete)
+      )) status = "Rating Complete"
+      
+      else if(coc_status == get_lookup_refid("Not Started", "coc_status") && (
+        any(pe$rating_complete) ||
+        any(pe$threshold_complete)
+      )) status = "Rating In Progress"
+      
+      else if (
+        !any(pe$rating_complete) &&
+        !any(pe$threshold_complete)
+      ) status = "Not Started"
+      
+      update_coc_status(status)
+    }, ignoreInit = TRUE)
+
+    update_coc_status <- function(status) {
+      update_coc_version(
+        params = list(
+          get_lookup_refid(status, "coc_status"), 
+          user_coc$username, 
+          user_coc$coc_version_id
+        )
+      )
+      
+      users_versions(
+        users_versions()[
+          coc_version_id == user_coc$coc_version_id,
+          coc_status := status
+        ]
+      )
+    }
+    
+    
+    observeEvent(user_coc$ranking_updated, {
+      users_versions(
+        all_versions_and_users() |>
+          fsubset(username == user_coc$username, -username)
+      )
+    }, ignoreInit = TRUE)
     
     ####
     # Selected CoC Version Actions --------------
@@ -107,10 +152,12 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     ## Selecting a version ------------
     observeEvent(input$coc_versions_dt_rows_selected, {
-      current_coc_info <- users_versions()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id, coc_version_role)]
+      current_coc_info <- users_versions()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id, coc_version_role, coc_status)]
+      
       user_coc$coc <- current_coc_info$coc
       user_coc$coc_version_id <- current_coc_info$coc_version_id
       user_coc$date_updated <- current_coc_info$date_updated
+      user_coc$coc_status <- current_coc_info$coc_status
       
       # toggle Inventory tab if they have any versions selected
       toggle_navs_on_coc_selection()
@@ -149,16 +196,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ## Edit version ----------------
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
-      
-      update_coc_version(
-        params = list(
-          get_lookup_refid("In Progress", "coc_status"), 
-          user_coc$username, 
-          user_coc$coc_version_id #, 
-          # users_versions()[input$coc_versions_dt_rows_selected]$version_id
-        )
-      )
-      
       nav_control("inventory")
     })
     
