@@ -1072,9 +1072,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     })
     
     observeEvent(input$conduct_ranking, {
-      
       raw_data <- ranked_projects_db()
-      if(allNA(raw_data$weighted_score) || allNA(raw_data$coc_funding_requested) || (allNA(raw_data$met_hud_thresholds) && allNA(raw_data$met_coc_thresholds))) {
       if(IN_DEV_MODE) {
         raw_data[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, .N), coc_funding_requested))]
         raw_data[, coc_funding_recommendation := fcoalesce(coc_funding_recommendation, coerceValue(coc_funding_requested, coc_funding_recommendation))]
@@ -1085,6 +1083,12 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         # raw_data[, met_coc_thresholds := as.logical(fcoalesce(DT::coerceValue(met_coc_thresholds, 0L), sample(0:1, .N, replace=TRUE)))]
         raw_data[, rating_complete := 1]
       }
+
+      
+      if(allNA(raw_data$weighted_score) || 
+         allNA(raw_data$coc_funding_requested) || 
+         (allNA(raw_data$met_hud_thresholds) && allNA(raw_data$met_coc_thresholds))
+      ) {
         sendSweetAlert(
           title = "Missing Ranking Info!",
           text = "You are missing rating scores, thresholds, and/or CoC funding requested amounts",
@@ -1092,6 +1096,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         )
         return(FALSE)
       }
+      
       if(!isTruthy(all(raw_data$rating_complete))) {
         confirmSweetAlert(
           inputId = ns("confirm_incomplete_ratings"),
