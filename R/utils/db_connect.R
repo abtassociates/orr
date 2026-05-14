@@ -144,7 +144,7 @@ get_postgres_db <- function(dbname = NULL) {
   
   # 3. If connection failed because DB doesn't exist (and we are in DEV)
   if (is.null(pool)) {
-    if (IN_DEV_MODE) {
+    if (Sys.getenv("RSTUDIO") == "1" && !isTRUE(getOption("shiny.testmode"))) {
       message(paste("Database", dbname, "not found. Attempting to create..."))
       
       # Connect to the default 'postgres' maintenance DB
