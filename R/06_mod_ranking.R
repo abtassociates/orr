@@ -742,7 +742,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         "bonus_type",
         "unmet_thresholds",
         "ineligible",
-        "version_id"
+        "version_id",
+        "rating_complete"
       )
       
       dt |>
