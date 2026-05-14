@@ -132,6 +132,7 @@ get_postgres_db <- function(dbname = NULL) {
   params <- get_pg_params(dbname)
   
   pool <- tryCatch({
+    set_up_tunnel()
     do.call(pool::dbPool, params)
   }, error = function(e) {
     # If the error isn't about the DB not existing, re-throw it
@@ -143,7 +144,7 @@ get_postgres_db <- function(dbname = NULL) {
   
   # 3. If connection failed because DB doesn't exist (and we are in DEV)
   if (is.null(pool)) {
-    if (!USE_SQLITE && IN_DEV_MODE) {
+    if (IN_DEV_MODE) {
       message(paste("Database", dbname, "not found. Attempting to create..."))
       
       # Connect to the default 'postgres' maintenance DB
@@ -170,7 +171,7 @@ get_postgres_db <- function(dbname = NULL) {
       return(get_postgres_db(dbname))
       
     } else {
-      stop(glue::glue("Database '{dbname}' does not exist and auto-creation is disabled."))
+      stop(glue::glue("Database '{dbname}' does not exist and not in dev mode, so aborting"))
     }
   } else {
     message(paste0("Connected to RPostgresql database: ", dbname))
