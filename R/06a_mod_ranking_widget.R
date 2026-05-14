@@ -37,15 +37,19 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title) {
         
       } else if (id == "tier_2") {
         # TIER 2 (Requires Straddle check)
-        alloc <- fcoalesce(as.integer(alloc_data$tier2), 0L)
-        straddle <- fcoalesce(as.integer(alloc_data$straddle), 0L)
-        alloc <- alloc + straddle
+        alloc <- alloc_data
+        straddle <- 0
+        if(typeof(alloc_data) == "list") {
+          alloc <- fcoalesce(as.integer(alloc_data$tier2), 0L)
+          straddle <- fcoalesce(as.integer(alloc_data$straddle), 0L)
+          alloc <- alloc + straddle
         
-        if(straddle > 0) {
-          breakdown_ui <- div(
-            class = "breakdown",
-            p(paste0("From Straddle: ", scales::dollar(straddle)))
-          )
+          if(straddle > 0) {
+            breakdown_ui <- div(
+              class = "breakdown",
+              p(paste0("From Straddle: ", scales::dollar(straddle)))
+            )
+          }
         }
         
       } else {
