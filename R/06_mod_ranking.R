@@ -1109,6 +1109,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     })
     
     observeEvent(input$confirm_incomplete_ratings, {
+      req(input$confirm_incomplete_ratings)
       process_data(force_reset = FALSE) 
     })
     
