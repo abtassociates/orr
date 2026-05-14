@@ -623,17 +623,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     process_data <- function(force_reset = FALSE) {
       req(user_coc$coc_version_id)
       
-      raw_data <- ranked_projects_db()
-      if(allNA(raw_data$weighted_score) || allNA(raw_data$coc_funding_requested) || (allNA(raw_data$met_hud_thresholds) && allNA(raw_data$met_coc_thresholds))) {
-        sendSweetAlert(
-          title = "Missing Ranking Info!",
-          text = "You are missing rating scores, thresholds, and/or CoC funding requested amounts",
-          type = "error"
-        )
-        return(FALSE)
-      }
+      shinyjs::enable("btn_adjust_tiers")
+      shinyjs::enable("btn_save_ranking")
+      shinyjs::enable("btn_export_ranking")
       
-      raw_data <- raw_data |>
+      raw_data <- ranked_projects_db() |>
         calculate_priority()
       
       
@@ -729,6 +723,12 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         colorder(rank, priority, pos = "after") # move priority after rank
       
       ranking_needs_refresh(FALSE)
+      
+      updateActionButton(
+        session,
+        "conduct_ranking",
+        label = "Regenerate Ranking"
+      )
     } # end process_data
     
     format_ranked_tbl <-function(dt) {
@@ -1084,29 +1084,31 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     })
     
     observeEvent(input$conduct_ranking, {
-      if(!all(raw_data$rating_complete)) {
+      
+      raw_data <- ranked_projects_db()
+      if(allNA(raw_data$weighted_score) || allNA(raw_data$coc_funding_requested) || (allNA(raw_data$met_hud_thresholds) && allNA(raw_data$met_coc_thresholds))) {
+        sendSweetAlert(
+          title = "Missing Ranking Info!",
+          text = "You are missing rating scores, thresholds, and/or CoC funding requested amounts",
+          type = "error"
+        )
+        return(FALSE)
+      }
+      if(!isTruthy(all(raw_data$rating_complete))) {
         confirmSweetAlert(
           inputId = ns("confirm_incomplete_ratings"),
           title = "One or more project ratings incomplete!",
           text = "One or more projects' rating and/or threshold is not marked as complete. Continue?",
           type = "warning"
         )
+        return(FALSE)
       }
+      
+      process_data(force_reset = FALSE) 
     })
     
     observeEvent(input$confirm_incomplete_ratings, {
-      req(isTRUE(input$confirm_incomplete_ratings))
-      
       process_data(force_reset = FALSE) 
-      shinyjs::enable("btn_adjust_tiers")
-      shinyjs::enable("btn_save_ranking")
-      shinyjs::enable("btn_export_ranking")
-      
-      updateActionButton(
-        session,
-        "conduct_ranking",
-        label = "Regenerate Ranking"
-      )
     })
     
     observeEvent(input$btn_adjust_tiers, {
