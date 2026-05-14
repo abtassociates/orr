@@ -108,14 +108,15 @@ INSERT INTO lookups (reference_type, value, value_long, created_by) VALUES
     ('project_type', 'OPH', 'Other Permanent Housing', 'orr_service@abtglobal.com'),
     ('project_type', 'SH', 'Safe Haven', 'orr_service@abtglobal.com'),
     ('project_type', 'ES', 'Emergency Shelter', 'orr_service@abtglobal.com'),
-    ('target_population', 'General', 'General', 'orr_service@abtglobal.com'),
     ('target_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com'),
     ('target_population', 'CH', 'Chronically Homeless', 'orr_service@abtglobal.com'),
     ('target_population', 'Veteran', 'Veteran', 'orr_service@abtglobal.com'),
     ('target_population', 'Youth', 'Youth', 'orr_service@abtglobal.com'),
     ('target_population', 'HIV', 'Human Immunodeficiency Virus', 'orr_service@abtglobal.com'),
-    ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com');
-
+    ('target_population', 'NA', 'Not Applicable', 'orr_service@abtglobal.com'),
+    ('special_population', 'General', 'General', 'orr_service@abtglobal.com'),
+    ('special_population', 'DV', 'Domestic Violence', 'orr_service@abtglobal.com');
+    
 INSERT INTO lookups (reference_type, value_abbrev, value, value_long, created_by) VALUES
     ('population_group', 'Ind', 'Individual', 'Individuals', 'orr_service@abtglobal.com'),
     ('population_group', 'Fam', 'Family', 'Families', 'orr_service@abtglobal.com');

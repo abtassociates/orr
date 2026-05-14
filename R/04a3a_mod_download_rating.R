@@ -188,10 +188,10 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
             )
           else NULL,
          
-          target_pop_dropdown <- selectInput(
-            inputId = ns("target_population_filter"),
+          special_pop_dropdown <- selectInput(
+            inputId = ns("special_population_filter"),
             label = "Select special populations",
-            choices = get_labelled_lookups("target_population")[c("DV", "General")]
+            choices = get_labelled_lookups("special_population")[c("DV", "General")]
           ),
           
           footer = tagList(

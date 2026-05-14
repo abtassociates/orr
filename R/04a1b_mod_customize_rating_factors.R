@@ -14,15 +14,15 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
       selected = MAIN_PROJECT_TYPES # Pre-select all for initial state
     )
     
-    target_pop_dropdown <- selectInput(
-      inputId = ns("target_population_filter"),
+    special_pop_dropdown <- selectInput(
+      inputId = ns("special_population_filter"),
       label = "Select special populations",
       choices = get_labelled_lookups("target_population")[c("DV", "General")],
       multiple = TRUE,
-      selected = c("DV", "General") # Pre-select all for initial state
+      selected = c("General") # Pre-select General for initial state
     )
     
-    dropdowns_to_include <- target_pop_dropdown
+    dropdowns_to_include <- special_pop_dropdown
     if(funding_action == "Renew") dropdowns_to_include <- list(project_type_dropdown, dropdowns_to_include)
     
     dropdowns_to_include
