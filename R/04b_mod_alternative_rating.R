@@ -56,7 +56,8 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           met_hud_thresholds = factor_yesno(met_hud_thresholds),
           met_coc_thresholds = factor_yesno(met_coc_thresholds),
           project_type = convert_to_factor(., "project_type", textToNum = F),
-          target_population = convert_to_factor(., "target_population", textToNum = F)
+          target_population = convert_to_factor(., "target_population", textToNum = F),
+          funding_action = convert_to_factor(., "funding_action")
         )
     }
     
@@ -81,7 +82,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
         data,
         column_defs = list(
           list(
-            targets = which(names(data) %in% c("funding_action", "date_updated")) - 1,
+            targets = which(names(data) %in% c("date_updated")) - 1,
             className = "hidden",
             visible = FALSE
           )
