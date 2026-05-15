@@ -182,12 +182,53 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
       filename = "ORR-Alternative-Rating-Tool-Template.xlsx",
       content = function(file) {
         dt <- ratable_projects_no_vid()
-        writexl::write_xlsx(
-          dt,
-          path = file,
-          format_headers = FALSE,
+        wb <- wb_workbook()
+        
+        wb$add_worksheet("Template")
+        
+        dt <- dt |>
+          fmutate(
+            met_hud_thresholds = as.character(met_hud_thresholds),
+            met_coc_thresholds = as.character(met_coc_thresholds),
+            weighted_score = as.character(weighted_score)
+          ) |>
+          replace_na(value = "")
+        
+        wb$add_data(
+          sheet = "Template",
+          x = dt,
           col_names = TRUE
         )
+        
+        # Column indices
+        met_hud_col <- which(names(dt) == "met_hud_thresholds")
+        met_coc_col <- which(names(dt) == "met_coc_thresholds")
+        weighted_col <- which(names(dt) == "weighted_score")
+        
+        # Data rows (exclude header)
+        data_rows <- 2:(nrow(dt) + 1)
+        
+        # Boolean dropdown validation
+        for (col in c(met_hud_col, met_coc_col)) {
+          # Yes/No dropdown validation
+          wb$add_data_validation(
+            sheet = "Template",
+            dims = wb_dims(rows = data_rows, cols = col),
+            type = "list",
+            value = '"Yes,No"'
+          )
+        }
+        
+        # Numeric validation: 0-100
+        wb$add_data_validation(
+          sheet = "Template",
+          dims = wb_dims(rows = data_rows, cols = weighted_col),
+          type = "whole",
+          operator = "between",
+          value = c(0, 100)
+        )
+        
+        wb_save(wb, file = file)
       }
     )
     
