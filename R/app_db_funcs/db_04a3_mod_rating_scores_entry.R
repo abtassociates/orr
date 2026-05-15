@@ -88,16 +88,16 @@ get_all_rating_factors_and_scores <- function(coc_version_id, funding_action_id)
   )
 }
 
-get_rating_factors_by_pop_target_type <- function(coc_version_id, funding_action_id, project_type, target_population) {
+get_rating_factors_by_pop_target_type <- function(coc_version_id, funding_action_id, project_type, special_population) {
   get_db_query(
     "SELECT fg.factor_group, fsg.factor_subgroup, r.piping_text, sr.goal, NULL AS performance, NULL AS rating_score, sr.max_point_value
     FROM rating_factors r
     INNER JOIN selected_rating_factors sr ON sr.rating_factor_id = r.rating_factor_id AND sr.coc_version_id = $1 AND sr.selected = TRUE
     JOIN factor_groups fg ON r.factor_group = fg.factor_group_id
     LEFT JOIN factor_subgroups fsg ON r.factor_subgroup = fsg.factor_subgroup_id
-    WHERE r.funding_action = $2 AND (r.project_type = $3 OR $3 IS NULL) AND r.target_population = $4
+    WHERE r.funding_action = $2 AND (r.project_type = $3 OR $3 IS NULL) AND r.special_population = $4
     ORDER BY fg.factor_group_id, fsg.factor_subgroup_id", 
-    params = list(coc_version_id, funding_action_id, project_type, target_population)
+    params = list(coc_version_id, funding_action_id, project_type, special_population)
   )
 }
 

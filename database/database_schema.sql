@@ -381,7 +381,7 @@ CREATE TABLE rating_factors (
     piping_text TEXT,
     funding_action SMALLINT REFERENCES lookups(reference_id),
     project_type SMALLINT NULL REFERENCES lookups(reference_id),
-    target_population SMALLINT NULL REFERENCES lookups(reference_id),
+    special_population SMALLINT NULL REFERENCES lookups(reference_id),
     factor_group SMALLINT REFERENCES factor_groups(factor_group_id) ON DELETE CASCADE, 
     factor_subgroup SMALLINT REFERENCES factor_subgroups(factor_subgroup_id) ON DELETE CASCADE,
     goal VARCHAR(10) NULL, 
