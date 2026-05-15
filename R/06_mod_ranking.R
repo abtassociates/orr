@@ -119,6 +119,14 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       get_coc_hud_ard_data(user_coc)
     })
     
+    ranked_projects_db <- reactive({
+      req(user_coc$coc_version_id)
+      
+      get_projects_to_rank(user_coc$coc_version_id) |>
+        fmutate(total_beds = all_fam_beds + all_ind_beds) |>
+        add_fake_data()
+    })
+    
     # Reactive values to store the data and bucket limits
     rv <- reactiveValues(
       # limits = list(tier1 = 0, tier2 = 0, dv = 0),
@@ -129,6 +137,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       excluded = NULL
     )
     
+    observeEvent(ranked_projects_db(), {
+      req(isTruthy(fnrow(ranked_projects_db()) > 0))
+      process_data()
+    })
     ceilings_priorities <- reactive({
       get_ceilings_priorities(user_coc$coc_version_id)
     })
@@ -346,7 +358,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data, "DV Bonus")
     mod_ranking_widget_server("exceeds", alloc_exceed, coc_ard_data, "Exceeding ARD Adj")
     
-    observeEvent(c(user_coc$coc_version_id, user_coc$projects_updated, user_coc$rating_updated, user_coc$priorities_and_ceilings_updated), { 
+    observeEvent(c(user_coc$projects_updated, user_coc$rating_updated, user_coc$priorities_and_ceilings_updated), { 
       ranking_needs_refresh(TRUE)
     }, ignoreInit = TRUE)
     
@@ -458,7 +470,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     }
     
     recalculate_ranking <- function(dt) {
-      if(is.null(dt) || nrow(dt) == 0) return(dt)
+      if(is.null(dt) || nrow(dt) == 0) return(dt |> fmutate(is_over_target = FALSE))
       
       dt <- dt |> fsubset(project_id != "PLACEHOLDER_T2")
       
@@ -614,11 +626,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       return(dt)
     } # end calculate_priority
     
-    ranked_projects_db <- reactive({
-      get_projects_to_rank(user_coc$coc_version_id) |>
-        fmutate(total_beds = all_fam_beds + all_ind_beds)
-    })
-    
     # Process Initial Data on Load or Reset
     process_data <- function(force_reset = FALSE) {
       req(user_coc$coc_version_id)
@@ -627,7 +634,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       shinyjs::enable("btn_save_ranking")
       shinyjs::enable("btn_export_ranking")
       
-      raw_data <- ranked_projects_db()
+      raw_data <- ranked_projects_db() |>
+        calculate_priority()
       
       # add empty column to front for drag-and-drop control
       raw_data <- raw_data |>
@@ -675,8 +683,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       # Get valid ranked projects 
       ranked_data <- raw_data |>
-        fsubset(ineligible == FALSE) |>
-        calculate_priority()
+        fsubset(ineligible == FALSE)
       
       # Step 1: Default Sorted Logic Pre-Ranking
       ranked_data <- if (force_reset || all(is.na(ranked_data$rank))) {
@@ -703,7 +710,6 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       }
       
       rv$excluded <- rv$excluded |>
-        fmutate(priority = "Unspecified") |>
         colorder(rank, priority, pos = "after")
       
       rv$ranked <- ranked_data |>
@@ -1072,19 +1078,21 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       replaceData(excluded_proxy, dt, rownames = FALSE, resetPaging = FALSE)
     })
     
+    add_fake_data <- function(dt) {
+      # if(IN_DEV_MODE || tolower(user_coc$username) == "alex.silverman@abtglobal.com") {
+      dt[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, .N), coc_funding_requested))]
+      dt[, coc_funding_recommendation := fcoalesce(coc_funding_recommendation, coerceValue(coc_funding_requested, coc_funding_recommendation))]
+      dt[, weighted_score := fcoalesce(weighted_score, DT::coerceValue(sample(100, .N), weighted_score))]
+      dt[, met_hud_thresholds := TRUE]
+      dt[, met_coc_thresholds := TRUE]
+      # raw_data[, met_hud_thresholds := as.logical(fcoalesce(DT::coerceValue(met_hud_thresholds, 0L), sample(0:1, .N, replace=TRUE)))]
+      # raw_data[, met_coc_thresholds := as.logical(fcoalesce(DT::coerceValue(met_coc_thresholds, 0L), sample(0:1, .N, replace=TRUE)))]
+      dt[, rating_complete := 1]
+      return(dt)
+      # }
+    }
     observeEvent(input$conduct_ranking, {
       raw_data <- ranked_projects_db()
-      # if(IN_DEV_MODE || tolower(user_coc$username) == "alex.silverman@abtglobal.com") {
-        raw_data[, coc_funding_requested := fcoalesce(coc_funding_requested, coerceValue(sample(10000:1000000, .N), coc_funding_requested))]
-        raw_data[, coc_funding_recommendation := fcoalesce(coc_funding_recommendation, coerceValue(coc_funding_requested, coc_funding_recommendation))]
-        raw_data[, weighted_score := fcoalesce(weighted_score, DT::coerceValue(sample(100, .N), weighted_score))]
-        raw_data[, met_hud_thresholds := TRUE]
-        raw_data[, met_coc_thresholds := TRUE]
-        # raw_data[, met_hud_thresholds := as.logical(fcoalesce(DT::coerceValue(met_hud_thresholds, 0L), sample(0:1, .N, replace=TRUE)))]
-        # raw_data[, met_coc_thresholds := as.logical(fcoalesce(DT::coerceValue(met_coc_thresholds, 0L), sample(0:1, .N, replace=TRUE)))]
-        raw_data[, rating_complete := 1]
-      # }
-
       
       if(allNA(raw_data$weighted_score) || 
          allNA(raw_data$coc_funding_requested) || 
