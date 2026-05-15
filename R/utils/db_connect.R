@@ -9,18 +9,21 @@ set_up_db_connection <- function(dbname = NULL) {
   use_sqlite <- ifelse(exists("USE_SQLITE", where = .GlobalEnv), USE_SQLITE, Sys.getenv("RSTUDIO") == "1")
   .db_env$connection_type <- ifelse(use_sqlite, "SQLite", "RPostgres")
   
-  .db_env$pool <- if(Sys.getenv("RSTUDIO") == "1" && use_sqlite) {
+  db_info <- if(Sys.getenv("RSTUDIO") == "1" && use_sqlite) {
     get_sqlite_db()
   } else {
     if(Sys.getenv("RSTUDIO") == "1") set_up_tunnel()
     get_postgres_db(dbname)
   }
+  .db_env$pool <- db_info$pool
   
   # Enforce referential integrity for SQLite (PostgreSQL is automatic)
   if(use_sqlite)
     DBI::dbExecute(.db_env$pool, "PRAGMA foreign_keys = ON;")
   
-  return(.db_env$pool)
+  db_type <- ifelse(.db_env$pool$objClass[[1]] == "SQLiteConnection", "SQLite", "PostgreSQL")
+  message(paste0("Connected to ", db_type, " database: ", db_info$dbname))
+  return(db_info$dbname)
 }
 
 # Create connection to RDS Postgres instance for testing purposes
@@ -174,17 +177,18 @@ get_postgres_db <- function(dbname = NULL) {
       stop(glue::glue("Database '{dbname}' does not exist and not in dev mode, so aborting"))
     }
   } else {
-    message(paste0("Connected to RPostgresql database: ", dbname))
+    message(paste0("Already connected to RPostgresql database: ", dbname))
   }
   
-  return(pool)
+  return(list(pool = pool, dbname = dbname))
 }
 
 get_sqlite_db <- function() {
-  pool::dbPool(
+  p <- pool::dbPool(
     drv = RSQLite::SQLite(),
     dbname = here("sandbox/dev_db.sqlite")
   )
+  list(pool = p, dbname = "SQLite")
 }
 
 # Get a dev version that persists beyond the app 
@@ -223,7 +227,7 @@ list_rpostgres_dbs <- function(dbname = "postgres") {
 }
 db_connect <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL) {
   USE_SQLITE <<- use_sqlite
-  db_pool <- set_up_db_connection(dbname)
+  dbname <- set_up_db_connection(dbname)
 }
 
 run_app <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL, user_email = NULL) {
