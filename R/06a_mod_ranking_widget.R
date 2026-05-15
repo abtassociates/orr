@@ -8,7 +8,7 @@ mod_ranking_widget_server <- function(id, allocated, coc_ard_data, title) {
     ns <- session$ns
     
     output$widget_box <- renderUI({
-      total <- round(coc_ard_data()[[id]], 0)
+      total <- fcoalesce(round(coc_ard_data()[[id]], 0), 0)
       alloc_data <- allocated()
       
       # ----------------------------------------------------------------------
