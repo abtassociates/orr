@@ -502,7 +502,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       if (any(dt$is_coc_eligible, na.rm=TRUE)) {
         dt[is_coc_eligible == TRUE, coc_cum := cumsum(coc_funding_recommendation)]
         dt[is_coc_eligible == TRUE & (coc_cum - coc_funding_recommendation) < coc_ard_data()$coc_bonus, coc_selected := TRUE]
-        dt[is_coc_eligible == TRUE, coc_cum := NULL]
+        dt[, coc_cum := NULL]
       }
       
       dt[is_over_target == FALSE, dv_selected := FALSE]
