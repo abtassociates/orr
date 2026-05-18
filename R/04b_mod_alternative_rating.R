@@ -471,7 +471,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
         
         # VALIDATION: Invalid score
         show_modal_error(
-          all(is.na(imported$weighted_score) | imported$weighted_score %between% c(0, 100)),
+          all(is.na(imported$weighted_score) | as.numeric(imported$weighted_score) %between% c(0, 100)),
           "Weighted scores must be an integer between 0 and 100"
         )
         
