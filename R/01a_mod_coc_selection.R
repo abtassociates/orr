@@ -55,7 +55,13 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # CoC Versions table ------------------
     ####
     output$coc_versions_dt <- renderDT({
-      data <- users_versions() |> fselect(-version_id)
+      data <- users_versions() |> 
+        fselect(-version_id) |>
+        fmutate(
+          coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
+          coc_status = get_lookup_label(coc_status, 'coc_status')
+        )
+      
       datatable(data, 
                 colnames = unname(variable_labels[names(data)]),
                 rownames = FALSE,
