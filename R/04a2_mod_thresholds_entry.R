@@ -286,7 +286,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
           ) |>
             fmutate(
               met_threshold = as.integer(fcoalesce(met_threshold_y, met_threshold)),
-              version_id = fcoalesce(version_id, 0L) + 1,
+              version_id = fcoalesce(as.integer(version_id), 0L) + 1,
               met_threshold_y = NULL
             )
         )
