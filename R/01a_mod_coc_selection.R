@@ -36,15 +36,14 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       request_sent = 0,
     )
     
+    users_versions <- reactive({
+      all_versions_and_users() |>
+        fsubset(username == user_coc$username, -username)
+    })
     observeEvent(c(user_coc$auth, refresh_trigger$versions, user_coc$coc_status_updated, user_coc$ranking_updated), {
       req(user_coc$auth)
       all_versions_and_users(
         get_all_coc_versions_and_users()
-      )
-      
-      users_versions(
-        all_versions_and_users() |>
-          fsubset(username == user_coc$username, -username)
       )
     })
     
@@ -79,14 +78,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           method = 'toLocaleString'
         )
     }, server = FALSE)
-    
-    
-    observeEvent(user_coc$ranking_updated, {
-      users_versions(
-        all_versions_and_users() |>
-          fsubset(username == user_coc$username, -username)
-      )
-    }, ignoreInit = TRUE)
     
     ####
     # Selected CoC Version Actions --------------
