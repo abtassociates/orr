@@ -52,7 +52,7 @@ second_user <- toString(USERS[3, 1])
 # -1: AK-501 Main Version, Second user owns, no one else on, main user requested
 coc_version_ids <- -6:-1
 not_started <- get_lookup_refid("Not Started", "coc_status")
-in_progress <- get_lookup_refid("In Progress", "coc_status")
+in_progress <- get_lookup_refid("Rating In Progress", "coc_status")
 
 coc_versions <- data.table(
   coc_version_id = coc_version_ids,
