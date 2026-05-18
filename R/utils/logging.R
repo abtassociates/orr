@@ -19,6 +19,7 @@ table_names <- c(
   "ranking-ui_ranked_list",
   "ranking-ui_excluded_list",
   "rating-alternative-alternative_rating_table"
+  "rating-alternative-import_preview_table_state"
 )
 
 

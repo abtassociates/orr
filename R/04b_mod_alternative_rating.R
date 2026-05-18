@@ -28,6 +28,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
+    rv_uploaded_file <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
     rerender_table <- reactiveVal(0)
     
@@ -56,7 +57,8 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           met_hud_thresholds = factor_yesno(met_hud_thresholds),
           met_coc_thresholds = factor_yesno(met_coc_thresholds),
           project_type = convert_to_factor(., "project_type", textToNum = F),
-          target_population = convert_to_factor(., "target_population", textToNum = F)
+          target_population = convert_to_factor(., "target_population", textToNum = F),
+          funding_action = convert_to_factor(., "funding_action")
         )
     }
     
@@ -81,7 +83,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
         data,
         column_defs = list(
           list(
-            targets = which(names(data) %in% c("funding_action", "date_updated")) - 1,
+            targets = which(names(data) %in% c("date_updated")) - 1,
             className = "hidden",
             visible = FALSE
           )
@@ -184,12 +186,53 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
       filename = "ORR-Alternative-Rating-Tool-Template.xlsx",
       content = function(file) {
         dt <- ratable_projects_no_vid()
-        writexl::write_xlsx(
-          dt,
-          path = file,
-          format_headers = FALSE,
-          col_names = TRUE
+        wb <- wb_workbook()
+        
+        wb$add_worksheet("Template")
+        
+        dt <- dt |>
+          fmutate(
+            met_hud_thresholds = as.character(met_hud_thresholds),
+            met_coc_thresholds = as.character(met_coc_thresholds),
+            weighted_score = as.character(weighted_score)
+          )
+        
+        wb$add_data(
+          sheet = "Template",
+          x = dt,
+          col_names = TRUE,
+          na = ""
         )
+        
+        # Column indices
+        met_hud_col <- which(names(dt) == "met_hud_thresholds")
+        met_coc_col <- which(names(dt) == "met_coc_thresholds")
+        weighted_col <- which(names(dt) == "weighted_score")
+        
+        # Data rows (exclude header)
+        data_rows <- 2:(nrow(dt) + 1)
+        
+        # Boolean dropdown validation
+        for (col in c(met_hud_col, met_coc_col)) {
+          # Yes/No dropdown validation
+          wb$add_data_validation(
+            sheet = "Template",
+            dims = wb_dims(rows = data_rows, cols = col),
+            type = "list",
+            value = '"Yes,No"'
+          )
+        }
+        
+        # Numeric validation: 0-100
+        wb$add_data_validation(
+          sheet = "Template",
+          dims = wb_dims(rows = data_rows, cols = weighted_col),
+          type = "whole",
+          operator = "between",
+          value = c(0, 100)
+        )
+        
+        wb_save(wb, file = file)
       }
     )
     
@@ -237,7 +280,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           footer = tagList(
             actionButton(ns("import_back"), "Back"),
             actionButton(ns("import_next"), "Next"),
-            modalButton("Cancel")
+            actionButton(ns("import_cancel"), "Cancel")
           )
         )
       )
@@ -275,6 +318,12 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     })
     
     # handle import pop-up button visibility and labeling
+    observeEvent(input$import_cancel, {
+      current_step(1)
+      rv_uploaded_file(NULL)
+      removeModal()
+    }, ignoreInit = TRUE)
+    
     observe({
       req(user_coc$coc_version_id)
       req(input$import_rating)
@@ -315,6 +364,11 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     
     
     # Next/Submit button
+    observeEvent(input$rating_file, {
+      show_modal_error(!is.null(input$rating_file), "Please upload a file.")
+      rv_uploaded_file(input$rating_file)
+    })
+    
     observeEvent(input$import_next, {
       shinyjs::hide("import_error_box") 
       
@@ -322,7 +376,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
       
       if (step == 1) {
         # Initial validation
-        show_modal_error(!is.null(input$rating_file), "Please upload a file.")
+        show_modal_error(!is.null(rv_uploaded_file()), "Please upload a file.")
         
         ext <- tools::file_ext(input$rating_file$datapath)
         show_modal_error(tools::file_ext(input$rating_file$datapath) %in% c("csv", "xlsx"), "File must be CSV or XLSX")
@@ -336,13 +390,14 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           }
         }, error = function(e) {
           log_error(paste0("Importing Alt Rating...:", e$message))
+          rv_uploaded_file(NULL)
           NULL
         })
         
+        rv_uploaded(uploaded)
+       
         # Validate file came through
         show_modal_error(!is.null(uploaded), "Unable to read file.")
-        
-        rv_uploaded(uploaded)
         
         # Move to mapping step
         current_step(2)
@@ -432,7 +487,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
         
         # VALIDATION: Invalid score
         show_modal_error(
-          all(is.na(imported$weighted_score) | imported$weighted_score %between% c(0, 100)),
+          all(is.na(imported$weighted_score) | as.numeric(imported$weighted_score) %between% c(0, 100)),
           "Weighted scores must be an integer between 0 and 100"
         )
         

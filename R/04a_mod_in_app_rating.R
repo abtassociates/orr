@@ -80,7 +80,7 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     observe({
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating', user_coc$projects_updated)
       
-      user_prev_project_selected <- get_user_setting(user_coc, 'project_selected')
+      user_prev_project_selected <- get_user_setting(user_coc, 'project_selected') |> as.integer()
       
       projects <- all_projects()
       
