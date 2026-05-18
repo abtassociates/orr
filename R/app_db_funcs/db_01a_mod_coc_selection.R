@@ -98,7 +98,7 @@ append_version_request <- function(selected_version, user_coc) {
   db_append("coc_version_requests", request_row)
 }
 
-update_coc_version <- function(params) {
+update_coc_version_status <- function(params) {
   db_execute( 
     "UPDATE coc_versions 
       SET coc_status = $1, 
