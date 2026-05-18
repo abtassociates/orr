@@ -108,7 +108,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       
       if(project_is_selected) {
         project_evaluation(
-          get_project_evaluation(user_coc$coc_version_id, project_id)
+          get_project_evaluation(list(user_coc$coc_version_id, project_id))
         )
       
         hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
@@ -320,7 +320,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       
       # pull latest Project Evaluation in case they just updated Threshold
       project_evaluation(
-        get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
+        get_project_evaluation(list(user_coc$coc_version_id, selected_project()$project_id))
       )
       
       # Update db
@@ -333,7 +333,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       
       update_threshold_complete(get_db_pool(), data)
       
-      status <- calculate_coc_status(user_coc$coc_version_id, selected_project()$project_id)
+      status <- calculate_coc_status(user_coc$coc_version_id)
       update_coc_status(user_coc, status)
     }, ignoreInit = TRUE)
 

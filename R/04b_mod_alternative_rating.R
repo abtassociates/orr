@@ -122,7 +122,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           version_id := version_id + 1
         ]
         
-        status <- calculate_coc_status(user_coc$coc_version_id, current_data$project_id)
+        status <- calculate_coc_status(user_coc$coc_version_id)
         update_coc_status(user_coc, status)
       } else {
         refresh_trigger(refresh_trigger() + 1)

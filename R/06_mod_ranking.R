@@ -1124,15 +1124,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     })
     
     observeEvent(input$ranking_complete, {
-      user_coc$ranking_updated <- user_coc$ranking_updated + 1
-      status <- ifelse(input$ranking_complete, "Complete", "Rating Complete")
-      update_coc_version_status(
-        params = list(
-          get_lookup_refid(status, "coc_status"), 
-          user_coc$username, 
-          user_coc$coc_version_id
-        )
-      )
-    })
+      req(user_coc$coc_version_id)
+      status <- calculate_coc_status(user_coc$coc_version_id, input$ranking)
+      update_coc_status(user_coc, status)
+    }, ignoreInit = TRUE)
   })
 }

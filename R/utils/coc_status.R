@@ -1,33 +1,40 @@
-calculate_coc_status <- function(coc_version_id, project_id) {
-  pe <- get_project_evaluation(coc_version_id, project_id)
+calculate_coc_status <- function(coc_version_id, ranking_complete = FALSE) {
+  pe <- get_project_evaluation(list(coc_version_id, NA))
   coc_status <- get_coc_status(coc_version_id)
-  browser()
-  if(coc_status == get_lookup_refid("Rating In Progress", "coc_status") && (
+  coc_status_label <- get_lookup_label(coc_status, "coc_status")
+  
+  new_status <- if(coc_status_label == "Rating Complete" && ranking_complete)
+    "Complete"
+  else if(coc_status_label == "Rating In Progress" && (
     all(pe$rating_complete) &&
     all(pe$threshold_complete)
-  )) status = "Rating Complete"
+  )) "Rating Complete"
   
-  else if(coc_status == get_lookup_refid("Not Started", "coc_status") && (
+  else if(coc_status_label == "Not Started" & (
     any(pe$rating_complete) ||
     any(pe$threshold_complete)
-  )) status = "Rating In Progress"
+  )) "Rating In Progress"
   
   else if (
     !any(pe$rating_complete) &&
     !any(pe$threshold_complete)
-  ) status = "Not Started"
+  ) "Not Started"
  
-  return(status) 
+  return(
+    get_lookup_refid(new_status, "coc_status")
+  )
 }
 
 update_coc_status <- function(user_coc, status) {
   update_coc_version_status(
     params = list(
-      get_lookup_refid(status, "coc_status"), 
+      status,
       user_coc$username, 
       user_coc$coc_version_id
     )
   )
   
-  user_coc$coc_status_updated <- user_coc$coc_status_updated + 1
+  if(user_coc$coc_status != status) {
+    user_coc$coc_status_updated <- user_coc$coc_status_updated + 1
+  }
 }

@@ -22,6 +22,7 @@ function(input, output, session) {
     
     rating_updated = 0,
     ranking_updated = 0,
+    coc_status = NULL,
     coc_status_updated = 0
   )
   nav_control <- reactiveVal("about")

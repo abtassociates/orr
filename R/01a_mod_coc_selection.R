@@ -22,29 +22,26 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    ## versions associated with logged in user
-    users_versions <- reactiveVal(NULL)
-    
     ## session variables used for sending access requests
     admin_email <- reactiveVal(NULL)
     coc_requested <- reactiveVal(NULL)
     
-    all_versions_and_users <- reactiveVal()
+    all_versions_and_users <- reactive({
+      req(user_coc$auth)
+      req(refresh_trigger$versions, user_coc$coc_status_updated, user_coc$ranking_updated)
+      
+      get_all_coc_versions_and_users()
+    })
     
     refresh_trigger <- reactiveValues(
       versions = 0,
       request_sent = 0,
     )
     
+    ## versions associated with logged in user
     users_versions <- reactive({
       all_versions_and_users() |>
         fsubset(username == user_coc$username, -username)
-    })
-    observeEvent(c(user_coc$auth, refresh_trigger$versions, user_coc$coc_status_updated, user_coc$ranking_updated), {
-      req(user_coc$auth)
-      all_versions_and_users(
-        get_all_coc_versions_and_users()
-      )
     })
     
     project_ids <- reactive({
@@ -71,7 +68,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
                 ),
                 editable = FALSE,
                 style = 'default',
-                selection = 'single'
+                selection = list(mode = 'single', selected = isolate(input$coc_versions_dt_rows_selected))
       ) %>% 
         formatDate(
           columns = c('date_created', 'date_updated'),

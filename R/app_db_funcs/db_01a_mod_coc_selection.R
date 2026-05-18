@@ -121,5 +121,5 @@ get_coc_status <- function(coc_version_id) {
     FROM coc_versions
     WHERE coc_version_id = $1",
     params = coc_version_id
-  )
+  )[[1]]
 }

@@ -1,11 +1,11 @@
 # Used to pull project-evaluation info for a given project
-get_project_evaluation <- function(coc_version_id, project_id = NULL) {
+get_project_evaluation <- function(params) {
   get_db_query(
     "SELECT p.coc_version_id, pe.project_id, method, met_hud_thresholds, met_coc_thresholds, weighted_score, pe.version_id, pe.threshold_complete, pe.rating_complete
     FROM project_evaluations pe
     LEFT JOIN projects p ON pe.project_id = p.project_id
     WHERE p.coc_version_id = $1 AND (pe.project_id = $2 OR $2 IS NULL)",
-    params = list(coc_version_id, project_id)
+    params = params
   )
 }
 
