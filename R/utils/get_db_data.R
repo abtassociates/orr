@@ -1,3 +1,4 @@
+library(collapse)
 
 # Get DB data ------------------
 get_db_query <- function(sql, params = NULL) {

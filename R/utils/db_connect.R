@@ -178,12 +178,14 @@ get_postgres_db <- function(dbname = NULL) {
     }
   } else {
     message(paste0("Already connected to RPostgresql database: ", dbname))
+    .db_env$pool <- pool
   }
   
   return(list(pool = pool, dbname = dbname))
 }
 
 get_sqlite_db <- function() {
+  library(here)
   p <- pool::dbPool(
     drv = RSQLite::SQLite(),
     dbname = here("sandbox/dev_db.sqlite")
