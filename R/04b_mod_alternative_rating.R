@@ -191,13 +191,13 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
             met_hud_thresholds = as.character(met_hud_thresholds),
             met_coc_thresholds = as.character(met_coc_thresholds),
             weighted_score = as.character(weighted_score)
-          ) |>
-          replace_na(value = "")
+          )
         
         wb$add_data(
           sheet = "Template",
           x = dt,
-          col_names = TRUE
+          col_names = TRUE,
+          na = ""
         )
         
         # Column indices
