@@ -504,7 +504,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       
       update_rating_complete(get_db_pool(), data)
       
-      user_coc$rating_updated <- user_coc$rating_updated + 1
+      status <- calculate_coc_status(user_coc$coc_version_id, selected_project()$project_id)
+      update_coc_status(user_coc, status)
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
       
     # --- User PResence ----

@@ -36,7 +36,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       request_sent = 0,
     )
     
-    observeEvent(c(user_coc$auth, refresh_trigger$versions), {
+    observeEvent(c(user_coc$auth, refresh_trigger$versions, user_coc$coc_status_updated, user_coc$ranking_updated), {
       req(user_coc$auth)
       all_versions_and_users(
         get_all_coc_versions_and_users()
@@ -79,45 +79,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           method = 'toLocaleString'
         )
     }, server = FALSE)
-    
-    observeEvent(user_coc$rating_updated, {
-      pe <- get_project_evaluation(user_coc$coc_version_id)
-      coc_status <- get_coc_status(user_coc$coc_version_id)
-      
-      if(coc_status == get_lookup_refid("Rating In Progress", "coc_status") && (
-        all(pe$rating_complete) &&
-        all(pe$threshold_complete)
-      )) status = "Rating Complete"
-      
-      else if(coc_status == get_lookup_refid("Not Started", "coc_status") && (
-        any(pe$rating_complete) ||
-        any(pe$threshold_complete)
-      )) status = "Rating In Progress"
-      
-      else if (
-        !any(pe$rating_complete) &&
-        !any(pe$threshold_complete)
-      ) status = "Not Started"
-      
-      update_coc_status(status)
-    }, ignoreInit = TRUE)
-
-    update_coc_status <- function(status) {
-      update_coc_version(
-        params = list(
-          get_lookup_refid(status, "coc_status"), 
-          user_coc$username, 
-          user_coc$coc_version_id
-        )
-      )
-      
-      users_versions(
-        users_versions()[
-          coc_version_id == user_coc$coc_version_id,
-          coc_status := status
-        ]
-      )
-    }
     
     
     observeEvent(user_coc$ranking_updated, {
