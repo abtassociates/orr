@@ -108,7 +108,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       
       if(project_is_selected) {
         project_evaluation(
-          get_project_evaluation(user_coc$coc_version_id, project_id)
+          get_project_evaluation(list(user_coc$coc_version_id, project_id))
         )
       
         hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
@@ -286,7 +286,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
           ) |>
             fmutate(
               met_threshold = fcoalesce(as.integer(met_threshold_y), as.integer(met_threshold)),
-              version_id = fcoalesce(version_id, 0L) + 1,
+              version_id = fcoalesce(as.integer(version_id), 0L) + 1,
               met_threshold_y = NULL
             )
         )
@@ -320,7 +320,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       
       # pull latest Project Evaluation in case they just updated Threshold
       project_evaluation(
-        get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
+        get_project_evaluation(list(user_coc$coc_version_id, selected_project()$project_id))
       )
       
       # Update db
@@ -333,8 +333,8 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       
       update_threshold_complete(get_db_pool(), data)
       
-      if(input$threshold_complete)
-        user_coc$rating_updated <- user_coc$rating_updated + 1
+      status <- calculate_coc_status(user_coc$coc_version_id)
+      update_coc_status(user_coc, status)
     }, ignoreInit = TRUE)
 
     # -- USer PResence ---

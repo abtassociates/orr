@@ -121,6 +121,9 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           project_id %in% updated_project_evaluations$project_id,
           version_id := version_id + 1
         ]
+        
+        status <- calculate_coc_status(user_coc$coc_version_id)
+        update_coc_status(user_coc, status)
       } else {
         refresh_trigger(refresh_trigger() + 1)
       }
@@ -139,8 +142,6 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
       ratable_projects(current_data)
       
       alt_rating_update()
-      
-      user_coc$rating_updated <- user_coc$rating_updated + 1
     }, ignoreInit = TRUE) # end alt rating table cell edit
 
     # Handle yes-to-all feature for Met HUD/CoC Threshold columns

@@ -20,7 +20,10 @@ function(input, output, session) {
     customized_coc_thresholds_updated = 0,
     priorities_and_ceilings_updated = 0,
     
-    rating_updated = 0
+    rating_updated = 0,
+    ranking_updated = 0,
+    coc_status = NULL,
+    coc_status_updated = 0
   )
   nav_control <- reactiveVal("about")
   

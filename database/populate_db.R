@@ -28,45 +28,59 @@ populate_db <- function(
   
   # --- 1. PREPARE THE SQL SCRIPT ---
   message("Reading and preparing SQL schema...")
-  sql_lines <- readLines(here("database/database_schema.sql"))
-  sql_string <- paste(sql_lines, collapse = "\n")
+  DBI::dbExecute(p, "PRAGMA journal_mode = WAL;")
+  DBI::dbExecute(p, "PRAGMA synchronous = NORMAL;")
+  DBI::dbExecute(p, "PRAGMA foreign_keys = OFF;") # Required to drop tables with dependencies
   
-  if (USE_SQLITE) {
-    # SQLite Configuration
-    DBI::dbExecute(p, "PRAGMA journal_mode = WAL;")
-    DBI::dbExecute(p, "PRAGMA synchronous = NORMAL;")
-    DBI::dbExecute(p, "PRAGMA foreign_keys = OFF;") # Required to drop tables with dependencies
+  static_tables_script <- here("database/static_tables.sql") 
+  app_tables_script <- here("database/database_schema.sql")
+  for(sql_script in c(static_tables_script, app_tables_script)) {
+    message(paste0("Preparing ", basename(sql_script)))
+   
+    sql_lines <- readLines(sql_script)
+    sql_string <- paste(sql_lines, collapse = "\n")
     
-    sql_string <- stringi::stri_replace_all_fixed(
-      sql_string,
-      c("__PK_TYPE__", "__CASCADE__"), 
-      c("INTEGER PRIMARY KEY AUTOINCREMENT", ""),
-      vectorize_all = FALSE
-    )
-  } else {
-    # PostgreSQL Configuration
-    sql_string <- stringi::stri_replace_all_fixed(
-      sql_string,
-      c("__PK_TYPE__", "__CASCADE__"), 
-      c("SERIAL PRIMARY KEY", "CASCADE"),
-      vectorize_all = FALSE
-    )
-  }
-  
-  # --- 2. EXECUTE THE DDL SCHEMA ---
-  # In R/DBI, multiple statements in a single string need to be split if the driver doesn't support it natively
-  # Or executed using a library like dbplyr or custom splits.
-  # queries <- strsplit(sql_string, ";\\s*")[[1]]
-  queries <- strsplit(sql_string, ";\\s*\\n")[[1]]
-  
-  
-  pool::poolWithTransaction(p, function(pcon) {
-    for (q in queries) {
-      clean_q <- trimws(q)
-      if (nchar(clean_q) > 0) DBI::dbExecute(pcon, clean_q)
+    if (USE_SQLITE) {
+      # SQLite Configuration
+      sql_string <- stringi::stri_replace_all_fixed(
+        sql_string,
+        c("__PK_TYPE__", "__CASCADE__"), 
+        c("INTEGER PRIMARY KEY AUTOINCREMENT", ""),
+        vectorize_all = FALSE
+      )
+    } else {
+      # PostgreSQL Configuration
+      sql_string <- stringi::stri_replace_all_fixed(
+        sql_string,
+        c("__PK_TYPE__", "__CASCADE__"), 
+        c("SERIAL PRIMARY KEY", "CASCADE"),
+        vectorize_all = FALSE
+      )
     }
-  })
-  
+    
+    if(basename(sql_script) == "database_schema.sql") {
+      LOOKUPS <<- get_db_tbl("lookups")
+      sql_string <- stringi::stri_replace_all_fixed(
+        sql_string,
+        "__NOT_STARTED__",
+        get_lookup_refid("Not Started", "coc_status"),
+        vectorize_all = FALSE
+      )
+    }
+    # --- 2. EXECUTE THE DDL SCHEMA ---
+    # In R/DBI, multiple statements in a single string need to be split if the driver doesn't support it natively
+    # Or executed using a library like dbplyr or custom splits.
+    # queries <- strsplit(sql_string, ";\\s*")[[1]]
+    queries <- strsplit(sql_string, ";\\s*\\n")[[1]]
+    
+    message(paste0("Executing ", basename(sql_script)))
+    pool::poolWithTransaction(p, function(pcon) {
+      for (q in queries) {
+        clean_q <- trimws(q)
+        if (nchar(clean_q) > 0) DBI::dbExecute(pcon, clean_q)
+      }
+    })
+  }
   
   # Turn foreign keys back on for SQLite after creation
   if (USE_SQLITE) {
