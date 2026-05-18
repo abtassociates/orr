@@ -28,6 +28,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     
     ratable_projects <- reactiveVal(NULL)
     rv_uploaded <- reactiveVal(NULL)
+    rv_uploaded_file <- reactiveVal(NULL)
     refresh_trigger <- reactiveVal(NA)
     rerender_table <- reactiveVal(0)
     
@@ -316,9 +317,9 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     # handle import pop-up button visibility and labeling
     observeEvent(input$import_cancel, {
       current_step(1)
-      rv_uploaded(NULL)
+      rv_uploaded_file(NULL)
       removeModal()
-    })
+    }, ignoreInit = TRUE)
     
     observe({
       req(user_coc$coc_version_id)
@@ -360,6 +361,11 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     
     
     # Next/Submit button
+    observeEvent(input$rating_file, {
+      show_modal_error(!is.null(input$rating_file), "Please upload a file.")
+      rv_uploaded_file(input$rating_file)
+    })
+    
     observeEvent(input$import_next, {
       shinyjs::hide("import_error_box") 
       
@@ -367,7 +373,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
       
       if (step == 1) {
         # Initial validation
-        show_modal_error(!is.null(rv_uploaded()), "Please upload a file.")
+        show_modal_error(!is.null(rv_uploaded_file()), "Please upload a file.")
         
         ext <- tools::file_ext(input$rating_file$datapath)
         show_modal_error(tools::file_ext(input$rating_file$datapath) %in% c("csv", "xlsx"), "File must be CSV or XLSX")
@@ -381,13 +387,14 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           }
         }, error = function(e) {
           log_error(paste0("Importing Alt Rating...:", e$message))
+          rv_uploaded_file(NULL)
           NULL
         })
         
+        rv_uploaded(uploaded)
+       
         # Validate file came through
         show_modal_error(!is.null(uploaded), "Unable to read file.")
-        
-        rv_uploaded(uploaded)
         
         # Move to mapping step
         current_step(2)
