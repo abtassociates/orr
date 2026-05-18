@@ -6,7 +6,7 @@ get_project_col_names <- function() {
   else 
     "SELECT column_name
       FROM information_schema.columns
-      AND table_name = 'projects'
+      WHERE table_name = 'projects'
       ORDER BY ordinal_position;"
   
   x <- get_db_query(sql)

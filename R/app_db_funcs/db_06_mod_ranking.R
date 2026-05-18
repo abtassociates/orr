@@ -31,7 +31,8 @@ get_projects_to_rank <- function(coc_version_id) {
       no.population_group AS no_pop_grp,
       p.dv_renewal,
       p.project_id,
-      r.version_id
+      r.version_id,
+      pe.rating_complete AND pe.threshold_complete AS rating_complete
       
       FROM projects p
       LEFT JOIN ranking r ON p.project_id = r.project_id AND r.coc_version_id = p.coc_version_id
@@ -42,6 +43,8 @@ get_projects_to_rank <- function(coc_version_id) {
     params = list(coc_version_id, get_lookup_refid("Ignore", "funding_action"))
   ) %>%
     fmutate(
+      met_hud_thresholds = fcoalesce(as.logical(met_hud_thresholds), FALSE),
+      met_coc_thresholds = fcoalesce(as.logical(met_coc_thresholds), FALSE),
       funding_action = convert_to_factor(., "funding_action"),
       project_type = convert_to_factor(., "project_type"),
       target_population = convert_to_factor(., "target_population"),
