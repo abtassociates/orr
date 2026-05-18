@@ -77,8 +77,9 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     
     ## restore last selected project from user_settings DB tbl
     ## also update choices
-    observe({
-      req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating', user_coc$projects_updated)
+    observeEvent(nav_control(), {
+      req(nav_control() == 'rating')
+      req(all_projects())
       
       user_prev_project_selected <- get_user_setting(user_coc, 'project_selected') |> as.integer()
       
@@ -151,8 +152,11 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
     selected_project <- reactive({
       req(user_coc$coc_version_id)
       
-      all_projects() |> 
-        fsubset(project_id == input$project_select)
+      if(input$project_select != "")
+        all_projects() |> 
+          fsubset(project_id == input$project_select)
+      else
+        data.table()
     })
     
     # Show project info about the selected project
