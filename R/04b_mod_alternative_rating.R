@@ -276,7 +276,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           footer = tagList(
             actionButton(ns("import_back"), "Back"),
             actionButton(ns("import_next"), "Next"),
-            modalButton("Cancel")
+            actionButton(ns("import_cancel"), "Cancel")
           )
         )
       )
@@ -314,6 +314,12 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
     })
     
     # handle import pop-up button visibility and labeling
+    observeEvent(input$import_cancel, {
+      current_step(1)
+      rv_uploaded(NULL)
+      removeModal()
+    })
+    
     observe({
       req(user_coc$coc_version_id)
       req(input$import_rating)
@@ -361,7 +367,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
       
       if (step == 1) {
         # Initial validation
-        show_modal_error(!is.null(input$rating_file), "Please upload a file.")
+        show_modal_error(!is.null(rv_uploaded()), "Please upload a file.")
         
         ext <- tools::file_ext(input$rating_file$datapath)
         show_modal_error(tools::file_ext(input$rating_file$datapath) %in% c("csv", "xlsx"), "File must be CSV or XLSX")
