@@ -18,7 +18,7 @@ table_names <- c(
   "funding_priorities-priorities_table",
   "ranking-ui_ranked_list",
   "ranking-ui_excluded_list",
-  "rating-alternative-alternative_rating_table"
+  "rating-alternative-alternative_rating_table",
   "rating-alternative-import_preview_table_state"
 )
 
