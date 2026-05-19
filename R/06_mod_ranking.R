@@ -691,8 +691,15 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       ranked_data <- if (force_reset || all(is.na(ranked_data$rank))) {
         # sort special project types to the top
         ranked_data |>
-          fmutate(sort_project_type = project_type %in% c("SSO-CE", "HMIS Project", "SSO", "HMIS", "SSO-Host Homes")) |>
-          roworder(-sort_project_type, -priority, -weighted_score)
+          fmutate(
+            sort_project_type = fcase(
+              project_type %in% setdiff(RANKED_BUT_NOT_RATED_PROJECTS, "SH"), 1,
+              project_type == "SSO", 3,
+              project_type == "SH", 4,
+              default = 2
+            )
+          ) |>
+          roworder(sort_project_type, -priority, -weighted_score)
       } else {
         ranked_data |> 
           roworder(rank)
