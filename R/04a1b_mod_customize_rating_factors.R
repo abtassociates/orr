@@ -19,7 +19,7 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
       label = "Select special populations",
       choices = get_labelled_lookups("target_population")[c("DV", "General")],
       multiple = TRUE,
-      selected = c("DV", "General") # Pre-select all for initial state
+      selected = "General" # Pre-select all for initial state
     )
     
     dropdowns_to_include <- target_pop_dropdown
