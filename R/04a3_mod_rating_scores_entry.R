@@ -91,11 +91,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
     
     
     observeEvent(c(selected_project(), refresh_trigger(), user_coc[[paste0("customized_rating_factors_updated_", funding_action)]]), {
+      shinyjs::disable("rating_complete")
+      
       req(user_coc$coc_version_id)
       
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
-      shinyjs::toggleState("rating_complete", condition = project_is_selected)
-      
       req(project_is_selected)
       
       # individual threshold entries
@@ -105,6 +105,8 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
           selected_project()
         ) 
       )
+      
+      shinyjs::toggleState("rating_complete", condition = project_is_selected && fnrow(factors_and_scores_for_project()) > 0)
       
       # project-level evaluations
       project_evaluation(
@@ -135,7 +137,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       }
       
       shiny::validate(
-        need(hasProjects(), paste0("You do not have any ", funding_action, " projects to threshold. Add them on the Review tab.")),
+        need(hasProjects(), paste0("You do not have any ", funding_action, " projects to rate. Add them on the Review tab.")),
         need(project_is_selected, "Select a project in the left-hand sidebar to begin rating")
       )
       shiny::validate(
