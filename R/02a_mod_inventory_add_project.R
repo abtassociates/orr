@@ -9,7 +9,7 @@ LOOKUP_CHOICES <- list(
   dv_reallocation_project_types = c("RRH", "TH+RRH", "SSO - CE"),
   # funding_source = c("CoC","YHDP","DV"), # According to guidance from HUD on 4/20/26, no separate YHDP bucket
   funding_source = c("CoC","DV"),
-  target_populations = LOOKUPS[reference_type == 'target_population']$value #c("DV","HIV","Youth", "General") # AS 8/26: What are the right populations here?
+  target_populations = setdiff(LOOKUPS[reference_type == 'target_population']$value, "General") # all populations
 )
 
 # ===================================================================
