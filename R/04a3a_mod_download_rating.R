@@ -170,11 +170,7 @@ mod_download_rating_server <- function(id, user_coc, selected_project, funding_a
     
     iv <- shinyvalidate::InputValidator$new()
     iv$add_rule("target_population_filter", sv_required())
-    
-    iv_proj <- shinyvalidate::InputValidator$new()
-    iv_proj$add_rule("project_type_filter", sv_required())
-    iv_proj$condition(cond = ~ funding_action == "")
-    iv$add_validator(iv_proj)
+    if(funding_action == "Renew") iv$add_rule("project_type_filter", sv_required())
     
     observeEvent(input$dl_blank, {
       showModal(
