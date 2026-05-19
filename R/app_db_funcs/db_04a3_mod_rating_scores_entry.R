@@ -1,10 +1,9 @@
 # Get the rating factor info to construct UI
 get_rating_factors_and_scores <- function(coc_version_id, selected_project) {
   target_population <- ifelse(
-    is.na(selected_project$target_population) || 
-      get_lookup_label(selected_project$target_population, 'target_population') == 'NA',
-    get_lookup_refid('General', 'target_population'),
-    selected_project$target_population
+    selected_project$target_population == get_lookup_refid('DV', 'target_population'),
+    selected_project$target_population,
+    get_lookup_refid('General', 'target_population')
   )
   
   get_db_query(
