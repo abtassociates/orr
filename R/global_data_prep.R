@@ -60,6 +60,8 @@ RATABLE_PROJECT_TYPES <- list(
   "Expand" = c("RRH","PSH", "TH")
 )
 
+# These project types are neither rated nor ranked
+PROJECT_TYPES_TO_IGNORE <- c("ES","OPH","DEM")
 
 HUD_THRESHOLD_REQUIREMENTS <- get_db_tbl("thresholds") |> 
   fsubset(type == "HUD")
