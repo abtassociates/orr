@@ -1,9 +1,20 @@
 populate_db <- function(
     add_demo_data = basename(getwd()) != "ORR", 
-    USE_SQLITE = Sys.getenv("RSTUDIO") == "1"
+    USE_SQLITE = Sys.getenv("RSTUDIO") == "1",
+    dbname = NULL
 ) {
+  library(here)
+  library(DBI)
+  library(data.table)
+  library(collapse)
+  
+  files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
+  lapply(files, source)
+  
+  dbname <- set_up_db_connection(dbname)
+  
   ans <- readline(
-    prompt = "If you proceed, you will erase all database data. Proceed? (Y/N): "
+    prompt = paste0("If you proceed, you will erase all data for the ", dbname, " database. Proceed? (Y/N): ")
   )
   
   if (toupper(trimws(ans)) != "Y") {
@@ -13,15 +24,6 @@ populate_db <- function(
   
   message("Proceeding...")
   
-  library(here)
-  library(DBI)
-  library(data.table)
-  library(collapse)
-  
-  files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
-  lapply(files, source)
-  
-  set_up_db_connection()
   p <- get_db_pool()
   SERVICE_ACCOUNT <- 'orr_service@abtglobal.com'
   

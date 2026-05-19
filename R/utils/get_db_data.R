@@ -1,3 +1,4 @@
+library(collapse)
 
 # Get DB data ------------------
 get_db_query <- function(sql, params = NULL) {
@@ -13,7 +14,7 @@ get_db_query <- function(sql, params = NULL) {
     
     return(dt)
   }, error = function(e) {
-    log_error(paste0(sql, e$message))
+    logger::log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -33,7 +34,7 @@ get_db_tbl <- function(tbl_name) {
     
     return(tbl)
   }, error = function(e) {
-    log_error(paste0("Importing ", tbl_name, e$message))
+    logger::log_error(paste0("Importing ", tbl_name, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -47,7 +48,7 @@ db_execute <- function(sql, params = NULL) {
       DBI::dbExecute(get_db_pool(), sql, params = params)
     })
   }, error = function(e) {
-    log_error(paste0(sql, e$message))
+    logger::log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -58,7 +59,7 @@ db_append <- function(tbl, data) {
       DBI::dbAppendTable(get_db_pool(), tbl, data)
     })
   }, error = function(e) {
-    log_error(paste0(sql, e$message))
+    logger::log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -72,7 +73,7 @@ get_db_column_limit <- function(table_name, column_name) {
   if (.db_env$connection_type == "SQLite") {
     # SQLite uses PRAGMA table_info
     # This returns a table with a 'type' column (e.g., "VARCHAR(10)")
-    res <- DBI::dbGetQuery(pool, paste0("PRAGMA table_info(", table_name, ")"))
+    res <- get_db_query(paste0("PRAGMA table_info(", table_name, ")"))
     col_type <- res$type[res$name == column_name]
     
     # Use Regex to extract the number inside the parentheses: VARCHAR(10) -> 10
@@ -86,7 +87,7 @@ get_db_column_limit <- function(table_name, column_name) {
       SELECT character_maximum_length 
       FROM information_schema.columns 
       WHERE table_name = $1 AND column_name = $2"
-    res <- DBI::dbGetQuery(pool, sql, params = list(table_name, column_name))
+    res <- get_db_query(sql, params = list(table_name, column_name))
     limit <- res$character_maximum_length[1]
   } 
   
