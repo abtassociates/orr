@@ -30,6 +30,7 @@ library(pagedown)
 library(mirai)
 library(promises)
 library(writexl)
+library(openxlsx2)
 
 # ENVIRONMENT DETECTION -----------
 IN_DEV_MODE <- Sys.getenv("RSTUDIO") == "1" && !isTRUE(getOption("shiny.testmode"))
