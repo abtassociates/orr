@@ -2,11 +2,7 @@ mod_coc_selection_ui <- function(id) {
   ns <- NS(id)
 
   card(id = id,
-    #card_header(h4("Versions"))
-    card_header(h4("Versions", 
-                   div(style = "float: right;",
-                   actionBttn(ns('refresh_versions_tbl'), label="Refresh", color="primary", size="xs", icon=icon('refresh')))
-                )),
+    card_header(h4("Versions")),
     card_body(
       fillable = FALSE,
       p('A CoC can have multiple versions of its ORR. Versions can be created to test different combinations of factors and parameters. To create your own ORR version, click "Create New Version". To create a copy of an existing version, select the version in the table below and click "Copy Version".'),
@@ -26,53 +22,35 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    ## subset coc_version_users to specific user
-    coc_vu <- reactiveVal(NULL)
+    ## versions associated with logged in user
+    users_versions <- reactiveVal(NULL)
     
     ## session variables used for sending access requests
     admin_email <- reactiveVal(NULL)
     coc_requested <- reactiveVal(NULL)
-    version_requested <- reactiveVal(NULL)
     
-    get_all_users_and_versions <- function() {
-      coc_vu(
-        get_db_query(
-          "SELECT v.*, u.username, u.coc_version_role
-            FROM coc_versions v
-            LEFT JOIN coc_version_users u
-            ON v.coc_version_id = u.coc_version_id"
-        ) |>
-          fsubset(username == user_coc$username, -created_by) |>
-          fmutate(
-            coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
-            coc_status = get_lookup_label(coc_status, 'coc_status')
-          ) |>
-          join(
-            cocs %>% fselect(coc_code, coc_name),
-            how = 'left', 
-            on = c('coc' = 'coc_code')
-          ) |>
-          colorder(coc, coc_name, pos = "after")
-      )
-    }
+    all_versions_and_users <- reactiveVal()
     
-    observeEvent(user_coc$auth, {
+    refresh_trigger <- reactiveValues(
+      versions = 0,
+      request_sent = 0,
+    )
+    
+    observeEvent(c(user_coc$auth, refresh_trigger$versions), {
       req(user_coc$auth)
-      get_all_users_and_versions()
-    })
-    
-    observeEvent(input$refresh_versions_tbl, {
-      showNotification("Refreshing Versions table!", type = "message")
-      get_all_users_and_versions()
+      all_versions_and_users(
+        get_all_coc_versions_and_users()
+      )
+      
+      users_versions(
+        all_versions_and_users() |>
+          fsubset(username == user_coc$username, -username)
+      )
     })
     
     project_ids <- reactive({
       req(user_coc$coc_version_id)
-
-      get_db_query(
-        "SELECT project_id FROM projects WHERE coc_version_id = $1", 
-        params = user_coc$coc_version_id
-      )$project_id
+      get_coc_projects(user_coc$coc_version_id)$project_id
     })
     
     owner_role_refid <- get_lookup_refid("Owner", "coc_version_role")
@@ -80,21 +58,15 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ####
     # CoC Versions table ------------------
     ####
-    coc_proxy <- dataTableProxy(ns('coc_versions_dt'))
-    
-    observe({
-      req(coc_vu())
-      replaceData(coc_proxy, coc_vu())
-    })
-    
     output$coc_versions_dt <- renderDT({
       req(user_coc$auth)
       
-      datatable(coc_vu(), 
-                colnames = unname(versions_variable_labels[match(names(coc_vu()),  names(versions_variable_labels))]),
+      data <- users_versions() |> fselect(-version_id)
+      datatable(data, 
+                colnames = unname(variable_labels[names(data)]),
                 rownames = FALSE,
                 options = list(
-                  dom = 'tip', 
+                  dom = 'ftip', 
                   autowidth = FALSE,
                   columnDefs = list(
                     list(targets=0, className = "hidden")
@@ -102,20 +74,66 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
                 ),
                 editable = FALSE,
                 style = 'default',
-                #filter = list(position = 'top', plain = TRUE),
                 selection = 'single'
       ) %>% 
         formatDate(
           columns = c('date_created', 'date_updated'),
           method = 'toLocaleString'
         )
+    }, server = FALSE)
+    
+    ####
+    # Selected CoC Version Actions --------------
+    ####
+    requests_by_user <- reactive({
+      req(refresh_trigger$request_sent)
+
+      get_all_requests_by_user(user_coc$username) |>
+        fsubset(created_by == user_coc$username, coc_version_id, request_status)
     })
     
-    ####
-    # CoC Version Actions --------------
-    ####
+    observe({
+      req(user_coc$auth)
+      req(all_versions_and_users(), users_versions(), requests_by_user())
+      
+      # If there are any versions NOT associated with the current user, allow them to Request Access
+      versions_not_associated_with_user <- fsubset(
+        all_versions_and_users(),
+        !coc_version_id %in% c(users_versions()$coc_version_id, requests_by_user()$coc_version_id)
+      )
+        
+      shinyjs::toggle(id = 'request_access_direct', condition = fnrow(versions_not_associated_with_user) > 0)
+    })
     
-    ## Enable/disable actions when row is selected or not
+    ## Selecting a version ------------
+    observeEvent(input$coc_versions_dt_rows_selected, {
+      current_coc_info <- users_versions()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id, coc_version_role)]
+      user_coc$coc <- current_coc_info$coc
+      user_coc$coc_version_id <- current_coc_info$coc_version_id
+      user_coc$date_updated <- current_coc_info$date_updated
+      
+      # toggle Inventory tab if they have any versions selected
+      toggle_navs_on_coc_selection()
+      
+      shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+      shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0 && current_coc_info$coc_version_role == "Owner")
+      shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
+      
+      req(!is.null(user_coc$coc_version_id)) 
+      
+      settings <- get_db_query(
+        "SELECT coc_version_id, coc_user, setting_name, setting_value
+        FROM user_settings 
+        WHERE coc_version_id = $1 AND (coc_user = $2 OR coc_user = $3)",
+        params <- list(user_coc$coc_version_id, user_coc$username, SERVICE_ACCOUNT)
+      ) 
+      
+      for (i in seq_row(settings)) {
+        user_coc$settings[[paste0("v", user_coc$coc_version_id)]][[ settings$setting_name[i] ]] <- settings$setting_value[i]
+      }
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
+    
+    ### toggle navs on version selection ----------------
     toggle_navs_on_coc_selection <- function() {
       for(t in TABS_AFTER_COC_SELECTION) {
         show <- length(input$coc_versions_dt_rows_selected) > 0
@@ -127,49 +145,26 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           nav_hide("nav", target = t, session = parent_session)
       }
     }
-    observe({
-      req(user_coc$auth)
-      
-      # toggle Inventory tab if they have any versions selected
-      toggle_navs_on_coc_selection()
-      
-      shinyjs::toggle(id = 'edit_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
-      shinyjs::toggle(id = 'delete_coc_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
-      shinyjs::toggle(id = 'copy_version', condition = length(input$coc_versions_dt_rows_selected) > 0)
-
-      # If there are any versions NOT associated with the current user, allow them to Request Access
-      if(nrow(coc_vu()) > 0) {
-        shinyjs::toggle(id = 'request_access_direct', condition = coc_vu() |> 
-                          fgroup_by(coc) |> 
-                          fsummarize(no_version_access = !any(username == user_coc$username)) |> 
-                          fsubset(no_version_access) |> 
-                          nrow() > 0
-        )
-      }
-    })
     
     ## Edit version ----------------
-    observeEvent(input$coc_versions_dt_rows_selected, {
-      current_coc_info <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id)]
-      user_coc$coc <- current_coc_info$coc
-      user_coc$coc_version_id <- current_coc_info$coc_version_id
-    })
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
-      ## update versions table to "In progress" when editing begins
-      db_execute( 
-        "UPDATE coc_versions SET coc_status = $1, 
-        date_updated = CURRENT_TIMESTAMP, updated_by = $2
-        WHERE coc_version_id = $3", 
-        params = list(7, user_coc$username, user_coc$coc_version_id)
+      
+      update_coc_version(
+        params = list(
+          get_lookup_refid("In Progress", "coc_status"), 
+          user_coc$username, 
+          user_coc$coc_version_id #, 
+          # users_versions()[input$coc_versions_dt_rows_selected]$version_id
+        )
       )
+      
       nav_control("inventory")
     })
     
     ## Delete version ---------------
     observeEvent(input$delete_coc_version, {
-      
-      if(coc_vu()[input$coc_versions_dt_rows_selected, coc_version_role] == "Owner"){
+      if(users_versions()[input$coc_versions_dt_rows_selected, coc_version_role] == "Owner"){
         
         showModal(
           modalDialog(
@@ -194,33 +189,16 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       }
     })
     
-    
-    ## Create new version --------------
-    #  When they hit Create: display pop-up form titled "Create ORR" with a simple dropdown to select a CoC.
-    observeEvent(input$create_new_version, {
-      shiny::invalidateLater(100)
-      showModal(
-        modalDialog(
-          title = 'Create ORR',
-          selectizeInput(
-            ns('coc_dropdown'),
-            label = "Please choose a CoC:",
-            choices = sort(cocs$coc_code)
-          ),
-          footer = tagList(
-            actionButton(ns('choose_coc'), label="Continue", class='btn-primary'),
-            modalButton(label="Cancel")
-          ),
-          easyClose = TRUE
-        ),
-        session = session
-      )
+    observeEvent(input$confirm_deletion, {
+      delete_coc_version(user_coc$coc_version_id)
+      removeModal()
+      refresh_trigger$versions <- refresh_trigger$versions + 1
     })
     
-    ## Copy version ------------
+    ## Copy selected version ------------
     observeEvent(input$copy_version, {
       req(input$coc_versions_dt_rows_selected)
-      current_version_name <- coc_vu()[input$coc_versions_dt_rows_selected, .(coc_version_name)]
+      current_version_name <- users_versions()[input$coc_versions_dt_rows_selected, .(coc_version_name)]
       showModal(
         modalDialog(
           title = paste0('Copy ', current_version_name),
@@ -239,356 +217,104 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       )
     })
     
-    create_new_version_for_user <- function(new_version_data) {
-      new_version <- new_version_data |>
-        fmutate(coc_status = get_lookup_refid("Not Started", "coc_status")) |>
-        add_user_stamp(user_coc, is_new = TRUE)
-      
-      # Update CoC Version in db, and grab autonumbered coc_version_id
-      new_coc_version_info <- insert_and_return(
-        "coc_versions", new_version %>% fselect(-coc_name), c("coc_version_id", "date_updated")
-      )
-
-      new_version_user <- data.table(
-        coc_version_id = unlist(new_coc_version_info)[["coc_version_id"]],
-        username = user_coc$username,
-        coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role"))
-      ) |>
-        add_user_stamp(user_coc, is_new = TRUE)
-      
-      # Next, update CoC Version USers in db
-      db_append('coc_version_users', new_version_user)
-      
-      # update reactiveVal
-      coc_vu(
-        rbind(
-          copy(coc_vu()), 
-          new_version |>
-            fmutate(
-              coc_version_id = new_version_user$coc_version_id,
-              coc_version_role = new_version_user$coc_version_role,
-              coc_status = get_lookup_label(coc_status, "coc_status"),
-              coc_version_role = get_lookup_label(coc_version_role, "coc_version_role"),
-              date_updated = as.POSIXct(new_coc_version_info[[1]]$date_updated),
-              date_created = as.POSIXct(new_coc_version_info[[1]]$date_updated)
-            ),
-          fill=TRUE
-        ) %>% fselect(-created_by)
-      )
-      
-      return(new_version_user$coc_version_id)
-    }
-    
     observeEvent(input$copy_orr_confirm, {
-      coc_version_id <- create_new_version_for_user(
-        coc_vu()[input$coc_versions_dt_rows_selected] |>
-          fmutate(coc_version_name = input$copy_version_name) |>
-          fselect(-coc_version_role, -date_updated, -date_created)
-      )
-      removeModal()
-      # TODO: Eventually build out copying all the otehr tables
-      # copy_additional_data()
-    })
-    
-    ####
-    # Importing/Uploading HIC Data ------------------
-    ####
-    output$hic_cond_select <- renderUI({
-      req(input$hic_import_select)
-      
-      # If they choose to upload: display a file upload input and allow them to select a csv
-      if(input$hic_import_select == 'upload'){
-        fileInput(ns('hic_file_upload'), label = 'Upload your HIC data',
-                  accept = c('csv'))
-      } else if(input$hic_import_select == 'import'){
-        
-      }
-    })
-    # Once they select a CoC, close the previous modal and show another one with a radio button asking if they want to import the HIC data or import the HIC data as of X/X/XX date.
-    observeEvent(input$choose_coc, {
-      
-      
-      coc_requested(input$coc_dropdown)
-      
-      # If there’s an version THEY are already associated with (by looking up CoC Versions joined with CoC Version Users where the user is this user),
-      # warn them that they already have an ORR for this CoC and that if they wish to modify settings, they can do so within existing ORRs.
-      # Show options "Continue" or "Cancel"
-      check_if_already_have <- coc_vu() |>
-        fsubset(username == user_coc$username & coc == coc_requested())
-      
-      check_if_others_have <- coc_vu() |>
-        fsubset(username != user_coc$username & coc == coc_requested() & coc_version_role == owner_role_refid)
-      
-      removeModal()
-      
-      if(nrow(check_if_already_have) > 0){
-        admin_email(NULL)
-        version_requested(NULL)
-        #version_requested(check_if_already_have$coc_version_id)
-        showModal(modalDialog(
-          title = 'Your own CoC Version Found',
-          helpText(paste0('You have ', nrow(check_if_already_have), ' existing versions for CoC: ', coc_requested(),'. If you wish to modify settings, 
-                          you can do so within the existing ORR and click "Cancel". If you still wish to create a new version, please click "Continue."')),
-          footer = tagList(
-            # If they continue: go to next step
-            actionButton(ns('continue_new_version'), label='Continue', class="btn-primary"),
-            # If they cancel: close pop-up
-            modalButton(label='Cancel')
-          )
-        ))
-        
-        # If they select a CoC that SOMEONE ELSE is associated with (by looking up CoC Versions joined with CoC Version Users where the user is NOT this user and user role = "Admin"), 
-      } else if(nrow(check_if_others_have) > 0){
-        admin_email(check_if_others_have$username)
-        version_requested(check_if_others_have$coc_version_id)
-        # let them know as much and provide them the option to "Request Access" or "Create ORR anyway"
-        showModal(modalDialog(
-          title = 'Other owned CoC Version Found',
-          helpText(paste0('Another user (', check_if_others_have$username ,') has an existing version for CoC: ', coc_requested(),'. Would you like to request
-                          access from this user, or continue creating a new version for this CoC?')),
-          footer = tagList(
-            actionButton(ns('request_access_indirect'), label='Request Access', icon = icon('unlock'), class="btn-warning"),
-            # If they continue: go to next step
-            actionButton(ns('continue_new_version2'), label='Create New Version', icon('circle-plus'), class="btn-primary"),
-            modalButton('Cancel')
-          )
-        ))
-       
-      } else {
-        admin_email(NULL)
-        version_requested(NULL)
-        # If they select a CoC that has no CoC Versions: go to next step
-        showModal(modalDialog(
-          title = paste0('Create ORR for ', coc_requested()),
-          helpText(paste0('You will become the Version Owner for this version of the ', coc_requested(), ' ORR, with the sole ability to manage other user requests to collaborate on this version. Would you like to continue?')),
-          footer = tagList(
-            # If they continue: go to next step
-            actionButton(ns('continue_new_version3'), label='Continue', class="btn-primary"),
-            # If they cancel: close pop-up
-            modalButton(label='Cancel')
-          )
-        ))
-      }
-   
-    })
-    
-    observeEvent(
-      c(input$continue_new_version, input$continue_new_version2, input$continue_new_version3),
-      {
-        req(isTruthy(input$continue_new_version) || isTruthy(input$continue_new_version2) ||
-            isTruthy(input$continue_new_version3))
-       
-        removeModal()
-        choiceList <- setNames(
-          c("import", "upload"), 
-          c(
-            paste0('Import the HIC data as of ', HDX_HIC_DATE),
-            'Upload my own version of the HIC data'
-          )
+      pool::poolWithTransaction(get_db_pool(), function(p) {
+        coc_version_id <- create_new_version_for_user(
+          p, 
+          users_versions()[input$coc_versions_dt_rows_selected] |>
+            fmutate(coc_version_name = input$copy_version_name) |>
+            fselect(-coc_version_role, -date_updated, -date_created)
         )
-        showModal(
-          modalDialog(
-            title = 'Inventory Data Source',
-            radioButtons(
-              ns('hic_import_select'),
-              label = 'Which version of the HIC data would you like to use?',
-              choices = choiceList,
-              width = "100%"
-            ),
-            uiOutput(ns('hic_cond_select')),
-            footer = tagList(
-              actionButton(inputId=ns('new_hic_version'),label='Continue', class="btn-primary"),
-              modalButton(label='Cancel')
-            )
+      })
+      removeModal()
+    })
+    
+    ##################
+    # Create New Version and Request Access --------------------
+    ##################
+    ## modal to select coc and display associated versions --------
+    select_coc_modal <- function(title) {
+      showModal(
+        modalDialog(
+          title = title,
+          selectizeInput(
+            ns('coc_dropdown'),
+            label = "Please choose a CoC:",
+            choices = c("Choose one" = "", sort(cocs$coc_code))
           ),
-          session = session
-        )
-      }
-    )
-    
-    
-    # Requesting access to a CoC directly ---------------
-    # When user clicks the "Request Access to a CoC" button on the dashboard
-    # allow user to view versions and request access
-    request_access_direct_coc_versions <- reactive({
-      coc_vu() |>
-        fsubset(username != user_coc$username) |>
-        fselect(coc, coc_version_name, username)
-    })
-    # When user clicks the "Request Access to a CoC" button
-    observeEvent(input$request_access_direct, {
-
-      showModal(modalDialog(
-        title = 'Request Access to a CoC',
-        selectizeInput(
-          ns('request_access_coc_dropdown'),
-          label = "Please choose a CoC to view its versions:",
-          choices = sort(funique(request_access_direct_coc_versions()$coc))
+          if(title == "Create ORR Version") 
+            helpText(
+              paste0(
+                'You will become the Version Owner for this version of the ', coc_requested(), ' ORR, 
+                with the sole ability to manage other user requests to collaborate on this version. 
+                Would you like to continue?')
+            )
+          else
+            NULL,
+          br(),
+          br(),
+          h5(id = ns("existing_versions_title"), "Existing versions"),
+          DT::DTOutput(ns("existing_versions")),
+          footer = tagList(
+            if(title == "Create ORR Version") actionButton(ns('choose_coc'), label="Continue", class='btn-primary') else NULL,
+            actionButton(ns('send_request'), label='Send Request', disabled = FALSE, class="btn-warning"),
+            modalButton(label='Cancel')
+          ),
+          size = "l"
         ),
-        DT::DTOutput(ns("direct_request_coc_versions")),
-        footer = tagList(
-          # If they continue: go to next step
-          actionButton(ns('send_direct_request'), label='Send Request', disabled = FALSE, class="btn-warning"),
-          # If they cancel: close pop-up
-          modalButton(label='Cancel')
-        ),
-        size = "l"
-      ))
-    })
-
-    output$direct_request_coc_versions <- renderDT({
-      req(input$request_access_coc_dropdown)
-      
-      versions_to_show <- request_access_direct_coc_versions() |>
-        fsubset(coc == input$request_access_coc_dropdown & 
-                username != user_coc$username)
-      
-      req(nrow(versions_to_show) > 0)
-      
-      datatable(
-        versions_to_show,
-        colnames = c("CoC", "Version Name", "Owner"),
-        rownames = FALSE,
-        options = list(dom = 'tip'),
-        style = 'default',
-        selection = 'multiple'
+        session = session
       )
-    })
-    
-    create_request <- function(cur_coc, version_id) {
-      request_status_num <- get_lookup_refid('Sent','request_status')
       
-      request_row <- data.table(
-        #coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
-        coc_version_id = version_id,
-        request_status = request_status_num,
-        reason_for_rejection = NA,
-        date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-        date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
-      ) |>
-        add_user_stamp(user_coc, is_new = TRUE)
-      
-      # Add row to requests table
-      db_append("coc_version_requests", request_row)
+      has_existing_versions <- fnrow(versions_and_requests_for_selected_coc()) > 0
+      shinyjs::toggle(id = "existing_versions_title", condition = has_existing_versions)
+      shinyjs::toggle(id = "send_request", condition = has_existing_versions)
+      shinyjs::toggle(id = "existing_versions", condition = has_existing_versions)
     }
     
-    observeEvent(input$send_direct_request, {
-      
-      prev_requests <- get_db_tbl('coc_version_requests')
-      
-      version_id <- coc_vu() |> 
-        fsubset(coc == input$request_access_coc_dropdown & 
-                coc_version_name == input$direct_request_coc_versions_cell_clicked$value) |> 
-        fselect('coc_version_id') %>% 
-        ffirst()
-      
-      check_if_already_requested <- prev_requests %>% 
-        fsubset(coc_version_id == version_id & 
-                  created_by == user_coc$username)
-      
-      if(fnrow(check_if_already_requested) > 0){
-        showNotification('You already have an outstanding request for this CoC Version. Please select another one.')
-      } else {
-        # TODO: Send email to version Owners of input$direct_request_coc_versions_rows_selected
-        create_request(cur_coc = input$request_access_coc_dropdown,
-                       version_id = version_id)
-        removeModal()
-        showNotification('Request sent!', duration = 3)
-      }
+    ## Create New version modal ------------
+    observeEvent(input$create_new_version, {select_coc_modal('Create ORR Version')})
+    
+    ## Request Access to a CoC Version -----------------
+    observeEvent(input$request_access_direct, {select_coc_modal('Request Access to a CoC Version')})
+    
+    ## Import or Upload HIC ----------
+    # User decides whether to import the HIC data as of X/X/XX date or upload their own
+    observeEvent(input$choose_coc, {
+      req(isTruthy(input$choose_coc))
      
-    })
-    
-    # Requesting access to a CoC indirectly ---------------
-    # This is for when the user tried to create a new version 
-    # but may not have known about an existing version for the same CoC
-    request_access_indirect_coc_versions <- reactive({
+      removeModal()
       
-      coc_vu() |>
-        fsubset(username != user_coc$username) |>
-        fselect(coc, coc_version_name, username)
-    })
-    
-    # When user clicks the "Request Access" button within the "Create Version" flow
-    observeEvent(input$request_access_indirect, {
-      
-      ## TODO: Allow user to select a CoC Version and request access indirectly
-      showModal(modalDialog(
-        title = 'Request Access to a CoC',
-        helpText('Select a CoC to view its versions...'),
-        selectInput(ns('request_indirect_access_coc_dropdown'),
-                    label = "Please choose a CoC:",
-                    choices = sort(funique(request_access_indirect_coc_versions()$coc))
-        ),
-        DT::DTOutput(ns("indirect_request_coc_versions")),
-        footer = tagList(
-          # If they continue: go to next step
-          actionButton(ns('send_indirect_request'), label='Send Request', disabled = FALSE, class="btn-warning"),
-          # If they cancel: close pop-up
-          modalButton(label='Cancel')
+      choiceList <- setNames(
+        c("import", "upload"), 
+        c(
+          paste0('Import the HIC data as of ', HDX_HIC_DATE),
+          'Upload my own version of the HIC data'
         )
-      ))
-    })
-    
-    ## enable/disable request actionbuttons based on if a CoC version is selected from the modal table
-    observe({
-      shinyjs::toggleState(id = 'send_direct_request', condition = length(input$direct_request_coc_versions_rows_selected) > 0)
-      
-      shinyjs::toggleState(id = 'send_indirect_request', condition = length(input$indirect_request_coc_versions_rows_selected) > 0)
-    })
-    
-    output$indirect_request_coc_versions <- renderDT({
-      req(input$request_indirect_access_coc_dropdown)
-      
-      versions_to_show <- request_access_indirect_coc_versions() |>
-        fsubset(coc == input$request_indirect_access_coc_dropdown & 
-                  username != user_coc$username)
-      
-      req(nrow(versions_to_show) > 0)
-      
-      datatable(
-        versions_to_show,
-        colnames = c("CoC", "Version Name", "Owner"),
-        rownames = FALSE,
-        options = list(dom = 'tip'),
-        style = 'default',
-        selection = 'multiple'
+      )
+      showModal(
+        modalDialog(
+          title = 'Inventory Data Source',
+          radioButtons(
+            ns('hic_import_select'),
+            label = 'Which version of the HIC data would you like to use?',
+            choices = choiceList,
+            width = "100%"
+          ),
+          conditionalPanel(
+            condition = sprintf("input['%s'] == 'upload'", ns('hic_import_select')),
+            fileInput(ns('hic_file_upload'), label = 'Upload your HIC data', accept = c('csv'))
+          ),
+          footer = tagList(
+            actionButton(inputId=ns('name_version'),label='Continue', class="btn-primary"),
+            modalButton(label='Cancel')
+          )
+        ),
+        session = session
       )
     })
     
-    # If they "Request Access" after trying to create a new CoC Version but one 
-    # is already created: 
-    # send email to user associated with that other CoC Version
-    observeEvent(input$send_indirect_request, {
-      #req(!is.null(admin_email()))
-      
-      
-      prev_requests <- get_db_tbl('coc_version_requests')
-      
-      version_id <- coc_vu() |> 
-        fsubset(coc == input$request_indirect_access_coc_dropdown & 
-                  coc_version_name == input$indirect_request_coc_versions_cell_clicked$value) |> 
-        fselect('coc_version_id') %>% 
-        ffirst()
-      
-      check_if_already_requested <- prev_requests %>% 
-        fsubset(coc_version_id == version_id & 
-                  created_by == user_coc$username)
-      
-      if(fnrow(check_if_already_requested) > 0){
-        showNotification('You already have an outstanding request for this CoC Version. Please select another one.')
-      } else {
-        ## TODO: send email to admin of version that is requested
-        
-        create_request(cur_coc = input$request_indirect_access_coc_dropdown,
-                       version_id = version_id)
-        removeModal()
-        showNotification('Request sent!', duration = 3)
-      }
-      
-    })
-    
-    observeEvent(input$new_hic_version, {
-      req(input$hic_import_select == 'import')
+    ## Name coc version -----------
+    observeEvent(input$name_version, {
       
       initial_version_name <- paste0(input$coc_dropdown, '-', str_to_upper(user_coc$given_name))
 
@@ -611,38 +337,38 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       
     })
     
-    # Creating a new ORR from the HIC ----------------
-    observeEvent(input$create_orr_confirm, {
-      req(input$hic_import_select == 'import')
+    ## Create new version from HIC ----------------
+    create_new_version_for_user <- function(p, new_version_data) {
+      new_version <- new_version_data |>
+        fmutate(coc_status = get_lookup_refid("Not Started", "coc_status")) |>
+        add_user_stamp(user_coc, is_new = TRUE)
       
-      coc_version_id <- create_new_version_for_user(
-        data.table(
-          coc_version_name = input$create_version_name,
-          coc = input$coc_dropdown,
-          coc_name = cocs$coc_name[cocs$coc_code == input$coc_dropdown]
-        )
+      # Update CoC Version in db, and grab autonumbered coc_version_id
+      new_coc_version_info <- insert_and_return(
+        p,
+        "coc_versions", 
+        new_version %>% fselect(-coc_name), 
+        c("coc_version_id", "date_updated")
       )
       
-      # Initialize projects data
-      data <- get_hic_data(input$coc_dropdown, coc_version_id)
+      new_version_user <- data.table(
+        coc_version_id = unlist(new_coc_version_info)[["coc_version_id"]],
+        username = user_coc$username,
+        coc_version_role = as.character(get_lookup_refid("Owner","coc_version_role"))
+      ) |>
+        add_user_stamp(user_coc, is_new = TRUE)
       
-      filtered_data_db <- factor_vars_db_prep(data)
-      if(IN_DEV_MODE && inherits(filtered_data_db$date_created, "POSIXct")) 
-        filtered_data_db <- filtered_data_db |>
-          fmutate(
-            date_created = format(date_created, "%Y-%m-%d %H:%M:%S"),
-            date_updated = format(date_updated, "%Y-%m-%d %H:%M:%S")
-          )
+      # Next, update CoC Version USers in db
+      DBI::dbAppendTable(p, 'coc_version_users', new_version_user)
       
-      db_append("projects", filtered_data_db)
+      # Generate initial set of selected thresholds and factors
+      generate_data_for_new_coc_version(p, new_version_user$coc_version_id)
       
-      shiny::showNotification('New CoC version created!', type='message')
-      removeModal()
-      
-    })
+      return(new_version_user$coc_version_id)
+    }
     
-    
-    
+    ## Pull HIC Data for coc ------------
+    es_project_type <- get_lookup_refid("ES", "project_type")
     get_hic_data <- function(coc, coc_version_id) {
       bed_field_mapping <- c(
         all_fam_beds = "beds_hh_w_children", 
@@ -659,13 +385,17 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
       project_data <- coc_data %>% # %>% needed for gvr to work
         fmutate(
           mckinneyvento = factor_yesno(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
-          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           dv_renewal = factor_yesno(NA),
           grant_number = as.character(NA), 
           coc_amount_awarded_last_year = as.numeric(NA),
           coc_amount_expended_last_year = as.numeric(NA),
           coc_funding_requested = as.numeric(NA),
-          funding_action = fifelse(mckinneyvento == "Yes", "Renew", "Ignore"),
+          funding_action = fifelse(
+            project_type == es_project_type | mckinneyvento == "No",
+            "Ignore", 
+            "Renew"
+          ),
           coc_version_id = coc_version_id,
           # additional cols user will fill out
           is_dedicated_ch_fam = factor_yesno(NA),
@@ -685,10 +415,141 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           created_by = SERVICE_ACCOUNT
         ) |>
         frename(bed_field_mapping) |>
-        get_vars(setdiff(dbListFields(DB_POOL, "projects"), "project_id"))
+        get_vars(setdiff(dbListFields(get_db_pool(), "projects"), "project_id"))
 
       return(project_data)
     }
-
+    
+    ## Confirm create ---------------
+    observeEvent(input$create_orr_confirm, {
+      req(input$hic_import_select == 'import')
+      pool::poolWithTransaction(get_db_pool(), function(p) {
+        coc_version_id <- create_new_version_for_user(
+          p,
+          data.table(
+            coc_version_name = input$create_version_name,
+            coc = input$coc_dropdown,
+            coc_name = cocs$coc_name[cocs$coc_code == input$coc_dropdown]
+          )
+        )
+        
+        # Initialize projects data
+        data <- get_hic_data(input$coc_dropdown, coc_version_id)
+        
+        filtered_data_db <- factor_vars_db_prep(data)
+        if(IN_DEV_MODE && inherits(filtered_data_db$date_created, "POSIXct")) 
+          filtered_data_db <- filtered_data_db |>
+          fmutate(
+            date_created = format(date_created, "%Y-%m-%d %H:%M:%S"),
+            date_updated = format(date_updated, "%Y-%m-%d %H:%M:%S")
+          )
+        
+        DBI::dbAppendTable(p, "projects", filtered_data_db)
+      })
+      
+      shiny::showNotification('New CoC version created!', type='message')
+      removeModal()
+      refresh_trigger$versions <- refresh_trigger$versions + 1
+    })
+    
+    #####################
+    # Requesting Access to a CoC -------------------
+    #####################
+    # show the versions and user's request statuses in a datatable so user knows 
+    # whether to request or not and can select a version to request
+    versions_and_requests_for_selected_coc <- reactive({
+      if(!isTruthy(input$coc_dropdown)) return(data.table())
+      
+      all_versions_and_users() |>
+        fsubset(coc == input$coc_dropdown) |>
+        fmutate(is_logged_in_user = username == user_coc$username) |>
+        fgroup_by(coc_version_id) |>
+        fmutate(owner = ffirst(fifelse(coc_version_role == "Owner", username, NA))) |>
+        fungroup() |>
+        roworder(coc_version_id, -is_logged_in_user) |>
+        fslice(coc_version_id, n = 1) |>
+        fselect(coc, coc_version_name, owner, is_logged_in_user, coc_version_id, coc_version_role) |>
+        join(requests_by_user(), on = "coc_version_id") |>
+        fmutate(
+          request_status = get_lookup_label(request_status, "request_status"),
+          request_status = fcase(
+            is_logged_in_user, paste0("Already an ", coc_version_role),
+            !is.na(request_status), paste0("Already ", request_status), 
+            default = "Not yet requested"
+          )
+        ) |>
+        fselect(-is_logged_in_user, -coc_version_role)
+    })
+    
+    ## enable/disable request actionbuttons based on if a CoC version is selected from the modal table
+    observe({
+      shinyjs::toggleState(id = 'send_request', condition = length(input$existing_versions_rows_selected) > 0)
+    })
+    
+    # Datatable of versions and user's requests 
+    # shown in Create ORR and Request Access to CoC modals
+    output$existing_versions <- renderDT({
+      req(input$coc_dropdown)
+      
+      versions_to_show <- versions_and_requests_for_selected_coc() |>
+        fselect(-coc_version_id)
+      
+      req(fnrow(versions_to_show) > 0)
+      
+      datatable(
+        versions_to_show,
+        colnames = c("CoC", "Version Name", "Owner", "Availability"),
+        rownames = FALSE,
+        style = 'default',
+        selection = 'multiple',
+        options = list(
+          dom = 'ft',
+          # disable rows that have already been requested
+          rowCallback = JS(
+            sprintf("function(row, data, index) {
+              var status = data[%s];
+              if (status !== null && status != 'Not yet requested') {
+                $(row).css({
+                  'pointer-events': 'none',
+                  'opacity': '0.5',
+                  'background-color': '#ebebeb',
+                });
+              }
+            }", which(names(versions_to_show) == "request_status") - 1)
+          )
+        )
+      )
+    })
+    existing_versions_proxy <- dataTableProxy(ns("existing_versions"), session = session)
+    observeEvent(versions_and_requests_for_selected_coc(), {
+      has_existing_versions <- fnrow(versions_and_requests_for_selected_coc()) > 0
+      
+      shinyjs::toggle(id = "existing_versions_title", condition = has_existing_versions)
+      shinyjs::toggle(id = "send_request", condition = has_existing_versions)
+      shinyjs::toggle(id = "existing_versions", condition = has_existing_versions)
+      
+      replaceData(
+        existing_versions_proxy, 
+        versions_and_requests_for_selected_coc() |> fmutate(coc_version_id = NULL), 
+        rownames = FALSE
+      )
+    })
+    
+    
+    # Create Version Request in DB, pass success to requests module, notify user
+    observeEvent(input$send_request, {
+      selected_version <- versions_and_requests_for_selected_coc()[input$existing_versions_rows_selected]
+      s <- append_version_request(selected_version, user_coc)
+      if(isTruthy(s))
+        refresh_trigger$request_sent <- refresh_trigger$request_sent + 1
+      
+      ## TODO: send email to admin of version that is requested
+      
+      user_coc$requests_updated <- user_coc$requests_updated + 1
+      
+      removeModal()
+      
+      showNotification('Request sent!', duration = 3)
+    })
   })
 }
