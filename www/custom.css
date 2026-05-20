@@ -189,7 +189,8 @@ table.dataTable tbody th.focus, table.dataTable tbody td.focus {
 #rating-customize_criteria-new_rating_factors-sidebar {
   position: sticky; 
   top: 0; 
-  height: 100vh;
+  height: 100%;
+  overflow-y: auto;
 }
 
 /* allow DT dropdown filter text to expand and stay on single line */
