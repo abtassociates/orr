@@ -119,7 +119,8 @@ populate_db <- function(
       mckinneyventococ = FALSE,
       created_by = SERVICE_ACCOUNT, 
       updated_by = SERVICE_ACCOUNT
-    )
+    ) %>% 
+    fsubset(project_type != 'ES')
   
   # Fetch lookup tables from database
   lookups <- pool::poolWithTransaction(p, function(pcon) {
