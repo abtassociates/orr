@@ -100,7 +100,6 @@ variable_labels <- c(
   "coc_amount_expended_last_year" = "CoC Amount Expended Last Operating Year",
   "coc_funding_requested" = "CoC Funding Requested",
   "funding_action" = "Funding Action",
-  "geocode" = "Geo Code",
   "all_fam_beds" = "All Fam Beds",
   "dv_fam_beds" = "DV Fam Beds",
   "ch_fam_beds" = "CH Fam Beds",
