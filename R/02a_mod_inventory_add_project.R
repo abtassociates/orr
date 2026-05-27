@@ -243,7 +243,13 @@ mod_inventory_add_project_server <- function(
     observeEvent(c(input$project_type, current_target_pop()), {
       vis_beds <- visible_bed_groups()
       all_bed_groups <- c("total_beds", "ch_beds", "vet_beds", "youth_beds")
-      lapply(all_bed_groups, function(group) shinyjs::toggle(group, condition = group %in% vis_beds))
+      lapply(all_bed_groups, function(group) {
+        if(!(group %in% vis_beds)){
+          shinyjs::reset(id = paste0(group,'_fam'))
+          shinyjs::reset(id = paste0(group,'_ind'))
+        }
+        shinyjs::toggle(group, condition = group %in% vis_beds)
+        })
     }, ignoreInit = TRUE, ignoreNULL = FALSE)
     
     # Update DV checkbox and related elements
