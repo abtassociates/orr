@@ -828,7 +828,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       shiny::validate(
         need(
           !ranking_needs_refresh(), 
-          "Data has been updated. Click 'Conduct Ranking' to update."
+          "Data has been updated. Click 'Regenerate Ranking' to update."
         )
       )
       
