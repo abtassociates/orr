@@ -19,7 +19,8 @@ calculate_coc_status <- function(coc_version_id, ranking_complete = FALSE) {
     !any(pe$rating_complete) &&
     !any(pe$threshold_complete)
   ) "Not Started"
- 
+  else coc_status_label
+  
   return(
     get_lookup_refid(new_status, "coc_status")
   )
