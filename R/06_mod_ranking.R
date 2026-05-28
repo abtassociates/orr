@@ -1161,7 +1161,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     observeEvent(input$ranking_complete, {
       req(user_coc$coc_version_id)
-      status <- calculate_coc_status(user_coc$coc_version_id, input$ranking)
+      status <- calculate_coc_status(user_coc$coc_version_id, input$ranking_complete)
       update_coc_status(user_coc, status)
     }, ignoreInit = TRUE)
   })
