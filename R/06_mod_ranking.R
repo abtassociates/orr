@@ -138,6 +138,24 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       excluded = NULL
     )
     
+    observeEvent(c(user_coc$coc_version_id, ranking_needs_refresh()), {
+
+      req(user_coc$coc_version_id)
+      
+      # version status
+      coc_status <- get_coc_status(user_coc$coc_version_id)
+      is_complete <- (coc_status == get_lookup_refid('Complete', 'coc_status'))
+      
+      if(input$ranking_complete != is_complete) {
+        updateCheckboxInput(
+          session, 
+          "ranking_complete", 
+          value = is_complete
+        )
+        
+      }
+    })
+    
     observeEvent(ranked_projects_db(), {
       req(isTruthy(fnrow(ranked_projects_db()) > 0))
       process_data()
