@@ -56,10 +56,10 @@ mod_funding_priorities_ui <- function(id) {
         col_widths = c(3, 3, 3, 3),
         funding_input("total_ard", "Annual Renewal Demand (ARD)"),
         funding_input("coc_bonus", "CoC Bonus"),
-        funding_input("tier_1", "Tier 1"),
+        funding_input("tier_1", "Tier 1 (Adj ARD * 90%)"),
         funding_input("adjusted_ard", "Adjusted ARD"),
         # funding_input("yhdp_ard", "YHDP ARD"),
-        funding_input("tier_2", "Tier 2"),
+        funding_input("tier_2", "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)"),
         funding_input("dv_bonus", "DV Bonus"),
         funding_input("dv_ard", "DV ARD")
       )
