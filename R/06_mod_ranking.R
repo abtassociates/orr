@@ -795,8 +795,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         dt <- dt |>
           formatStyle(
             'coc_funding_recommendation', 
-            backgroundColor = USER_ENTRY_BG_COLOR,
-            fontWeight = 'bold'
+            backgroundColor = paste0(USER_ENTRY_BG_COLOR," !important"),
+            fontWeight = 'bold',
           ) |>
           formatStyle(
             columns = 'bonus_highlight',  # Replace with your actual column name
