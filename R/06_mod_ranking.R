@@ -567,7 +567,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             fill = unspecified_id
           ) %>%
           setnames(colnames(.)[-1], paste0("prio_", colnames(.)[-1])) |>
-          replace_NA(unspecified_id)
+          replace_NA(unspecified_id, cols=-1)
   
         # Pivot Wide for Bed Ceilings
         wide_beds <- ceilings_priorities() |>
