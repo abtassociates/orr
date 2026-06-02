@@ -835,7 +835,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           formatStyle(
             columns = "coc_funding_recommendation",
             valueColumns = "rank",
-            backgroundColor = styleEqual("Over Target", USER_ENTRY_BG_COLOR),
+            backgroundColor = styleEqual("Over Target", paste0(USER_ENTRY_BG_COLOR, " !important")),
             fontWeight = 'bold'
           )
       
