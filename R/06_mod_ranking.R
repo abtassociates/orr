@@ -610,13 +610,13 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         project_type %in% unspec_types, unspecified_id,
         
         # If they have any DV beds, use DV priority
-        dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_DV_Family, prio_DV_Individual, na.rm = TRUE),
+        dv_fam_beds > 0 | dv_ind_beds > 0, pmin(prio_DV_Family, prio_DV_Individual, na.rm = TRUE),
         
         # If any of their sub-pop beds are at least 50% of total beds, use highest priority of those sub-pop
         (ch_fam_beds >= 0.5 * total_beds & total_beds > 0) | (vet_fam_beds >= 0.5 * total_beds & total_beds > 0) |
           (par_youth_beds >= 0.5 * total_beds & total_beds > 0) | (total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0) |
           (vet_ind_beds >= 0.5 * total_beds & total_beds > 0) | (single_youth_beds >= 0.5 * total_beds & total_beds > 0),
-        pmax(
+        pmin(
           fifelse(ch_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_CH_Family, unspecified_id),
           fifelse(vet_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_Veteran_Family, unspecified_id),
           fifelse(par_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_Youth_Family, unspecified_id),
@@ -630,7 +630,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         # If sum of their sub-pop beds is less than 50%, use general pop priority
         all_fam_beds > all_ind_beds, prio_General_Family,
         all_ind_beds > all_fam_beds, prio_General_Individual,
-        all_fam_beds == all_ind_beds & total_beds > 0, pmax(prio_General_Family, prio_General_Individual, na.rm = TRUE),
+        all_fam_beds == all_ind_beds & total_beds > 0, pmin(prio_General_Family, prio_General_Individual, na.rm = TRUE),
         default = unspecified_id
       )] %>%
         fmutate(priority = convert_to_factor(., "priority"))
