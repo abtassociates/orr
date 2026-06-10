@@ -499,8 +499,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     observeEvent(selected_coc_nofo_opportunities(), {
       req(!identical(
-        selected_coc_nofo_opportunities(), 
-        as.character(coc_nofo_opportunities()[selected == T]$coc_nofo_opportunity_id)
+        sort(selected_coc_nofo_opportunities()), 
+        sort(as.character(coc_nofo_opportunities()[selected == T]$coc_nofo_opportunity_id))
       ))
       
       save_opportunities()
