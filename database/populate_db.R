@@ -29,9 +29,11 @@ populate_db <- function(
   
   # --- 1. PREPARE THE SQL SCRIPT ---
   message("Reading and preparing SQL schema...")
-  DBI::dbExecute(p, "PRAGMA journal_mode = WAL;")
-  DBI::dbExecute(p, "PRAGMA synchronous = NORMAL;")
-  DBI::dbExecute(p, "PRAGMA foreign_keys = OFF;") # Required to drop tables with dependencies
+  if(USE_SQLITE) {
+    DBI::dbExecute(p, "PRAGMA journal_mode = WAL;")
+    DBI::dbExecute(p, "PRAGMA synchronous = NORMAL;")
+    DBI::dbExecute(p, "PRAGMA foreign_keys = OFF;") # Required to drop tables with dependencies
+  }
   
   static_tables_script <- here("database/static_tables.sql") 
   app_tables_script <- here("database/database_schema.sql")
