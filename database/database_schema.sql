@@ -173,7 +173,7 @@ CREATE TABLE rating_factors (
     rating_factor_id __PK_TYPE__,
     rating_factor_text TEXT,
     rating_factor_text_short TEXT,
-    piping_text VARCHAR(200), 
+    piping_text TEXT, 
     funding_action SMALLINT REFERENCES lookups(reference_id),
     project_type SMALLINT NULL REFERENCES lookups(reference_id),
     target_population SMALLINT NULL REFERENCES lookups(reference_id),
