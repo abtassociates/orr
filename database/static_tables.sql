@@ -69,11 +69,11 @@ INSERT INTO lookups (reference_type, value, created_by) VALUES
     ('funding_action', 'Replace', 'orr_service@abtglobal.com'),
     ('bonus_type', 'CoC Bonus', 'orr_service@abtglobal.com'),
     ('bonus_type', 'DV Bonus', 'orr_service@abtglobal.com'),
-    ('priority', 'High', 'orr_service@abtglobal.com'),
-    ('priority', 'Medium', 'orr_service@abtglobal.com'),
+    ('priority', 'Unspecified', 'orr_service@abtglobal.com'),
     ('priority', 'Low', 'orr_service@abtglobal.com'),
-    ('priority', 'Unspecified', 'orr_service@abtglobal.com');
-
+    ('priority', 'Medium', 'orr_service@abtglobal.com'),
+    ('priority', 'High', 'orr_service@abtglobal.com');
+    
 INSERT INTO lookups (reference_type, value, other_specify_flag, created_by) VALUES
     ('request_rejection_reason', 'Not Associated with CoC', FALSE, 'orr_service@abtglobal.com'),
     ('request_rejection_reason', 'Other', TRUE, 'orr_service@abtglobal.com');
