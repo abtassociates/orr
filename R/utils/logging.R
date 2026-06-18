@@ -16,6 +16,8 @@ table_names <- c(
   "inventory-projects_table",
   "dashboard-requests-requests_dt",
   "funding_priorities-priorities_table",
+  "ranking-ui_ranked_list",
+  "ranking-ui_excluded_list",
   "rating-alternative-alternative_rating_table",
   "rating-alternative-import_preview_table_state"
 )

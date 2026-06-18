@@ -22,30 +22,26 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    ## versions associated with logged in user
-    users_versions <- reactiveVal(NULL)
-    
     ## session variables used for sending access requests
     admin_email <- reactiveVal(NULL)
     coc_requested <- reactiveVal(NULL)
     
-    all_versions_and_users <- reactiveVal()
+    all_versions_and_users <- reactive({
+      req(user_coc$auth)
+      req(refresh_trigger$versions, user_coc$coc_status_updated, user_coc$ranking_updated)
+      
+      get_all_coc_versions_and_users()
+    })
     
     refresh_trigger <- reactiveValues(
       versions = 0,
       request_sent = 0,
     )
     
-    observeEvent(c(user_coc$auth, refresh_trigger$versions), {
-      req(user_coc$auth)
-      all_versions_and_users(
-        get_all_coc_versions_and_users()
-      )
-      
-      users_versions(
-        all_versions_and_users() |>
-          fsubset(username == user_coc$username, -username)
-      )
+    ## versions associated with logged in user
+    users_versions <- reactive({
+      all_versions_and_users() |>
+        fsubset(username == user_coc$username, -username)
     })
     
     project_ids <- reactive({
@@ -59,9 +55,13 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     # CoC Versions table ------------------
     ####
     output$coc_versions_dt <- renderDT({
-      req(user_coc$auth)
+      data <- users_versions() |> 
+        fselect(-version_id) |>
+        fmutate(
+          coc_version_role = get_lookup_label(coc_version_role, 'coc_version_role'),
+          coc_status = get_lookup_label(coc_status, 'coc_status')
+        )
       
-      data <- users_versions() |> fselect(-version_id)
       datatable(data, 
                 colnames = unname(variable_labels[names(data)]),
                 rownames = FALSE,
@@ -74,7 +74,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
                 ),
                 editable = FALSE,
                 style = 'default',
-                selection = 'single'
+                selection = list(mode = 'single', selected = isolate(input$coc_versions_dt_rows_selected))
       ) %>% 
         formatDate(
           columns = c('date_created', 'date_updated'),
@@ -107,10 +107,12 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     
     ## Selecting a version ------------
     observeEvent(input$coc_versions_dt_rows_selected, {
-      current_coc_info <- users_versions()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id, coc_version_role)]
+      current_coc_info <- users_versions()[input$coc_versions_dt_rows_selected, .(coc, coc_version_id, coc_version_role, coc_status)]
+      
       user_coc$coc <- current_coc_info$coc
       user_coc$coc_version_id <- current_coc_info$coc_version_id
       user_coc$date_updated <- current_coc_info$date_updated
+      user_coc$coc_status <- current_coc_info$coc_status
       
       # toggle Inventory tab if they have any versions selected
       toggle_navs_on_coc_selection()
@@ -149,16 +151,6 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ## Edit version ----------------
     observeEvent(input$edit_coc_version, {
       req(user_coc$auth)
-      
-      update_coc_version(
-        params = list(
-          get_lookup_refid("In Progress", "coc_status"), 
-          user_coc$username, 
-          user_coc$coc_version_id #, 
-          # users_versions()[input$coc_versions_dt_rows_selected]$version_id
-        )
-      )
-      
       nav_control("inventory")
     })
     
@@ -368,7 +360,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     }
     
     ## Pull HIC Data for coc ------------
-    es_project_type <- get_lookup_refid("ES", "project_type")
+    ignore_project_types <- get_lookup_refid(PROJECT_TYPES_TO_IGNORE, "project_type")
     get_hic_data <- function(coc, coc_version_id) {
       bed_field_mapping <- c(
         all_fam_beds = "beds_hh_w_children", 
@@ -392,7 +384,7 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
           coc_amount_expended_last_year = as.numeric(NA),
           coc_funding_requested = as.numeric(NA),
           funding_action = fifelse(
-            project_type == es_project_type | mckinneyvento == "No",
+            project_type %in% ignore_project_types | mckinneyvento == "No",
             "Ignore", 
             "Renew"
           ),

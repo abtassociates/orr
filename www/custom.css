@@ -199,7 +199,6 @@ table.dataTable .selectize-dropdown-content {
   background: var(--bs-body-bg);
 }
 
-
 /* float the accordion title totals to the right */
 #rating-renew-rating_scores_entry-main_accordion .accordion-title,
 #rating-new-rating_scores_entry-main_accordion .accordion-title {
@@ -218,6 +217,296 @@ table.dataTable .selectize-dropdown-content {
 #rating-renew-rating_scores_entry-main_accordion .accordion-button .accordion_total_display,
 #rating-new-rating_scores_entry-main_accordion .accordion-button .accordion_total_display{
   display:none;
+}
+
+/****************** Ranking ************/
+/* Drag Handle Styling */
+td.drag-handle { 
+  cursor: grab !important; 
+  text-align: center; 
+  color: #999; 
+  vertical-align: middle;
+}
+td.drag-handle:active { 
+  cursor: grabbing !important; 
+}
+
+/*************** 
+** Ranking Summary Widget Text Styles
+*******************/
+.bslib-value-box .value-box-value {
+  font-size: 1.2rem;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#ranking-exceeds-widget_box .value-box-value {
+  font-size: 1.8em;
+  text-align: center;
+  justify-content: center; /* Vertically centers the number */
+  align-items: center;     /* Horizontally centers the number */
+  margin-top: 0 !important;
+}
+
+.bslib-value-box .value-box-value > .val {
+  font-size: 1.5rem;
+}
+
+.bslib-value-box .value-box-title {
+  font-size:1.7rem;
+  font-weight: bold;
+}
+
+.value-box-title .subtitle {
+  font-size: 0.75rem; 
+  font-weight: normal; 
+  margin-top: 3px;
+}
+
+
+.bslib-value-box .value-box-area {
+  padding: 1rem 0rem;
+}
+
+.bslib-value-box .value-box-value .breakdown {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; /* Aligns content to the bottom */
+  flex-grow: 1;              /* Forces this div to take up all empty space */
+  padding-bottom: 0.5rem;    /* Space before the progress bar min/max labels */
+  min-height: 50px; /*match DV Bonus*/
+}
+
+/* Clean up paragraphs inside the breakdown */
+.bslib-value-box .value-box-value .breakdown p {
+  margin-bottom: 0;          /* Override default p margins */
+  font-size: 0.85em;
+  opacity: 0.9;
+  line-height: 1.3;
+}
+
+
+/***** WIDGET PROGRESS BAR *****/
+.value-box-value .progress-label {
+  display: flex; 
+  justify-content: space-between; 
+  font-size: 1em; 
+  font-weight: 700;
+}
+
+.combined-status-bar {
+  position: relative; 
+  height: 2.2rem; 
+  width: 100%;
+  background-color: #f8fafc; /* Changed to a very slight off-white for the empty track */
+  border-radius: 6px;
+  overflow: hidden; 
+  border: 3px solid #000;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  /* Added inset shadow to make the empty space look like a recessed track */
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.2); 
+  margin-top: 0.5rem !important;
+}
+
+.combined-status-bar .bar-fill {
+  position: absolute; 
+  top: 0; 
+  left: 0; 
+  height: 100%;
+  z-index: 1; 
+  transition: width 0.5s ease-in-out;
+}
+
+:root {
+  --straddle-bg: #fde047;
+  --straddle-border: #d97706;
+  --straddle-color: #78350f;
+}
+
+.combined-status-bar .straddle-bar-fill {
+  height: 20%;
+  z-index: 10;
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  background-color: var(--straddle-bg);
+  border: 2px solid var(--straddle-border);
+}
+.combined-status-bar .bar-label {
+  position: relative; 
+  z-index: 2; 
+  font-weight: 800;
+  font-size: 0.9rem; 
+  text-transform: uppercase; 
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px; /* spacing for shiny icon() */
+}
+
+/* 508 Compliant Contrast States - Darkened for much higher visibility */
+.status-remaining { border-color: #000000; }
+.status-remaining .bar-fill { background-color: #9ca3af; } /* Darkened from light gray to Medium Slate Gray */
+.status-remaining .bar-label { color: #000000; }
+
+.status-straddle { border-color: var(--straddle-border); animation: warning-pulse 2s infinite; }
+.status-straddle .bar-fill { background-color: var(--straddle-bg); }
+.status-straddle .bar-label { color: var(--straddle-color); }
+
+.status-success { border-color: #059669; }
+.status-success .bar-fill { background-color: #86efac; } /* Stronger Green fill */
+.status-success .bar-label { color: #022c22; } /* Dark Green text */
+
+.status-danger { border-color: #dc2626; animation: warning-pulse 2s infinite; }
+.status-danger .bar-fill { background-color: #fca5a5; } /* Stronger Red fill */
+.status-danger .bar-label { color: #450a0a; } /* Dark Red text */
+
+@keyframes warning-pulse {
+  0% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0); }
+}
+
+
+/*****************
+TABLE INFO (HIDDEN COLS + LEGEND)
+******************/
+#ranking-table_info {
+  display: none; 
+  justify-content: space-between; 
+  align-items: center; 
+}
+
+#ranking-table_info.flex-show {
+  display: flex;
+}
+
+/*****************
+RANKING TABLES
+******************/
+/* DataTables RowGroup Header Styles */
+tr.group_header td{
+  color: white !important; 
+  font-weight: bold !important; 
+  font-size: 16px !important;
+}
+#ranking-ui_ranked_list tr.group-tier_1 td{
+  background-color: var(--brand-tier_1);
+}
+#ranking-ui_ranked_list tr.group-tier_2 td {
+  background-color: var(--brand-tier_2);
+}
+#ranking-ui_ranked_list tr.group-exceeds td {
+  background-color: var(--brand-exceeds);
+}
+/* Necessary for CoC and DV Bonus highlighting*/
+#ranking-ui_ranked_list table.dataTable tbody tr[style*='background-color']:not(.group_header) > td {
+  background-color: inherit !important;
+  color: inherit !important;
+  /* This cancels the Bootstrap 5 background-color on the td */
+  --bs-table-accent-bg: transparent !important;
+  --bs-table-bg: transparent !important;
+}
+
+/* Apply the gradient to the cells (td) so it isn't hidden by cell backgrounds */
+.straddle-row {
+  cursor: help;
+  position: relative;
+  display:table-row;
+}
+.status-straddle .bar-fill { background-color: var(--straddle-bg); }
+.status-straddle .bar-label { color var(--straddle-color); }
+
+
+/* Define the hazard tape animation/style */
+.straddle-row td, #ranking-legend > div {
+  /* Create the top and bottom borders */
+  border-top: 6px solid var(--straddle-bg) !important;
+  border-bottom: 6px solid var(--straddle-bg) !important;
+  
+  /* Use border-image to create the stripes */
+  /*border-image: repeating-linear-gradient(
+    45deg,
+    var(--brand-tier_1),
+    var(--brand-tier_1) 10px,
+    var(--brand-tier_2) 10px,
+    var(--brand-tier_2) 20px
+  ) 10;*/
+  
+  /* Ensure cells don't collapse the border */
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* Add side borders to the first and last columns to complete the box */
+.straddle-row td:first-child, #ranking-legend > div {
+  border-left: 6px solid var(--straddle-bg) !important;
+}
+
+.straddle-row td:last-child, #ranking-legend > div {
+  border-right: 6px solid var(--straddle-bg) !important;
+}
+
+#ranking-legend {
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  margin-bottom: 8px; 
+  font-weight: 500;
+  margin-right: 20px;
+}
+
+#ranking-legend > div {
+  width: 50px;
+}
+
+#ranking-legend > span {
+  line-height: 1; 
+  display: flex; 
+  align-items: center;
+}
+
+/* The 'Ghost Overlay' Logic */
+#ranking-ui_ranked_list table.dataTable tbody tr.straddle-row:hover::after {
+  content: var(--straddle-label);
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  background: white;
+  color: #333;
+  padding: 6px 12px;
+  border: 2px solid var(--brand-tier_2);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  z-index: 9999;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  white-space: break-spaces;
+  pointer-events: none;
+  animation: ghost-float 0.3s ease-out;
+}
+
+@keyframes ghost-float {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+#ranking-ui_ranked_list tr.tier2-placeholder > td {
+   text-align: center; 
+   color: #888; 
+   font-style: italic; 
+   border: 2px dashed #ddd; 
+   padding: 15px; 
+   background-color: #fafafa;
+}
+
+/* Ensure the hover effect (if any) doesn't fire for the placeholder */
+#ranking-ui_ranked_list tr.tier2-placeholder:hover {
+  background-color: #f9f9f9 !important;
 }
 
 /* STICKY CARD FOOTER*/

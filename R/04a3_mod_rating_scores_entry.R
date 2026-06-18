@@ -111,8 +111,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       # project-level evaluations
       project_evaluation(
         get_project_evaluation(
-          user_coc$coc_version_id, 
-          selected_project()$project_id
+          list(user_coc$coc_version_id, selected_project()$project_id)
         )
       )
       
@@ -491,7 +490,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       
       # pull latest Project Evaluation in case they just updated Threshold
       project_evaluation(
-        get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
+        get_project_evaluation(list(user_coc$coc_version_id, selected_project()$project_id))
       )
       
       # Update db
@@ -505,6 +504,9 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         funique()
       
       update_rating_complete(get_db_pool(), data)
+      
+      status <- calculate_coc_status(user_coc$coc_version_id)
+      update_coc_status(user_coc, status)
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
       
     # --- User PResence ----

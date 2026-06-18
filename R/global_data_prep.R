@@ -39,24 +39,31 @@ TABS_AFTER_LOGIN <- c(
   "inventory",
   "funding_priorities",
   "rating",
+  "ranking",
   "account"
 )
 TABS_AFTER_COC_SELECTION <- c(
   "inventory",
   "funding_priorities",
-  "rating"
+  "rating",
+  "ranking"
 )
 
 TABS_AFTER_PROJECTS_EXIST <- c(
-  "rating"
+  "rating",
+  "ranking"
 )
 
 RATABLE_PROJECT_TYPES <- list(
   "New" = c("RRH","PSH", "TH+RRH", "TH"),
-  "Renew" = c("RRH", "PSH", "TH","TH+RRH","OPH","DEM"),
+  "Renew" = c("RRH", "PSH", "TH","TH+RRH"),
   "Expand" = c("RRH","PSH", "TH")
 )
 
+# These project types are neither rated nor ranked
+PROJECT_TYPES_TO_IGNORE <- c("ES","OPH","DEM")
+
+RANKED_BUT_NOT_RATED_PROJECTS <- c("SSO-CE", "HMIS Project", "HMIS", "SSO-Host Homes", "SH")
 
 HUD_THRESHOLD_REQUIREMENTS <- get_db_tbl("thresholds") |> 
   fsubset(type == "HUD")

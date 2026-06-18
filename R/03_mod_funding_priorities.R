@@ -137,16 +137,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     hud_ard_coc_data <- reactive({
       req(refresh_trigger$dv_ard, user_coc$coc_version_id)
-      
-      dv_ard_db <- get_dv_ard(user_coc$coc_version_id)
-      HUD_ARD_REPORT[coc == user_coc$coc] |>
-        fmutate(
-          adjusted_ard = round(tier_1/0.9, 0),
-          tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0) + fcoalesce(dv_bonus, 0),
-          # yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = fcoalesce(dv_ard_db$dv_ard[1], 0),
-          version_id = dv_ard_db$version_id[1]
-        ) |>
+      get_coc_hud_ard_data(user_coc) |>
         frename(estimated = "total_ard")
     })
     
@@ -195,6 +186,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
       )
       refresh_trigger$dv_ard <- refresh_trigger$dv_ard + 1
+      user_coc$priorities_and_ceilings_updated <- user_coc$priorities_and_ceilings_updated + 1
     }, ignoreInit = TRUE)
     
     observeEvent(hud_ard_coc_data(), {
@@ -455,6 +447,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       # if(needs_refresh)
         refresh_trigger$coc_funding_priorities <- refresh_trigger$coc_funding_priorities + 1
       
+        user_coc$priorities_and_ceilings_updated <- user_coc$priorities_and_ceilings_updated + 1
       # formatted_coc_funding_priorities(current_data)
     }) # end observeEvent
     
@@ -495,6 +488,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # if(needs_refresh)
       refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
+      
+      user_coc$priorities_and_ceilings_updated <- user_coc$priorities_and_ceilings_updated + 1
     }
     
     selected_coc_nofo_opportunities <- reactive({

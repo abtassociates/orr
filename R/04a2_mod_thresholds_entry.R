@@ -106,18 +106,19 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
         get_all_thresholds_to_enter(user_coc$coc_version_id, if(!project_is_selected) NA else project_id)
       )
       
-      if(project_is_selected)
+      if(project_is_selected) {
         project_evaluation(
-          get_project_evaluation(user_coc$coc_version_id, project_id)
+          get_project_evaluation(list(user_coc$coc_version_id, project_id))
         )
       
-      hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
-      updateCheckboxGroupInput(
-        session,
-        "HUD_requirements",
-        selected = if(fnrow(hud_reqs_met) > 0) hud_reqs_met$threshold_id else character(0)
-      )
-      
+        hud_reqs_met <- thresholds_to_enter()[type == "HUD" & met_threshold]
+        updateCheckboxGroupInput(
+          session,
+          "HUD_requirements",
+          selected = if(fnrow(hud_reqs_met) > 0) hud_reqs_met$threshold_id else character(0)
+        )
+      }
+    
       coc_reqs_met <- coc_thresholds_to_enter()[met_threshold == TRUE]
       updateCheckboxGroupInput(
         session,
@@ -225,7 +226,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
     # --- Saving to db ---------------
     # runs whenever user (un)checks a requirement
     threshold_entries_to_save <- reactive({
-      req(c(input$HUD_requirements, input$CoC_requirements, input$yes_to_all_HUD, input$yes_to_all_CoC, made_a_change()))
+      req(c(input$HUD_requirements, input$CoC_requirements, made_a_change()))
       req(thresholds_to_enter(), fnrow(selected_project()) > 0)
       
       # 1. Diff the checkboxes against the baseline
@@ -277,14 +278,18 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       if (!needs_refresh) {
         # SUCCESS: The "Silent Update" to the baselines
         # 1. Update thresholds_to_enter baseline
-        thresholds_to_enter()[
-          to_save$thresholds, 
-          on = "threshold_id", 
-          `:=`(
-            met_threshold = as.integer(met_threshold),
-            version_id = fcoalesce(version_id, 0L) + 1
-          )
-        ]
+        thresholds_to_enter(
+          join(
+            thresholds_to_enter(),
+            to_save$thresholds |> fselect(threshold_id, met_threshold), 
+            on = "threshold_id"
+          ) |>
+            fmutate(
+              met_threshold = fcoalesce(as.integer(met_threshold_y), as.integer(met_threshold)),
+              version_id = fcoalesce(as.integer(version_id), 0L) + 1,
+              met_threshold_y = NULL
+            )
+        )
         
         # 2. Update project_evaluation baseline
         if (!is.null(to_save$project_evaluation))
@@ -315,7 +320,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       
       # pull latest Project Evaluation in case they just updated Threshold
       project_evaluation(
-        get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
+        get_project_evaluation(list(user_coc$coc_version_id, selected_project()$project_id))
       )
       
       # Update db
@@ -327,6 +332,9 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
       )
       
       update_threshold_complete(get_db_pool(), data)
+      
+      status <- calculate_coc_status(user_coc$coc_version_id)
+      update_coc_status(user_coc, status)
     }, ignoreInit = TRUE)
 
     # -- USer PResence ---
