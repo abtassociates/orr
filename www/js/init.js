@@ -175,8 +175,6 @@ function(settings, json) {
         if(noDataChange(this.value, cell)) 
           revertCell(cell, table);
         
-        if (colName === "GEO CODE" && !this.value.startsWith("#"))
-          this.value = `#${this.value}`;
         updateTableAndShiny(cell, table, this.value);
       });
     }, 500);

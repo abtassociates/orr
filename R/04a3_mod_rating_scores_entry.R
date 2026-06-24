@@ -432,7 +432,16 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       to_save <- rating_scores_to_save()
       
       req(to_save)
+      perf <- to_save[['rating_scores']]$performance
       
+      if(!is.na(perf) && nchar(perf) > performance_char_limit){
+       showNotification('Field limited to 100 characters. Additional text will be truncated.', type = 'warning')
+      }
+      cur_id <- to_save$rating_scores$selected_rating_factor_id
+      ## client-side JS validation to limit number of chars
+      shinyjs::runjs(
+        glue::glue("$('#",ns("performance_{cur_id}'"),").attr('maxlength',{performance_char_limit});")
+      )
       refresh_flags <- pool::poolWithTransaction(get_db_pool(), function(p) {
         needs_ref1 <- update_rating_scores_db(p, to_save$rating_scores)
 
