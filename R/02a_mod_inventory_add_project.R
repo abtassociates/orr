@@ -380,6 +380,8 @@ mod_inventory_add_project_server <- function(
       })
     }
     
+    ## these two rules are currently excluded in order to allow overlaps
+    ## between bed categories (e.g. a bed can count as chronic and veteran)
     # iv$add_rule(
     #   "total_beds_fam", 
     #   ~ if(sum(input$ch_beds_fam, input$vet_beds_fam, input$youth_beds_fam, na.rm=TRUE) > .)
