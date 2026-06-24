@@ -1,28 +1,37 @@
 page_navbar(
   title = "CoC Project Rating and Ranking Tool",
   id = "nav",
-  
+  fillable = FALSE,
   window_title = 'ORR',
   
   theme = orr_bslib_theme,
   navbar_options = orr_navbar_options,
   
+  includeCSS(here("www/custom.css")),
+  
   header = tagList(
     ## css, idle management, and dimension management --------
     tags$head(
-      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+      ## Handle disconnect during login, logout, refresh, vs. crash.
+      # Establish configs for disconnect script
+      tags$script(HTML(sprintf(
+        "window.AUTH_CONFIG = { 
+         redirectUrl: '%s', 
+         logoutUrl: '%s' 
+       };", 
+        aws_auth_redirect, 
+        aws_auth_logout
+      ))),
+      
+      tags$script(src = "js/auth_cookie.js"),
+      tags$script(src = "js/disconnect.js"),
+      tags$script(src = "js/datatable_helpers.js") # Loaded once for the whole app
+    ), # end tags$head
+    tags$div(
+      id = "logout-overlay",
+      "Session timed out. Logging out..."
     ),
-    tags$style(HTML("
-    /* Change the background color of the selected row */
-    table.dataTable tbody tr.selected>* {
-      box-shadow: inset 0 0 0 9999px #357DAD !important;
-      color: white;
-    }
-    table.dataTable.display > tbody > tr.selected:hover>* {
-      box-shadow: inset 0 0 0 9999px #357DAD !important;
-      color: white;
-    }
-  ")),
     ## Enable shinyjs -----
     shinyjs::useShinyjs(),
     disconnectMessage(
@@ -32,7 +41,8 @@ page_navbar(
       ),
       overlayColour = '#F5F5F5',
       refresh = ""
-    )
+    ),
+    mod_slide_in_instructions_ui("instructions")
   ),
 
   nav_panel(

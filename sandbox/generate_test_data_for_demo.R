@@ -1,72 +1,117 @@
 library(magrittr)
-source("R/utils/get_db_data.R")
-source("R/utils/data_manipulations.R")
-source("R/global_data_prep.R")
 
-if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = OFF;")
-dbExecute(DB_POOL, "DELETE FROM coc_version_users WHERE coc_version_id > 4")
-dbExecute(DB_POOL, "DELETE FROM coc_versions WHERE coc_version_id > 4")
-dbExecute(DB_POOL, "DELETE FROM coc_version_requests")
-dbExecute(DB_POOL, "DELETE FROM projects WHERE coc_version_id > 4")
-if(IN_DEV_MODE) DBI::dbExecute(DB_POOL, "PRAGMA foreign_keys = ON;")
+LOOKUPS <- get_db_tbl("lookups")
+if("error" %in% names(LOOKUPS)) {
+  set_up_db_connection()
+}
+delete_test_data <- function(p, tbl, anchorid) {
+  print(glue::glue("deleting from {tbl}"))
+  dbExecute(
+    p, 
+    glue::glue(
+      "DELETE FROM {tbl} 
+      WHERE {anchorid} < 0"
+    )
+  )
+}
 
-USERS <- get_db_tbl("users")
+if(USE_SQLITE) DBI::dbExecute(get_db_pool(), "PRAGMA foreign_keys = OFF;")
+tbls_to_clear <- c(
+  "coc_version_requests" = "coc_version_id",
+  "coc_version_users" = "coc_version_id",
+  "thresholds" = "coc_version_id",
+  "selected_thresholds" = "coc_version_id",
+  "selected_rating_factors" = "coc_version_id",
+  "selected_coc_nofo_opportunities" = "coc_version_id",
+  "rating_factors" = "coc_version_id",
+  "rating_scores" = "project_id",
+  "threshold_entries" = "project_id",
+  "project_evaluations" = "project_id",
+  "projects" = "coc_version_id",
+  "coc_versions" = "coc_version_id"
+)
+
+pool::poolWithTransaction(get_db_pool(), function(p) {
+lapply(names(tbls_to_clear), function(t) {
+  delete_test_data(p, t, tbls_to_clear[[t]])
+})
+
+if(USE_SQLITE) DBI::dbExecute(p, "PRAGMA foreign_keys = ON;")
+
+print("done deleting")
+
+USERS <- DBI::dbReadTable(p, "users")
+
 main_user <- toString(USERS[1, 1]) # alex.silverman@abtglobal.com
-second_user <- toString(USERS[3, 1]) # thomas.brittain@abtglobal.com
+second_user <- toString(USERS[3, 1])
 
+# -5 IL-517 Main Version, Second user owns, no one else on, no requests
+# -4: FL-600 Main Version , Main user owns, no one else on, second user requested
+# -3: AK-500 Main Version, Main user owns, second user is editor (request approved)
+# -2: AK-500 Alternate, Second user owns, main user is editor (main user request approved)
+# -1: AK-501 Main Version, Second user owns, no one else on, main user requested
+coc_version_ids <- -6:-1
 coc_versions <- data.table(
-  coc_version_id = 10:12,
+  coc_version_id = coc_version_ids,
   coc_version_name = c(
+    'IL-517 Main Version',
+    'IL-517 Second Version',
+    'FL-600 Main Version',
     'AK-500 Main Version',
     'AK-500 Alternative Version',
     'AK-501 Main Version'
   ),
-  coc = c('AK-500', 'AK-500', 'AK-501'),
-  coc_status = c(9, 8, 9),  # In Progress, Not Started, In Progress
+  coc = c('IL-517', 'IL-517', 'FL-600', 'AK-500', 'AK-500', 'AK-501'),
+  coc_status = c(8, 8, 8, 9, 8, 9),  # Not Started, In Progress, Not Started, In Progress
   created_by = c(
+    second_user,
+    second_user,
+    main_user,
     main_user,
     second_user,
-    main_user
+    second_user
   ),
-  date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-  date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
   updated_by = main_user
 )
 
 # CoC Version Users (many-to-many relationship)
 coc_version_users <- data.table(
-  coc_version_user_id = 5:8,
-  coc_version_id = c(10, 11, 11, 12),
-  username = c(
-    main_user,
-    second_user,
-    main_user,
-    main_user
-  ),
-  coc_version_role = c(5, 5, 7, 5),  # Owner, Owner, Editor, Owner
+  coc_version_user_id = -12:-5,
+  coc_version_id = c(-6, -5, -4, -3, -3, -2, -2, -1),
+  username = c(second_user, second_user, main_user, main_user, second_user, second_user, main_user, second_user),
+  coc_version_role = c(4, 4, 4, 4, 5, 4, 5, 4),  # Owner, Owner, Owner, Editor, Owner, Editor, Owner
   created_by = c(
+    second_user,
+    second_user,
+    main_user,
     main_user,
     second_user,
     second_user,
-    main_user
+    main_user,
+    second_user
   ),
-  date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-  date_updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
   updated_by = main_user
 )
 
 # CoC Version Requests (requests to versions where you are Owner)
+# -5 IL-517 Main Version, Second user owns, no one else on, no requests
+# -4: FL-600 Main Version , Main user owns, no one else on, second user requested
+# -3: AK-500 Main Version, Main user owns, second user is editor (request approved)
+# -2: AK-500 Alternate, Second user owns, main user is editor (main user request approved)
+# -1: AK-501 Main Version, Second user owns, no one else on, main user requested
 coc_version_requests <- data.table(
-  coc_request_id = 1:2,
-  coc_version_id = c(10, 12),  # AK-500 Main and AK-501 Main (where you are Owner)
-  request_status = c(1, 3),  # Sent, Approved
+  coc_request_id = -4:-1,
+  coc_version_id = c(-4, -3, -2, -1),
+  request_status = c(1, 2, 2, 1),  # Sent by second user to main, Approved by main from second, Approved by second user from main, Sent by main user to second
   reason_for_rejection = NA_integer_,
   created_by = c(
     second_user,
-    second_user
+    second_user,
+    main_user,
+    main_user
   ),
-  date_created = format(Sys.time() - c(86400, 43200), "%Y-%m-%d %H:%M:%S"),  # 1 day ago, 12 hours ago
-  date_updated = format(Sys.time() - c(86400, 43200), "%Y-%m-%d %H:%M:%S"),
+  date_created = Sys.time() - c(86400, 43200, 86300, 43200),  # 1 day ago, 12 hours ago
+  date_updated = Sys.time() - c(86400, 43200, 86300, 43200),
   updated_by = main_user
 )
 
@@ -80,19 +125,19 @@ get_hic_data <- function(coc, coc_version_id) {
     single_youth_beds = "youth_beds_hh_wo_children"
   )
   
-  coc_data <- get_db_tbl("all_hic_data") |>
+  coc_data <- DBI::dbReadTable(p, "all_hic_data") |>
     fsubset(hudnum == coc) 
   
   project_data <- coc_data %>%
     fmutate(
       mckinneyvento = factor_yesno(rowSums(gvr(., "mckinneyvento"), na.rm = TRUE) > 0),
-      mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+      # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
       dv_renewal = factor_yesno(NA),
       grant_number = as.character(NA), 
       coc_amount_awarded_last_year = as.numeric(NA),
       coc_amount_expended_last_year = as.numeric(NA),
       coc_funding_requested = as.numeric(NA),
-      funding_action = fifelse(mckinneyvento == "Yes", "Renew", "Ignore"),
+      funding_action = fifelse(mckinneyvento == "Yes", 10, 13), # renew = 10, ignore = 13
       coc_version_id = coc_version_id,
       # additional cols user will fill out
       is_dedicated_ch_fam = factor_yesno(NA),
@@ -106,28 +151,48 @@ get_hic_data <- function(coc, coc_version_id) {
       dv_ind_beds = fifelse(target_population == "DV", all_ind_beds, as.integer(0))
     ) %>%
     fmutate(
-      funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
+      # funding_action = convert_to_factor(., "funding_action", textToNum = TRUE),
       # project_type = convert_to_factor(., "project_type", textToNum = TRUE),
       # target_population = convert_to_factor(., "target_population", textToNum = TRUE),
-      created_by = SERVICE_ACCOUNT
+      created_by = 'orr_service@abtglobal.com'
     ) |>
     frename(bed_field_mapping) |>
-    get_vars(setdiff(dbListFields(DB_POOL, "projects"), "project_id"))
-  
+    get_vars(setdiff(dbListFields(get_db_pool(), "projects"), "project_id"))
+
   return(project_data)
 }
 
+DBI::dbAppendTable(p, "coc_versions", coc_versions)
 
-dbAppendTable(DB_POOL, "coc_versions", coc_versions)
-
+print("doing projects")
+total_projects <- 0
 for (i in 1:nrow(coc_versions)) {
   # Access row data using index i
   current_row <- coc_versions[i, ]
   filtered_data <- get_hic_data(current_row$coc, current_row$coc_version_id)
+  num_projects <- fnrow(filtered_data)
+
+  ids <- if(total_projects == 0) seq(1, num_projects) else seq(total_projects + 1, total_projects + num_projects)
+  
+  filtered_data <- filtered_data |>
+    fmutate(project_id = -1*ids)
+  
+  total_projects <- total_projects + num_projects
+
   filtered_data_db <- factor_vars_db_prep(filtered_data)
 
-  DBI::dbAppendTable(DB_POOL, "projects", filtered_data_db)
+  DBI::dbAppendTable(p, "projects", filtered_data_db)
 }
 
-dbAppendTable(DB_POOL, "coc_version_users", coc_version_users)
-dbAppendTable(DB_POOL, "coc_version_requests", coc_version_requests)
+DBI::dbAppendTable(p, "coc_version_users", coc_version_users)
+DBI::dbAppendTable(p, "coc_version_requests", coc_version_requests)
+
+print("Adding selected thresholds, factors, and nofo opportunities for test coc_versions")
+source("R/app_db_funcs/db_01a_mod_coc_selection.R", local=TRUE)
+
+lapply(coc_version_ids, function(coc_version_id) {
+  generate_data_for_new_coc_version(p, coc_version_id)
+})
+})
+print("done generating demo data")
+pool::poolClose(get_db_pool())

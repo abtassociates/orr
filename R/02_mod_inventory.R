@@ -1,6 +1,8 @@
 mod_inventory_ui <- function(id) {
   ns <- NS(id)
   
+  col_names <- get_project_col_names()
+  
   nav_panel(
     "Review Projects",
     icon = icon("list-check"),
@@ -10,31 +12,71 @@ mod_inventory_ui <- function(id) {
       card_body(
         fillable = FALSE,
         min_height = "60vh",
-        max_height = "76vh",
+        max_height = "81vh",
         helpText("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
+        # This adds selectize dependencies, to avoid conflicts with DT and ensure selectize inputs show up as such
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
-        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner(),
-        br(),
-        textOutput(ns("projects_table_counts")),
-        helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
+        
+        dropdownButton(
+          inputId = ns("field_display_control"),
+          label = "Choose Fields to Display",
+          icon = icon("sliders"),
+          circle = FALSE,
+          
+          prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
+          pickerInput(
+            ns('projects_col_selections'), label = 'Choose Fields to Display',
+            choices = setNames(col_names, variable_labels[col_names]),
+            selected = col_names,
+            multiple = TRUE, 
+            
+            options = pickerOptions(
+              selectedTextFormat = 'count',
+              countSelectedText = '{0} Fields Displayed',
+              selectAllText = 'Select All',
+              deselectAllText = 'De-select All',
+              actionsBox = TRUE
+            )
+          )
+        ),
+        mod_user_presence_ui(ns("presence")),
+        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
+        # br(),
+        # textOutput(ns("projects_table_counts")),
+        # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       ),
       card_footer(
         actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
         actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
       )
+    ),
+    absolutePanel(
+      id = ns("giw_panel"),
+      style = "display:none;",
+      card(
+        h3("GIW"),
+        actionButton(ns("close_giw"), "X", class = "btn-danger btn-sm"),
+        p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
+        DTOutput(ns("giw_tbl")) |> withSpinner()
+      ),
+      draggable = TRUE,
+      width = "60vw",
+      height = "50vh",
+      top = "10vh",
+      left = "20vw"
     )
   )
 }
 
-mod_inventory_server <- function(id, nav_control, user_coc, parent_session, module_returns) {
+mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help_id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
     # Hardcodes and reactiveValues --------------
     user_columns <- c("dv_renewal", "grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "funding_action")
-    funding_columns <- c("coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested")
-    
+    funding_columns <- c("coc_amount_awarded_last_year", "coc_amount_expended_last_year", "coc_funding_requested", "amount_other_public_funding", "amount_private_funding")
+    renew_only_columns <- c("grant_number", "coc_amount_awarded_last_year", "coc_amount_expended_last_year")
     # Keep track of active observers for Add Project modals
     # Need them in a reactivevalues list so we can destroy them and avoid duplicate ones uncessarilly
     # however, we need to be able to have multiple in case they Add Another project
@@ -46,13 +88,18 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     # binary indicator for whether a new row/project has been added
     is_new_project <- reactiveVal(FALSE)
     
-    # yhdp info for passing around
-    yhdp_replacement_info <- reactiveValues(
-      info = NULL,
-      new_value = NULL,
-      project_to_replace = NULL,
-      funding_source = NULL
-    )
+    calculated_cols <- c("ch_bed_inventory", "vet_bed_inventory", "youth_bed_inventory")
+    
+    # # yhdp info for passing around
+    # yhdp_replacement_info <- reactiveValues(
+    #   info = NULL,
+    #   new_value = NULL,
+    #   project_to_replace = NULL,
+    #   funding_source = NULL
+    # )
+    
+    updated_col_selections_from_db <- reactiveVal(NULL)
+    refresh_trigger <- reactiveVal(0)
     
     # Add fields only displayed in Inventory
     add_calculated_fields <- function(project_data, is_new = FALSE) {
@@ -75,13 +122,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     }
     
     # Initialize projects_data ------
-    observe({
+    observeEvent(c(user_coc$coc_version_id, refresh_trigger()), {
       req(user_coc$coc_version_id)
-
-      data <- get_db_query(
-        "SELECT * FROM projects WHERE coc_version_id = $1", 
-        params = user_coc$coc_version_id
-      ) |>
+      data <- get_coc_projects(user_coc$coc_version_id) |>
         fselect(-coc_version_id, -date_created, -date_updated, -updated_by ) %>% #-amount_other_public_funding, -amount_private_funding) %>% # needs to be %>% instead of |>
         fmutate(
           funding_action = convert_to_factor(., "funding_action"),
@@ -89,7 +132,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           target_population = convert_to_factor(., "target_population"),
           dv_renewal = factor_yesno(dv_renewal),
           mckinneyvento = factor_yesno(mckinneyvento),
-          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
           is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
           is_dedicated_dv = factor_yesno(is_dedicated_dv)
@@ -97,7 +140,17 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         add_calculated_fields()
 
       projects_data(data)
-    })
+      
+      cols_to_hide <- get_user_setting(user_coc, "inventory_cols_to_hide")
+      cols_to_show <- if(length(cols_to_hide) > 0) {
+        setdiff(names(data), c(strsplit(cols_to_hide, ",")[[1]], "version_id", "created_by"))
+      } else {
+        setdiff(names(data), c("version_id", "created_by"))
+      }
+      
+      updatePickerInput(session, inputId = 'projects_col_selections', selected = cols_to_show)
+      updated_col_selections_from_db(TRUE) 
+    }, ignoreInit = TRUE)
     
     # Projects datatable -----
     output$projects_table <- renderDT({
@@ -116,21 +169,61 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       
       ## filter out Ignores by default-----
       initial_filter <- vector("list", ncol(data))
-      initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","Replace","New","Expand"]')
+      initial_filter[[which(names(data) == "funding_action")]] <- list(search = '["Renew","Reallocate","New","Expand"]') # removed Replace; not happening for FY25
 
-      colnames <- unname(project_variable_labels[names(data)])
+      # helper text explaining this
+      helper_html <- "<span title='Projects with funding action \"Ignore\" are filtered out by default.'>funding action ⓘ</span>"
+      
+      
+      # More readable col header text
+      colnames <- variable_labels[names(data)]
+      colnames["funding_action"] <- helper_html
+      colnames <- unname(colnames)
+      
+      ## initially, only hide pre-specified columns; later, will hide user settings-based ones
+      cols_to_hide <- setdiff(names(data), isolate(input$projects_col_selections)) |> append(c("version_id", "created_by"))
+      
+      funding_action_idx <- match("funding_action", names(data)) - 1
+      grant_number_idx <- match("grant_number", names(data)) - 1
       
       ## Call inline-editable table function ---------
       initialize_inline_edit_table_ui(
         data,
-        tableID = ns("projects_table"), 
         initial_filter = initial_filter,
         column_defs = list(
           list(
-            targets =c(which(names(data) == "created_by") - 1,
-                       which(names(data) == 'geocode') - 1), 
+            targets = which(names(data) %in% cols_to_hide) - 1, 
             className = "hidden",
             visible = FALSE
+          ),
+          list(
+            targets = which(names(data) %in% renew_only_columns) - 1,
+            render = JS(glue::glue(
+              "function(data, type, row, meta) {{
+                if(type != 'display') return data;
+                
+                if (row === undefined) return data;
+                if (row[{funding_action_idx}] == 'New') return 'N/A';
+                if (data === null) return '';
+                if (meta.col == {grant_number_idx}) return data;
+                
+                // Manual currency formatting: $1,234.56
+                // Ensure data is numeric before calling toFixed
+                var num = Number(data);
+                if (isNaN(num)) return data; 
+                return '$' + num.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,');
+              }}"
+            )),
+            createdCell = JS(glue::glue(
+              "function(td, cellData, rowData, row, col) {{
+                // Disable N/As
+                if (td.innerText == 'N/A') {{
+                  $(td).css('pointer-events', 'none');      // Disables clicks/editing
+                  $(td).css('color', '#a0a0a0');            // Grays out text
+                  $(td).css('font-style', 'italic');        // Optional
+                }}
+              }}"
+            ))
           )
         ),
         formatting = list(
@@ -153,10 +246,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           ),
           function(x) formatStyle(
             x,
-            columns = c(
-              "ch_beds_hh_w_only_children",
-              "total_ch_ind_beds"
-            ),
+            columns = c("ch_beds_hh_w_only_children", "total_ch_ind_beds"),
             `min-width` = "110px"
           ),
           function(x) formatStyle(
@@ -165,12 +255,12 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
             backgroundColor = USER_ENTRY_BG_COLOR
           ),
           # Replacement projects should fill out these fields, and thus color them green.
-          function(x) formatStyle(
-            x,
-            columns = c("project_name","project_type","par_youth_beds","single_youth_beds"),            # what to style
-            valueColumns = c("funding_action"),
-            backgroundColor = styleEqual("Replace", USER_ENTRY_BG_COLOR)
-          ),
+          # function(x) formatStyle(
+          #   x,
+          #   columns = c("project_name","project_type","par_youth_beds","single_youth_beds"),            # what to style
+          #   valueColumns = c("funding_action"),
+          #   backgroundColor = styleEqual("Replace", USER_ENTRY_BG_COLOR)
+          # ),
           function(x) formatStyle(
             x,
             columns = c("all_ind_beds"),            # what to style
@@ -180,38 +270,45 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           ),
           function(x) formatCurrency(
             x, 
-            columns = funding_columns, 
+            columns = setdiff(funding_columns, renew_only_columns),
             currency = "$", 
+            digits = 0
+          ),
+          
+          function(x) formatRound(
+            x,
+            columns = grep('bed', names(data)),
             digits = 0
           )
         ),
         colnames = colnames,
-        cols_to_disable = c("ch_bed_inventory", "vet_bed_inventory","youth_bed_inventory", "dv_fam_beds","dv_ind_beds"),
-        buttons = list(
-          'colvis',
-          list(
-            extend = 'collection',
-            text="Show/Hide Bed Inventory",
-            action = DT::JS(sprintf("
-              function ( e, dt, node, config ) {
-                var cols = %s;
-                dt.columns(cols).visible(!dt.column(cols[0]).visible());
-              }",
-              jsonlite::toJSON(grep("Bed", colnames) - 1)
-            ))
-          )
+        cols_to_disable = c(calculated_cols, "dv_fam_beds","dv_ind_beds"),
+        options = list(
+          paging = TRUE,
+          pageLength = 100,
+          
+          # Letter	Meaning
+          # l	Length changing input (rows per page selector)
+          # f	Filtering input (search box)
+          # r	Processing display element (shows “Processing…” when loading)
+          # t	The table itself
+          # i	Table information summary
+          # p	Pagination controls
+          # B	Buttons (CSV, Excel, PDF, etc.)
+          dom = 'frtip'
         )
       )
-    })
+    }) # end project_Table renderDT
     
     ## datatable proxy-----
     # By updating a proxy (via `replaceData`), updates are faster and don't "flicker" the table
     # However it doesn't work when adding new rows
-    projects_table_proxy <- dataTableProxy(ns("projects_table"),session = session)
+    projects_table_proxy <- dataTableProxy("projects_table",session = session)
+    projects_table_proxy$id <- "projects_table" # setting id to raw_id seems to fix auto-scrolling
     
     observe({
       req(projects_data())
-      replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE)
+      replaceData(projects_table_proxy, projects_data(), resetPaging = FALSE, rownames = FALSE)
     })
     
     # Checks whether value is valid
@@ -224,19 +321,59 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           )
           return(FALSE)
         }
-      } else if(val == "Replace") {
-        if(project_data$mckinneyventoyhdp != "Yes") {
-          showNotification(
-            "It looks like you are trying to replace a non-YHDP project. Only 
-            YHDP projects can be replaced. If this is a YHDP project, 
-            please mark the McKinney- Vento: YHDP field as 'Yes'"
-          )
-          return(FALSE)
-        }
-      }
+      } #else if(val == "Replace") {
+      #   if(project_data$mckinneyventoyhdp != "Yes") {
+      #     showNotification(
+      #       "It looks like you are trying to replace a non-YHDP project. Only 
+      #       YHDP projects can be replaced. If this is a YHDP project, 
+      #       please mark the McKinney- Vento: YHDP field as 'Yes'"
+      #     )
+      #     return(FALSE)
+      #   }
+      # }
       return(TRUE)
     }
-
+    
+    # Update DT table with Bed Inventory fields (switchInput)
+    observeEvent(input$toggle_bed_fields, {
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      req(projects_data())
+      
+      bed_fields <- grep('bed', names(projects_data()))
+      bed_field_names <- names(projects_data())[bed_fields]
+      
+      if(input$toggle_bed_fields){
+        updatePickerInput(session, inputId = 'projects_col_selections', selected = union(input$projects_col_selections, bed_field_names))
+      } else {
+        updatePickerInput(session, inputId = 'projects_col_selections', selected = setdiff(input$projects_col_selections, bed_field_names))
+      }
+    }, ignoreInit = TRUE)
+    
+    # Update DT table with column changes made in dropdown (pickerInput)
+    observeEvent(input$projects_col_selections, {
+      req(user_coc$auth)
+      req(!is.null(user_coc$coc_version_id) & nav_control() == 'inventory')
+      req(projects_data())
+      
+      colnames_to_hide <- setdiff(names(projects_data()), c(input$projects_col_selections, "version_id", "created_by"))
+      cols_to_hide <- match(colnames_to_hide, names(projects_data())) - 1
+      cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+      # or, equivalently: cols_to_show <- match(input$projects_col_selections, names(projects_data())) - 1
+      
+      ## show and hide columns as needed
+      projects_table_proxy$id <- ns("projects_table")
+      if(length(cols_to_hide) > 0) {
+        hideCols(projects_table_proxy, hide = cols_to_hide)
+      }
+      if(length(cols_to_show) > 0) {
+        showCols(projects_table_proxy, show = cols_to_show)
+      }
+      projects_table_proxy$id <- "projects_table"
+      
+      update_user_coc_setting(user_coc, "inventory_cols_to_hide", colnames_to_hide)
+    }, ignoreInit = TRUE)
+    
     # Update projects -----
     ## consolidated update function
     inventory_update <- function(info, value) {
@@ -245,28 +382,31 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       col_name <- colnames(projects_data())[info$col + 1]
       
       # We send info$value, which is the user-friendly text ("Reallocate", "Yes", etc.)
-      update_datatable(proj_id, col_name, info$value)
-      update_inventory_db(value, col_name, proj_id)
-    }
-    
-    update_inventory_db <- function(new_value, col_name, proj_id) {
-      db_execute(
-        "UPDATE projects SET $1 = $2 WHERE project_id = $3",
-        params = list(col_name, new_value, proj_id)
-      )
-      
-      message(sprintf("Updated db: project_id=%s, column=%s to '%s'",
-                      proj_id, col_name, new_value))
-      
+      needs_refresh <- update_inventory_db(value, col_name, proj_id, project_data$version_id)
+      if(!needs_refresh) {
+        user_coc$projects_updated <- user_coc$projects_updated + 1
+        update_datatable(proj_id, col_name, info$value)
+      } else {
+        refresh_trigger(refresh_trigger() + 1)
+      }
     }
     
     update_datatable <- function(proj_id, col_name, value) {
       # update the reactiveVal that updates the proxy
       updated_data <- copy(projects_data())[
         project_id == proj_id, 
-        (col_name) := value
+        c(col_name, "version_id") := list(value, version_id + 1)
       ] |>
         add_calculated_fields()
+      
+      if(col_name == "funding_action" && value == "New") {
+        updated_data <- updated_data |>
+          fmutate(
+            grant_number = NA,
+            coc_amount_awarded_last_year = NA,
+            coc_amount_expended_last_year = NA
+          )
+      }
       
       projects_data(updated_data)
     }
@@ -275,8 +415,10 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     ## consolidated append
     inventory_append <- function(new_project_data) {
       append_to_datatable(new_project_data)
-      append_inventory_to_db(new_project_data)
+      s <- append_inventory_to_db(new_project_data)
       
+      if(isTruthy(s))
+        user_coc$projects_updated <- user_coc$projects_updated + 1
       #showNotification("Project submitted successfully.", type = "message")
     }
     
@@ -285,12 +427,11 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
         fmutate(
           project_id = as.integer(fmax(projects_data()$project_id) + 1),
           mckinneyvento = factor_yesno(mckinneyvento),
-          mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
+          # mckinneyventoyhdp = factor_yesno(mckinneyventoyhdp),
           dv_renewal = factor_yesno(dv_renewal),
           coc_amount_awarded_last_year = NA,
           coc_amount_expended_last_year = NA,
           coc_funding_requested = NA,
-          geocode = "",                      
           amount_other_public_funding = NA,
           amount_private_funding = NA,
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
@@ -315,8 +456,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
           coc_version_id = user_coc$coc_version_id,
           funding_action = get_lookup_refid(funding_action, "funding_action"),
           project_type = get_lookup_refid(project_type, "project_type"),
-          target_population = get_lookup_refid(target_population, "target_population"),
-          date_created = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+          target_population = get_lookup_refid(target_population, "target_population")
         )
       
       db_append("projects", db_data)
@@ -327,9 +467,25 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       req(projects_data())
       
       info <- input$projects_table_cell_edit
+      
       req(!identical(info$value, info$oldValue))
       
       col_name <- colnames(projects_data())[info$col + 1]
+      
+      if(col_name == "grant_number") {
+        if (nchar(info$value) > 15) {
+          showNotification("Grant number cannot be longer than 15 characters.", type = "error")
+          revert_cell(ns("projects_table"), info, input$projects_table_rows_current, projects_data())
+          return()
+        }
+      }
+      
+      # numeric validation
+      if (is.numeric(projects_data()[[col_name]])) {
+        is_valid <- validate_numeric_entry(projects_data(), col_name, info$value)
+        if(!is_valid) revert_cell(ns("projects_table"), info, input$projects_table_rows_current, projects_data())
+        req(is_valid)
+      }
       
       info$project_id <- ifelse(
         is.na(info$project_id) || is.null(info$project_id),
@@ -340,13 +496,13 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       project_data <- projects_data()[project_id == info$project_id]
       
       funding_source <- ifelse(
-        project_data$mckinneyventoyhdp == "Yes",
-        "YHDP",
-        ifelse(
+        # project_data$mckinneyventoyhdp == "Yes",
+        # "YHDP",
+        # ifelse(
           isTruthy(project_data$dv_renewal == "Yes" || project_data$target_population == "DV"),
           "DV",
           "CoC"
-        )
+        # )
       )
       
       is_factor_col <- is.factor(projects_data()[[col_name]])
@@ -361,108 +517,90 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       )
       
       ## Handle reallocation and replace -----
-      if(col_name == "funding_action" && info$value %in% c("Reallocate","Replace")) {
+      if(col_name == "funding_action" && info$value %in% c("Reallocate")) { # removed "Replace". not happening in FY25
         # Validity check ----
         is_valid <- validity_pre_checks(project_data, funding_source, info$value)
         
         # If they can't Reallocate or Replace, bring back old value in table cell
-        if(!is_valid) revert_cell(info)
+        if(!is_valid) revert_cell(ns("projects_table"), info, input$projects_table_rows_current, projects_data())
         req(is_valid)
         
         ## YHDP Replacement -----
-        if(info$value == "Replace") {
-          # Update reactiveValues so it's visible to observeEvents of the confirmation pop-up
-          yhdp_replacement_info$funding_source <- funding_source
-          yhdp_replacement_info$info <- info
-          yhdp_replacement_info$new_value <- new_value
-          yhdp_replacement_info$project_to_replace <- project_data
-          
-          showModal(
-            modalDialog(
-              title = "YHDP Replacement Confirmation",
-              HTML("
-                  Are you replacing this project with multiple projects? <br><br>
-                  If not, then click 'No'. Then update the newly highlighted fields 
-                  for the project. Note that because this is a YHDP Replacement 
-                  project, you can only edit the Project Name, Project Type, and Youth 
-                  bed fields. <br><br> If you are Replacing this project with 
-                  multiple projects, click 'Yes', then you will need to create new 
-                  projects as well as editing this row of the List of Project tab. 
-                  First enter the additional project's information in the pop-up after 
-                  you click 'Yes'. If you are creating more than two projects to 
-                  Replace the current project, then click on the 'additional 
-                  replacement project?' link at the bottom right corner of the pop-up. 
-                  When you are finished adding additional projects, which will appear 
-                  in the list on this tab, then return to the row of the of the current 
-                  project that is being Replaced and update the highlighted fields.
-                "),
-              footer = tagList(
-                actionButton(ns('replace_multiple'), label="Yes"),
-                actionButton(ns('replace_one'), label="No"),
-                actionButton(ns('replace_cancel'), label="Cancel"),
-              )
-            )
-          ) # end showModal
-        } 
+        # if(info$value == "Replace") {
+        #   # Update reactiveValues so it's visible to observeEvents of the confirmation pop-up
+        #   yhdp_replacement_info$funding_source <- funding_source
+        #   yhdp_replacement_info$info <- info
+        #   yhdp_replacement_info$new_value <- new_value
+        #   yhdp_replacement_info$project_to_replace <- project_data
+        #   
+        #   showModal(
+        #     modalDialog(
+        #       title = "YHDP Replacement Confirmation",
+        #       HTML("
+        #           Are you replacing this project with multiple projects? <br><br>
+        #           If not, click 'No'. Then update the newly highlighted fields 
+        #           for the project. Note that because this is a YHDP Replacement 
+        #           project, you can only edit the Project Name, Project Type, and Youth 
+        #           bed fields. <br><br> If you are Replacing this project with 
+        #           multiple projects, click 'Yes', then you will need to create new 
+        #           projects as well as editing this row of the List of Project tab. 
+        #           First enter the additional project's information in the pop-up after 
+        #           you click 'Yes'. If you are creating more than two projects to 
+        #           Replace the current project, then click on the 'additional 
+        #           replacement project?' link at the bottom right corner of the pop-up. 
+        #           When you are finished adding additional projects, which will appear 
+        #           in the list on this tab, then return to the row of the of the current 
+        #           project that is being Replaced and update the highlighted fields.
+        #         "),
+        #       footer = tagList(
+        #         actionButton(ns('replace_multiple'), label="Yes"),
+        #         actionButton(ns('replace_one'), label="No"),
+        #         actionButton(ns('replace_cancel'), label="Cancel"),
+        #       ),
+        #       size = "l"
+        #     )
+        #   ) # end showModal
+        # } 
         ## Reallocation -----
-        else {
+        # else {
           launch_modal(paste0(funding_source, " Reallocation"), funding_source)
-        }
-      }
+        # }
+      } # end reallocation/replace IF-block
       # Update after non-reallocation and non-replace ------
-      else {
-        inventory_update(info, new_value)
-      }
+      inventory_update(info, new_value)
     }, ignoreInit = TRUE)
-    
-    # Handle replacement modal ------
-    ## Revert cell to original value -----
-    revert_cell <- function(info) {
-      shinyjs::runjs(sprintf(
-        "
-              var table = $('#%s table').DataTable();
-              table.cell(%s, %s).data('%s');
-            ", 
-        ns("projects_table"), info$row - 1, info$col, info$oldValue
-      ))
-    }
-    
     
     modal_trigger <- reactiveVal(0)
     current_form_type <- reactiveVal("New")
     current_funding_src <- reactiveVal("")
-    current_proj_to_replace <- reactiveVal(NULL)
+    # current_proj_to_replace <- reactiveVal(NULL)
     
+    # Handle replacement modal ------
     ## User wants to replace with multiple projects ----
-    observeEvent(input$replace_multiple, {
-      show_project_modal(
-        "YHDP Replacement", 
-        yhdp_replacement_info$funding_source, 
-        yhdp_replacement_info$info, 
-        yhdp_replacement_info$new_value,
-        yhdp_replacement_info$project_to_replace,
-        orgnames = orgnames()
-      )
-    })
-    
-    ## User wants to replace with one project ----
-    observeEvent(input$replace_one, {
-      removeModal()
-      inventory_update(yhdp_replacement_info$info, yhdp_replacement_info$new_value)
-    })
-    
-    ## User cancelled replacement ----
-    observeEvent(input$replace_cancel, {
-      revert_cell(yhdp_replacement_info$info)
-      removeModal()
-      # no need to do inventory_update because we haven't modified the db or datatable yet
-    })
+    # observeEvent(input$replace_multiple, {
+    #   removeModal()
+    #   launch_modal(
+    #     type ="YHDP Replacement", 
+    #     source = yhdp_replacement_info$funding_source, 
+    #     replacement = yhdp_replacement_info$project_to_replace
+    #   )
+    # })
+    # 
+    #     ## User wants to replace with one project ----
+    # observeEvent(input$replace_one, {
+    #   removeModal()
+    # })
+    # 
+    # ## User cancelled replacement ----
+    # observeEvent(input$replace_cancel, {
+    #   revert_cell(ns("projects_table"), yhdp_replacement_info$info, input$projects_table_rows_current, projects_data())
+    #   removeModal()
+    #   # no need to do inventory_update because we haven't modified the db or datatable yet
+    # })
     
     orgnames <- reactive({
       req(user_coc$coc_version_id)
-      c("Select or add Organization" = "", 
         c("Select or add Organization" = "", funique(projects_data()$organization_name, sort=TRUE))
-      )
     })
     
     # Project modal control -------------
@@ -472,7 +610,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
       trigger = modal_trigger,
       form_type = current_form_type,
       funding_source = current_funding_src,
-      project_to_replace = current_proj_to_replace,
+      # project_to_replace = current_proj_to_replace,
       user_coc = user_coc,
       orgnames = orgnames
     )
@@ -481,7 +619,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     launch_modal <- function(type, source = "", replacement = NULL) {
       current_form_type(type)
       current_funding_src(source)
-      current_proj_to_replace(replacement)
+      # current_proj_to_replace(replacement)
       
       # Increment trigger to tell child server to prepopulate/reset
       modal_trigger(modal_trigger() + 1) 
@@ -492,16 +630,9 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     # Handle user's add project submission
     observeEvent(modal_submission$status, {
       req(modal_submission$status)
+      req(modal_submission$status != "error")
       
-      if(current_form_type() == "New") {
-        inventory_append(modal_submission$project_data)
-      } 
-      # If they reallocated or replaced, we need to both update the reallocated/replaced row
-      # AND add the new project
-      else {
-        inventory_update(info, new_value)
-        inventory_append(modal_submission$project_data)
-      }
+      inventory_append(modal_submission$project_data)
     }, ignoreNULL = TRUE)
     
     # Add additional project handling ----
@@ -517,40 +648,58 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, modu
     })
     
     observeEvent(input$view_giw_btn, {
-      req(isTruthy(giw_data()))
-      
-        data <- giw_data() |>
-          fselect(-date_created, -date_updated, -created_by, -updated_by)
-      
-      names(data) <- giw_variable_labels[match(names(data), names(giw_variable_labels))]
-      
-      showModal(
-        modalDialog(
-          title = "GIW",
-          p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
-          DT::renderDT(
-            data,
-            fillContainer = TRUE,
-            options = list(
-              pageLength = 200,
-              scrollY = "400px",
-              columnDefs = list(
-                list(visible = FALSE, targets = 0)  # 0 = first column (0-based index)
-              ),
-              language = list(
-                zeroRecords = "No GIW data available for this CoC."
-              )
-            )
-          ),
-          size="xl",
-          easyClose = TRUE
+      shinyjs::show("giw_panel")
+    })
+    observeEvent(input$close_giw, {
+      shinyjs::hide("giw_panel")
+    })
+    
+    record_being_edited <- reactiveVal(NULL)
+    observeEvent(input$projects_table_cell_being_edited, {
+      record_being_edited(
+        list(
+          record_id = projects_data()[input$projects_table_cell_clicked$row]$project_id,
+          field = names(projects_data())[[input$projects_table_cell_clicked$col + 1]]
         )
       )
     })
     
-    output$projects_table_counts <- renderText({
-      req(projects_data())
-      paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
+    mod_user_presence_server(
+      id = "presence", # Internal ID for this leaf module
+      user_coc = user_coc,
+      # We use the project ID because we are rating a specific project
+      record_id = reactive({ record_being_edited()$record_id }), 
+      field = reactive({ record_being_edited()$field }),
+      active = reactive({ nav_control() == "inventory"})
+    )
+    
+    # output$projects_table_counts <- renderText({
+    #   req(projects_data())
+    #   paste0("Showing ", length(input$projects_table_rows_current), " projects (out of ", fnrow( projects_data()), " total projects)")
+    # })
+    output$giw_tbl <- renderDT({
+      data <- giw_data() |>
+        fselect(-date_created, -date_updated, -created_by, -updated_by, -version_id)
+      
+      names(data) <- variable_labels[match(names(data), names(variable_labels))]
+      
+      datatable(
+        data,
+        fillContainer = TRUE,
+        selection = "none",
+        options = list(
+          pageLength = 200,
+          scrollY = "500px",
+          columnDefs = list(
+            list(visible = FALSE, targets = 0) # 0 = first column (0-based index)
+          ),
+          language = list(
+            zeroRecords = "No GIW data available for this CoC."
+          )
+        ),
+        lazyRender = TRUE,
+        filter = 'top'
+      )
     })
     
   }) # end moduleServer
