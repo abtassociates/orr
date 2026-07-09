@@ -372,8 +372,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     alloc_dv <- get_allocated_funding("dv_bonus", quote(dv_selected == TRUE))
     
     mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data, "CoC Bonus")
-    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data, "Tier 1 (Adj ARD * 90%)")
-    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data, "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)")
+    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data, "Tier 1 (Adj ARD * 60%)")
+    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data, "Tier 2 (Adj ARD * 40% + CoC Bonus + DV Bonus)")
     mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data, "DV Bonus")
     mod_ranking_widget_server("exceeds", alloc_exceed, coc_ard_data, "Exceeding ARD Adj")
     
