@@ -252,7 +252,7 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           function(x) formatStyle(
             x,
             columns = user_columns,
-            backgroundColor = USER_ENTRY_BG_COLOR
+            backgroundColor = 'var(--brand-user_entry)'
           ),
           # Replacement projects should fill out these fields, and thus color them green.
           # function(x) formatStyle(

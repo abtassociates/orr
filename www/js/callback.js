@@ -1,5 +1,6 @@
-$(document).on('mouseenter', 'table.dataTable tbody tr', function() {
-  $(this).css('background-color', '{USER_ENTRY_BG_COLOR}');
+/*Inventory/Projects table row should be green on hover, since whole row is technically editable*/
+$(document).on('mouseenter', '#inventory-projects_table table.dataTable tbody tr', function() {
+  $(this).css('background-color', 'var(--brand-user_entry)');
 });
 $(document).on('mouseenter', 'table.dataTable tbody td', function() {
   $(this).css('cursor', 'pointer');

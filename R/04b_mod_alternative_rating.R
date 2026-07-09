@@ -99,7 +99,7 @@ mod_alternative_rating_server <- function(id, user_coc, nav_control) {
           function(x) formatStyle(
             x,
             columns = editable_cols,
-            backgroundColor = USER_ENTRY_BG_COLOR
+            backgroundColor = 'var(--brand-user_entry)'
           )
         ),
         colnames = unname(variable_labels[names(data)]),

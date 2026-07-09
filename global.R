@@ -43,8 +43,6 @@ set_collapse(na.rm = TRUE, verbose = FALSE, sort = FALSE)
 # Need to set this or `brandr::assert_brand_yml` will not work correctly because for non-interactive sessions, it takes the main path
 options(BRANDR_BRAND_YML = here::here("_brand.yml"))
 
-USER_ENTRY_BG_COLOR <- "#e6ffe6"
-
 orr_bslib_theme <- bs_theme(
   version = 5,
   brand = TRUE,
