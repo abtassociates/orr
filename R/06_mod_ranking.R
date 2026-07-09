@@ -138,6 +138,24 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       excluded = NULL
     )
     
+    observeEvent(c(user_coc$coc_version_id, ranking_needs_refresh()), {
+
+      req(user_coc$coc_version_id)
+      
+      # version status
+      coc_status <- get_coc_status(user_coc$coc_version_id)
+      is_complete <- (coc_status == get_lookup_refid('Complete', 'coc_status'))
+      
+      if(input$ranking_complete != is_complete) {
+        updateCheckboxInput(
+          session, 
+          "ranking_complete", 
+          value = is_complete
+        )
+        
+      }
+    })
+    
     observeEvent(ranked_projects_db(), {
       req(isTruthy(fnrow(ranked_projects_db()) > 0))
       process_data()
@@ -354,8 +372,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     alloc_dv <- get_allocated_funding("dv_bonus", quote(dv_selected == TRUE))
     
     mod_ranking_widget_server("coc_bonus", alloc_coc, coc_ard_data, "CoC Bonus")
-    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data, "Tier 1 (Adj ARD * 90%)")
-    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data, "Tier 2 (Adj ARD * 10% + CoC Bonus + DV Bonus)")
+    mod_ranking_widget_server("tier_1", alloc_tier1, coc_ard_data, "Tier 1 (Adj ARD * 60%)")
+    mod_ranking_widget_server("tier_2", alloc_tier2, coc_ard_data, "Tier 2 (Adj ARD * 40% + CoC Bonus + DV Bonus)")
     mod_ranking_widget_server("dv_bonus", alloc_dv, coc_ard_data, "DV Bonus")
     mod_ranking_widget_server("exceeds", alloc_exceed, coc_ard_data, "Exceeding ARD Adj")
     
@@ -549,7 +567,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             fill = unspecified_id
           ) %>%
           setnames(colnames(.)[-1], paste0("prio_", colnames(.)[-1])) |>
-          replace_NA(unspecified_id)
+          replace_NA(unspecified_id, cols=-1)
   
         # Pivot Wide for Bed Ceilings
         wide_beds <- ceilings_priorities() |>
@@ -592,13 +610,13 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         project_type %in% unspec_types, unspecified_id,
         
         # If they have any DV beds, use DV priority
-        dv_fam_beds > 0 | dv_ind_beds > 0, pmax(prio_DV_Family, prio_DV_Individual, na.rm = TRUE),
+        dv_fam_beds > 0 | dv_ind_beds > 0, pmin(prio_DV_Family, prio_DV_Individual, na.rm = TRUE),
         
         # If any of their sub-pop beds are at least 50% of total beds, use highest priority of those sub-pop
         (ch_fam_beds >= 0.5 * total_beds & total_beds > 0) | (total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0) |
           (par_youth_beds >= 0.5 * total_beds & total_beds > 0) | (single_youth_beds >= 0.5 * total_beds & total_beds > 0) |
           (vet_fam_beds >= 0.5 * total_beds & total_beds > 0) | (vet_ind_beds >= 0.5 * total_beds & total_beds > 0),
-        pmax(
+        pmin(
           fifelse(ch_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_CH_Family, unspecified_id),
           fifelse(vet_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_Veteran_Family, unspecified_id),
           fifelse(par_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_Youth_Family, unspecified_id),
@@ -612,7 +630,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         # If sum of their sub-pop beds is less than 50%, use general pop priority
         all_fam_beds > all_ind_beds, prio_General_Family,
         all_ind_beds > all_fam_beds, prio_General_Individual,
-        all_fam_beds == all_ind_beds & total_beds > 0, pmax(prio_General_Family, prio_General_Individual, na.rm = TRUE),
+        all_fam_beds == all_ind_beds & total_beds > 0, pmin(prio_General_Family, prio_General_Individual, na.rm = TRUE),
         default = unspecified_id
       )] %>%
         fmutate(priority = convert_to_factor(., "priority"))
@@ -795,8 +813,8 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         dt <- dt |>
           formatStyle(
             'coc_funding_recommendation', 
-            backgroundColor = USER_ENTRY_BG_COLOR,
-            fontWeight = 'bold'
+            backgroundColor = "var(--brand-user_entry) !important",
+            fontWeight = 'bold',
           ) |>
           formatStyle(
             columns = 'bonus_highlight',  # Replace with your actual column name
@@ -817,7 +835,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           formatStyle(
             columns = "coc_funding_recommendation",
             valueColumns = "rank",
-            backgroundColor = styleEqual("Over Target", USER_ENTRY_BG_COLOR),
+            backgroundColor = styleEqual("Over Target", "var(--brand-user_entry) !important"),
             fontWeight = 'bold'
           )
       
@@ -828,7 +846,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       shiny::validate(
         need(
           !ranking_needs_refresh(), 
-          "Data has been updated. Click 'Conduct Ranking' to update."
+          "Data has been updated. Click 'Regenerate Ranking' to update."
         )
       )
       
@@ -987,7 +1005,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       # Create a flat list of choices, swapping all bed fields for the single word "Beds"
       choices <- c("BED FIELDS", general_cols)
-      
+      choices <- setdiff(choices, " ")
       shinyWidgets::updateVirtualSelect(
         session = session,
         inputId = "hidden_cols",
@@ -1161,7 +1179,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     observeEvent(input$ranking_complete, {
       req(user_coc$coc_version_id)
-      status <- calculate_coc_status(user_coc$coc_version_id, input$ranking)
+      status <- calculate_coc_status(user_coc$coc_version_id, input$ranking_complete)
       update_coc_status(user_coc, status)
     }, ignoreInit = TRUE)
   })

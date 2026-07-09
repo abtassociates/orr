@@ -20,7 +20,7 @@ color:
     tier_2: '#873600'
     dv_bonus: '#00695c'
     exceeds: '#000000'
-
+    user_entry: '#e6ffe6'
     
   # theme colors  
   primary: blue

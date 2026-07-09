@@ -56,10 +56,10 @@ mod_funding_priorities_ui <- function(id) {
         col_widths = c(3, 3, 3, 3),
         funding_input("total_ard", "Annual Renewal Demand (ARD)"),
         funding_input("coc_bonus", "CoC Bonus"),
-        funding_input("tier_1", "Tier 1"),
+        funding_input("tier_1", "Tier 1 (Adj ARD * 60%)"),
         funding_input("adjusted_ard", "Adjusted ARD"),
         # funding_input("yhdp_ard", "YHDP ARD"),
-        funding_input("tier_2", "Tier 2"),
+        funding_input("tier_2", "Tier 2 (Adj ARD * 40% + CoC Bonus + DV Bonus)"),
         funding_input("dv_bonus", "DV Bonus"),
         funding_input("dv_ard", "DV ARD")
       )
@@ -499,8 +499,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     observeEvent(selected_coc_nofo_opportunities(), {
       req(!identical(
-        selected_coc_nofo_opportunities(), 
-        as.character(coc_nofo_opportunities()[selected == T]$coc_nofo_opportunity_id)
+        sort(selected_coc_nofo_opportunities()), 
+        sort(as.character(coc_nofo_opportunities()[selected == T]$coc_nofo_opportunity_id))
       ))
       
       save_opportunities()
