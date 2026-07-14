@@ -152,6 +152,7 @@ mod_inventory_add_project_server <- function(
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
         if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
+        if (tp == "Youth") groups <- setdiff(groups, "vet_beds")
         if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
       }
       return(groups)
