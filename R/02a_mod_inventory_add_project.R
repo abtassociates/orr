@@ -134,11 +134,11 @@ mod_inventory_add_project_server <- function(
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
       
-      if(tp == "Youth")
-        req_validator$disable()
+      if(tp == "Veteran")
+        vet_beds_required$enable()
       else
-        req_validator$enable()
-      
+        vet_beds_required$disable()
+        
       tp
     })
     
@@ -159,6 +159,7 @@ mod_inventory_add_project_server <- function(
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
         if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
+        if (tp %in% c("Youth", "HIV")) groups <- setdiff(groups, "vet_beds")
         if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
       }
       return(groups)
@@ -371,13 +372,13 @@ mod_inventory_add_project_server <- function(
         
         # Vet beds will be conditionally required based on Target Pop (i.e. not required if Youth)
         if(group_name == "vet_beds") {
-          req_validator <- shinyvalidate::InputValidator$new()
-          v$add_validator(req_validator)
+          vet_beds_required <- shinyvalidate::InputValidator$new()
+          v$add_validator(vet_beds_required)
         }
         
         # Add rules for the fields within this group
         for (field in bed_groups_to_validate[[current_group]]) {
-          if(group_name == "vet_beds") req_validator$add_rule(field, sv_required())
+          if(group_name == "vet_beds") vet_beds_required$add_rule(field, sv_required())
           else v$add_rule(field, sv_required())
           v$add_rule(field, sv_integer("Must be a whole number"))
           v$add_rule(field, sv_gte(0, "Cannot be negative"))
