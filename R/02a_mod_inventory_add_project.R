@@ -130,9 +130,16 @@ mod_inventory_add_project_server <- function(
     # Determine the definitive target population.
     current_target_pop <- reactive({
       # if (current_funding_source() == "YHDP") "Youth" 
-      if (current_funding_source() == "DV") "DV" 
+      tp <- if (current_funding_source() == "DV") "DV" 
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
+      
+      if(tp == "Youth")
+        req_validator$disable()
+      else
+        req_validator$enable()
+      
+      tp
     })
     
     # Determine which bed groups should be visible. This is the core of the display logic.
@@ -152,7 +159,6 @@ mod_inventory_add_project_server <- function(
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
         if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
-        if (tp == "Youth") groups <- setdiff(groups, "vet_beds")
         if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
       }
       return(groups)
@@ -363,9 +369,16 @@ mod_inventory_add_project_server <- function(
         # This is much more efficient than setting it inside an observe().
         v$condition(~ current_group %in% visible_bed_groups())
         
+        # Vet beds will be conditionally required based on Target Pop (i.e. not required if Youth)
+        if(group_name == "vet_beds") {
+          req_validator <- shinyvalidate::InputValidator$new()
+          v$add_validator(req_validator)
+        }
+        
         # Add rules for the fields within this group
         for (field in bed_groups_to_validate[[current_group]]) {
-          v$add_rule(field, sv_required())
+          if(group_name == "vet_beds") req_validator$add_rule(field, sv_required())
+          else v$add_rule(field, sv_required())
           v$add_rule(field, sv_integer("Must be a whole number"))
           v$add_rule(field, sv_gte(0, "Cannot be negative"))
         }
