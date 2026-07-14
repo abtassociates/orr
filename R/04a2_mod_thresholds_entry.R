@@ -98,7 +98,7 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
     }, ignoreNULL = FALSE)
     
     # Updating main data
-    observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_coc_thresholds_updated), {
+    observeEvent(c(selected_project(), refresh_trigger(), user_coc$customized_coc_thresholds_updated, user_coc$rating_updated), {
       project_is_selected <- isTruthy(fnrow(selected_project()) > 0)
       project_id <- selected_project()$project_id
       
@@ -292,11 +292,14 @@ mod_thresholds_entry_server <- function(id, user_coc, selected_project, active, 
         )
         
         # 2. Update project_evaluation baseline
-        if (!is.null(to_save$project_evaluation))
+        if (!is.null(to_save$project_evaluation)) {
           project_evaluation(
             to_save$project_evaluation |>
               fmutate(version_id = version_id + 1)
           )
+          
+          user_coc$rating_updated <- user_coc$rating_updated + 1
+        }
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)

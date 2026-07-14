@@ -458,11 +458,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         ]
 
         # 2. Update project_evaluation baseline
-        if (!is.null(to_save$project_evaluation))
+        if (!is.null(to_save$project_evaluation)) {
           project_evaluation(
             to_save$project_evaluation |>
               fmutate(version_id = version_id + 1)
           )
+        
+          user_coc$rating_updated <- user_coc$rating_updated + 1
+        }
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
