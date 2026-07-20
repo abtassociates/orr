@@ -616,7 +616,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         (ch_fam_beds >= 0.5 * total_beds & total_beds > 0) | (total_ch_ind_beds >= 0.5 * total_beds & total_beds > 0) |
           (par_youth_beds >= 0.5 * total_beds & total_beds > 0) | (single_youth_beds >= 0.5 * total_beds & total_beds > 0) |
           (vet_fam_beds >= 0.5 * total_beds & total_beds > 0) | (vet_ind_beds >= 0.5 * total_beds & total_beds > 0),
-        pmin(
+        pmax(
           fifelse(ch_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_CH_Family, unspecified_id),
           fifelse(vet_fam_beds >= 0.5 * total_beds & total_beds > 0, prio_Veteran_Family, unspecified_id),
           fifelse(par_youth_beds >= 0.5 * total_beds & total_beds > 0, prio_Youth_Family, unspecified_id),
