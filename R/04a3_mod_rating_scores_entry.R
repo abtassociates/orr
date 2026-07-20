@@ -322,6 +322,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
         shinyjs::toggleState(paste0("performance_", i), condition = !input$rating_complete)
         shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
+        
+        if(!input$rating_complete) {
+          perf_id <- ns(paste0("performance_", i))
+          shinyjs::runjs(glue::glue("$('#{perf_id}').attr('maxlength',100);"))
+        }
       })
     })
     
