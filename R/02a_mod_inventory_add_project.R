@@ -134,11 +134,6 @@ mod_inventory_add_project_server <- function(
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
       
-      if(tp == "Veteran")
-        vet_beds_required$enable()
-      else
-        vet_beds_required$disable()
-        
       tp
     })
     
@@ -162,6 +157,12 @@ mod_inventory_add_project_server <- function(
         if (tp %in% c("Youth", "HIV")) groups <- setdiff(groups, "vet_beds")
         if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
       }
+      
+      if(tp == "Veteran")
+        vet_beds_required$enable()
+      else
+        vet_beds_required$disable()
+      
       return(groups)
     })
     
