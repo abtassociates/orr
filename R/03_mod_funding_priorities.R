@@ -137,8 +137,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     hud_ard_coc_data <- reactive({
       req(refresh_trigger$dv_ard, user_coc$coc_version_id)
-      get_coc_hud_ard_data(user_coc) |>
-        frename(estimated = "total_ard")
+      get_coc_hud_ard_data(user_coc)
     })
     
     

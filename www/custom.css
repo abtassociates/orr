@@ -1,3 +1,13 @@
+html, body {
+  height: auto !important;
+  overflow-y: auto !important;
+}
+/* Ensure the tab panels allow their content to overflow naturally */
+.tab-content, .tab-pane {
+  overflow: visible !important;
+  height: auto !important;
+}
+
 /*As of rlang 1.2.0, the sort icons on datatables look weird. This fixes that
 
 The Change: rlang 1.2.0 (released in late 2024) introduced significant internal changes to how R handles encoding and UTF-8 strings
@@ -230,6 +240,12 @@ td.drag-handle {
 td.drag-handle:active { 
   cursor: grabbing !important; 
 }
+
+/* Prevent extra Tier 2 cells from appearing after showing more bed fields*/
+.tier2-placeholder td:not(:first-child) {
+  display: none !important;
+}
+
 
 /*************** 
 ** Ranking Summary Widget Text Styles
