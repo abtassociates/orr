@@ -925,9 +925,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
               if (data[projectIdIdx] === 'PLACEHOLDER_T2') {
                 $(row).addClass('tier2-placeholder');
                 $(row).find('td').removeClass('drag-handle');
-                $('td', row).empty().html('📂 No projects in Tier 2. Drag here to reassign.')
-                            .attr('colspan', '100%%');
-                $('td', row).not(':first').remove(); // Hide other cells
+                
+                $('td', row).first()
+                  .html('📂 No projects in Tier 2. Drag here to reassign.')
+                  .attr('colspan', '100%%');
+              
               }
         
         
@@ -993,6 +995,13 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     
     
     # HANDLE COLUMN TOGGLE
+    # column name tracker
+    current_cols <- reactive({
+      req(rv$ranked)
+      names(format_ranked_tbl(rv$ranked))
+    })
+    
+    
     # user cannot show/hide these. Always hidden
     observe({
       req(rv$ranked)
@@ -1063,7 +1072,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     }, ignoreInit = TRUE)
     
     output$ui_ranked_list <- renderDT({
-      dt <- rv$ranked
+      cols <- current_cols() 
+      
+      dt <- isolate(rv$ranked)
       req(fnrow(dt) > 0)
       
       render_projects_dt(format_ranked_tbl(dt))
@@ -1072,7 +1083,12 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     ranked_proxy <- dataTableProxy("ui_ranked_list",session = session)
     observeEvent(rv$ranked, {
       dt <- format_ranked_tbl(rv$ranked)
-      replaceData(ranked_proxy, dt, rownames = FALSE, resetPaging = FALSE)
+      req(fnrow(dt) > 0)
+      
+      # Only use replaceData if the new schema matches the currently rendered schema
+      if (identical(names(dt), isolate(current_cols()))) {
+        replaceData(ranked_proxy, dt, rownames = FALSE, resetPaging = FALSE)
+      }
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
     observeEvent(input$ui_ranked_list_cell_edit, {

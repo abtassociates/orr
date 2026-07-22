@@ -241,6 +241,12 @@ td.drag-handle:active {
   cursor: grabbing !important; 
 }
 
+/* Prevent extra Tier 2 cells from appearing after showing more bed fields*/
+.tier2-placeholder td:not(:first-child) {
+  display: none !important;
+}
+
+
 /*************** 
 ** Ranking Summary Widget Text Styles
 *******************/
