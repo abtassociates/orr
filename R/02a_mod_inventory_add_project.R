@@ -358,26 +358,23 @@ mod_inventory_add_project_server <- function(
         }
       }
     }
+    
+    # Dedicated sub-validator for veteran beds requirement
+    vet_beds_required <- shinyvalidate::InputValidator$new()
+    vet_beds_required$condition(~ current_target_pop() == "Veteran")
+    
     # Loop to create and add all bed validation rules ONCE
     for (group_name in names(bed_groups_to_validate)) {
-      # Use local() to capture the current value of 'group_name' for the condition formula
       local({
         current_group <- group_name
         
-        # Create a new validator for this group
         v <- shinyvalidate::InputValidator$new()
-        
-        # Set the condition for the ENTIRE validator group.
-        # This is much more efficient than setting it inside an observe().
         v$condition(~ current_group %in% visible_bed_groups())
         
-        # Vet beds will be conditionally required based on Target Pop (i.e. not required if Youth)
         if(group_name == "vet_beds") {
-          vet_beds_required <- shinyvalidate::InputValidator$new()
           v$add_validator(vet_beds_required)
         }
         
-        # Add rules for the fields within this group
         for (field in bed_groups_to_validate[[current_group]]) {
           if(group_name == "vet_beds") vet_beds_required$add_rule(field, sv_required())
           else v$add_rule(field, sv_required())
@@ -385,13 +382,11 @@ mod_inventory_add_project_server <- function(
           v$add_rule(field, sv_gte(0, "Cannot be negative"))
         }
         
-        # Subset validation
         if (current_group != "total_beds") {
           v$add_rule(paste0(current_group, "_fam"), sv_lte_reactive(~input$total_beds_fam))
           v$add_rule(paste0(current_group, "_ind"), sv_lte_reactive(~input$total_beds_ind))
         }
         
-        # Add this group's validator to the main validator
         iv$add_validator(v)
       })
     }
