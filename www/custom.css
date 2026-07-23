@@ -130,6 +130,10 @@ input[type=number] {
   height: 38vh !important;
 }
 
+#inventory-projects_table .table.dataTable tbody td {
+  padding: 4px 10px;
+}
+
 th[aria-label^="Grant Number"] {
   min-width: fit-content;
     white-space: nowrap;
