@@ -814,6 +814,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           formatStyle(
             'coc_funding_recommendation', 
             backgroundColor = "var(--brand-user_entry) !important",
+            color = "#000000 !important",
             fontWeight = 'bold',
           ) |>
           formatStyle(
