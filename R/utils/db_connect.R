@@ -235,6 +235,20 @@ run_app <- function(use_sqlite = Sys.getenv("RSTUDIO") == "1", dbname = NULL, us
   USE_SQLITE <<- use_sqlite
   DEV_USER_LOGIN <<- user_email
   DBNAME <<- dbname
+  # 3. Post-exit Cleanup: Ensure globals are cleared when run_app stops or crashes
+  on.exit({
+    suppressWarnings(rm(USE_SQLITE, DEV_USER_LOGIN, DBNAME, envir = .GlobalEnv))
+    stopApp()
+    message("Cleaned up global variables.")
+  }, add = TRUE)
+  
   library(shiny)
+  
+  # 4. Shiny Server Shutdown Hook: Stops background processes when Shiny exits
+  shiny::onStop(function() {
+    stopApp()
+  })
+  
+  # Run the application
   runApp()
 }
