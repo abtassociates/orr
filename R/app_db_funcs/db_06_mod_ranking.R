@@ -37,22 +37,25 @@ get_projects_to_rank <- function(coc_version_id) {
       FROM projects p
       LEFT JOIN ranking r ON p.project_id = r.project_id AND r.coc_version_id = p.coc_version_id
       LEFT JOIN project_evaluations pe ON p.project_id = pe.project_id
-      LEFT JOIN selected_coc_nofo_opportunities sno ON sno.coc_version_id = p.coc_version_id
-      LEFT JOIN coc_nofo_opportunities no ON no.coc_nofo_opportunity_id = sno.coc_nofo_opportunity_id AND no.funding_action = p.funding_action AND no.project_type = p.project_type AND no.target_population = p.target_population
+      LEFT JOIN (
+        SELECT 
+          sno.coc_version_id,
+          no.funding_action,
+          no.project_type,
+          no.target_population,
+          no.bonus_type,
+          no.population_group
+        FROM selected_coc_nofo_opportunities sno
+        JOIN coc_nofo_opportunities no ON sno.coc_nofo_opportunity_id = no.coc_nofo_opportunity_id
+      ) no 
+        ON no.coc_version_id = p.coc_version_id
+       AND no.funding_action = p.funding_action
+       AND no.project_type = p.project_type
+       AND no.target_population = p.target_population
+
       WHERE p.coc_version_id = $1 AND p.funding_action <> $2", 
     params = list(coc_version_id, get_lookup_refid("Ignore", "funding_action"))
-  ) %>%
-    fmutate(
-      met_hud_thresholds = fcoalesce(as.logical(met_hud_thresholds), FALSE),
-      met_coc_thresholds = fcoalesce(as.logical(met_coc_thresholds), FALSE),
-      funding_action = convert_to_factor(., "funding_action"),
-      project_type = convert_to_factor(., "project_type"),
-      target_population = convert_to_factor(., "target_population"),
-      dv_renewal = factor_yesno(dv_renewal),
-      is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
-      is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
-      is_dedicated_dv = factor_yesno(is_dedicated_dv)
-    )
+  )
 }
 
 get_ceilings_priorities <- function(coc_version_id) {

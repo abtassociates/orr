@@ -112,6 +112,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     tier3_id <- get_lookup_refid("Projects Exceeding ARD Adj", "tier")
     tier4_id <- get_lookup_refid("Excluded", "tier")
     
+    coc_bonus_id <- get_lookup_refid("CoC Bonus", "bonus_type")
+    dv_bonus_id  <- get_lookup_refid("DV Bonus", "bonus_type")
+    
     # when user makes updates to the app, we update this to flag for the user they should run the ranking
     ranking_needs_refresh <- reactiveVal(FALSE)
     
@@ -123,8 +126,32 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
     ranked_projects_db <- reactive({
       req(user_coc$coc_version_id)
       
-      get_projects_to_rank(user_coc$coc_version_id) |>
-        fmutate(total_beds = all_fam_beds + all_ind_beds) |>
+      get_projects_to_rank(user_coc$coc_version_id) %>%
+        # 1. Base formatting & Factor Conversions
+        fmutate(
+          met_hud_thresholds  = fcoalesce(as.logical(met_hud_thresholds), FALSE),
+          met_coc_thresholds  = fcoalesce(as.logical(met_coc_thresholds), FALSE),
+          funding_action      = convert_to_factor(., "funding_action"),
+          project_type        = convert_to_factor(., "project_type"),
+          target_population   = convert_to_factor(., "target_population"),
+          dv_renewal          = factor_yesno(dv_renewal),
+          is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
+          is_dedicated_ch_ind = factor_yesno(is_dedicated_ch_ind),
+          is_dedicated_dv     = factor_yesno(is_dedicated_dv),
+          rating_complete     = as.logical(rating_complete),
+          total_beds          = all_fam_beds + all_ind_beds
+        ) %>%
+        # 2. Group by project_id to summarize opportunity flags across duplicate rows
+        fgroup_by(project_id) |>
+        fmutate(
+          has_coc_bonus_opp  = any(bonus_type == coc_bonus_id, na.rm = TRUE),
+          has_coc_ch_ind_opp = any(bonus_type == coc_bonus_id & no_pop_grp == 42, na.rm = TRUE),
+          has_coc_ch_fam_opp = any(bonus_type == coc_bonus_id & no_pop_grp == 43, na.rm = TRUE),
+          has_dv_bonus_opp   = any(bonus_type == dv_bonus_id, na.rm = TRUE)
+        ) |>
+        fungroup() |>
+        # 3. Deduplicate back to strictly 1 row per project
+        funique(cols = "project_id") |>
         add_fake_data()
     })
     
@@ -662,17 +689,32 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         fmutate(` ` = as.character(icon("grip-vertical"))) |>
         colorder(` `) |>
         fmutate(
-          # 1. Evaluate Bonus Eligibility only on valid projects
-          is_coc_eligible = funding_action %in% c("New","Expand") & (
-            (project_type == "PSH" & ((total_ch_ind_beds > 0 & is_dedicated_ch_ind == "Yes") | (ch_fam_beds > 0 & is_dedicated_ch_fam == "Yes"))) |
-            (project_type %in% c("RRH", "TH+RRH") & (all_ind_beds > 0 | all_fam_beds > 0)) |
-            project_type %in% c("HMIS Project", "SSO-CE")
-          ),
+          # 1. CoC Bonus Eligibility: Requires matching a CoC Bonus opportunity
+          is_coc_eligible = funding_action %in% c("New", "Expand") & 
+            has_coc_bonus_opp & (
+              
+              # PSH: check bed criteria + dedicated status + specific pop group opp
+              (project_type == "PSH" & (
+                (total_ch_ind_beds > 0 & is_dedicated_ch_ind == "Yes" & has_coc_ch_ind_opp) |
+                (ch_fam_beds > 0 & is_dedicated_ch_fam == "Yes" & has_coc_ch_fam_opp)
+              )) |
+                
+              # RRH / TH+RRH
+              (project_type %in% c("RRH", "TH+RRH") & (all_ind_beds > 0 | all_fam_beds > 0)) |
+              
+              # HMIS / SSO-CE
+              (project_type %in% c("HMIS Project", "SSO-CE"))
+            ),
           
-          is_dv_eligible = funding_action %in% c("New","Expand") & 
+          # 2. DV Bonus Eligibility: Requires matching a DV Bonus opportunity
+          is_dv_eligible = funding_action %in% c("New", "Expand") & 
+            has_dv_bonus_opp & 
             is_dedicated_dv == "Yes" & coc_funding_recommendation >= 50000 & (
+              # RRH / TH+RRH
               (project_type %in% c("RRH", "TH+RRH") & (dv_ind_beds > 0 | dv_fam_beds > 0)) |
-              project_type == "SSO-CE"
+              
+              # SSO-CE
+              (project_type == "SSO-CE")
             ),
           
           bonus_eligibility = fcase(
