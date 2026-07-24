@@ -1,11 +1,15 @@
+/*
 html, body {
   height: auto !important;
   overflow-y: auto !important;
 }
+*/
 /* Ensure the tab panels allow their content to overflow naturally */
-.tab-content, .tab-pane {
+/*.tab-content, .tab-pane {
   overflow: visible !important;
   height: auto !important;
+}*/
+
 .bslib-sidebar-layout>.sidebar {
   overflow: visible !important;
 }
@@ -15,6 +19,10 @@ html, body {
   top: 0;
 }
 
+/*Left-justifies title, right-justifies action buttons*/
+.bslib-card .card-header {
+  justify-content: space-between;
+}
 /*As of rlang 1.2.0, the sort icons on datatables look weird. This fixes that
 
 The Change: rlang 1.2.0 (released in late 2024) introduced significant internal changes to how R handles encoding and UTF-8 strings
@@ -133,11 +141,7 @@ input[type=number] {
   font-size: 1.2rem !important; /*otherwise, default for currencyInput is 1.5rem which is too big*/
 }
 
-#inventory-projects_table .dataTables_scrollBody {
-  height: 38vh !important;
-}
-
-#inventory-projects_table .table.dataTable tbody td {
+#inventory-projects_table table.dataTable tbody td {
   padding: 4px 10px;
 }
 
@@ -513,16 +517,6 @@ tr.group_header td{
 /* Ensure the hover effect (if any) doesn't fire for the placeholder */
 #ranking-ui_ranked_list tr.tier2-placeholder:hover {
   background-color: #f9f9f9 !important;
-}
-
-/* STICKY CARD FOOTER*/
-.sticky-footer {
-  position: sticky; 
-  bottom: 0; 
-  z-index: 1020; 
-  background-color: var(--bs-card-cap-bg, #f8f9fa); 
-  border-top: 1px solid var(--bs-border-color, #dee2e6);
-  box-shadow: 0px -4px 10px rgba(0,0,0,0.05);", # Shadow so it looks like it's floating
 }
 
 #logout-overlay {

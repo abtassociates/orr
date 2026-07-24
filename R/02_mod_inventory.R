@@ -45,7 +45,7 @@ mod_inventory_ui <- function(id) {
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
         mod_user_presence_ui(ns("presence")),
-        DTOutput(ns("projects_table"), fill = FALSE) |> shinycssloaders::withSpinner()
+        DTOutput(ns("projects_table"), height = "70vh") |> shinycssloaders::withSpinner()
         # br(),
         # textOutput(ns("projects_table_counts")),
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")

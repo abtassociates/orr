@@ -138,6 +138,7 @@ initialize_inline_edit_table_ui <- function(
     dom = "tip",
     paging = FALSE,
     scrollY = "100%",  # Limit table height
+    scrollCollapse = TRUE,
     keys = TRUE,
     searchCols = initial_filter,
     columnDefs = column_defs,
