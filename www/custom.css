@@ -6,6 +6,13 @@ html, body {
 .tab-content, .tab-pane {
   overflow: visible !important;
   height: auto !important;
+.bslib-sidebar-layout>.sidebar {
+  overflow: visible !important;
+}
+
+.bslib-sidebar-layout>.sidebar>.sidebar-content {
+  position: sticky;
+  top: 0;
 }
 
 /*As of rlang 1.2.0, the sort icons on datatables look weird. This fixes that
