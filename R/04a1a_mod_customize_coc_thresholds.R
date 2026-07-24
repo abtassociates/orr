@@ -12,6 +12,10 @@ mod_customize_coc_thresholds_ui <- function(id) {
     "CoC Thresholds Requirements",
     value = id,
     card(
+      card_header(
+        h4("Thresholds to Include in Rating"),
+        actionButton(ns("add_threshold_btn"), "Add Custom Threshold", icon = icon("plus"))
+      ),
       mod_user_presence_ui(ns("presence")),
       em("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
       checkboxGroupInput(
@@ -20,11 +24,6 @@ mod_customize_coc_thresholds_ui <- function(id) {
         choices = NULL,
         width = "100%",
         selected = NULL
-      ),
-      card_footer(
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        actionButton(ns("add_threshold_btn"), "Add Custom Threshold", icon = icon("plus"))#,
-        # actionButton(ns("save_thresholds"), "Save CoC Threshold Selections", icon = icon("save"), class = "btn-primary")
       )
     )
   )

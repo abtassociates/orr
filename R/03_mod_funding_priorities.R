@@ -51,7 +51,7 @@ mod_funding_priorities_ui <- function(id) {
     mod_user_presence_ui(ns("presence")),
     card(
       min_height=300,
-      card_header("General Funding Information"),
+      card_header(h4("General Funding Information")),
       layout_columns(
         col_widths = c(3, 3, 3, 3),
         funding_input("total_ard", "Annual Renewal Demand (ARD)"),
@@ -66,7 +66,7 @@ mod_funding_priorities_ui <- function(id) {
     ),
     card(
       min_height=300,
-      card_header("FY2026 HUD CoC Program NOFO Opportunities"),
+      card_header(h4("FY2026 HUD CoC Program NOFO Opportunities")),
       layout_columns(
         col_widths = c(8, 4),
         card(
@@ -100,7 +100,7 @@ mod_funding_priorities_ui <- function(id) {
       # )
     ), # end coc nofo opportunities card
     card(
-      card_header("Funding Ceilings and Priorities by Project Type and Population"),
+      card_header(h4("Funding Ceilings and Priorities by Project Type and Population")),
       div(
         id = ns("priorities_help"),
         helpText("Double-click a cell to edit")

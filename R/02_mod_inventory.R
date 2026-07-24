@@ -9,9 +9,30 @@ mod_inventory_ui <- function(id) {
     value = id,
     card(
       card_header(
-        class = "d-flex justify-content-between align-items-center",
         h4("Projects to be Reviewed"),
         div(
+          dropdownButton(
+            inputId = ns("field_display_control"),
+            label = "Choose Fields to Display",
+            icon = icon("sliders"),
+            circle = FALSE,
+            
+            prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
+            pickerInput(
+              ns('projects_col_selections'), label = 'Choose Fields to Display',
+              choices = setNames(col_names, variable_labels[col_names]),
+              selected = col_names,
+              multiple = TRUE, 
+              
+              options = pickerOptions(
+                selectedTextFormat = 'count',
+                countSelectedText = '{0} Fields Displayed',
+                selectAllText = 'Select All',
+                deselectAllText = 'De-select All',
+                actionsBox = TRUE
+              )
+            )
+          ),
           actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
           actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
         )
@@ -25,28 +46,6 @@ mod_inventory_ui <- function(id) {
         # This adds selectize dependencies, to avoid conflicts with DT and ensure selectize inputs show up as such
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
-        dropdownButton(
-          inputId = ns("field_display_control"),
-          label = "Choose Fields to Display",
-          icon = icon("sliders"),
-          circle = FALSE,
-          
-          prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
-          pickerInput(
-            ns('projects_col_selections'), label = 'Choose Fields to Display',
-            choices = setNames(col_names, variable_labels[col_names]),
-            selected = col_names,
-            multiple = TRUE, 
-            
-            options = pickerOptions(
-              selectedTextFormat = 'count',
-              countSelectedText = '{0} Fields Displayed',
-              selectAllText = 'Select All',
-              deselectAllText = 'De-select All',
-              actionsBox = TRUE
-            )
-          )
-        ),
         mod_user_presence_ui(ns("presence")),
         DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
         # br(),
