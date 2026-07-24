@@ -156,11 +156,7 @@ th[aria-label^="Project Name"] {
 /*the container div of the field control dropdown on Inventory*/
 /*positioning so search bar is in line with it*/
 #inventory-field_display_control_state {
-  display: flex; 
-  gap: 15px; 
-  padding: 10px; 
-  position: absolute;
-  z-index: 1;
+  display: inline-block; 
 }
 
 #inventory-giw_panel {
