@@ -53,20 +53,20 @@ mod_inventory_ui <- function(id) {
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       )
     ),
-    absolutePanel(
+    fixedPanel(
       id = ns("giw_panel"),
       style = "display:none;",
       card(
+        fill = FALSE,
         h3("GIW"),
         actionButton(ns("close_giw"), "X", class = "btn-danger btn-sm"),
         p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
-        DTOutput(ns("giw_tbl")) |> withSpinner()
+        DTOutput(ns("giw_tbl"), height = "75vh") |> withSpinner()
       ),
       draggable = TRUE,
       width = "60vw",
-      height = "50vh",
-      top = "10vh",
-      left = "20vw"
+      top = "50%",
+      left = "50%"
     )
   )
 }

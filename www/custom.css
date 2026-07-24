@@ -156,6 +156,10 @@ th[aria-label^="Project Name"] {
   z-index: 1;
 }
 
+#inventory-giw_panel {
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
 
 #inventory-close_giw {
   position: absolute;
