@@ -14,12 +14,8 @@ mod_alternative_rating_ui <- function(id) {
         )
       ),
       card_body(
-        fillable = FALSE,
         min_height = "65vh",
-        max_height = "71vh",
-        DTOutput(ns("alternative_rating_table"))
-      ),
-        DTOutput(ns("alternative_rating_table"), height = "100%")
+        DTOutput(ns("alternative_rating_table"), height = "70vh")
       )
     )
   )
