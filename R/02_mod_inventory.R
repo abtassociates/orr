@@ -8,7 +8,14 @@ mod_inventory_ui <- function(id) {
     icon = icon("list-check"),
     value = id,
     card(
-      card_header(h4("Projects to be Reviewed")),
+      card_header(
+        class = "d-flex justify-content-between align-items-center",
+        h4("Projects to be Reviewed"),
+        div(
+          actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
+          actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
+        )
+      ),
       card_body(
         fillable = FALSE,
         min_height = "60vh",
@@ -45,10 +52,6 @@ mod_inventory_ui <- function(id) {
         # br(),
         # textOutput(ns("projects_table_counts")),
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
-      ),
-      card_footer(
-        actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
-        actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
       )
     ),
     absolutePanel(
