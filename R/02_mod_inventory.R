@@ -432,7 +432,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           coc_amount_awarded_last_year = NA,
           coc_amount_expended_last_year = NA,
           coc_funding_requested = NA,
-          geocode = "",                      
           amount_other_public_funding = NA,
           amount_private_funding = NA,
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),
