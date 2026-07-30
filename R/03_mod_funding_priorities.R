@@ -103,7 +103,7 @@ mod_funding_priorities_ui <- function(id) {
       card_header("Funding Ceilings and Priorities by Project Type and Population"),
       div(
         id = ns("priorities_help"),
-        helpText("Double-click a cell to edit")
+        p("Double-click a cell to edit")
       ),
       DTOutput(ns("priorities_table"), fill = FALSE),
       fill = FALSE

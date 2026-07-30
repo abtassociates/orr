@@ -12,7 +12,7 @@ mod_requests_ui <- function(id) {
         )),
         card_body(
           fillable = FALSE,
-          helpText("Please select a row from the table below to update a request."),
+          p("Please select a row from the table below to update a request."),
           br(),
           br(),
           radioGroupButtons(

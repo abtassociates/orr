@@ -13,7 +13,7 @@ mod_inventory_ui <- function(id) {
         fillable = FALSE,
         min_height = "60vh",
         max_height = "81vh",
-        helpText("To edit or update an existing project, double-click into a cell. 
+        p("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
         # This adds selectize dependencies, to avoid conflicts with DT and ensure selectize inputs show up as such
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
