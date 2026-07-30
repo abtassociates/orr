@@ -555,6 +555,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       if (any(dt$is_dv_eligible, na.rm=TRUE)) {
         dt[is_dv_eligible == TRUE & coc_selected == FALSE, dv_cum := cumsum(coc_funding_recommendation)]
         dt[is_dv_eligible == TRUE & coc_selected == FALSE & (dv_cum - coc_funding_recommendation) < coc_ard_data()$dv_bonus, dv_selected := TRUE]
+        dt[, dv_cum := NULL]
       }
       
       dt[is_over_target == FALSE, bonus_highlight := fcase(coc_selected, "coc", dv_selected, "dv", default = "none")]
