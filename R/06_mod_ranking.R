@@ -260,9 +260,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             if (!all(is.na(c_f_vals))) ceil_f <- max(c_f_vals, na.rm = TRUE)
           }
           
-          if (nrow(dt_pt) > 0) {
-            for (r in seq_len(nrow(dt_pt))) {
-              p_beds <- DT::coerceValue(dt_pt[[ bed_cols[[cb]] ]][r], 0L)
+          if (fnrow(dt_pt) > 0) {
+            for (r in seq_row(dt_pt)) {
+              p_beds <- fcoalesce(DT::coerceValue(dt_pt[[ bed_cols[[cb]] ]][r], 0L), 0L)
               p_fund <- DT::coerceValue(dt_pt$coc_funding_recommendation[r], 0L)
               t_beds <- DT::coerceValue(dt_pt$total_beds[r], 0L)
               
@@ -290,7 +290,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
                 }
               }
               
-              if (p_beds > 0 || (sum(unlist(r_beds)) == 0 && cb %in% primary_combos)) {
+              if (p_beds > 0 || (fsum(r_beds) == 0 && cb %in% primary_combos)) {
                 alloc_b <- alloc_b + p_beds
                 alloc_f <- alloc_f + p_fund
               }
