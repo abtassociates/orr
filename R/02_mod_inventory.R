@@ -114,8 +114,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       if(!is_new) {
         project_data <- project_data |>
           fmutate(
-            all_ind_beds = beds_hh_wo_children + beds_hh_w_only_children,
-            total_ch_ind_beds = ch_beds_hh_wo_children + ch_beds_hh_w_only_children
+            all_ind_beds = fcoalesce(all_ind_beds, beds_hh_wo_children + beds_hh_w_only_children),
+            total_ch_ind_beds = fcoalesce(total_ch_ind_beds, ch_beds_hh_wo_children + ch_beds_hh_w_only_children)
           )
       }
       return(project_data)
