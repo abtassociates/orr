@@ -558,7 +558,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         dt[, dv_cum := NULL]
       }
       
-      dt[is_over_target == FALSE, bonus_highlight := fcase(coc_selected, "coc", dv_selected, "dv", default = "none")]
+      dt[is_over_target == FALSE, bonus_selection := fcase(coc_selected, "CoC", dv_selected, "DV", default = "None")]
 
       # Create a dummy Tier 2 row if no Tier 2 projects
       if (!anyv(dt$tier, tier2_id)) {
@@ -838,7 +838,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         )
     }
     
-    structural_cols <- c("project_id", "tier", "bonus_highlight", "sort_project_type", "is_over_target", "straddle_amount")
+    structural_cols <- c("project_id", "tier", "sort_project_type", "is_over_target", "straddle_amount")
     
     table_styles <- function(dt, type = "main") {
       dt <- dt |>
@@ -864,10 +864,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             fontWeight = 'bold',
           ) |>
           formatStyle(
-            columns = 'bonus_highlight',  # Replace with your actual column name
+            columns = 'bonus_selection',  # Replace with your actual column name
             target = 'row',
-            backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
-            color = styleEqual(c("coc", "dv"), c('white', 'white'))
+            backgroundColor = styleEqual(c("DV", "CoC"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
+            color = styleEqual(c("CoC", "DV"), c('white', 'white'))
           ) |>
           formatStyle(
             columns = 'straddle_amount',
