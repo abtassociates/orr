@@ -779,11 +779,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       }
       
       rv$excluded <- rv$excluded |>
-        colorder(rank, priority, pos = "after")
+        colorder(rank, priority, bonus_selection, pos = "after")
       
       rv$ranked <- ranked_data |>
         fsubset(is_over_target == FALSE) |>
-        colorder(rank, priority, pos = "after") # move priority after rank
+        colorder(rank, priority, bonus_selection, pos = "after") # move priority after rank
       
       ranking_needs_refresh(FALSE)
       
