@@ -728,8 +728,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           unmet_thresholds = met_hud_thresholds == FALSE | met_coc_thresholds == FALSE,
           
           ineligible = funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore") |
-            unmet_thresholds |
-            bonus_eligibility == "New, Bonus-Ineligible"
+            unmet_thresholds
         )
       
       # Partition data
@@ -769,7 +768,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       ranked_data <- recalculate_ranking(ranked_data)
       
       # Flag Over-Target and merge back to excluded safely
-      over_target <- ranked_data[is_over_target == TRUE]
+      over_target <- ranked_data[is_over_target == TRUE & (is.na(bonus_eligibility) | bonus_eligibility == "New, Bonus-Ineligible")]
       if (fnrow(over_target) > 0) {
         over_target[, tier := tier4_id]
         over_target[, rank := "Over Target"] # Converted intentionally to character to display in dt
