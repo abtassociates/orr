@@ -208,7 +208,9 @@ populate_db <- function(
       "Tier 1" = "tier_1",
       "CoC Bonus" = "coc_bonus",
       "DV Bonus" = "dv_bonus",
-      "CoC Planning" = "coc_planning"
+      "CoC Planning" = "coc_planning",
+      "FPRN" = "fprn",
+      "UFA Costs" = "ufa_costs"
     ) |>
     fsubset(coc %in% funique(hic_data$hudnum)) |>
     fmutate(created_by = SERVICE_ACCOUNT, updated_by = SERVICE_ACCOUNT)

@@ -206,6 +206,8 @@ CREATE TABLE hud_ard_report (
     coc_bonus NUMERIC(12, 2) NULL,
     dv_bonus NUMERIC(12, 2),
     coc_planning INTEGER,
+    fprn INTEGER,
+    ufa_costs INTEGER,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) REFERENCES users(username) ON DELETE CASCADE,
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
