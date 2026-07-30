@@ -11,6 +11,7 @@ populate_db <- function(
   files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
   lapply(files, source)
   
+  USE_SQLITE <<- USE_SQLITE
   dbname <- set_up_db_connection(dbname)
   
   ans <- readline(
