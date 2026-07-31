@@ -260,9 +260,9 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             if (!all(is.na(c_f_vals))) ceil_f <- max(c_f_vals, na.rm = TRUE)
           }
           
-          if (nrow(dt_pt) > 0) {
-            for (r in seq_len(nrow(dt_pt))) {
-              p_beds <- DT::coerceValue(dt_pt[[ bed_cols[[cb]] ]][r], 0L)
+          if (fnrow(dt_pt) > 0) {
+            for (r in seq_row(dt_pt)) {
+              p_beds <- fcoalesce(DT::coerceValue(dt_pt[[ bed_cols[[cb]] ]][r], 0L), 0L)
               p_fund <- DT::coerceValue(dt_pt$coc_funding_recommendation[r], 0L)
               t_beds <- DT::coerceValue(dt_pt$total_beds[r], 0L)
               
@@ -290,7 +290,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
                 }
               }
               
-              if (p_beds > 0 || (sum(unlist(r_beds)) == 0 && cb %in% primary_combos)) {
+              if (p_beds > 0 || (fsum(r_beds) == 0 && cb %in% primary_combos)) {
                 alloc_b <- alloc_b + p_beds
                 alloc_f <- alloc_f + p_fund
               }
@@ -555,9 +555,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       if (any(dt$is_dv_eligible, na.rm=TRUE)) {
         dt[is_dv_eligible == TRUE & coc_selected == FALSE, dv_cum := cumsum(coc_funding_recommendation)]
         dt[is_dv_eligible == TRUE & coc_selected == FALSE & (dv_cum - coc_funding_recommendation) < coc_ard_data()$dv_bonus, dv_selected := TRUE]
+        dt[, dv_cum := NULL]
       }
       
-      dt[is_over_target == FALSE, bonus_highlight := fcase(coc_selected, "coc", dv_selected, "dv", default = "none")]
+      dt[is_over_target == FALSE, bonus_selection := fcase(coc_selected, "CoC", dv_selected, "DV", default = "None")]
 
       # Create a dummy Tier 2 row if no Tier 2 projects
       if (!anyv(dt$tier, tier2_id)) {
@@ -728,8 +729,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
           unmet_thresholds = met_hud_thresholds == FALSE | met_coc_thresholds == FALSE,
           
           ineligible = funding_action %in% c("Reallocate", "Ineligible", "NOT RATED", "Ignore") |
-            unmet_thresholds |
-            bonus_eligibility == "New, Bonus-Ineligible"
+            unmet_thresholds
         )
       
       # Partition data
@@ -769,7 +769,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       ranked_data <- recalculate_ranking(ranked_data)
       
       # Flag Over-Target and merge back to excluded safely
-      over_target <- ranked_data[is_over_target == TRUE]
+      over_target <- ranked_data[is_over_target == TRUE & (is.na(bonus_eligibility) | bonus_eligibility == "New, Bonus-Ineligible")]
       if (fnrow(over_target) > 0) {
         over_target[, tier := tier4_id]
         over_target[, rank := "Over Target"] # Converted intentionally to character to display in dt
@@ -783,7 +783,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
       
       rv$ranked <- ranked_data |>
         fsubset(is_over_target == FALSE) |>
-        colorder(rank, priority, pos = "after") # move priority after rank
+        colorder(rank, priority, bonus_selection, pos = "after") # move priority after rank
       
       ranking_needs_refresh(FALSE)
       
@@ -818,7 +818,11 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         "unmet_thresholds",
         "ineligible",
         "version_id",
-        "rating_complete"
+        "rating_complete",
+        "has_coc_bonus_opp",
+        "has_coc_ch_ind_opp",
+        "has_coc_ch_fam_opp",
+        "has_dv_bonus_opp"
       )
       
       dt |>
@@ -834,7 +838,7 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
         )
     }
     
-    structural_cols <- c("project_id", "tier", "bonus_highlight", "sort_project_type", "is_over_target", "straddle_amount")
+    structural_cols <- c("project_id", "tier", "sort_project_type", "is_over_target", "straddle_amount")
     
     table_styles <- function(dt, type = "main") {
       dt <- dt |>
@@ -860,10 +864,10 @@ mod_ranking_server <- function(id, nav_control, user_coc, parent_session, help_i
             fontWeight = 'bold',
           ) |>
           formatStyle(
-            columns = 'bonus_highlight',  # Replace with your actual column name
+            columns = 'bonus_selection',  # Replace with your actual column name
             target = 'row',
-            backgroundColor = styleEqual(c("dv", "coc"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
-            color = styleEqual(c("coc", "dv"), c('white', 'white'))
+            backgroundColor = styleEqual(c("DV", "CoC"), c(brandr::get_brand_color("dv_bonus"), brandr::get_brand_color("coc_bonus"))),
+            color = styleEqual(c("CoC", "DV"), c('white', 'white'))
           ) |>
           formatStyle(
             columns = 'straddle_amount',

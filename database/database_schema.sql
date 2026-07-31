@@ -483,7 +483,6 @@ CREATE TABLE projects (
     coc_amount_expended_last_year NUMERIC(12, 2) NULL,
     coc_funding_requested NUMERIC(12, 2),
     funding_action SMALLINT REFERENCES lookups(reference_id),
-    geocode VARCHAR(10),
     all_fam_beds INTEGER,
     dv_fam_beds INTEGER,
     ch_fam_beds INTEGER,

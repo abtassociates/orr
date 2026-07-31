@@ -39,7 +39,7 @@ mod_inventory_ui <- function(id) {
       ),
       card_body(
         min_height = "60vh",
-        helpText("To edit or update an existing project, double-click into a cell. 
+        p("To edit or update an existing project, double-click into a cell. 
                  The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
         # This adds selectize dependencies, to avoid conflicts with DT and ensure selectize inputs show up as such
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
@@ -114,8 +114,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       if(!is_new) {
         project_data <- project_data |>
           fmutate(
-            all_ind_beds = beds_hh_wo_children + beds_hh_w_only_children,
-            total_ch_ind_beds = ch_beds_hh_wo_children + ch_beds_hh_w_only_children
+            all_ind_beds = fcoalesce(all_ind_beds, beds_hh_wo_children + beds_hh_w_only_children),
+            total_ch_ind_beds = fcoalesce(total_ch_ind_beds, ch_beds_hh_wo_children + ch_beds_hh_w_only_children)
           )
       }
       return(project_data)
@@ -432,7 +432,6 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
           coc_amount_awarded_last_year = NA,
           coc_amount_expended_last_year = NA,
           coc_funding_requested = NA,
-          geocode = "",                      
           amount_other_public_funding = NA,
           amount_private_funding = NA,
           is_dedicated_ch_fam = factor_yesno(is_dedicated_ch_fam),

@@ -11,6 +11,7 @@ populate_db <- function(
   files <- list.files(here("R/utils"), pattern = "\\.R$", full.names = TRUE)
   lapply(files, source)
   
+  USE_SQLITE <<- USE_SQLITE
   dbname <- set_up_db_connection(dbname)
   
   ans <- readline(
@@ -94,7 +95,7 @@ populate_db <- function(
   message("Loading HIC Data...")
   HIC_DATA_FILEPATH <- here("database/HIC_RawData2025 - 7.21.25_TEST.csv")
   hic_data <- fread(HIC_DATA_FILEPATH) |> 
-    fselect(-mcKinneyVentoYhdp, -mcKinneyVentoYhdpRenewals) |>
+    fselect(-mcKinneyVentoYhdp, -mcKinneyVentoYhdpRenewals, -Geocode) |>
     frename(
       row_num                   = "Row #",
       hudnum                    = "HudNum",
@@ -102,7 +103,6 @@ populate_db <- function(
       organization_name         = "Organization Name",
       project_name              = "Project Name",
       project_type              = "Project Type",
-      geocode                   = "Geocode",
       target_population         = "Target Population",
       mckinneyventoesges        = "mcKinneyVentoEsgEs",
       mckinneyventoesgrrh       = "mcKinneyVentoEsgRrh",
@@ -135,7 +135,8 @@ populate_db <- function(
       mckinneyventococ = FALSE,
       created_by = SERVICE_ACCOUNT, 
       updated_by = SERVICE_ACCOUNT
-    )
+    ) %>% 
+    fsubset(project_type != 'ES')
   
   # Fetch lookup tables from database
   lookups <- pool::poolWithTransaction(p, function(pcon) {
@@ -208,7 +209,9 @@ populate_db <- function(
       "Tier 1" = "tier_1",
       "CoC Bonus" = "coc_bonus",
       "DV Bonus" = "dv_bonus",
-      "CoC Planning" = "coc_planning"
+      "CoC Planning" = "coc_planning",
+      "FPRN" = "fprn",
+      "UFA Costs" = "ufa_costs"
     ) |>
     fsubset(coc %in% funique(hic_data$hudnum)) |>
     fmutate(created_by = SERVICE_ACCOUNT, updated_by = SERVICE_ACCOUNT)

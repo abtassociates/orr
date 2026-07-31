@@ -51,7 +51,7 @@ get_projects_to_rank <- function(coc_version_id) {
         ON no.coc_version_id = p.coc_version_id
        AND no.funding_action = p.funding_action
        AND no.project_type = p.project_type
-       AND no.target_population = p.target_population
+       AND (no.target_population = p.target_population OR no.target_population IS NULL) 
 
       WHERE p.coc_version_id = $1 AND p.funding_action <> $2", 
     params = list(coc_version_id, get_lookup_refid("Ignore", "funding_action"))

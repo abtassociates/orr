@@ -82,7 +82,8 @@ mod_customize_coc_thresholds_server <- function(id, user_coc, nav_control, activ
           on = "threshold_id", 
           `:=`(
             selected = as.integer(i.selected_to_save),
-            version_id = i.selected_threshold_version_id + 1
+            version_id = i.selected_threshold_version_id + 1,
+            selected_threshold_version_id = i.selected_threshold_version_id + 1
           )
         ]
         
