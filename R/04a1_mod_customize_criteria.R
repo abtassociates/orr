@@ -40,11 +40,12 @@ mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_sess
       req(!is.null(user_coc$coc_version_id) & nav_control() == 'rating')
       
       update_user_coc_setting(user_coc, "rating_subtab", input$rating_criteria_subtabs)
-      
-      if(input$rating_criteria_subtabs == ns("rating_factors"))
-        help_id(ns("renewal_rating_factors"))
-      else
-        help_id(input$rating_criteria_subtabs)
+  
+      # AS 7/31/26: Combining instructions for everything in-app      
+      # if(input$rating_criteria_subtabs == ns("rating_factors"))
+      #   help_id(ns("renewal_rating_factors"))
+      # else
+      #   help_id(input$rating_criteria_subtabs)
       
     }, ignoreInit = TRUE)
     
@@ -53,7 +54,8 @@ mod_customize_criteria_server <- function(id, user_coc, nav_control, parent_sess
       
       update_user_coc_setting(user_coc, "rating_subsubtab", input$rating_factors_subtabs)
       
-      help_id(input$rating_factors_subtabs)
+      # AS 7/31/26: Combining instructions for everything in-app
+      # help_id(input$rating_factors_subtabs)
     }, ignoreInit = TRUE)
     
     # ---------------------------------------------------------
