@@ -13,7 +13,7 @@ mod_customize_coc_thresholds_ui <- function(id) {
     value = id,
     card(
       mod_user_presence_ui(ns("presence")),
-      em("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
+      p("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
       checkboxGroupInput(
         inputId = ns("threshold_checkboxes"),
         label = "CoC Threshold Requirements",

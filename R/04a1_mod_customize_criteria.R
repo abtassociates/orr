@@ -9,7 +9,7 @@ mod_customize_criteria_ui <- function(id) {
     "Customize Rating Criteria",
     value = id,
     br(),
-    em("Select and customize the threshold and rating criteria you will use to evaluate your CoC's projects"),
+    p("Select and customize the threshold and rating criteria you will use to evaluate your CoC's projects"),
     navset_tab(
       id = ns("rating_criteria_subtabs"),
       mod_customize_coc_thresholds_ui(ns("coc_thresholds")),
