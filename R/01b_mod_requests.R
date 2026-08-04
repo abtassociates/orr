@@ -8,8 +8,7 @@ mod_requests_ui <- function(id) {
         card_header(h4("Version Access Requests")),
         card_body(
           fillable = FALSE,
-          p("Please select a row from the table below to update a request."),
-          br(),
+          HTML("<p>Pending access requests from other users for your versions are listed under <strong>Received</strong>. To update a request, select it from the table below.</p>"),
           br(),
           radioGroupButtons(
             ns('request_filters'),

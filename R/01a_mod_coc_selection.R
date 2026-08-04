@@ -5,15 +5,18 @@ mod_coc_selection_ui <- function(id) {
     card_header(h4("Versions")),
     card_body(
       fillable = FALSE,
-      p('A CoC can have multiple versions of its ORR. Versions can be created to test different combinations of factors and parameters. To create your own ORR version, click "Create New Version". To create a copy of an existing version, select the version in the table below and click "Copy Version".'),
-      p('Multiple users can work together on the same ORR. To collaborate on an existing ORR version made by another user, click "Request Access to a CoC".'),
+      HTML('<p>To create your own tool version, click <strong>Create New Version</strong>. 
+           To create a copy of an existing version, select the version in the table 
+           below and click <strong>Copy Version</strong>. To request access to a 
+           tool created by someone else, click <strong>Request Access to Existing 
+           Version</strong>.</p>'),
       # a "Create" button or link above the table will display so they can create a new CoC Version
       DTOutput(ns('coc_versions_dt'),fill = F) |> shinycssloaders::withSpinner(),
       actionButton(ns('create_new_version'), "Create New Version", icon = icon('circle-plus'), class='btn-primary'),
       actionButton(ns('edit_coc_version'),"Edit Selected Version", icon = icon('edit'), class='btn-secondary'),
       actionButton(ns('delete_coc_version'), "Delete Selected Version", icon = icon('trash'), class='btn-danger'),
       actionButton(ns('copy_version'), "Copy Version", icon = icon('copy'), class="btn-info"),
-      actionButton(ns('request_access_direct'), "Request Access to a CoC", icon = icon('unlock'), class="btn-warning")
+      actionButton(ns('request_access_direct'), "Request Access to an Existing Version", icon = icon('unlock'), class="btn-warning")
     )
   )
 }
