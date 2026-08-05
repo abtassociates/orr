@@ -8,65 +8,65 @@ mod_inventory_ui <- function(id) {
     icon = icon("list-check"),
     value = id,
     card(
-      card_header(h4("Projects to be Reviewed")),
+      card_header(
+        h4("Projects to be Reviewed"),
+        div(
+          dropdownButton(
+            inputId = ns("field_display_control"),
+            label = "Choose Fields to Display",
+            icon = icon("sliders"),
+            circle = FALSE,
+            
+            prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
+            pickerInput(
+              ns('projects_col_selections'), label = 'Choose Fields to Display',
+              choices = setNames(col_names, variable_labels[col_names]),
+              selected = col_names,
+              multiple = TRUE, 
+              
+              options = pickerOptions(
+                selectedTextFormat = 'count',
+                countSelectedText = '{0} Fields Displayed',
+                selectAllText = 'Select All',
+                deselectAllText = 'De-select All',
+                actionsBox = TRUE
+              )
+            )
+          ),
+          actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
+          actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
+        )
+      ),
       card_body(
-        fillable = FALSE,
         min_height = "60vh",
-        max_height = "81vh",
-        HTML("<p>To edit information for an existing project, double-click into a cell. 
+       HTML("<p>To edit information for an existing project, double-click into a cell. 
         To add a project, use the <strong>Add New Project</strong> button below. 
         Since the project information on this page is also used on the Rating 
         and Ranking pages, please ensure all project data is as complete and accurate as possible.</p>"),
         # This adds selectize dependencies, to avoid conflicts with DT and ensure selectize inputs show up as such
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
-        dropdownButton(
-          inputId = ns("field_display_control"),
-          label = "Choose Fields to Display",
-          icon = icon("sliders"),
-          circle = FALSE,
-          
-          prettySwitch(ns('toggle_bed_fields'), label = 'Show Bed Inventory Fields', value = TRUE, fill = TRUE, status = 'primary'), 
-          pickerInput(
-            ns('projects_col_selections'), label = 'Choose Fields to Display',
-            choices = setNames(col_names, variable_labels[col_names]),
-            selected = col_names,
-            multiple = TRUE, 
-            
-            options = pickerOptions(
-              selectedTextFormat = 'count',
-              countSelectedText = '{0} Fields Displayed',
-              selectAllText = 'Select All',
-              deselectAllText = 'De-select All',
-              actionsBox = TRUE
-            )
-          )
-        ),
         mod_user_presence_ui(ns("presence")),
-        DTOutput(ns("projects_table")) |> shinycssloaders::withSpinner()
+        DTOutput(ns("projects_table"), height = "70vh") |> shinycssloaders::withSpinner()
         # br(),
         # textOutput(ns("projects_table_counts")),
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
-      ),
-      card_footer(
-        actionButton(ns("add_project_btn"), "Add New Project", icon = icon("plus")),
-        actionButton(ns("view_giw_btn"), "View GIW Data", icon = icon("table"))
       )
     ),
-    absolutePanel(
+    fixedPanel(
       id = ns("giw_panel"),
       style = "display:none;",
       card(
+        fill = FALSE,
         h3("GIW"),
         actionButton(ns("close_giw"), "X", class = "btn-danger btn-sm"),
         p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
-        DTOutput(ns("giw_tbl")) |> withSpinner()
+        DTOutput(ns("giw_tbl"), height = "75vh") |> withSpinner()
       ),
       draggable = TRUE,
       width = "60vw",
-      height = "50vh",
-      top = "10vh",
-      left = "20vw"
+      top = "50%",
+      left = "50%"
     )
   )
 }

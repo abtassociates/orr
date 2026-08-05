@@ -9,7 +9,7 @@ mod_in_app_rating_ui <- function(id, funding_action) {
     value = id,
     p(paste0("Rate your ", ptypes, " against your selected criteria.")),
     layout_sidebar(
-      style = "min-height: 500px; overflow: visible !important;",
+      style = "min-height: 500px;",
       # the side bar will be 
       sidebar = sidebar(
         width = 250,

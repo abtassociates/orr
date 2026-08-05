@@ -51,7 +51,7 @@ mod_funding_priorities_ui <- function(id) {
     mod_user_presence_ui(ns("presence")),
     card(
       min_height=300,
-      card_header("General Funding Information"),
+      card_header(h4("General Funding Information")),
       layout_columns(
         col_widths = c(3, 3, 3, 3),
         funding_input("total_ard", "Annual Renewal Demand (ARD)"),

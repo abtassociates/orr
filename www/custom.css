@@ -1,13 +1,28 @@
+/*
 html, body {
   height: auto !important;
   overflow-y: auto !important;
 }
+*/
 /* Ensure the tab panels allow their content to overflow naturally */
-.tab-content, .tab-pane {
+/*.tab-content, .tab-pane {
   overflow: visible !important;
   height: auto !important;
+}*/
+
+.bslib-sidebar-layout>.sidebar {
+  overflow: visible !important;
 }
 
+.bslib-sidebar-layout>.sidebar>.sidebar-content {
+  position: sticky;
+  top: 0;
+}
+
+/*Left-justifies title, right-justifies action buttons*/
+.bslib-card .card-header {
+  justify-content: space-between;
+}
 /*As of rlang 1.2.0, the sort icons on datatables look weird. This fixes that
 
 The Change: rlang 1.2.0 (released in late 2024) introduced significant internal changes to how R handles encoding and UTF-8 strings
@@ -126,11 +141,7 @@ input[type=number] {
   font-size: 1.2rem !important; /*otherwise, default for currencyInput is 1.5rem which is too big*/
 }
 
-#inventory-projects_table .dataTables_scrollBody {
-  height: 38vh !important;
-}
-
-#inventory-projects_table .table.dataTable tbody td {
+#inventory-projects_table table.dataTable tbody td {
   padding: 4px 10px;
 }
 
@@ -149,13 +160,13 @@ th[aria-label^="Project Name"] {
 /*the container div of the field control dropdown on Inventory*/
 /*positioning so search bar is in line with it*/
 #inventory-field_display_control_state {
-  display: flex; 
-  gap: 15px; 
-  padding: 10px; 
-  position: absolute;
-  z-index: 1;
+  display: inline-block; 
 }
 
+#inventory-giw_panel {
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
 
 #inventory-close_giw {
   position: absolute;
@@ -183,29 +194,8 @@ table.dataTable tbody th.focus, table.dataTable tbody td.focus {
   display: none;
 }
 
-@media (min-width: 1440px) {
-  #rating-alternative-alternative_rating_table .dataTables_scrollBody {
-    height: 35vh !important;
-  }
-}
-@media (min-width: 2000px) {
-  #rating-alternative-alternative_rating_table .dataTables_scrollBody {
-    height: 46vh !important;
-  }
-}
-
-
 
 /* Fix In-App Rating Sidebar */
-#rating-renew-project_selection_sidebar, 
-#rating-new-project_selection_sidebar,
-#rating-customize_criteria-renewal_rating_factors-sidebar,
-#rating-customize_criteria-new_rating_factors-sidebar {
-  position: sticky; 
-  top: 0; 
-  height: 100vh;
-}
-
 /* allow DT dropdown filter text to expand and stay on single line */
 table.dataTable .selectize-dropdown-content {
   white-space: nowrap;
@@ -528,16 +518,6 @@ tr.group_header td{
 /* Ensure the hover effect (if any) doesn't fire for the placeholder */
 #ranking-ui_ranked_list tr.tier2-placeholder:hover {
   background-color: #f9f9f9 !important;
-}
-
-/* STICKY CARD FOOTER*/
-.sticky-footer {
-  position: sticky; 
-  bottom: 0; 
-  z-index: 1020; 
-  background-color: var(--bs-card-cap-bg, #f8f9fa); 
-  border-top: 1px solid var(--bs-border-color, #dee2e6);
-  box-shadow: 0px -4px 10px rgba(0,0,0,0.05);", # Shadow so it looks like it's floating
 }
 
 #logout-overlay {

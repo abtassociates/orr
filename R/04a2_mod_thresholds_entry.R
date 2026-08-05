@@ -6,6 +6,7 @@ mod_thresholds_entry_ui <- function(id) {
     "Threshold Entry",
     value = id,
     card(
+      card_header(h4("Thresholds to Complete")),
       textOutput(ns("empty")),
       style = "overflow: visible !important;",
       accordion(
@@ -39,7 +40,6 @@ mod_thresholds_entry_ui <- function(id) {
         open = FALSE
       ), # end accordion
       card_footer(
-        class = "sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
         prettySwitch(ns("threshold_complete"), label = "Threshold Complete?", status = "success", fill=TRUE)
       )

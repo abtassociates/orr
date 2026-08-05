@@ -37,8 +37,11 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
-      style = "overflow: visible !important;",
-      mod_download_rating_ui(ns("download_rating")),
+      # style = "overflow: visible !important;",
+      card_header(
+        h4("Factors to Rate against"),
+        mod_download_rating_ui(ns("download_rating")),
+      ),
       mod_user_presence_ui(ns("presence")),
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
@@ -68,7 +71,6 @@ mod_rating_scores_entry_ui <- function(id) {
         )
       ),
       card_footer(
-        class="sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
         prettySwitch(ns("rating_complete"), label = "Rating Complete?", status = "success", fill=TRUE)
       )

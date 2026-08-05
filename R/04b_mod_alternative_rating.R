@@ -6,17 +6,16 @@ mod_alternative_rating_ui <- function(id) {
     "Alternative Rating",
     value = id,
     card(
-      card_body(
-        fillable = FALSE,
-        min_height = "65vh",
-        max_height = "71vh",
-        DTOutput(ns("alternative_rating_table"))
+      card_header(
+        h4("Projects to Rate"),
+        div(
+          downloadButton(ns("download_template"), "Download Template"),
+          actionButton(ns("import_rating"), "Import Rating", icon = icon("upload")) #,
+        )
       ),
-      card_footer(
-        style = "display: flex; justify-content: space-between; align-items: center;",
-        downloadButton(ns("download_template"), "Download Template", icon = icon("download")),
-        actionButton(ns("import_rating"), "Import Rating", icon = icon("upload")) #,
-        # actionButton(ns("save_rating"), "Save Rating", icon = icon("save"), class="btn-primary")
+      card_body(
+        min_height = "65vh",
+        DTOutput(ns("alternative_rating_table"), height = "70vh")
       )
     )
   )
