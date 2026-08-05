@@ -17,7 +17,7 @@ mod_customize_coc_thresholds_ui <- function(id) {
         actionButton(ns("add_threshold_btn"), "Add Custom Threshold", icon = icon("plus"))
       ),
       mod_user_presence_ui(ns("presence")),
-      em("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
+      p("Select the CoC Thresholds that all projects must meet to be considered for funding. HUD Thresholds are mandatory and not shown here."),
       checkboxGroupInput(
         inputId = ns("threshold_checkboxes"),
         label = "CoC Threshold Requirements",

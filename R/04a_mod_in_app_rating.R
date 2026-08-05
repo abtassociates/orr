@@ -7,9 +7,7 @@ mod_in_app_rating_ui <- function(id, funding_action) {
   nav_panel(
     title = paste0("Rate ", ptypes),
     value = id,
-    br(),
     p(paste0("Rate your ", ptypes, " against your selected criteria.")),
-    br(),
     layout_sidebar(
       style = "min-height: 500px;",
       # the side bar will be 
@@ -128,7 +126,8 @@ mod_in_app_rating_server <- function(id, user_coc, funding_action, nav_control, 
       
       toggle_sidebar(id = "project_selection_sidebar", open = input$main_contents != ns("rating_factors"))
       
-      help_id(input$main_contents)
+      # AS 7/31/26: Combining instructions for everything in-app
+      # help_id(input$main_contents)
     }, ignoreInit = TRUE)
     
     # Store selected project in user setting

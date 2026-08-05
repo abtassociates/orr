@@ -164,10 +164,11 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
       idToRemoveClass <- paste0("select_", ifelse(id == "in_app", "alternative", "in_app"))
       shinyjs::removeClass(id = idToRemoveClass, class = "card-selected")
       
-      if(id == "in_app")
-        help_id(ns("customize_criteria-coc_thresholds")) # Default to the first sub-tab of in_app
-      else
-        help_id(ns("alternative"))
+      # AS 7/31/26: Combining instructions for everything in-app
+      # if(id == "in_app")
+      #   help_id(ns("in_app")) # Default to the first sub-tab of in_app
+      # else
+      #   help_id(ns("alternative"))
     }
     
     observeEvent(input$select_in_app, { handle_method_selection("in_app")}, ignoreInit = TRUE)
@@ -179,11 +180,12 @@ mod_rating_server <- function(id, nav_control, user_coc, parent_session, help_id
       
       update_user_coc_setting(user_coc, "rating_tab", input$rating_tabs)
 
+      # AS 7/31/26: Combining instructions for everything in-app
       # Helper slide-in text
-      if(input$rating_tabs == ns("customize_criteria"))
-        help_id(ns("customize_criteria-coc_thresholds"))
-      else
-        help_id(paste0(input$rating_tabs, "-thresholds_entry"))
+      # if(input$rating_tabs == ns("customize_criteria"))
+      #   help_id(ns("customize_criteria-coc_thresholds"))
+      # else
+      #   help_id(paste0(input$rating_tabs, "-thresholds_entry"))
     }, ignoreInit = TRUE)
     
     mod_customize_criteria_server("customize_criteria", user_coc, nav_control, parent_session, help_id)
