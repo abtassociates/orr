@@ -130,9 +130,11 @@ mod_inventory_add_project_server <- function(
     # Determine the definitive target population.
     current_target_pop <- reactive({
       # if (current_funding_source() == "YHDP") "Youth" 
-      if (current_funding_source() == "DV") "DV" 
+      tp <- if (current_funding_source() == "DV") "DV" 
       else if(is.null(input$target_population) || input$target_population == "") ""
       else input$target_population
+      
+      tp
     })
     
     # Determine which bed groups should be visible. This is the core of the display logic.
@@ -152,8 +154,15 @@ mod_inventory_add_project_server <- function(
       else { # CoC logic
         groups <- c("total_beds", "vet_beds")
         if (tp == "Youth" || tp == "") groups <- c(groups, "youth_beds")
+        if (tp %in% c("Youth", "HIV")) groups <- setdiff(groups, "vet_beds")
         if (pt == "PSH" || is.null(pt) || pt == "") groups <- c(groups, "ch_beds")
       }
+      
+      if(tp == "Veteran")
+        vet_beds_required$enable()
+      else
+        vet_beds_required$disable()
+      
       return(groups)
     })
     
@@ -349,33 +358,35 @@ mod_inventory_add_project_server <- function(
         }
       }
     }
+    
+    # Dedicated sub-validator for veteran beds requirement
+    vet_beds_required <- shinyvalidate::InputValidator$new()
+    vet_beds_required$condition(~ current_target_pop() == "Veteran")
+    
     # Loop to create and add all bed validation rules ONCE
     for (group_name in names(bed_groups_to_validate)) {
-      # Use local() to capture the current value of 'group_name' for the condition formula
       local({
         current_group <- group_name
         
-        # Create a new validator for this group
         v <- shinyvalidate::InputValidator$new()
-        
-        # Set the condition for the ENTIRE validator group.
-        # This is much more efficient than setting it inside an observe().
         v$condition(~ current_group %in% visible_bed_groups())
         
-        # Add rules for the fields within this group
+        if(group_name == "vet_beds") {
+          v$add_validator(vet_beds_required)
+        }
+        
         for (field in bed_groups_to_validate[[current_group]]) {
-          v$add_rule(field, sv_required())
+          if(group_name == "vet_beds") vet_beds_required$add_rule(field, sv_required())
+          else v$add_rule(field, sv_required())
           v$add_rule(field, sv_integer("Must be a whole number"))
           v$add_rule(field, sv_gte(0, "Cannot be negative"))
         }
         
-        # Subset validation
         if (current_group != "total_beds") {
           v$add_rule(paste0(current_group, "_fam"), sv_lte_reactive(~input$total_beds_fam))
           v$add_rule(paste0(current_group, "_ind"), sv_lte_reactive(~input$total_beds_ind))
         }
         
-        # Add this group's validator to the main validator
         iv$add_validator(v)
       })
     }
