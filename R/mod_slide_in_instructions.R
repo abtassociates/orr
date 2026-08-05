@@ -35,7 +35,7 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
           accordion_panel(
             "Versions",
             p('To create a new version of the tool, select the "Create New Version" button, then choose your Continuum of Care (CoC) and import your most recent HIC to begin.'),
-            p('To request access to a version created by someone else for your CoC, click the "Request Access to a CoC" button, select the CoC, and send a request to the original version creator. Multiple users can work together on the same tool at the same time. You will be able to see if they are on the same page as you at the top of the tool.'),
+            HTML('<p>To request access to a version created by someone else for your CoC, click the <strong>Request Access to an Existing Version</strong> button, select the CoC, and send a request to the original version creator. Multiple users can work together on the same tool at the same time. You will be able to see if they are on the same page as you at the top of the tool.</p>'),
             p('To create a copy of an existing version, select the version in the table below and click "Copy Version". A CoC can have multiple versions of its Rating and Ranking tool to test different combinations of factors and parameters.'),
             p('Once the tool is created, you can access it by selecting the tool, then clicking the "Edit Selected Version" button, which will appear once the tool is selected.'),
             p('If you need to delete a version of the tool, you can do that by selecting the version and clicking the "Delete Selected Version" button.')

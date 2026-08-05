@@ -106,10 +106,6 @@ mod_funding_priorities_ui <- function(id) {
            and population types, double-click into a cell. Any section of the 
            table can be left blank if your CoC has not adopted these types of 
            targets or priorities.</p>"),
-      div(
-        id = ns("priorities_help"),
-        p("Double-click a cell to edit")
-      ),
       DTOutput(ns("priorities_table"), fill = FALSE),
       fill = FALSE
     )

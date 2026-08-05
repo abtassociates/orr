@@ -269,8 +269,8 @@ mod_coc_selection_server <- function(id, nav_control, user_coc, parent_session) 
     ## Create New version modal ------------
     observeEvent(input$create_new_version, {select_coc_modal('Create ORR Version')})
     
-    ## Request Access to a CoC Version -----------------
-    observeEvent(input$request_access_direct, {select_coc_modal('Request Access to a CoC Version')})
+    ## Request Access to an Existing Version -----------------
+    observeEvent(input$request_access_direct, {select_coc_modal('Request Access to an Existing Version')})
     
     ## Import or Upload HIC ----------
     # User decides whether to import the HIC data as of X/X/XX date or upload their own
