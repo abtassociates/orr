@@ -51,22 +51,23 @@ mod_funding_priorities_ui <- function(id) {
     mod_user_presence_ui(ns("presence")),
     card(
       min_height=300,
-      card_header("General Funding Information"),
+      card_header(h4("General Funding Information")),
       layout_columns(
         col_widths = c(3, 3, 3, 3),
         funding_input("total_ard", "Annual Renewal Demand (ARD)"),
         funding_input("coc_bonus", "CoC Bonus"),
-        funding_input("tier_1", "Tier 1"),
+        funding_input("tier_1", "Tier 1 (Adj ARD * 60%)"),
         funding_input("adjusted_ard", "Adjusted ARD"),
         # funding_input("yhdp_ard", "YHDP ARD"),
-        funding_input("tier_2", "Tier 2"),
+        funding_input("tier_2", "Tier 2 (Adj ARD * 40% + CoC Bonus + DV Bonus)"),
         funding_input("dv_bonus", "DV Bonus"),
         funding_input("dv_ard", "DV ARD")
       )
     ),
     card(
       min_height=300,
-      card_header("FY2026 HUD CoC Program NOFO Opportunities"),
+      card_header(paste0("FY", FY, " HUD CoC Program NOFO Opportunities")),
+      HTML("<p>Select project and population types to prioritize for CoC Bonus/Reallocation and DV Bonus funding</p>"),
       layout_columns(
         col_widths = c(8, 4),
         card(
@@ -101,10 +102,10 @@ mod_funding_priorities_ui <- function(id) {
     ), # end coc nofo opportunities card
     card(
       card_header("Funding Ceilings and Priorities by Project Type and Population"),
-      div(
-        id = ns("priorities_help"),
-        helpText("Double-click a cell to edit")
-      ),
+      HTML("<p>To update the table and specify system needs for different project
+           and population types, double-click into a cell. Any section of the 
+           table can be left blank if your CoC has not adopted these types of 
+           targets or priorities.</p>"),
       DTOutput(ns("priorities_table"), fill = FALSE),
       fill = FALSE
     )
@@ -137,17 +138,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     hud_ard_coc_data <- reactive({
       req(refresh_trigger$dv_ard, user_coc$coc_version_id)
-      
-      dv_ard_db <- get_dv_ard(user_coc$coc_version_id)
-      HUD_ARD_REPORT[coc == user_coc$coc] |>
-        fmutate(
-          adjusted_ard = round(tier_1/0.9, 0),
-          tier_2 = adjusted_ard * 0.1 + fcoalesce(coc_bonus, 0) + fcoalesce(dv_bonus, 0),
-          # yhdp_ard = estimated - min(adjusted_ard, estimated),
-          dv_ard = fcoalesce(dv_ard_db$dv_ard[1], 0),
-          version_id = dv_ard_db$version_id[1]
-        ) |>
-        frename(estimated = "total_ard")
+      get_coc_hud_ard_data(user_coc)
     })
     
     
@@ -195,6 +186,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
         )
       )
       refresh_trigger$dv_ard <- refresh_trigger$dv_ard + 1
+      user_coc$priorities_and_ceilings_updated <- user_coc$priorities_and_ceilings_updated + 1
     }, ignoreInit = TRUE)
     
     observeEvent(hud_ard_coc_data(), {
@@ -455,6 +447,7 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       # if(needs_refresh)
         refresh_trigger$coc_funding_priorities <- refresh_trigger$coc_funding_priorities + 1
       
+        user_coc$priorities_and_ceilings_updated <- user_coc$priorities_and_ceilings_updated + 1
       # formatted_coc_funding_priorities(current_data)
     }) # end observeEvent
     
@@ -495,6 +488,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
       
       # if(needs_refresh)
       refresh_trigger$coc_nofo_opportunities = refresh_trigger$coc_nofo_opportunities + 1
+      
+      user_coc$priorities_and_ceilings_updated <- user_coc$priorities_and_ceilings_updated + 1
     }
     
     selected_coc_nofo_opportunities <- reactive({
@@ -504,8 +499,8 @@ mod_funding_priorities_server <- function(id, nav_control, user_coc, parent_sess
     
     observeEvent(selected_coc_nofo_opportunities(), {
       req(!identical(
-        selected_coc_nofo_opportunities(), 
-        as.character(coc_nofo_opportunities()[selected == T]$coc_nofo_opportunity_id)
+        sort(selected_coc_nofo_opportunities()), 
+        sort(as.character(coc_nofo_opportunities()[selected == T]$coc_nofo_opportunity_id))
       ))
       
       save_opportunities()

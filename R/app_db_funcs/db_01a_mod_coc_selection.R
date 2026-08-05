@@ -9,6 +9,7 @@ generate_data_for_new_coc_version <- function(p, coc_version_id) {
   generate_selected_thresholds_for_coc(p, coc_version_id)
   generate_selected_rating_factors_for_coc(p, coc_version_id)
   generate_selected_coc_nofo_opportunities(p, coc_version_id)
+  generate_coc_funding_priorities(p, coc_version_id)
 }
 
 generate_selected_thresholds_for_coc <- function(p, coc_version_id) {
@@ -64,6 +65,26 @@ generate_selected_coc_nofo_opportunities <- function(p, coc_version_id) {
   )
 }
 
+generate_coc_funding_priorities <- function(p, coc_version_id) {
+  cfp <- expand.grid(
+    project_type = get_labelled_lookups("project_type")[c("RRH","PSH","TH","TH+RRH")],
+    target_population = get_labelled_lookups("target_population", lookup_col = "value_long"),
+    population_group = get_labelled_lookups("population_group", lookup_col = "value_long")
+  ) |>
+    fsubset(!target_population %in% get_lookup_refid(c("Not Applicable", "Human Immunodeficiency Virus"), "target_population", lookup_col = "value_long"))
+  
+  # priorities
+  data <- cfp |>
+    fmutate(coc_version_id = coc_version_id)
+  
+  DBI::dbExecute(
+    p,
+    glue::glue("INSERT INTO coc_funding_priorities (project_type, target_population, population_group, coc_version_id, created_by, updated_by)
+    VALUES ($1, $2, $3, $4, '{SERVICE_ACCOUNT}', '{SERVICE_ACCOUNT}')
+    ON CONFLICT (coc_version_id, project_type, target_population, population_group) DO NOTHING;"),
+    params = paramify(data)
+  )
+}
 append_version_request <- function(selected_version, user_coc) {
   request_row <- data.table(
     #coc_request_id = 1 + (get_db_tbl('coc_version_requests') |> fnrow()),
@@ -77,7 +98,7 @@ append_version_request <- function(selected_version, user_coc) {
   db_append("coc_version_requests", request_row)
 }
 
-update_coc_version <- function(params) {
+update_coc_version_status <- function(params) {
   db_execute( 
     "UPDATE coc_versions 
       SET coc_status = $1, 
@@ -92,4 +113,13 @@ update_coc_version <- function(params) {
 
 delete_coc_version <- function(coc_version_id) {
   db_execute("DELETE FROM coc_versions WHERE coc_version_id = $1", params = coc_version_id)
+}
+
+get_coc_status <- function(coc_version_id) {
+  get_db_query(
+    "SELECT coc_status
+    FROM coc_versions
+    WHERE coc_version_id = $1",
+    params = coc_version_id
+  )[[1]]
 }

@@ -37,8 +37,11 @@ mod_rating_scores_entry_ui <- function(id) {
       });"
     )))),
     card(
-      style = "overflow: visible !important;",
-      mod_download_rating_ui(ns("download_rating")),
+      # style = "overflow: visible !important;",
+      card_header(
+        h4("Factors to Rate against"),
+        mod_download_rating_ui(ns("download_rating")),
+      ),
       mod_user_presence_ui(ns("presence")),
       uiOutput(ns("project_rating_factors")) |> shinycssloaders::withSpinner(),
       card(
@@ -68,7 +71,6 @@ mod_rating_scores_entry_ui <- function(id) {
         )
       ),
       card_footer(
-        class="sticky-footer",
         style = "display: flex; justify-content: space-between; align-items: center;",
         prettySwitch(ns("rating_complete"), label = "Rating Complete?", status = "success", fill=TRUE)
       )
@@ -111,8 +113,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       # project-level evaluations
       project_evaluation(
         get_project_evaluation(
-          user_coc$coc_version_id, 
-          selected_project()$project_id
+          list(user_coc$coc_version_id, selected_project()$project_id)
         )
       )
       
@@ -323,6 +324,11 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       lapply(factors_and_scores_for_project()$selected_rating_factor_id, function(i) {
         shinyjs::toggleState(paste0("performance_", i), condition = !input$rating_complete)
         shinyjs::toggleState(paste0("rating_score_", i), condition = !input$rating_complete)
+        
+        if(!input$rating_complete) {
+          perf_id <- ns(paste0("performance_", i))
+          shinyjs::runjs(glue::glue("$('#{perf_id}').attr('maxlength',100);"))
+        }
       })
     })
     
@@ -468,11 +474,14 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         ]
 
         # 2. Update project_evaluation baseline
-        if (!is.null(to_save$project_evaluation))
+        if (!is.null(to_save$project_evaluation)) {
           project_evaluation(
             to_save$project_evaluation |>
               fmutate(version_id = version_id + 1)
           )
+        
+          user_coc$rating_updated <- user_coc$rating_updated + 1
+        }
       } else {
         # COLLISION: Trigger full refresh
         refresh_trigger(refresh_trigger() + 1)
@@ -500,7 +509,7 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
       
       # pull latest Project Evaluation in case they just updated Threshold
       project_evaluation(
-        get_project_evaluation(user_coc$coc_version_id, selected_project()$project_id)
+        get_project_evaluation(list(user_coc$coc_version_id, selected_project()$project_id))
       )
       
       # Update db
@@ -514,6 +523,9 @@ mod_rating_scores_entry_server <- function(id, user_coc, selected_project, fundi
         funique()
       
       update_rating_complete(get_db_pool(), data)
+      
+      status <- calculate_coc_status(user_coc$coc_version_id)
+      update_coc_status(user_coc, status)
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
       
     # --- User PResence ----

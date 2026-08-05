@@ -5,15 +5,10 @@ mod_requests_ui <- function(id) {
     #nav_panel(
     #  "Requests",
       card(
-        #card_header(h4('Version Access Requests')),
-        card_header(h4("Version Access Requests"
-                       # div(style = "float: right;",
-                           # actionBttn(ns('refresh_requests_tbl'), label="Refresh", color="primary", size="xs", icon=icon('refresh')))
-        )),
+        card_header(h4("Version Access Requests")),
         card_body(
           fillable = FALSE,
-          helpText("Please select a row from the table below to update a request."),
-          br(),
+          HTML("<p>Pending access requests from other users for your versions are listed under <strong>Received</strong>. To update a request, select it from the table below.</p>"),
           br(),
           radioGroupButtons(
             ns('request_filters'),

@@ -40,17 +40,14 @@ mod_customize_rating_factors_ui <- function(id, funding_action) {
         project_and_pop_dropdowns(ns)
       ),
       card(
-        style = "overflow: visible !important;", 
-        
+        card_header(
+          h4("Factors to Customize for Rating"),
+          actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus"))
+        ),
         div(
           id = ns("factor_container"),
           mod_user_presence_ui(ns("presence")),
           uiOutput(ns("factors_ui")) |> withSpinner()
-        ),
-        
-        card_footer(
-          class = "sticky-footer d-flex justify-content-between align-items-center",
-          actionButton(ns("add_custom_factor"), "Add Custom Rating Factor", icon = icon("plus"))
         )
       )
     )
