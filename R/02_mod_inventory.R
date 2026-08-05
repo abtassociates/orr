@@ -13,8 +13,10 @@ mod_inventory_ui <- function(id) {
         fillable = FALSE,
         min_height = "60vh",
         max_height = "81vh",
-        p("To edit or update an existing project, double-click into a cell. 
-                 The green fields are necessary for using later pages of this tool. To add a project, use the \"Add New Project\" button below. "),
+        HTML("<p>To edit information for an existing project, double-click into a cell. 
+        To add a project, use the <strong>Add New Project</strong> button below. 
+        Since the project information on this page is also used on the Rating 
+        and Ranking pages, please ensure all project data is as complete and accurate as possible.</p>"),
         # This adds selectize dependencies, to avoid conflicts with DT and ensure selectize inputs show up as such
         htmltools::findDependencies(selectizeInput('letters', "letters", choices = letters[1:5])),
         
@@ -316,8 +318,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
       if(val == "Reallocate") {
         if(funding_source == "DV" && project_data$project_type == "SSO - CE") {
           showNotification(
-            "According to the FY2026 NOFO, you cannot reallocate a DV SSO-CE 
-            Renewal project. Please select a different Funding Action."
+            paste0("According to the FY", FY, " NOFO, you cannot reallocate a DV SSO-CE 
+            Renewal project. Please select a different Funding Action.")
           )
           return(FALSE)
         }

@@ -124,4 +124,5 @@ mirai::everywhere({
   source(here("R/utils/build_report.R"))
 }, .options = list(seed = TRUE))
 
+FY <- 2026
 # shiny::runApp(port = 4000, launch.browser = T)

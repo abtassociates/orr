@@ -66,7 +66,8 @@ mod_funding_priorities_ui <- function(id) {
     ),
     card(
       min_height=300,
-      card_header("FY2026 HUD CoC Program NOFO Opportunities"),
+      card_header(paste0("FY", FY, " HUD CoC Program NOFO Opportunities")),
+      HTML("<p>Select project and population types to prioritize for CoC Bonus/Reallocation and DV Bonus funding</p>"),
       layout_columns(
         col_widths = c(8, 4),
         card(
@@ -101,10 +102,10 @@ mod_funding_priorities_ui <- function(id) {
     ), # end coc nofo opportunities card
     card(
       card_header("Funding Ceilings and Priorities by Project Type and Population"),
-      div(
-        id = ns("priorities_help"),
-        p("Double-click a cell to edit")
-      ),
+      HTML("<p>To update the table and specify system needs for different project
+           and population types, double-click into a cell. Any section of the 
+           table can be left blank if your CoC has not adopted these types of 
+           targets or priorities.</p>"),
       DTOutput(ns("priorities_table"), fill = FALSE),
       fill = FALSE
     )
