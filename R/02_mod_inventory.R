@@ -62,7 +62,7 @@ mod_inventory_ui <- function(id) {
       card(
         class = "giw-card",
         
-        div(
+        card_header(
           class = "giw-header",
           h3("GIW"),
           actionButton(ns("close_giw"), "X", class = "btn-danger btn-sm")
