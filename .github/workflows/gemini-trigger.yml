@@ -19,5 +19,5 @@ jobs:
           BRANCH_NAME=$(gh api $PR_URL --jq '.head.ref')
           
           # 2. Tell GitHub to run the "Worker" workflow using the file ON THAT BRANCH
-          gh workflow run "gemini-reviewer.yml" --ref "$BRANCH_NAME" \
+          gh workflow run "gemini-review.yml" --ref "$BRANCH_NAME" \
             -f issue_number=${{ github.event.issue.number }}

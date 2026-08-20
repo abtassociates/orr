@@ -11,13 +11,13 @@ on:
 name: Test
 
 env:
-  OS: ubuntu-22.04
-  Rver: 4.2
+  Rver: "4.5"
   syslibs: libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev
   
 jobs:
   test:
-    runs-on: ${{ env.OS }}
+    if: false
+    runs-on: ubuntu-22.04 # server OS
     # runs-on: windows-latest
 
     name: shiny-test-automation

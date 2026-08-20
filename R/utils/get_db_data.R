@@ -1,47 +1,20 @@
-# Database configuration
-# Using a global pool shares access to the db and is long-lived
-# - maintains N reusable connections
-# - loans them out only when needed (fewer db resources)
-# - automatically reconnects dropped connections (better stability, esp. if usage spikes)
-DB_POOL <- if(!IN_DEV_MODE) {
-  pool::dbPool(
-    drv = RPostgres::Postgres(),
-    host = Sys.getenv("AWS_RDS_HOST"),
-    port = as.integer(Sys.getenv("AWS_RDS_PORT", "3306")),
-    dbname = Sys.getenv("AWS_RDS_DBNAME"),
-    username = Sys.getenv("AWS_RDS_USERNAME"),
-    password = Sys.getenv("AWS_RDS_PASSWORD")
-  )
-} else {
-  pool::dbPool(
-    drv = RSQLite::SQLite(),
-    dbname = here("sandbox/dev_db.sqlite")
-  )
-}
-
-onStop(function() {
-  pool::poolClose(DB_POOL)
-})
-
+library(collapse)
 
 # Get DB data ------------------
-# dbGetQuery returns result set
 get_db_query <- function(sql, params = NULL) {
   tryCatch({
-    dt <- DBI::dbGetQuery(
-      DB_POOL,
-      sql,
-      params = params
-    ) |> qDT()
-    
-    if("date_created" %in% names(dt)) 
-      dt[, date_created := as.POSIXct(date_created)]
-    
-    if("date_updated" %in% names(dt)) 
-      dt[, date_updated := as.POSIXct(date_updated)]
+    dt <- with_tunnel_retry({
+      DBI::dbGetQuery(
+        get_db_pool(),
+        sql,
+        params = params
+      )
+    }) |> 
+      qDT()
     
     return(dt)
   }, error = function(e) {
+    logger::log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -49,16 +22,19 @@ get_db_query <- function(sql, params = NULL) {
 
 get_db_tbl <- function(tbl_name) {
   tryCatch({
-    tbl <- dbReadTable(DB_POOL, tbl_name) |> qDT()
+    tbl <- with_tunnel_retry({
+      DBI::dbReadTable(
+        get_db_pool(), 
+        tbl_name
+      )
+    })
     
-    if("date_created" %in% names(tbl)) 
-      tbl[, date_created := as.POSIXct(date_created)]
-    
-    if("date_updated" %in% names(tbl)) 
-      tbl[, date_updated := as.POSIXct(date_updated)]
+    tbl <- tbl |> 
+      qDT()
     
     return(tbl)
   }, error = function(e) {
+    logger::log_error(paste0("Importing ", tbl_name, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
@@ -66,23 +42,55 @@ get_db_tbl <- function(tbl_name) {
 
 # Write to db -------------------
 # dbExecute returns rows affected
-db_execute <- function(sql, params) {
+db_execute <- function(sql, params = NULL) {
   tryCatch({
-    pool::poolWithTransaction(DB_POOL, function(p) {
-      dbExecute(p, sql, params = params)
+    with_tunnel_retry({
+      DBI::dbExecute(get_db_pool(), sql, params = params)
     })
   }, error = function(e) {
+    logger::log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
 
 db_append <- function(tbl, data) {
   tryCatch({
-    pool::poolWithTransaction(DB_POOL, function(p) {
-      dbAppendTable(p, tbl, data)
+    with_tunnel_retry({
+      DBI::dbAppendTable(get_db_pool(), tbl, data)
     })
   }, error = function(e) {
+    logger::log_error(paste0(sql, e$message))
     list(ok = FALSE, error = e$message)
   })
 }
 
+
+get_db_column_limit <- function(table_name, column_name) {
+  pool <- get_db_pool()
+  
+  # 1. Determine which DB type we are using
+  # RPostgres returns "PostgreSQL", RSQLite returns "SQLite"
+  if (.db_env$connection_type == "SQLite") {
+    # SQLite uses PRAGMA table_info
+    # This returns a table with a 'type' column (e.g., "VARCHAR(10)")
+    res <- get_db_query(paste0("PRAGMA table_info(", table_name, ")"))
+    col_type <- res$type[res$name == column_name]
+    
+    # Use Regex to extract the number inside the parentheses: VARCHAR(10) -> 10
+    limit <- gsub(".*\\((\\d+)\\).*", "\\1", col_type)
+    
+    # If no parentheses found (e.g. type is just 'TEXT'), limit will be the same as col_type
+    if (limit == col_type) limit <- NA 
+  } else {
+    # Postgres uses information_schema
+    sql <- "
+      SELECT character_maximum_length 
+      FROM information_schema.columns 
+      WHERE table_name = $1 AND column_name = $2"
+    res <- get_db_query(sql, params = list(table_name, column_name))
+    limit <- res$character_maximum_length[1]
+  } 
+  
+  # Return the limit found, or a safe default (255) if it's unlimited/TEXT
+  return(if (is.na(limit) || is.null(limit)) 255 else as.integer(limit))
+}
