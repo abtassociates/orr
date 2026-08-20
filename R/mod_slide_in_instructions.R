@@ -26,7 +26,7 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
     help_id <- reactiveVal("dashboard") # Default
     
     help_texts <- list(
-      "dashboard"                                        = list(
+      "dashboard"                                        = list(title = "Dashboard", content = list(
         p('The My Dashboard page displays your Rating and Ranking tool versions and version access requests'),
         accordion(
           id = "my_accordion", # Optional: used to read the open state on the server
@@ -48,9 +48,9 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
             p('The "Approved" section shows access requests you approved. Access requests you reject are listed in the "Rejected" section. The “Sent” section lists your own access requests and includes the status of those requests.')
           )
         )
-      ),
+      )),
         
-      "inventory" = HTML("
+      "inventory" = list(title = "Review Projects", content = HTML("
         <p>The <strong>Review Projects</strong> page lists all Continuum of Care (CoC) projects that can be rated and ranked in this tool. You will want to review all projects listed and confirm that all information is correct.</p>
         
         <p>To make updates to a project, double-click within the cell you want to edit. Dark grey fields are calculated and are not editable.</p>
@@ -71,14 +71,14 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
         <p><strong>HMIS</strong> and <strong>SSO-CE</strong> projects must be manually added to your project list so that they can be ranked later.</p>
         
         <p><em>Note:</em> Any changes made to projects listed in the tool will <strong>not</strong> be transferred back to your HIC.</p>"
-      ),
+      )),
       
-      "funding_priorities" = list(
+      "funding_priorities" = list(title = "Funding Priorities", content = list(
         HTML("<p>The <strong>Funding Ceilings + Priorities</strong> page allows you to specify system-wide funding priorities for your CoC's annual funding process.</p>"),
         accordion(
           accordion_panel(
             "General Funding Information",
-            p("Your CoC's <strong>Annual Renewal Demand (ARD)</strong> amount is based on HUD's Estimated Annual Renewal Demand Report. If the numbers do not match HUD's report, please report the issue through HUD's Ask a Question (AAQ) portal.")
+            HTML("<p>Your CoC's <strong>Annual Renewal Demand (ARD)</strong> amount is based on HUD's Estimated Annual Renewal Demand Report. If the numbers do not match HUD's report, please report the issue through HUD's Ask a Question (AAQ) portal.</p>")
           ),
           
           accordion_panel(
@@ -95,8 +95,8 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
             p("Specify your CoC’s system needs and the relative priority of different parts of your homeless system for purposes of the CoC Program application. For each project type/population combination, you can specify the relative priority, maximum number of beds (renewal and new combined), and/or maximum level of funding")
           )
         )
-      ),
-      "rating"                                           = list(
+      )),
+      "rating"                                           = list(title = "Rating", content = list(
         HTML("
           <p>The Rating page provides two options to score projects:</p>
           
@@ -159,7 +159,7 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
           )
         )
         
-      ),
+      )),
       # "rating-alternative"                               = rating_alt_instructions,
       # "rating-in_app"                                    = rating_in_app_instructions,
       # "rating-customize_criteria-renewal_rating_factors" = rating_in_app_instructions,
@@ -168,7 +168,8 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
       # "rating-renew-rating_scores_entry"                 = rating_in_app_instructions,
       # "rating-new-thresholds_entry"                      = rating_in_app_instructions,
       # "rating-new-rating_scores_entry"                   = rating_in_app_instructions,
-      "ranking"                                          = HTML("
+      "ranking"                                          = list(title = "Ranking", content = list(
+      HTML("
         <p>The <strong>Ranking</strong> page produces an initial ranked list of projects that reflects both the rating results from the Rating module and the funding priorities set by the NOFO and the CoC. This page includes summary tallies of dollar amounts within each funding category and a <strong>Funding Analysis Table</strong> that summarizes the units and funding allocated to each major project type and population group.</p>
         
         <p>To move individual projects up or down within the ranked list, click and hold the dotted icon at the far left of the project row and drag the project to the desired position. If you move a project to a new funding tier or out of the <strong>Projects Not Selected for Funding</strong> section, the funding summaries and <strong>Funding Analysis Table</strong> at the top will automatically adjust.</p>
@@ -180,13 +181,361 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
         <p>Clicking either the <strong>Regenerate Ranking</strong> or the <strong>Adjust Tiers after Funding Changes</strong> buttons could erase any changes you have made directly to the ranked list. To save a copy of your adjusted rankings, click the <strong>Export Ranking</strong> button to download the ranking list.</p>
         
         <p>The exported ranking list can be used to communicate recommended ranking results to applicants and CoC partners. The download can also be used to prepare annual CoC Project application materials for HUD.</p>
-      ")
+      "),
+      accordion(
+        accordion_panel(
+          "Straddle Projects",
+          HTML("
+          <p>Projects may exceed the amount of adjusted ARD available in Tier 1 
+          and 'straddle' the Tier 1/Tier 2 line. DV Bonus projects in Tier 1 that
+          are awarded funding may result in other projects moving up into Tier 1
+          and possibly straddling the Tier 1/Tier 2 line. CoCs should carefully
+          review this and the NOFO treatment of scoring and awards of straddle 
+          projects. Funding may be adjusted, or projects moved to reduce or 
+          eliminate the straddle. Projects may also exceed the Tier 2 line which 
+          means the projects exceed the funding available to the CoC.</p>
+            ")
+        ),
+        accordion_panel(
+          "Determining Project Priority",
+          HTML("The following logic is used to determine the rank order of 
+               projects based on inventory entered on the <strong>Review Projects</strong> page 
+               and the priorities set on the <strong>Funding Ceilings + Priorities</strong> page."),
+          br(),
+          br(),
+          table(
+            class = "table table-bordered",
+            
+            thead(
+              tr(
+                th("Ratio of Beds Within a Project"),
+                th("How Priority is Determined")
+              )
+            ),
+            
+            tbody(
+              
+              tr(
+                td(
+                  colspan = 2,
+                  em(strong(
+                    "If a Project has any beds dedicated to a subpopulation..."
+                  ))
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    li("Does the project have DV beds?")
+                  )
+                ),
+                td(
+                  ul(
+                    li(
+                      "The project is ranked based on the Priority (e.g. DV Fam, DV Ind)."
+                    )
+                  )
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    start = 2,
+                    li(
+                      "Does the project have at least 50% of its total beds dedicated to ",
+                      "CH Fam, CH Ind, Vet Ind OR Parenting Youth?"
+                    )
+                  )
+                ),
+                td(
+                  ul(
+                    li(
+                      "The project is ranked based on that subpopulation's priority."
+                    ),
+                    li(
+                      "If multiple subpopulations meet the 50+% threshold, ranking is based on ",
+                      "the highest ranked of the subpopulations."
+                    )
+                  )
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    start = 3,
+                    li(
+                      "Even though no single subpopulation meets the 50% threshold, is the sum ",
+                      "of dedicated beds 50% or greater?"
+                    )
+                  )
+                ),
+                td(
+                  ul(
+                    li(
+                      "Both subpopulation and population priorities are ignored for ranking ",
+                      "purposes, and the project is ranked with other projects that meet ",
+                      "unspecified priorities."
+                    )
+                  )
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    start = 4,
+                    li("Is the sum of dedicated beds less than 50%?")
+                  )
+                ),
+                td(
+                  ul(
+                    li(
+                      "Subpopulation priorities are ignored for ranking purposes, and the ",
+                      "project is ranked solely based on the overarching population priorities."
+                    )
+                  )
+                )
+              ),
+              
+              tr(
+                td(
+                  colspan = 2,
+                  em(strong(
+                    "If a Project doesn't have any beds dedicated to a subpopulation..."
+                  ))
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    li(
+                      "Does the project target > 50% of its beds to Families OR Individuals?"
+                    )
+                  )
+                ),
+                td(
+                  "The project is ranked based on the Priority and Funding Ceilings of the ",
+                  "Majority Populations."
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    start = 2,
+                    li(
+                      "Does the project evenly target two populations (50%/50%)?"
+                    )
+                  )
+                ),
+                td(
+                  "Ranking is based on the Priority and Funding Ceilings of the Highest ",
+                  "Ranked Populations (Fam, Ind)."
+                )
+              ),
+              
+              tr(
+                td(
+                  colspan = 2,
+                  em(strong(
+                    "If a Project is Eligible for CoC Bonus or DV Funding..."
+                  ))
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    li(
+                      "Is there bonus or reallocated funding remaining and is the project ",
+                      "selected for CoC Bonus/Reallocation consideration in the NOFO ",
+                      "Opportunities section?"
+                    )
+                  )
+                ),
+                td(
+                  ul(
+                    li(
+                      "The project is highlighted in the list on the Ranking page to indicate ",
+                      "it is a CoC Bonus project."
+                    )
+                  )
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    start = 2,
+                    li(
+                      "Is there DV Bonus funding remaining and is the project a type selected ",
+                      "for DV Bonus/Reallocation consideration in the NOFO Opportunities section?"
+                    )
+                  )
+                ),
+                td(
+                  ul(
+                    li(
+                      "The project is highlighted in the list on the Ranking page to indicate ",
+                      "it is a DV Bonus project."
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ),
+        
+        
+        bslib::accordion_panel(
+          "Allocating Beds",
+          
+          HTML(
+            'The following logic is used to allocate beds and funding to the funding targets
+      indicated on the <strong>Funding Ceilings + Priorities</strong> page.'
+          ),
+          
+          br(),
+          br(),
+          table(
+            class = "table table-bordered",
+            
+            thead(
+              tr(
+                th("Ratio of Beds Within a Project"),
+                th("How Subpopulations are Analyzed"),
+                th(
+                  HTML('How <strong>All Families</strong> and <strong>All Individuals</strong> ',
+                       'Bed/$ Counts are Allocated')
+                ),
+                th("How funding caps are allocated"),
+                th("Notes")
+              )
+            ),
+            
+            tbody(
+              
+              tr(
+                td(
+                  colspan = 5,
+                  em(strong(
+                    "If a Project does not have any beds dedicated to a subpopulation..."
+                  ))
+                )
+              ),
+              
+              tr(
+                td(),
+                td("N/A"),
+                td("All beds are counted for their assigned population group."),
+                td(
+                  "All $ are counted for their assigned population group, pro-rated by beds."
+                ),
+                td()
+              ),
+              
+              tr(
+                td(
+                  colspan = 5,
+                  em(strong(
+                    "If a Project has any beds dedicated to a subpopulation..."
+                  ))
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    li("Does the project have DV beds?")
+                  )
+                ),
+                td(
+                  "Beds are allocated to the DV need (e.g., DV Fam, DV Ind)."
+                ),
+                td(
+                  "Beds are not allocated to All Fam need or All Ind need. ",
+                  "The beds are able to meet the needs of non-DV Fam or non-DV Ind."
+                ),
+                td(
+                  "$ are allocated to the DV need (e.g., DV Fam, DV Ind), prorated by beds."
+                ),
+                td(
+                  "If DV is selected, the populations all of the Population Beds ",
+                  "(e.g., Fam or Ind) to DV."
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    start = 2,
+                    li(
+                      "Does the project have at least 50% of its beds dedicated to ",
+                      "CH Fam, CH Ind, Vet Fam, Vet Ind, OR Parenting Youth?"
+                    )
+                  )
+                ),
+                td(
+                  "Subpopulation beds are counted in their specific subpopulation category."
+                ),
+                td(
+                  "After subtracting dedicated beds, the remaining or Ind beds are counted ",
+                  "within their specific Population category."
+                ),
+                td(
+                  "All subpopulation $ is prorated based on the beds and their specific ",
+                  "subpopulation category."
+                ),
+                td(
+                  "The tool does not attempt to reconcile; therefore a project that is 100% ",
+                  "dedicated to CH and Vets will be counted as meeting both the Vet and CH ",
+                  "criteria. You may need to manually adjust ranking if projects with combined ",
+                  "eligibility criteria do not adequately meet identified unmet needs."
+                )
+              ),
+              
+              tr(
+                td(
+                  ol(
+                    start = 3,
+                    li(
+                      "Even if no single subpopulation meets the 50% threshold, is the sum ",
+                      "of dedicated beds 50% or greater of the total project beds?"
+                    ),
+                    li("Is the sum of dedicated beds less than 50%?")
+                  )
+                ),
+                td(
+                  "E.g., if a 100 bed project for Individuals has 25 beds for CH and 25 beds ",
+                  "for Vets, those beds would count toward the CH and Vets."
+                ),
+                td(
+                  "E.g., if a 100 bed project for Individuals has 25 beds for CH and 25 beds ",
+                  "for Vets, 25% of the beds would be counted toward CH, 25% for Vets, and ",
+                  "50% for All Ind."
+                ),
+                td(
+                  "E.g., if a 100 bed project for Individuals has 25 beds for CH and 25 beds ",
+                  "for Vets, 50% of the beds would be counted toward CH, 25% for Vets, and ",
+                  "50% for All Ind."
+                ),
+                td()
+              )
+            )
+          )
+        )
+      )
+    ))
     )
     
     help_wrapper <- function(tab, instructions) {
       tagList(
         h4(
-          stringr::str_to_title(paste0(tab, " Instructions")),
+          stringr::str_to_title(paste0(help_texts[[tab]]$title, " Instructions")),
           div(
             style = "position: absolute; top: 10px; right: 20px;",
             actionButton(ns("close_help"), "X", class = "btn-danger btn-sm")
@@ -213,7 +562,7 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
     
     output$dynamic_help <- renderUI({
       req(nav_control())
-      help_wrapper(nav_control(), help_texts[[help_id()]])
+      help_wrapper(nav_control(), help_texts[[help_id()]]$content)
     })
     
     
