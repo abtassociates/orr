@@ -53,20 +53,83 @@ mod_inventory_ui <- function(id) {
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       )
     ),
-    fixedPanel(
+    tags$script(HTML(sprintf("
+      $(function() {
+    
+        const panel = document.getElementById('%s');
+        const handle = panel.querySelector('.giw-header');
+    
+        let startX;
+        let startY;
+        let startLeft;
+        let startTop;
+        let initialized = false;
+    
+        handle.addEventListener('mousedown', function(e) {
+    
+          // Don't start dragging when clicking the close button
+          if ($(e.target).closest('button').length) {
+            return;
+          }
+    
+          // On the first drag, convert the centered position
+          // into absolute pixel coordinates.
+          if (!initialized) {
+            const rect = panel.getBoundingClientRect();
+    
+            panel.style.left = rect.left + 'px';
+            panel.style.top = rect.top + 'px';
+            panel.style.transform = 'none';
+    
+            initialized = true;
+          }
+    
+          startX = e.clientX;
+          startY = e.clientY;
+    
+          startLeft = panel.offsetLeft;
+          startTop = panel.offsetTop;
+    
+          document.addEventListener('mousemove', drag);
+          document.addEventListener('mouseup', stopDrag);
+    
+          e.preventDefault();
+        });
+    
+        function drag(e) {
+          panel.style.left = (startLeft + e.clientX - startX) + 'px';
+          panel.style.top = (startTop + e.clientY - startY) + 'px';
+        }
+    
+        function stopDrag() {
+          document.removeEventListener('mousemove', drag);
+          document.removeEventListener('mouseup', stopDrag);
+        }
+    
+      });
+    ", ns("giw_panel")))),
+    tags$div(
       id = ns("giw_panel"),
+      class = "giw-popup",
       style = "display:none;",
+      
       card(
-        fill = FALSE,
-        h3("GIW"),
-        actionButton(ns("close_giw"), "X", class = "btn-danger btn-sm"),
-        p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
-        DTOutput(ns("giw_tbl"), height = "75vh") |> withSpinner()
-      ),
-      draggable = TRUE,
-      width = "60vw",
-      top = "50%",
-      left = "50%"
+        class = "giw-card",
+        
+        div(
+          class = "giw-header",
+          h3("GIW"),
+          actionButton(ns("close_giw"), "X", class = "btn-danger btn-sm")
+        ),
+        
+        card_body(
+          p(em("Locate the desired project(s) and copy the grant number into the Inventory")),
+          div(
+            class = "giw-table-container",
+            DTOutput(ns("giw_tbl")) |> withSpinner()
+          )
+        )
+      )
     )
   )
 }
@@ -652,6 +715,8 @@ mod_inventory_server <- function(id, nav_control, user_coc, parent_session, help
     observeEvent(input$view_giw_btn, {
       shinyjs::show("giw_panel")
     })
+    
+    
     observeEvent(input$close_giw, {
       shinyjs::hide("giw_panel")
     })
