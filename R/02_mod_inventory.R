@@ -53,61 +53,7 @@ mod_inventory_ui <- function(id) {
         # helpText("Note: Projects with funding action \"Ignore\" are filtered out by default.")
       )
     ),
-    tags$script(HTML(sprintf("
-      $(function() {
-    
-        const panel = document.getElementById('%s');
-        const handle = panel.querySelector('.giw-header');
-    
-        let startX;
-        let startY;
-        let startLeft;
-        let startTop;
-        let initialized = false;
-    
-        handle.addEventListener('mousedown', function(e) {
-    
-          // Don't start dragging when clicking the close button
-          if ($(e.target).closest('button').length) {
-            return;
-          }
-    
-          // On the first drag, convert the centered position
-          // into absolute pixel coordinates.
-          if (!initialized) {
-            const rect = panel.getBoundingClientRect();
-    
-            panel.style.left = rect.left + 'px';
-            panel.style.top = rect.top + 'px';
-            panel.style.transform = 'none';
-    
-            initialized = true;
-          }
-    
-          startX = e.clientX;
-          startY = e.clientY;
-    
-          startLeft = panel.offsetLeft;
-          startTop = panel.offsetTop;
-    
-          document.addEventListener('mousemove', drag);
-          document.addEventListener('mouseup', stopDrag);
-    
-          e.preventDefault();
-        });
-    
-        function drag(e) {
-          panel.style.left = (startLeft + e.clientX - startX) + 'px';
-          panel.style.top = (startTop + e.clientY - startY) + 'px';
-        }
-    
-        function stopDrag() {
-          document.removeEventListener('mousemove', drag);
-          document.removeEventListener('mouseup', stopDrag);
-        }
-    
-      });
-    ", ns("giw_panel")))),
+    tags$script(src = "js/giw.js"),
     tags$div(
       id = ns("giw_panel"),
       class = "giw-popup",
