@@ -201,60 +201,60 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
           HTML("The following logic is used to determine the rank order of 
                projects based on inventory entered on the <strong>Review Projects</strong> page 
                and the priorities set on the <strong>Funding Ceilings + Priorities</strong> page."),
-          br(),
-          br(),
-          table(
+          tags$br(),
+          tags$br(),
+          tags$table(
             class = "table table-bordered",
             
-            thead(
-              tr(
-                th("Ratio of Beds Within a Project"),
-                th("How Priority is Determined")
+            tags$thead(
+              tags$tr(
+                tags$th("Ratio of Beds Within a Project"),
+                tags$th("How Priority is Determined")
               )
             ),
             
-            tbody(
+            tags$tbody(
               
-              tr(
-                td(
+              tags$tr(
+                tags$td(
                   colspan = 2,
-                  em(strong(
+                  tags$em(tags$strong(
                     "If a Project has any beds dedicated to a subpopulation..."
                   ))
                 )
               ),
               
-              tr(
-                td(
-                  ol(
-                    li("Does the project have DV beds?")
+              tags$tr(
+                tags$td(
+                  tags$ol(
+                    tags$li("Does the project have DV beds?")
                   )
                 ),
-                td(
-                  ul(
-                    li(
+                tags$td(
+                  tags$ul(
+                    tags$li(
                       "The project is ranked based on the Priority (e.g. DV Fam, DV Ind)."
                     )
                   )
                 )
               ),
               
-              tr(
-                td(
-                  ol(
+              tags$tr(
+                tags$td(
+                  tags$ol(
                     start = 2,
-                    li(
+                    tags$li(
                       "Does the project have at least 50% of its total beds dedicated to ",
                       "CH Fam, CH Ind, Vet Ind OR Parenting Youth?"
                     )
                   )
                 ),
-                td(
-                  ul(
-                    li(
+                tags$td(
+                  tags$ul(
+                    tags$li(
                       "The project is ranked based on that subpopulation's priority."
                     ),
-                    li(
+                    tags$li(
                       "If multiple subpopulations meet the 50+% threshold, ranking is based on ",
                       "the highest ranked of the subpopulations."
                     )
@@ -262,19 +262,19 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
                 )
               ),
               
-              tr(
-                td(
-                  ol(
+              tags$tr(
+                tags$td(
+                  tags$ol(
                     start = 3,
-                    li(
+                    tags$li(
                       "Even though no single subpopulation meets the 50% threshold, is the sum ",
                       "of dedicated beds 50% or greater?"
                     )
                   )
                 ),
-                td(
-                  ul(
-                    li(
+                tags$td(
+                  tags$ul(
+                    tags$li(
                       "Both subpopulation and population priorities are ignored for ranking ",
                       "purposes, and the project is ranked with other projects that meet ",
                       "unspecified priorities."
@@ -283,16 +283,16 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
                 )
               ),
               
-              tr(
-                td(
-                  ol(
+              tags$tr(
+                tags$td(
+                  tags$ol(
                     start = 4,
-                    li("Is the sum of dedicated beds less than 50%?")
+                    tags$li("Is the sum of dedicated beds less than 50%?")
                   )
                 ),
-                td(
-                  ul(
-                    li(
+                tags$td(
+                  tags$ul(
+                    tags$li(
                       "Subpopulation priorities are ignored for ranking purposes, and the ",
                       "project is ranked solely based on the overarching population priorities."
                     )
@@ -300,66 +300,66 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
                 )
               ),
               
-              tr(
-                td(
+              tags$tr(
+                tags$td(
                   colspan = 2,
-                  em(strong(
+                  tags$em(tags$strong(
                     "If a Project doesn't have any beds dedicated to a subpopulation..."
                   ))
                 )
               ),
               
-              tr(
-                td(
-                  ol(
-                    li(
+              tags$tr(
+                tags$td(
+                  tags$ol(
+                    tags$li(
                       "Does the project target > 50% of its beds to Families OR Individuals?"
                     )
                   )
                 ),
-                td(
+                tags$td(
                   "The project is ranked based on the Priority and Funding Ceilings of the ",
                   "Majority Populations."
                 )
               ),
               
-              tr(
-                td(
-                  ol(
+              tags$tr(
+                tags$td(
+                  tags$ol(
                     start = 2,
-                    li(
+                    tags$li(
                       "Does the project evenly target two populations (50%/50%)?"
                     )
                   )
                 ),
-                td(
+                tags$td(
                   "Ranking is based on the Priority and Funding Ceilings of the Highest ",
                   "Ranked Populations (Fam, Ind)."
                 )
               ),
               
-              tr(
-                td(
+              tags$tr(
+                tags$td(
                   colspan = 2,
-                  em(strong(
+                  tags$em(tags$strong(
                     "If a Project is Eligible for CoC Bonus or DV Funding..."
                   ))
                 )
               ),
               
-              tr(
-                td(
-                  ol(
-                    li(
+              tags$tr(
+                tags$td(
+                  tags$ol(
+                    tags$li(
                       "Is there bonus or reallocated funding remaining and is the project ",
                       "selected for CoC Bonus/Reallocation consideration in the NOFO ",
                       "Opportunities section?"
                     )
                   )
                 ),
-                td(
-                  ul(
-                    li(
+                tags$td(
+                  tags$ul(
+                    tags$li(
                       "The project is highlighted in the list on the Ranking page to indicate ",
                       "it is a CoC Bonus project."
                     )
@@ -367,19 +367,19 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
                 )
               ),
               
-              tr(
-                td(
-                  ol(
+              tags$tr(
+                tags$td(
+                  tags$ol(
                     start = 2,
-                    li(
+                    tags$li(
                       "Is there DV Bonus funding remaining and is the project a type selected ",
                       "for DV Bonus/Reallocation consideration in the NOFO Opportunities section?"
                     )
                   )
                 ),
-                td(
-                  ul(
-                    li(
+                tags$td(
+                  tags$ul(
+                    tags$li(
                       "The project is highlighted in the list on the Ranking page to indicate ",
                       "it is a DV Bonus project."
                     )
@@ -399,98 +399,98 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
       indicated on the <strong>Funding Ceilings + Priorities</strong> page.'
           ),
           
-          br(),
-          br(),
-          table(
+          tags$br(),
+          tags$br(),
+          tags$table(
             class = "table table-bordered",
             
-            thead(
-              tr(
-                th("Ratio of Beds Within a Project"),
-                th("How Subpopulations are Analyzed"),
-                th(
+            tags$thead(
+              tags$tr(
+                tags$th("Ratio of Beds Within a Project"),
+                tags$th("How Subpopulations are Analyzed"),
+                tags$th(
                   HTML('How <strong>All Families</strong> and <strong>All Individuals</strong> ',
                        'Bed/$ Counts are Allocated')
                 ),
-                th("How funding caps are allocated"),
-                th("Notes")
+                tags$th("How funding caps are allocated"),
+                tags$th("Notes")
               )
             ),
             
-            tbody(
+            tags$tbody(
               
-              tr(
-                td(
+              tags$tr(
+                tags$td(
                   colspan = 5,
-                  em(strong(
+                  tags$em(tags$strong(
                     "If a Project does not have any beds dedicated to a subpopulation..."
                   ))
                 )
               ),
               
-              tr(
-                td(),
-                td("N/A"),
-                td("All beds are counted for their assigned population group."),
-                td(
+              tags$tr(
+                tags$td(),
+                tags$td("N/A"),
+                tags$td("All beds are counted for their assigned population group."),
+                tags$td(
                   "All $ are counted for their assigned population group, pro-rated by beds."
                 ),
-                td()
+                tags$td()
               ),
               
-              tr(
-                td(
+              tags$tr(
+                tags$td(
                   colspan = 5,
-                  em(strong(
+                  tags$em(tags$strong(
                     "If a Project has any beds dedicated to a subpopulation..."
                   ))
                 )
               ),
               
-              tr(
-                td(
-                  ol(
-                    li("Does the project have DV beds?")
+              tags$tr(
+                tags$td(
+                  tags$ol(
+                    tags$li("Does the project have DV beds?")
                   )
                 ),
-                td(
+                tags$td(
                   "Beds are allocated to the DV need (e.g., DV Fam, DV Ind)."
                 ),
-                td(
+                tags$td(
                   "Beds are not allocated to All Fam need or All Ind need. ",
                   "The beds are able to meet the needs of non-DV Fam or non-DV Ind."
                 ),
-                td(
+                tags$td(
                   "$ are allocated to the DV need (e.g., DV Fam, DV Ind), prorated by beds."
                 ),
-                td(
+                tags$td(
                   "If DV is selected, the populations all of the Population Beds ",
                   "(e.g., Fam or Ind) to DV."
                 )
               ),
               
-              tr(
-                td(
-                  ol(
+              tags$tr(
+                tags$td(
+                  tags$ol(
                     start = 2,
-                    li(
+                    tags$li(
                       "Does the project have at least 50% of its beds dedicated to ",
                       "CH Fam, CH Ind, Vet Fam, Vet Ind, OR Parenting Youth?"
                     )
                   )
                 ),
-                td(
+                tags$td(
                   "Subpopulation beds are counted in their specific subpopulation category."
                 ),
-                td(
+                tags$td(
                   "After subtracting dedicated beds, the remaining or Ind beds are counted ",
                   "within their specific Population category."
                 ),
-                td(
+                tags$td(
                   "All subpopulation $ is prorated based on the beds and their specific ",
                   "subpopulation category."
                 ),
-                td(
+                tags$td(
                   "The tool does not attempt to reconcile; therefore a project that is 100% ",
                   "dedicated to CH and Vets will be counted as meeting both the Vet and CH ",
                   "criteria. You may need to manually adjust ranking if projects with combined ",
@@ -498,32 +498,32 @@ mod_slide_in_instructions_server <- function(id, user_coc, nav_control) {
                 )
               ),
               
-              tr(
-                td(
-                  ol(
+              tags$tr(
+                tags$td(
+                  tags$ol(
                     start = 3,
-                    li(
+                    tags$li(
                       "Even if no single subpopulation meets the 50% threshold, is the sum ",
                       "of dedicated beds 50% or greater of the total project beds?"
                     ),
-                    li("Is the sum of dedicated beds less than 50%?")
+                    tags$li("Is the sum of dedicated beds less than 50%?")
                   )
                 ),
-                td(
+                tags$td(
                   "E.g., if a 100 bed project for Individuals has 25 beds for CH and 25 beds ",
                   "for Vets, those beds would count toward the CH and Vets."
                 ),
-                td(
+                tags$td(
                   "E.g., if a 100 bed project for Individuals has 25 beds for CH and 25 beds ",
                   "for Vets, 25% of the beds would be counted toward CH, 25% for Vets, and ",
                   "50% for All Ind."
                 ),
-                td(
+                tags$td(
                   "E.g., if a 100 bed project for Individuals has 25 beds for CH and 25 beds ",
                   "for Vets, 50% of the beds would be counted toward CH, 25% for Vets, and ",
                   "50% for All Ind."
                 ),
-                td()
+                tags$td()
               )
             )
           )
